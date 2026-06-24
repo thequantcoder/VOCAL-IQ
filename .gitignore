@@ -1,0 +1,60 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Env & secrets (NEVER commit real secrets — only .env.example)
+.env
+.env.*
+!.env.example
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# Terraform / infra
+infra/**/.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
+# Prisma generated client
+packages/db/generated/
+
+# Local data volumes / media
+/data/
+recordings/
+uploads/
+*.local
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Build kit archive (kept locally, not in repo)
+VocalIQ-Build-Kit.zip

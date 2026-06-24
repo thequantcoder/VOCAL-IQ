@@ -1,0 +1,21 @@
+# Day 0 placeholder — the full local dev stack (Postgres 16 + timescaledb +
+# pgvector, Redis, LiveKit) is configured on Day 1.
+services:
+  postgres:
+    image: timescale/timescaledb-ha:pg16
+    environment:
+      POSTGRES_USER: vocaliq
+      POSTGRES_PASSWORD: vocaliq
+      POSTGRES_DB: vocaliq
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  pgdata:

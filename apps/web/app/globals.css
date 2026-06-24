@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+/* VocalIQ design tokens (DESIGN-SYSTEM.md §1). Dark-first; "cyan = live". */
+@theme {
+  --color-vq-bg-base: #0b0b12;
+  --color-vq-bg-elevated: #14141f;
+  --color-vq-bg-overlay: #1c1c2b;
+  --color-vq-border: #262635;
+  --color-vq-violet: #7c5cff;
+  --color-vq-violet-deep: #5b21b6;
+  --color-vq-cyan: #22d3ee;
+  --color-vq-text-hi: #f4f4fb;
+  --color-vq-text-lo: #9a9ab2;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-vq-bg-base);
+  color: var(--color-vq-text-hi);
+}
