@@ -1,23 +1,113 @@
 @import "tailwindcss";
+/* Signature Waveform motif + motion (lives with @vocaliq/ui). All @import must
+ * precede other at-rules/rules per CSS spec. */
+@import "../../../packages/ui/src/styles/ui.css";
 
-/* VocalIQ design tokens (DESIGN-SYSTEM.md §1). Dark-first; "cyan = live". */
-@theme {
-  --color-vq-bg-base: #0b0b12;
-  --color-vq-bg-elevated: #14141f;
-  --color-vq-bg-overlay: #1c1c2b;
-  --color-vq-border: #262635;
-  --color-vq-violet: #7c5cff;
-  --color-vq-violet-deep: #5b21b6;
-  --color-vq-cyan: #22d3ee;
-  --color-vq-text-hi: #f4f4fb;
-  --color-vq-text-lo: #9a9ab2;
+/* Generate utilities used inside the shared component library. */
+@source "../../../packages/ui/src/**/*.{ts,tsx}";
+
+/* Tailwind v4: drive `dark:` off a `.dark` class (set by next-themes). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * VocalIQ design tokens — DESIGN-SYSTEM.md §1–§4.
+ * Raw brand hues are theme-independent. Surface/text/border are *semantic* and
+ * flip between light (default) and dark. "cyan = live": reserved for real-time.
+ */
+:root {
+  /* Brand (theme-independent) */
+  --vq-violet: #7c5cff;
+  --vq-violet-deep: #5b21b6;
+  --vq-cyan: #22d3ee;
+  --vq-success: #34d399;
+  --vq-warn: #fbbf24;
+  --vq-danger: #fb7185;
+
+  /* Semantic surfaces/text — LIGHT theme (first-class equal, §1) */
+  --bg-base: #f6f6fb;
+  --bg-elevated: #ffffff;
+  --bg-overlay: #ffffff;
+  --border: #e5e5ef;
+  --text-hi: #14141f;
+  --text-lo: #5b5b73;
+  --ring: var(--vq-violet);
+
+  /* Radii (§3) */
+  --radius-sm: 8px;
+  --radius: 10px;
+  --radius-card: 14px;
+  --radius-pill: 999px;
+
+  /* Motion (§4) */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 120ms;
+  --dur-base: 220ms;
+  --dur-slow: 380ms;
+  --vq-wave-dur: 1500ms;
+
+  color-scheme: light;
 }
 
-html {
+.dark {
+  /* Semantic surfaces/text — DARK theme (the dark-first default, §1) */
+  --bg-base: #0b0b12;
+  --bg-elevated: #14141f;
+  --bg-overlay: #1c1c2b;
+  --border: #262635;
+  --text-hi: #f4f4fb;
+  --text-lo: #9a9ab2;
+
   color-scheme: dark;
 }
 
+/*
+ * Map tokens into Tailwind's theme so utilities (bg-vq-violet, text-vq-text-hi,
+ * rounded-vq-card, font-display, …) resolve. `inline` keeps the var reference so
+ * semantic colors stay theme-reactive at use-site.
+ */
+@theme inline {
+  --color-vq-violet: var(--vq-violet);
+  --color-vq-violet-deep: var(--vq-violet-deep);
+  --color-vq-cyan: var(--vq-cyan);
+  --color-vq-success: var(--vq-success);
+  --color-vq-warn: var(--vq-warn);
+  --color-vq-danger: var(--vq-danger);
+
+  --color-vq-bg-base: var(--bg-base);
+  --color-vq-bg-elevated: var(--bg-elevated);
+  --color-vq-bg-overlay: var(--bg-overlay);
+  --color-vq-border: var(--border);
+  --color-vq-text-hi: var(--text-hi);
+  --color-vq-text-lo: var(--text-lo);
+  --color-vq-ring: var(--ring);
+
+  --radius-vq-sm: var(--radius-sm);
+  --radius-vq: var(--radius);
+  --radius-vq-card: var(--radius-card);
+  --radius-vq-pill: var(--radius-pill);
+
+  --font-display: var(--font-display);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  --ease-out-soft: var(--ease-out-soft);
+}
+
+html {
+  background-color: var(--bg-base);
+}
+
 body {
-  background-color: var(--color-vq-bg-base);
-  color: var(--color-vq-text-hi);
+  background-color: var(--bg-base);
+  color: var(--text-hi);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  /* Theme swaps ease like a settling conversation (§4). */
+  transition: background-color var(--dur-base) var(--ease-out-soft), color var(--dur-base)
+    var(--ease-out-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body {
+    transition: none;
+  }
 }

@@ -6,7 +6,8 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" }
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./styles.css": "./src/styles/ui.css"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -17,9 +18,17 @@
     "clsx": "^2.1.1",
     "tailwind-merge": "^2.6.0"
   },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
     "@vocaliq/config": "workspace:*",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "typescript": "^5.6.3"
   }
 }
