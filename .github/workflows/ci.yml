@@ -46,9 +46,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # pnpm version comes from package.json "packageManager" — don't also set it
+      # here or action-setup errors on the conflict.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - uses: actions/setup-node@v4
         with:
@@ -95,6 +95,9 @@ jobs:
       - run: pytest
 
   # ── Security: secret scan on every PR/push (GIT-WORKFLOW §CI gate item 7) ─────
+  # Scans committed history (`gitleaks git`) — deterministic and gitignore-aware
+  # (won't trip over build output like .next/), avoiding the gitleaks-action
+  # PR-range/license quirks.
   security:
     runs-on: ubuntu-latest
     steps:
@@ -102,6 +105,8 @@ jobs:
         with:
           fetch-depth: 0
       - name: Secret scan (gitleaks)
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=8.24.3
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz" \
+            | tar -xz -C /usr/local/bin gitleaks
+          gitleaks git . --redact --verbose --exit-code 1
