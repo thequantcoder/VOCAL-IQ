@@ -14,6 +14,11 @@ export const envSchema = z.object({
   DATABASE_URL: z.string().url().optional(),
   DIRECT_URL: z.string().url().optional(),
   REDIS_URL: z.string().url().optional(),
+
+  // Observability (Day 1) — all optional; absence disables the integration cleanly.
+  SENTRY_DSN: z.string().url().optional(),
+  POSTHOG_KEY: z.string().optional(),
+  POSTHOG_HOST: z.string().url().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
