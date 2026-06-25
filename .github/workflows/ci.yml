@@ -1,0 +1,112 @@
+# VocalIQ CI gate (GIT-WORKFLOW.md §CI gate). Merging requires all jobs green.
+# Node 20 / Python 3.12 parity with TECH-STACK.md, regardless of local toolchain.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ── TypeScript monorepo: typecheck → lint → test (with services) → build ──────
+  node:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: timescale/timescaledb-ha:pg16
+        env:
+          POSTGRES_USER: vocaliq
+          POSTGRES_PASSWORD: vocaliq
+          POSTGRES_DB: vocaliq
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U vocaliq -d vocaliq"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://vocaliq:vocaliq@localhost:5432/vocaliq
+      DIRECT_URL: postgresql://vocaliq:vocaliq@localhost:5432/vocaliq
+      REDIS_URL: redis://localhost:6379
+    steps:
+      - uses: actions/checkout@v4
+
+      # pnpm version comes from package.json "packageManager" — don't also set it
+      # here or action-setup errors on the conflict.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Enable extensions the suite expects (Day 4+ relies on them).
+      - name: Prime Postgres extensions
+        run: |
+          PGPASSWORD=vocaliq psql -h localhost -U vocaliq -d vocaliq \
+            -c "CREATE EXTENSION IF NOT EXISTS timescaledb; CREATE EXTENSION IF NOT EXISTS vector;"
+
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm build
+
+  # ── Python voice service: type check + lint + tests ──────────────────────────
+  voice:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/voice
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Type check (pyright)
+        run: pyright
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - run: pytest
+
+  # ── Security: secret scan on every PR/push (GIT-WORKFLOW §CI gate item 7) ─────
+  # Scans committed history (`gitleaks git`) — deterministic and gitignore-aware
+  # (won't trip over build output like .next/), avoiding the gitleaks-action
+  # PR-range/license quirks.
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Secret scan (gitleaks)
+        run: |
+          VERSION=8.24.3
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz" \
+            | tar -xz -C /usr/local/bin gitleaks
+          gitleaks git . --redact --verbose --exit-code 1

@@ -1,0 +1,54 @@
+# VocalIQ local dev stack — one command: `pnpm dev:infra` (up) / `pnpm dev:infra:down`.
+# Postgres 16 (TimescaleDB + pgvector), Redis 7, and a LiveKit dev server.
+# Dev-only credentials; never reuse these anywhere real.
+services:
+  postgres:
+    image: timescale/timescaledb-ha:pg16
+    container_name: vocaliq-postgres
+    environment:
+      POSTGRES_USER: vocaliq
+      POSTGRES_PASSWORD: vocaliq
+      POSTGRES_DB: vocaliq
+    ports:
+      # Host port is overridable (e.g. POSTGRES_PORT=5433) when 5432 is taken by
+      # another local Postgres; the container port stays 5432.
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Runs once on first init: enables the extensions every later day relies on.
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vocaliq -d vocaliq"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: vocaliq-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  livekit:
+    image: livekit/livekit-server:v1.8
+    container_name: vocaliq-livekit
+    # --dev seeds well-known dev credentials (key: devkey / secret: secret).
+    command: ["--dev", "--bind", "0.0.0.0"]
+    ports:
+      - "${LIVEKIT_PORT:-7880}:7880" # HTTP/WebSocket signalling
+      - "7881:7881" # RTC over TCP
+      - "7882:7882/udp" # RTC over UDP
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:7880"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:

@@ -1,0 +1,56 @@
+/*
+ * @vocaliq/ui — framework-agnostic component CSS (DESIGN-SYSTEM.md §0, §4, §5).
+ * Plain CSS only (no Tailwind directives) so any consumer can import it directly.
+ * Holds the signature Waveform motif + its motion. Token *values* live in the
+ * consuming app's theme layer; this file only references CSS variables.
+ */
+
+/* ── Signature Waveform (DESIGN-SYSTEM §0/§5c) ──────────────────────────────
+ * A living waveform — the product's hero motif. Default uses the brand violet;
+ * the `live` variant uses cyan ("cyan = live", §1). Bars breathe on an ambient
+ * loop; amplitude-reactive animation arrives with the live-call view (Day 14).
+ */
+.vq-waveform {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 100%;
+  width: 100%;
+}
+
+.vq-waveform__bar {
+  flex: 0 0 auto;
+  width: 4px;
+  min-height: 6px;
+  border-radius: var(--radius-vq-pill, 999px);
+  background: linear-gradient(180deg, var(--vq-violet, #7c5cff), var(--vq-violet-deep, #5b21b6));
+  transform-origin: center;
+  animation: vq-wave var(--vq-wave-dur, 1500ms) var(--ease-out-soft, ease-in-out) infinite;
+}
+
+.vq-waveform--live .vq-waveform__bar {
+  /* The one signature gradient (violet → cyan), reserved for live/speaking. */
+  background: linear-gradient(180deg, var(--vq-cyan, #22d3ee), var(--vq-violet, #7c5cff));
+}
+
+@keyframes vq-wave {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+/* Reduced motion: hold a calm static silhouette, never animate (DESIGN-SYSTEM §4/§7). */
+@media (prefers-reduced-motion: reduce) {
+  .vq-waveform__bar {
+    animation: none;
+    transform: scaleY(0.6);
+    opacity: 0.85;
+  }
+}

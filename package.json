@@ -1,0 +1,37 @@
+{
+  "name": "vocaliq",
+  "version": "0.0.0",
+  "private": true,
+  "description": "VocalIQ — multi-tenant white-label Agentic Voice AI SaaS (monorepo)",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:infra": "docker compose -f infra/docker-compose.yml up -d",
+    "dev:infra:down": "docker compose -f infra/docker-compose.yml down",
+    "dev:infra:reset": "docker compose -f infra/docker-compose.yml down -v",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "biome check --write .",
+    "check": "biome check ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "turbo": "^2.3.3",
+    "typescript": "^5.6.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@biomejs/biome",
+      "esbuild",
+      "@nestjs/core",
+      "sharp",
+      "msgpackr-extract"
+    ]
+  }
+}
