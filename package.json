@@ -10,11 +10,14 @@
   },
   "scripts": {
     "dev": "turbo run dev",
+    "dev:infra": "docker compose -f infra/docker-compose.yml up -d",
+    "dev:infra:down": "docker compose -f infra/docker-compose.yml down",
+    "dev:infra:reset": "docker compose -f infra/docker-compose.yml down -v",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "format": "biome format --write .",
+    "format": "biome check --write .",
     "check": "biome check ."
   },
   "devDependencies": {
