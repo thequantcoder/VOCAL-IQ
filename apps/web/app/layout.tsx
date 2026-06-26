@@ -1,3 +1,4 @@
+import { ClerkProvider } from '@clerk/nextjs';
 import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono, Space_Grotesk } from 'next/font/google';
 import type { ReactNode } from 'react';
@@ -25,14 +26,18 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html
-      lang="en"
-      suppressHydrationWarning
-      className={`${display.variable} ${sans.variable} ${mono.variable}`}
-    >
-      <body>
-        <Providers>{children}</Providers>
-      </body>
-    </html>
+    // Clerk wraps the app so auth context is available to every route. Brand the
+    // prebuilt components with the VocalIQ violet (DESIGN-SYSTEM §1).
+    <ClerkProvider appearance={{ variables: { colorPrimary: '#7c5cff' } }}>
+      <html
+        lang="en"
+        suppressHydrationWarning
+        className={`${display.variable} ${sans.variable} ${mono.variable}`}
+      >
+        <body>
+          <Providers>{children}</Providers>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
