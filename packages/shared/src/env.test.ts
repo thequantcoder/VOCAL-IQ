@@ -21,6 +21,14 @@ describe('parseEnv', () => {
     expect(env.API_PORT).toBe(4000);
   });
 
+  it('treats empty-string vars as unset (dotenv blank placeholders)', () => {
+    // `FOO=` in a .env file surfaces as '' — must not fail url() validation.
+    const env = parseEnv({ DATABASE_URL: '', SENTRY_DSN: '', OPENAI_API_KEY: '' });
+    expect(env.DATABASE_URL).toBeUndefined();
+    expect(env.SENTRY_DSN).toBeUndefined();
+    expect(env.OPENAI_API_KEY).toBeUndefined();
+  });
+
   it('fails fast with a readable error on invalid values', () => {
     expect(() => parseEnv({ NODE_ENV: 'nope' })).toThrowError(/Invalid environment configuration/);
     expect(() => parseEnv({ DATABASE_URL: 'not-a-url' })).toThrowError(/DATABASE_URL/);

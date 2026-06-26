@@ -37,6 +37,8 @@ export const envSchema = z.object({
   // ── Auth (Clerk) ────────────────────────────────────────────────────────────
   CLERK_SECRET_KEY: z.string().optional(),
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().optional(),
+  /** Svix signing secret for Clerk webhooks (user.created/updated) — whsec_… */
+  CLERK_WEBHOOK_SECRET: z.string().optional(),
 
   // ── Telephony + media ───────────────────────────────────────────────────────
   TWILIO_ACCOUNT_SID: z.string().optional(),
@@ -78,7 +80,14 @@ export type Env = z.infer<typeof envSchema>;
  * names the offending vars and Zod's message — it never echoes the *values*.
  */
 export function parseEnv(source: NodeJS.ProcessEnv = process.env): Env {
-  const result = envSchema.safeParse(source);
+  // Treat empty strings as unset. Env files (and our .env.example) carry blank
+  // placeholders like `FOO=`; without this, `z.string().url().optional()` would
+  // reject `""` instead of skipping it.
+  const cleaned: Record<string, string> = {};
+  for (const [key, value] of Object.entries(source)) {
+    if (value !== undefined && value !== '') cleaned[key] = value;
+  }
+  const result = envSchema.safeParse(cleaned);
   if (!result.success) {
     const issues = result.error.issues
       .map((i) => `  - ${i.path.join('.') || '(root)'}: ${i.message}`)
