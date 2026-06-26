@@ -1,6 +1,11 @@
 # VocalIQ local dev stack — one command: `pnpm dev:infra` (up) / `pnpm dev:infra:down`.
 # Postgres 16 (TimescaleDB + pgvector), Redis 7, and a LiveKit dev server.
 # Dev-only credentials; never reuse these anywhere real.
+
+# Compose project name → the group shown in Docker Desktop (defaults to the dir
+# name "infra"; pinned here so it reads as the VocalIQ stack). Lowercased by Compose.
+name: vocaliq
+
 services:
   postgres:
     image: timescale/timescaledb-ha:pg16
