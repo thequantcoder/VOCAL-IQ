@@ -1,9 +1,13 @@
 /**
  * @vocaliq/shared — the central contract shared across api/web/voice/workers.
- * Day 0 establishes the env loader, typed error model, core enums, and the
- * UsageRecord shape (cost attribution). Day 2 expands DTOs/Zod schemas.
+ * One source of truth for enums, env validation, the typed error model, Zod DTOs,
+ * Result helpers, tenant-scoped query keys, constants, and cost-attribution types.
  */
+export * from './constants.js';
+export * from './enums.js';
 export * from './env.js';
 export * from './errors.js';
-export * from './enums.js';
+export * from './query-keys.js';
+export * from './result.js';
+export * from './schemas.js';
 export * from './usage.js';

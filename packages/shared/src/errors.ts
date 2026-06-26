@@ -10,9 +10,20 @@ export type ErrorCode =
   | 'NOT_FOUND'
   | 'TENANT'
   | 'PROVIDER'
+  | 'BILLING'
   | 'RATE_LIMIT'
   | 'CONFLICT'
   | 'INTERNAL';
+
+/** The ONLY shape sent to clients — code + status + safe text, never internals. */
+export interface ErrorResponse {
+  error: {
+    code: ErrorCode;
+    message: string;
+    /** Correlation id for support — ties a user-facing error to server logs/Sentry. */
+    requestId?: string;
+  };
+}
 
 export interface AppErrorOptions {
   cause?: unknown;
@@ -81,6 +92,54 @@ export class ProviderError extends AppError {
   }
 }
 
+/** Billing/quota problem (e.g. insufficient wallet, past-due) — 402 Payment Required. */
+export class BillingError extends AppError {
+  constructor(safeMessage = 'Billing action required to continue.', options?: AppErrorOptions) {
+    super('BILLING', 402, safeMessage, safeMessage, options);
+  }
+}
+
+/** Too many requests — per-tenant rate/abuse limits (CODING-RULES §6). */
+export class RateLimitError extends AppError {
+  constructor(message = 'Rate limit exceeded', options?: AppErrorOptions) {
+    super('RATE_LIMIT', 429, message, 'Too many requests. Please slow down.', options);
+  }
+}
+
+/** State conflict (duplicate, version mismatch, already-exists). */
+export class ConflictError extends AppError {
+  constructor(safeMessage = 'This conflicts with the current state.', options?: AppErrorOptions) {
+    super('CONFLICT', 409, safeMessage, safeMessage, options);
+  }
+}
+
 export function isAppError(value: unknown): value is AppError {
   return value instanceof AppError;
+}
+
+/**
+ * Coerce any thrown value into an AppError. Unknown errors become a generic
+ * INTERNAL 500 whose safe message reveals nothing — the original is preserved as
+ * `cause` for server-side logging only.
+ */
+export function normalizeError(value: unknown): AppError {
+  if (isAppError(value)) return value;
+  const message = value instanceof Error ? value.message : String(value);
+  return new AppError('INTERNAL', 500, message, 'Something went wrong.', { cause: value });
+}
+
+/**
+ * Build the client-safe response envelope. Emits ONLY code + safeMessage (+ optional
+ * requestId) — never the internal `message`, `cause`, `meta`, or stack. This is the
+ * boundary that guarantees errors never leak internals (CODING-RULES §7).
+ */
+export function toErrorResponse(value: unknown, requestId?: string): ErrorResponse {
+  const err = normalizeError(value);
+  return {
+    error: {
+      code: err.code,
+      message: err.safeMessage,
+      ...(requestId !== undefined ? { requestId } : {}),
+    },
+  };
 }
