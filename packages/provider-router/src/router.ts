@@ -1,4 +1,4 @@
-import { Provider, ProviderError } from '@vocaliq/shared';
+import { Capability, Provider, ProviderError } from '@vocaliq/shared';
 import { AnthropicLLM } from './adapters/anthropic.js';
 import { OpenAILLM } from './adapters/openai.js';
 import type {
@@ -8,9 +8,14 @@ import type {
   LLMMessage,
   LLMProvider,
   RouteRequest,
+  STTProvider,
+  TTSProvider,
   UsageMeter,
 } from './index.js';
-import { llmCostUsd } from './pricing.js';
+import { llmCostUsd, sttCostUsd, telephonyCostUsd, ttsCostUsd } from './pricing.js';
+
+/** Factory building a media (TTS/STT) adapter from a resolved key. */
+export type MediaFactory<T> = (apiKey: string) => T;
 
 /** Build a concrete LLM adapter for a provider from a resolved key. Injectable for tests. */
 export type LLMFactory = (apiKey: string) => LLMProvider;
@@ -20,10 +25,26 @@ export interface RouterConfig {
   resolveKey: KeyResolver;
   /** Emits a UsageRecord for every metered call. */
   meter: UsageMeter;
-  /** Per-provider adapter factories (defaults to the real OpenAI/Anthropic adapters). */
+  /** Per-provider LLM adapter factories (defaults to the real OpenAI/Anthropic adapters). */
   factories?: Partial<Record<Provider, LLMFactory>>;
   /** Default provider preference order for LLM routing. */
   llmOrder?: Provider[];
+  /** TTS/STT adapter factories + preference orders (Day 07). */
+  ttsFactories?: Partial<Record<Provider, MediaFactory<TTSProvider>>>;
+  ttsOrder?: Provider[];
+  sttFactories?: Partial<Record<Provider, MediaFactory<STTProvider>>>;
+  sttOrder?: Provider[];
+}
+
+/** Measured units for a metered media call. */
+export interface MediaUsage {
+  provider: Provider;
+  capability: Capability;
+  /** Provider-native units: TTS characters, STT/telephony seconds. */
+  units: number;
+  byok: boolean;
+  /** Model (TTS/STT) or provider key (telephony) for the price lookup. */
+  priceKey: string;
 }
 
 function defaultFactories(): Partial<Record<Provider, LLMFactory>> {
@@ -78,6 +99,67 @@ export class Router {
       this.config.resolveKey,
       this.config.meter,
     );
+  }
+
+  /**
+   * Pick the first media (TTS/STT) provider whose key resolves — selection-time
+   * fallback so a provider with no key/credential is skipped. Mid-stream fallback
+   * for live media is handled in the voice loop (Day 9).
+   */
+  private async selectMedia<T>(
+    order: Provider[],
+    factories: Partial<Record<Provider, MediaFactory<T>>>,
+    req: RouteRequest,
+    label: string,
+  ): Promise<T> {
+    let lastError: unknown;
+    for (const provider of order) {
+      const factory = factories[provider];
+      if (!factory) continue;
+      try {
+        const { apiKey } = await this.config.resolveKey(req.tenantId, provider, req.byok);
+        return factory(apiKey);
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    throw new ProviderError(`No ${label} provider available`, { cause: lastError });
+  }
+
+  selectTTS(req: RouteRequest): Promise<TTSProvider> {
+    return this.selectMedia(
+      this.config.ttsOrder ?? [Provider.ELEVENLABS],
+      this.config.ttsFactories ?? {},
+      req,
+      'TTS',
+    );
+  }
+
+  selectSTT(req: RouteRequest): Promise<STTProvider> {
+    return this.selectMedia(
+      this.config.sttOrder ?? [Provider.DEEPGRAM],
+      this.config.sttFactories ?? {},
+      req,
+      'STT',
+    );
+  }
+
+  /**
+   * Emit a UsageRecord for a metered media call once its units are known
+   * (TTS chars / STT+telephony seconds). The voice loop calls this per segment.
+   */
+  async meterMedia(usage: MediaUsage): Promise<void> {
+    let costUsd = 0;
+    if (usage.capability === Capability.TTS) costUsd = ttsCostUsd(usage.priceKey, usage.units);
+    else if (usage.capability === Capability.STT) costUsd = sttCostUsd(usage.priceKey, usage.units);
+    else if (usage.capability === Capability.TELEPHONY)
+      costUsd = telephonyCostUsd(usage.priceKey, usage.units);
+    await this.config.meter({
+      provider: usage.provider,
+      units: usage.units,
+      costUsd,
+      byok: usage.byok,
+    });
   }
 }
 

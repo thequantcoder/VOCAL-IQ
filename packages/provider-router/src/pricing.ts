@@ -28,6 +28,24 @@ export const EMBEDDING_PRICES: Readonly<Record<string, number>> = {
   'text-embedding-3-large': 0.13,
 };
 
+/** TTS: USD per 1,000 input characters (re-verify per provider plan). */
+export const TTS_PRICES: Readonly<Record<string, number>> = {
+  eleven_turbo_v2_5: 0.15,
+  eleven_multilingual_v2: 0.3,
+};
+
+/** STT: USD per audio minute. */
+export const STT_PRICES: Readonly<Record<string, number>> = {
+  'nova-2': 0.0043,
+  'nova-3': 0.0043,
+};
+
+/** Telephony: USD per call minute (varies by destination; this is a US-default). */
+export const TELEPHONY_PRICES: Readonly<Record<string, number>> = {
+  twilio: 0.014,
+  telnyx: 0.01,
+};
+
 /**
  * Resolve a price for a model id, tolerating provider date suffixes
  * (e.g. `gpt-4o-mini-2024-07-18` → `gpt-4o-mini`). Exact match wins; otherwise the
@@ -57,4 +75,25 @@ export function embeddingCostUsd(model: string, tokens: number): number {
   const perM = EMBEDDING_PRICES[model];
   if (perM === undefined) return 0;
   return (tokens * perM) / 1_000_000;
+}
+
+/** TTS cost from input characters. */
+export function ttsCostUsd(model: string, characters: number): number {
+  const per1k = TTS_PRICES[model];
+  if (per1k === undefined) return 0;
+  return (characters / 1_000) * per1k;
+}
+
+/** STT cost from audio seconds (priced per minute). */
+export function sttCostUsd(model: string, audioSeconds: number): number {
+  const perMin = STT_PRICES[model];
+  if (perMin === undefined) return 0;
+  return (audioSeconds / 60) * perMin;
+}
+
+/** Telephony cost from call seconds (priced per minute), keyed by provider id. */
+export function telephonyCostUsd(providerKey: string, callSeconds: number): number {
+  const perMin = TELEPHONY_PRICES[providerKey];
+  if (perMin === undefined) return 0;
+  return (callSeconds / 60) * perMin;
 }

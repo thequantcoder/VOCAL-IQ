@@ -10,6 +10,10 @@ export * from './pricing.js';
 export * from './router.js';
 export { OpenAILLM } from './adapters/openai.js';
 export { AnthropicLLM } from './adapters/anthropic.js';
+export { ElevenLabsTTS } from './adapters/elevenlabs.js';
+export { DeepgramSTT } from './adapters/deepgram.js';
+export { TwilioTelephony } from './adapters/twilio.js';
+export { LiveKitMedia } from './adapters/livekit.js';
 
 // ── Typed message + completion contracts ──────────────────────────────────────
 
@@ -94,22 +98,67 @@ export interface ResolvedKey {
   byok: boolean;
 }
 
-// ── Other capability contracts (skeletons; concrete adapters land Days 7–12) ───
+// ── TTS / STT / Telephony / media contracts ───────────────────────────────────
+//
+// Day 07 ships the typed contracts, price tables, router selection/fallback, and
+// the Python mirror. The concrete adapter BODIES (ElevenLabs/Deepgram/Twilio/
+// LiveKit) + live sandbox smokes land once the provider keys are set — until then
+// the adapters are stubs that throw a typed "not implemented" ProviderError.
 
+export interface TTSOptions {
+  model?: string;
+  voiceId?: string;
+  language?: string;
+  /** Provider voice settings (stability, similarity, pace, …). */
+  settings?: Record<string, unknown>;
+}
+
+/** Streaming TTS. Cost is metered on input characters (`text.length`). */
 export interface TTSProvider {
   readonly provider: Provider;
-  synthesizeStream(text: string, opts?: unknown): AsyncIterable<Uint8Array>;
+  readonly capability: Extract<Capability, 'tts'>;
+  readonly defaultModel: string;
+  synthesizeStream(text: string, opts?: TTSOptions): AsyncIterable<Uint8Array>;
 }
 
+export interface STTOptions {
+  model?: string;
+  language?: string;
+  /** Emit interim (partial) transcripts as audio streams in. */
+  interimResults?: boolean;
+}
+
+export interface STTEvent {
+  transcript: string;
+  isFinal: boolean;
+}
+
+/** Streaming STT. Cost is metered on audio seconds (known when the stream ends). */
 export interface STTProvider {
   readonly provider: Provider;
-  transcribeStream(audio: AsyncIterable<Uint8Array>, opts?: unknown): AsyncIterable<unknown>;
+  readonly capability: Extract<Capability, 'stt'>;
+  readonly defaultModel: string;
+  transcribeStream(audio: AsyncIterable<Uint8Array>, opts?: STTOptions): AsyncIterable<STTEvent>;
 }
 
+export interface DialResult {
+  callId: string;
+  status: string;
+}
+
+/** Telephony (PSTN/SIP). Cost is metered on call minutes (known at hangup). */
 export interface TelephonyProvider {
   readonly provider: Provider;
-  dial(to: string, from: string, opts?: unknown): Promise<unknown>;
-  answer(callId: string): Promise<unknown>;
-  transfer(callId: string, to: string): Promise<unknown>;
+  readonly capability: Extract<Capability, 'telephony'>;
+  dial(to: string, from: string, opts?: Record<string, unknown>): Promise<DialResult>;
+  answer(callId: string): Promise<void>;
+  transfer(callId: string, to: string): Promise<void>;
   hangup(callId: string): Promise<void>;
+}
+
+/** Real-time media room (WebRTC). Token mints a client join credential. */
+export interface MediaProvider {
+  readonly provider: Provider;
+  createRoom(name: string): Promise<{ room: string }>;
+  token(room: string, identity: string): Promise<string>;
 }

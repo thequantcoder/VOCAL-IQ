@@ -310,3 +310,45 @@ K. Build/CI: ✅ — green; provider-router added to the build graph; live tests
 Fixes applied this audit: longest-prefix price matching for dated model ids; rebuilt provider-router/dist so the api saw the pricing fix; restored blanked `.env` DB urls (5434).
 Open/deferred: stream/embedding cost metering, BYOK KMS decryption, HTTP e2e of the endpoint — all intentional, logged.
 Proactive suggestions: on Day 13 (cost attribution) add a reconciliation worker asserting zero metered calls without a UsageRecord; add a `.env` integrity check to `dev:infra` so blanked DB urls are caught early; seed a demo Agent so the HTTP endpoint can be manually exercised end-to-end.
+
+## Day 07 — Provider Router Core (TTS/STT/Telephony/Media) — 2026-06-26 — ⚠️ PARTIAL (scaffold)
+Model: Opus (🧠 OPUS, "may take 2 sessions"). **Status: key-independent scaffold merged; live adapter bodies + sandbox smokes DEFERRED pending voice-stack keys.**
+Reason: the four adapters (ElevenLabs/Deepgram/Twilio/LiveKit) and the DoD live smokes need real keys; CLAUDE.md §15 forbids writing unverified provider code. User chose "scaffold now" → build everything that doesn't need keys; fill the adapter bodies + add live smokes when keys arrive.
+Commits: branch `day/07-provider-router-core` → PR #7. `feat(router) …` + `feat(voice) …`.
+Built (DONE):
+- **Contracts** (`provider-router`): `TTSProvider`, `STTProvider` (+`STTEvent`), `TelephonyProvider` (dial/answer/transfer/hangup + `DialResult`), `MediaProvider` (LiveKit room+token) — typed, with default models + capability tags.
+- **Pricing**: `TTS_PRICES` (per 1k chars), `STT_PRICES`/`TELEPHONY_PRICES` (per minute) + `ttsCostUsd`/`sttCostUsd`/`telephonyCostUsd`.
+- **Router**: `selectTTS`/`selectSTT` (resolve key → build adapter → selection-time fallback to the next provider) + `meterMedia()` (per-capability cost → `UsageRecord`).
+- **Adapter stubs**: ElevenLabs/Deepgram/Twilio/LiveKit implement the contracts but throw a typed `ProviderError('not implemented (pending live verification)')`, each with a TODO block naming the exact SDK calls.
+- **Python mirror** (`apps/voice/app/providers/`): `contracts.py` (Protocols: LLM/TTS/STT/Telephony + dataclasses) and `pricing.py` (price tables + cost utils, incl. the dated-model longest-prefix match) — in lock-step with `pricing.ts`.
+Verification:
+- `pnpm typecheck` 11/11 · `pnpm lint` 11/11 · `pnpm test` (provider-router **15** incl. media selection/fallback/cost + stub-throws · api 28 · shared 35 · db 7) · `pnpm build` 7/7 — green.
+- Voice: `ruff` clean · `pyright` 0 errors · `pytest` 6 (incl. **TS↔Python price parity** + dated-model match).
+Deferred (explicit — finish on the live day when keys are set):
+1. **ElevenLabs TTS** streaming body + smoke (synthesize speech).
+2. **Deepgram STT** live WebSocket body + smoke (transcribe a clip).
+3. **Twilio telephony** body (first real outbound call is Day 10).
+4. **LiveKit media** body + smoke (create a room / mint a token).
+5. **Router fallback "when a provider key is invalid"** (self-audit focus) — selection-time fallback is done + tested; live invalid-key fallback verifies with real keys.
+6. Telephony/media **multi-credential resolution** (SID+token, url+key+secret) — finalize the KeyResolver shape on the live day.
+7. Python live adapter impls (currently contracts + pricing only).
+Migrations/env added: none.
+Deviations from TECH-STACK: none (no provider SDKs added yet — added with the live bodies).
+Admin actions needed next: **set the voice-stack keys** to finish Day 07 + start the live loop — `LIVEKIT_URL/API_KEY/API_SECRET`, `DEEPGRAM_API_KEY`, `ELEVENLABS_API_KEY` (and `TWILIO_*` by Day 10).
+
+## Self-Audit — Day 07 (scaffold)
+A. Correctness: ⚠️ partial — the key-independent DoD (contracts, price tables, selection+fallback logic, Python mirror, mocked tests) is met; the live-adapter + sandbox-smoke DoD items are explicitly deferred + logged (not faked).
+B. Tenancy: ✅ — `meterMedia` is provider/units only; tenant scoping is applied by the caller via `withTenant` (as for LLM on Day 6).
+C. Security: ✅ — keys constructor-injected, never logged; stubs hold creds without using them; no provider code outside the package.
+D. Cost/router (focus): ✅ — every media capability has a price table + cost util with exact tests; `meterMedia` emits a UsageRecord; selection-time fallback present.
+E. Tests: ✅ — 15 TS (incl. media selection/fallback/cost + stub-throws) + 6 voice (incl. cross-language price parity); CI-safe (no keys needed).
+F. Performance (focus, streaming): ⚠️ NA yet — streaming bodies deferred; contracts are async-iterable-shaped for low-latency streaming.
+G. Errors/obs: ✅ — stubs throw typed ProviderError; selection failure → ProviderError with cause.
+H. UI: ✅ NA.
+I. Regression: ✅ — full TS gates green; Days 1–6 intact (api 28, shared 35, db 7); voice tests green; provider-router LLM/live tests unaffected.
+J. Quality/docs: ✅ — strict TS + typed Python; TODO blocks mark exactly where live bodies go; BUILD-LOG records every deferred item.
+K. Build/CI: ✅ — green; live smokes will be key-gated like Day 6 so CI stays green.
+
+Fixes applied this audit: async stub methods so `notImplemented()` rejects (not throws synchronously); biome-ignore `useYield` on stub generators.
+Open/deferred: the 7 live items above — all intentional, tracked for the keyed session.
+Proactive suggestions: when keys land, add a key-gated live smoke per adapter (synth/transcribe/room/call) mirroring Day 6's live tests; extend the KeyResolver to return multi-field telephony/media creds; add a CI assertion that TS and Python price tables stay in sync.
