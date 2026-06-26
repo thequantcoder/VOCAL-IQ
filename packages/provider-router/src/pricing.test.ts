@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { embeddingCostUsd, llmCostUsd } from './pricing.js';
+import {
+  embeddingCostUsd,
+  llmCostUsd,
+  sttCostUsd,
+  telephonyCostUsd,
+  ttsCostUsd,
+} from './pricing.js';
 
 describe('pricing', () => {
   it('computes LLM cost from input/output token prices', () => {
@@ -19,5 +25,17 @@ describe('pricing', () => {
 
   it('computes embedding cost', () => {
     expect(embeddingCostUsd('text-embedding-3-small', 1_000_000)).toBeCloseTo(0.02, 10);
+  });
+
+  it('computes media costs (TTS chars, STT/telephony seconds) and 0 for unknown', () => {
+    // TTS: $0.15 per 1k chars
+    expect(ttsCostUsd('eleven_turbo_v2_5', 1_000)).toBeCloseTo(0.15, 10);
+    expect(ttsCostUsd('mystery-voice', 1_000)).toBe(0);
+    // STT: $0.0043 per minute → 60s = 1 min
+    expect(sttCostUsd('nova-3', 60)).toBeCloseTo(0.0043, 10);
+    expect(sttCostUsd('mystery-stt', 60)).toBe(0);
+    // Telephony: $0.014 per minute → 120s = 2 min
+    expect(telephonyCostUsd('twilio', 120)).toBeCloseTo(0.028, 10);
+    expect(telephonyCostUsd('mystery-telco', 60)).toBe(0);
   });
 });
