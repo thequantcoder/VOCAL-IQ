@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { parseEnv } from '@vocaliq/shared';
+import { AppExceptionFilter } from './app-exception.filter';
 import { AppModule } from './app.module';
 import { initSentry, shutdownObservability } from './observability';
 
@@ -8,10 +9,12 @@ import { initSentry, shutdownObservability } from './observability';
 async function bootstrap(): Promise<void> {
   // Sentry must initialise before the app so its instrumentation attaches.
   initSentry();
-  parseEnv();
+  const env = parseEnv();
   const app = await NestFactory.create(AppModule, { logger: ['error', 'warn', 'log'] });
+  // One boundary turns every thrown error into the safe ErrorResponse envelope.
+  app.useGlobalFilters(new AppExceptionFilter());
   app.enableShutdownHooks();
-  const port = Number(process.env.API_PORT ?? 3001);
+  const port = env.API_PORT;
   await app.listen(port);
   console.log(`[api] listening on http://localhost:${port}`);
 
