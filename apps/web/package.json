@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@sentry/nextjs": "^8.47.0",
+    "@vocaliq/shared": "workspace:*",
     "@vocaliq/ui": "workspace:*",
     "lucide-react": "^0.469.0",
     "next": "^15.1.3",
