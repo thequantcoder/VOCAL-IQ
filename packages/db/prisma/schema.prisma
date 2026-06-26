@@ -1,0 +1,779 @@
+// VocalIQ multi-tenant schema (DATA-MODEL.md). Golden rule #1: every tenant-owned
+// table carries `tenantId` + an index on it + an RLS policy (packages/db/rls/).
+// RLS is the safety net; application-layer tenant filters are the front door.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Enums (mirror @vocaliq/shared enums.ts — keep 1:1)
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum TenantType {
+  PLATFORM
+  RESELLER
+  CUSTOMER
+}
+
+enum TenantStatus {
+  ACTIVE
+  TRIAL
+  SUSPENDED
+  CANCELLED
+}
+
+enum Role {
+  SUPER_ADMIN
+  RESELLER_ADMIN
+  OWNER
+  ADMIN
+  BUILDER
+  ANALYST
+  AGENT
+  BILLING
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+}
+
+enum Provider {
+  OPENAI
+  ANTHROPIC
+  GEMINI
+  GROK
+  OPENROUTER
+  ELEVENLABS
+  PLAYHT
+  CARTESIA
+  DEEPGRAM
+  ASSEMBLYAI
+  TWILIO
+  TELNYX
+  LIVEKIT
+}
+
+enum Capability {
+  llm
+  tts
+  stt
+  telephony
+  embedding
+}
+
+enum AgentType {
+  INBOUND
+  OUTBOUND
+  MIXED
+}
+
+enum AgentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum KbSourceType {
+  PDF
+  DOC
+  TXT
+  URL
+  TEXT
+}
+
+enum CallDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum CallChannel {
+  PSTN
+  WEB
+  SIP
+}
+
+enum CallStatus {
+  QUEUED
+  RINGING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  VOICEMAIL
+  NO_ANSWER
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  HOT
+  WARM
+  COLD
+  BOOKED
+  LOST
+}
+
+enum PhoneNumberSource {
+  POOL
+  PURCHASED
+  SIP
+}
+
+enum AppointmentStatus {
+  BOOKED
+  RESCHEDULED
+  CANCELLED
+  COMPLETED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  TRIALING
+}
+
+enum IntegrationType {
+  HUBSPOT
+  SALESFORCE
+  ZENDESK
+  GOOGLE
+  ZAPIER
+  WEBHOOK
+}
+
+enum FeatureFlagScope {
+  GLOBAL
+  PLAN
+  TENANT
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Core tenancy
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Tenant {
+  id             String       @id @default(uuid()) @db.Uuid
+  type           TenantType
+  parentTenantId String?      @db.Uuid
+  parent         Tenant?      @relation("TenantHierarchy", fields: [parentTenantId], references: [id], onDelete: SetNull)
+  children       Tenant[]     @relation("TenantHierarchy")
+  name           String
+  slug           String       @unique
+  status         TenantStatus @default(TRIAL)
+  branding       Json         @default("{}")
+  customDomain   String?      @unique
+  settings       Json         @default("{}")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  memberships         Membership[]
+  agents              Agent[]
+  providerCredentials ProviderCredential[]
+  voices              Voice[]
+  knowledgeBases      KnowledgeBase[]
+  contacts            Contact[]
+  leads               Lead[]
+  phoneNumbers        PhoneNumber[]
+  sipTrunks           SipTrunk[]
+  calls               Call[]
+  campaigns           Campaign[]
+  appointments        Appointment[]
+  plans               Plan[]
+  subscriptions       Subscription[]
+  wallet              Wallet?
+  usageRecords        UsageRecord[]
+  invoices            Invoice[]
+  integrations        Integration[]
+  webhooks            Webhook[]
+  supportTickets      SupportTicket[]
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+  featureFlags        FeatureFlag[]
+  flows               Flow[]
+  flowVersions        FlowVersion[]
+  transcripts         Transcript[]
+  agentMemories       AgentMemory[]
+  kbChunks            KbChunk[]
+  resellerMargins     ResellerMargin[] @relation("ResellerOfMargin")
+  childMargins        ResellerMargin[] @relation("ChildOfMargin")
+
+  @@index([parentTenantId])
+  @@index([type])
+}
+
+model User {
+  id             String       @id @default(uuid()) @db.Uuid
+  email          String       @unique
+  name           String?
+  authProviderId String       @unique // Clerk user id
+  imageUrl       String?
+  mfaEnabled     Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  memberships    Membership[]
+
+  @@index([authProviderId])
+}
+
+// Join of a user to a tenant with a role. Tenant-scoped.
+model Membership {
+  id        String           @id @default(uuid()) @db.Uuid
+  tenantId  String           @db.Uuid
+  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId    String           @db.Uuid
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role
+  status    MembershipStatus @default(ACTIVE)
+  createdAt DateTime         @default(now())
+
+  @@unique([tenantId, userId])
+  @@index([tenantId])
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Provider keys (envelope-encrypted; never plaintext)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ProviderCredential {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String?  @db.Uuid // null = platform-level key
+  tenant       Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  provider     Provider
+  encryptedKey Bytes // envelope-encrypted ciphertext ONLY
+  byok         Boolean  @default(false)
+  meta         Json     @default("{}")
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([provider])
+}
+
+// Load-balanced platform key pool (not tenant-scoped — platform infrastructure).
+model PlatformApiKeyPool {
+  id           String    @id @default(uuid()) @db.Uuid
+  provider     Provider
+  encryptedKey Bytes
+  weight       Int       @default(1)
+  active       Boolean   @default(true)
+  lastUsedAt   DateTime?
+
+  @@index([provider, active])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Agents & flows
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Agent {
+  id              String        @id @default(uuid()) @db.Uuid
+  tenantId        String        @db.Uuid
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  persona         Json          @default("{}")
+  defaultVoiceId  String?       @db.Uuid
+  fallbackVoiceId String?       @db.Uuid
+  languages       String[]      @default([])
+  llmPolicy       Json          @default("{}")
+  turnTimeoutMs   Int           @default(1500)
+  type            AgentType     @default(INBOUND)
+  status          AgentStatus   @default(DRAFT)
+  memoryEnabled   Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  flows         Flow[]
+  calls         Call[]
+  campaigns     Campaign[]
+  agentMemories AgentMemory[]
+  phoneNumbers  PhoneNumber[]
+  knowledgeBases KnowledgeBase[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+model Flow {
+  id        String        @id @default(uuid()) @db.Uuid
+  tenantId  String        @db.Uuid
+  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agentId   String        @db.Uuid
+  agent     Agent         @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  name      String
+  isActive  Boolean       @default(false)
+  createdAt DateTime      @default(now())
+  versions  FlowVersion[]
+
+  @@index([tenantId])
+  @@index([agentId])
+}
+
+model FlowVersion {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @db.Uuid // denormalized from Flow for uniform RLS
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  flowId      String    @db.Uuid
+  flow        Flow      @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  version     Int
+  graph       Json      @default("{}") // React Flow nodes + edges
+  publishedAt DateTime?
+  createdBy   String?   @db.Uuid
+  createdAt   DateTime  @default(now())
+  calls       Call[]
+
+  @@unique([flowId, version])
+  @@index([tenantId])
+  @@index([flowId])
+}
+
+model Voice {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String?  @db.Uuid // null = public/preset
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  provider        Provider
+  providerVoiceId String
+  name            String
+  language        String?
+  gender          String?
+  style           String?
+  isCloned        Boolean  @default(false)
+  consentRef      Json?
+  settings        Json     @default("{}")
+  createdAt       DateTime @default(now())
+
+  @@index([tenantId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Knowledge (RAG, pgvector)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model KnowledgeBase {
+  id         String       @id @default(uuid()) @db.Uuid
+  tenantId   String       @db.Uuid
+  tenant     Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agentId    String?      @db.Uuid
+  agent      Agent?       @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  name       String
+  sourceType KbSourceType
+  createdAt  DateTime     @default(now())
+  chunks     KbChunk[]
+
+  @@index([tenantId])
+  @@index([agentId])
+}
+
+model KbChunk {
+  id        String                       @id @default(uuid()) @db.Uuid
+  kbId      String                       @db.Uuid
+  kb        KnowledgeBase                @relation(fields: [kbId], references: [id], onDelete: Cascade)
+  tenantId  String                       @db.Uuid
+  tenant    Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  content   String
+  embedding Unsupported("vector(1536)")? // pgvector; HNSW index added in RLS/extra SQL
+  metadata  Json                         @default("{}")
+  createdAt DateTime                     @default(now())
+
+  @@index([tenantId])
+  @@index([kbId])
+}
+
+model AgentMemory {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @db.Uuid
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agentId    String   @db.Uuid
+  agent      Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  contactId  String   @db.Uuid
+  contact    Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  summary    String?
+  facts      Json     @default("{}")
+  lastCallId String?  @db.Uuid
+  updatedAt  DateTime @updatedAt
+
+  @@unique([tenantId, agentId, contactId])
+  @@index([tenantId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Leads, contacts & pipeline
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Contact {
+  id        String        @id @default(uuid()) @db.Uuid
+  tenantId  String        @db.Uuid
+  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  phone     String?
+  name      String?
+  email     String?
+  fields    Json          @default("{}")
+  tags      String[]      @default([])
+  source    String?
+  dnc       Boolean       @default(false)
+  kycStatus String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  leads         Lead[]
+  calls         Call[]
+  appointments  Appointment[]
+  agentMemories AgentMemory[]
+
+  @@index([tenantId])
+  @@index([tenantId, phone])
+}
+
+model Lead {
+  id           String     @id @default(uuid()) @db.Uuid
+  tenantId     String     @db.Uuid
+  tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contactId    String     @db.Uuid
+  contact      Contact    @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  status       LeadStatus @default(NEW)
+  score        Int        @default(0)
+  owner        String?    @db.Uuid
+  pipelineStage String?
+  dynamicVars  Json       @default("{}")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Telephony & calls
+// ─────────────────────────────────────────────────────────────────────────────
+
+model PhoneNumber {
+  id              String            @id @default(uuid()) @db.Uuid
+  tenantId        String?           @db.Uuid
+  tenant          Tenant?           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  provider        Provider
+  e164            String            @unique
+  capabilities    String[]          @default([])
+  assignedAgentId String?           @db.Uuid
+  assignedAgent   Agent?            @relation(fields: [assignedAgentId], references: [id], onDelete: SetNull)
+  kycVerified     Boolean           @default(false)
+  source          PhoneNumberSource @default(POOL)
+  createdAt       DateTime          @default(now())
+
+  @@index([tenantId])
+}
+
+model SipTrunk {
+  id               String   @id @default(uuid()) @db.Uuid
+  tenantId         String   @db.Uuid
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  providerTemplate String
+  encryptedCreds   Bytes // envelope-encrypted ciphertext ONLY
+  transport        String   @default("TLS")
+  inbound          Boolean  @default(true)
+  outbound         Boolean  @default(true)
+  concurrencyLimit Int      @default(10)
+  createdAt        DateTime @default(now())
+
+  @@index([tenantId])
+}
+
+model Call {
+  id            String        @id @default(uuid()) @db.Uuid
+  tenantId      String        @db.Uuid
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agentId       String        @db.Uuid
+  agent         Agent         @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  flowVersionId String?       @db.Uuid
+  flowVersion   FlowVersion?  @relation(fields: [flowVersionId], references: [id], onDelete: SetNull)
+  contactId     String?       @db.Uuid
+  contact       Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  direction     CallDirection
+  channel       CallChannel
+  status        CallStatus    @default(QUEUED)
+  startedAt     DateTime?
+  endedAt       DateTime?
+  durationSec   Int?
+  recordingUrl  String?
+  disposition   String?
+  sentiment     Float?
+  costBreakdown Json          @default("{}") // {stt, llm, tts, telephony, total}
+  createdAt     DateTime      @default(now())
+
+  transcript   Transcript?
+  usageRecords UsageRecord[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@index([agentId])
+}
+
+model Transcript {
+  id        String   @id @default(uuid()) @db.Uuid
+  callId    String   @unique @db.Uuid
+  call      Call     @relation(fields: [callId], references: [id], onDelete: Cascade)
+  tenantId  String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  segments  Json     @default("[]")
+  summary   String?
+  keywords  String[] @default([])
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Campaigns
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Campaign {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @db.Uuid
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  agentId     String   @db.Uuid
+  agent       Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  status      String   @default("DRAFT")
+  scheduleJson Json    @default("{}")
+  pacing      Int      @default(1)
+  concurrency Int      @default(1)
+  retryPolicy Json     @default("{}")
+  channelMix  Json     @default("{}")
+  createdAt   DateTime @default(now())
+
+  contacts CampaignContact[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+model CampaignContact {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @db.Uuid
+  campaignId String   @db.Uuid
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contactId  String   @db.Uuid
+  status     String   @default("PENDING")
+  attempts   Int      @default(0)
+  lastCallId String?  @db.Uuid
+  createdAt  DateTime @default(now())
+
+  @@unique([campaignId, contactId])
+  @@index([tenantId])
+  @@index([campaignId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Appointments
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Appointment {
+  id               String            @id @default(uuid()) @db.Uuid
+  tenantId         String            @db.Uuid
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contactId        String            @db.Uuid
+  contact          Contact           @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  callId           String?           @db.Uuid
+  startsAt         DateTime
+  endsAt           DateTime
+  status           AppointmentStatus @default(BOOKED)
+  calendarProvider String?
+  externalEventId  String?
+  createdAt        DateTime          @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, startsAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Billing & metering
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Plan {
+  id                String         @id @default(uuid()) @db.Uuid
+  tenantId          String?        @db.Uuid // null = platform/global plan
+  tenant            Tenant?        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name              String
+  priceMonthly      Int            @default(0) // minor units of `currency`
+  currency          String         @default("USD")
+  includedMinutes   Int            @default(0)
+  agentLimit        Int            @default(1)
+  numberLimit       Int            @default(0)
+  sipLimit          Int            @default(0)
+  features          Json           @default("{}")
+  overageRatePerMin Int            @default(0) // minor units
+  isResellerPlan    Boolean        @default(false)
+  createdAt         DateTime       @default(now())
+  subscriptions     Subscription[]
+
+  @@index([tenantId])
+}
+
+model Subscription {
+  id               String             @id @default(uuid()) @db.Uuid
+  tenantId         String             @db.Uuid
+  tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  planId           String             @db.Uuid
+  plan             Plan               @relation(fields: [planId], references: [id])
+  status           SubscriptionStatus @default(TRIALING)
+  processor        String?
+  externalId       String?
+  currentPeriodEnd DateTime?
+  createdAt        DateTime           @default(now())
+
+  @@index([tenantId])
+}
+
+model Wallet {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @unique @db.Uuid
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  balanceCents Int      @default(0)
+  autoRecharge Json     @default("{}")
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+// One record per metered provider call. Timescale hypertable (see RLS/extra SQL);
+// the partition column `ts` is part of the primary key so the hypertable is valid.
+model UsageRecord {
+  id         String     @default(uuid()) @db.Uuid
+  tenantId   String     @db.Uuid
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  callId     String?    @db.Uuid
+  call       Call?      @relation(fields: [callId], references: [id], onDelete: SetNull)
+  provider   Provider
+  capability Capability
+  units      Float
+  costUsd    Float
+  byok       Boolean    @default(false)
+  ts         DateTime   @default(now())
+
+  @@id([id, ts])
+  @@index([tenantId, ts])
+  @@index([callId])
+}
+
+model Invoice {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  period    String
+  lineItems Json     @default("[]")
+  total     Int      @default(0)
+  status    String   @default("DRAFT")
+  processor String?
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+}
+
+model ResellerMargin {
+  id               String   @id @default(uuid()) @db.Uuid
+  resellerTenantId String   @db.Uuid
+  reseller         Tenant   @relation("ResellerOfMargin", fields: [resellerTenantId], references: [id], onDelete: Cascade)
+  childTenantId    String   @db.Uuid
+  child            Tenant   @relation("ChildOfMargin", fields: [childTenantId], references: [id], onDelete: Cascade)
+  period           String
+  revenue          Int      @default(0)
+  cost             Int      @default(0)
+  margin           Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  @@index([resellerTenantId])
+  @@index([childTenantId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Ops, integrations, audit
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Integration {
+  id        String          @id @default(uuid()) @db.Uuid
+  tenantId  String          @db.Uuid
+  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  type      IntegrationType
+  config    Json            @default("{}") // encrypted secrets within
+  createdAt DateTime        @default(now())
+
+  @@index([tenantId])
+}
+
+model Webhook {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  url       String
+  events    String[] @default([])
+  secret    Bytes // encrypted
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+}
+
+model SupportTicket {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  subject   String
+  body      String
+  status    String   @default("OPEN")
+  priority  String   @default("NORMAL")
+  assignee  String?  @db.Uuid
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  tenantId  String    @db.Uuid
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId    String?   @db.Uuid
+  channel   String
+  payload   Json      @default("{}")
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, userId])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @db.Uuid
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actorUserId String?  @db.Uuid
+  action      String
+  target      String?
+  meta        Json     @default("{}")
+  ts          DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, ts])
+}
+
+model FeatureFlag {
+  id       String           @id @default(uuid()) @db.Uuid
+  scope    FeatureFlagScope
+  key      String
+  value    Json             @default("false")
+  tenantId String?          @db.Uuid
+  tenant   Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([scope, key, tenantId])
+  @@index([tenantId])
+}

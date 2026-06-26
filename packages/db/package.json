@@ -9,13 +9,31 @@
     ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" }
   },
   "scripts": {
+    "postinstall": "prisma generate",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "biome check src"
+    "lint": "biome check src",
+    "test": "vitest run",
+    "prisma:generate": "prisma generate",
+    "migrate:dev": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:reset": "prisma migrate reset --force"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.1.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@vocaliq/config": "workspace:*",
-    "typescript": "^5.6.3"
+    "@vocaliq/shared": "workspace:*",
+    "dotenv": "^16.4.7",
+    "prisma": "^6.1.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
   }
 }
