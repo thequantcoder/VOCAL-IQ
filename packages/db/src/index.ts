@@ -10,7 +10,10 @@ import { PrismaClient } from '@prisma/client';
  *    (`DATABASE_URL`) which bypasses RLS by design.
  */
 
-export * from '@prisma/client';
+// Type-only re-export: a runtime `export *` from the CJS Prisma client breaks
+// Node's require(ESM) interop and drops this file's own runtime exports. Consumers
+// only need Prisma's TYPES here; runtime values (createPrismaClient/withTenant) stay below.
+export type * from '@prisma/client';
 
 /** UUID branding is overkill here; tenant ids are plain strings end-to-end. */
 export type TenantId = string;

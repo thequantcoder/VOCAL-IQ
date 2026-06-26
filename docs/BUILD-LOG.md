@@ -233,3 +233,43 @@ K. Build/CI: ✅ — all green locally; CI generates client + migrates + seeds b
 Fixes applied this audit: dropped Prisma extension management (drift vs docker init); added FlowVersion.tenantId for uniform RLS; created the non-superuser app role after confirming the owner is a superuser (RLS no-op otherwise); composite PK (id,ts) on UsageRecord so the hypertable is valid; raw-SQL test-data inserts needed updatedAt → switched verification to the Prisma-client tests.
 Open/deferred: RBAC + expanded isolation suite (Day 5); Phase-6 tables; CallMetric hypertable; User-sync upsert wiring — all intentional, logged.
 Proactive suggestions: add a CI/test that asserts every Prisma enum is mirrored in `@vocaliq/shared` enums.ts (drift guard); on Day 5 add the RolesGuard + AuditLog writes for privileged (superuser-path) operations; consider connection pooling (pgbouncer) config + verify `withTenant`'s transaction-local setting under the pool.
+
+## Day 05 — RBAC, Tenant Guard & Isolation Tests — 2026-06-26
+Model: Opus (🧠 OPUS). No new credentials.
+Commits: branch `day/05-rbac-tenant-guard` → PR #5. Increments: `fix(db) interop` · `feat(api) tenancy+RBAC` · `feat(api) user sync`.
+Built:
+- **`PrismaService` + `DbModule` (global):** the RLS app-role client (`withTenant`) for business data + the owner client (`admin`) for auth-infra (user sync, membership resolution) — the documented privileged path.
+- **`TenantGuard`:** runs after ClerkAuthGuard; lazily ensures the local User exists, resolves the active tenant from membership (honours the `x-tenant-id` switcher header), attaches `req.tenant` = {userId, tenantId, role}. `@CurrentTenant()` / `@CurrentMembership()` decorators.
+- **RBAC:** `@Roles()` + `RolesGuard` (deny-by-default; SUPER_ADMIN passes; config writers = OWNER/ADMIN/BUILDER/RESELLER_ADMIN; ANALYST/AGENT/BILLING read-only). `hasRequiredRole`/`canMutateConfig` helpers.
+- **`TenantController`:** `GET /tenants/memberships` (switcher options), `GET /tenants/current` (reads the tenant through the RLS client — end-to-end proof), `POST /tenants/current/audit` (role-gated AuditLog write; ANALYST blocked).
+- **Day-3 deferral resolved:** `upsertUserFromClerk` persists the local User (owner client; User has no RLS); the webhook + lazy first-request sync both use it; `/me` now returns memberships.
+Verification:
+- `pnpm typecheck` 10/10 · `pnpm lint` 10/10 · `pnpm test` **69** (db 7 + api 27 + shared 35) · `pnpm build` 7/7 — all green.
+- **Isolation proven (integration vs real Postgres):** tenant resolution honours membership; a user can't resolve a tenant they're not in (403); reseller sees its child's data but NOT a sibling reseller's; and a **deliberately unscoped** app query returns **0 rows** (RLS safety net holds even if the app filter is bypassed). RolesGuard rejects ANALYST from a config mutation (403).
+- **API boot smoke (live):** `/healthz` 200; `/tenants/current` + `/auth/me` → 401 AUTH envelope unauthenticated (DI fully wired).
+Decisions / gotchas:
+- **CJS↔ESM interop bug:** a runtime `export * from '@prisma/client'` (CJS) in the ESM `@vocaliq/db` index dropped the package's own runtime exports when required from the CommonJS api (`createPrismaClient is not a function`). Fixed with a **type-only** re-export — consumers only need Prisma's types from the index; runtime helpers stay as normal exports.
+- **Membership resolution uses the owner client** (auth-infra legitimately spans tenants to find where a user belongs); all business reads/writes go through `withTenant` + RLS. Explicit, narrow, documented.
+- **Biome vs NestJS DI:** `useImportType` would rewrite injected providers to `import type` and break constructor injection at runtime — added `apps/api/biome.json` turning that rule off for the api only. (A stray root `biome --write` re-broke them once; reverted + verified via a live DI boot.)
+Migrations added: none (uses Day-4 schema/RLS).
+Env / secrets added: none.
+Deviations from TECH-STACK: none. Added `zod` as a direct api dep (DTO validation in the controller).
+Deferred (with reason): full HTTP/supertest e2e of the guards (the integration suite covers resolution + RLS + role logic at the service/guard layer; a Clerk-mocked supertest pass can come with the first real feature endpoints); richer per-field validation surfacing (with the global ValidationPipe day).
+Admin actions needed next: Day 6 — `OPENAI_API_KEY` and/or `ANTHROPIC_API_KEY` (provider-router skeleton + first AI call). (OpenAI key is still blank in `.env`.)
+
+## Self-Audit — Day 05 (RBAC + tenant guard + isolation)
+A. Correctness: ✅ — DoD met: tenant + role guards active; `@CurrentTenant` works; isolation tests pass (app + RLS layers); reseller subtree correct; role matrix enforced; isolation tests run in CI.
+B. Tenancy (focus): ✅ — TenantGuard sets the scope from membership only; `withTenant` applies RLS; the "try to break it" unscoped-query test confirms RLS denies by default. Reseller sees descendants not siblings (tested).
+C. Security (focus): ✅ — deny-by-default guards; owner client used ONLY for auth-infra (never business data); role-gated mutation tested (ANALYST 403); 401/403 via the safe envelope; no secrets logged.
+D. Cost/router: ✅ NA.
+E. Tests: ✅ — 14 new api tests (role matrix, RolesGuard, RBAC+isolation integration) + existing; 69 total green; isolation runs against real Postgres in CI.
+F. Performance: ✅ — membership lookups are indexed (`@@index([userId])`, `@@unique([tenantId,userId])`); `withTenant` is one transaction.
+G. Errors/obs: ✅ — typed TenantError/ForbiddenError → safe envelope; no silent catches.
+H. UI: ✅ NA.
+I. Regression (focus): ✅ — full typecheck/lint/test/build green; Days 1–4 intact (api boot verified live; db 7 isolation tests still green; shared 35); the `@prisma/client` interop fix verified by a live DI boot, not just typecheck.
+J. Quality/docs: ✅ — strict TS, no `any`; guards/decorators documented; BUILD-LOG updated.
+K. Build/CI: ✅ — all green; CI already migrates+seeds and passes DB env to tests (Day 4).
+
+Fixes applied this audit: type-only Prisma re-export (require-ESM interop); apps/api biome useImportType off (DI); reverted a stray root `biome --write` that type-imported injected providers (caught via a runtime boot, not just static checks).
+Open/deferred: HTTP/supertest e2e of guards; per-field validation surfacing — both intentional, logged.
+Proactive suggestions: add a Clerk-mocked supertest pass when the first feature endpoints land; write AuditLog entries for every privileged (owner-client) operation; add the enum-drift guard test (Prisma vs shared enums) flagged on Day 4.

@@ -44,13 +44,38 @@ export function mapClerkUserToUpsert(data: ClerkUserData): UserUpsert {
   };
 }
 
+/** Minimal client surface needed to upsert a user (satisfied by PrismaService.admin). */
+export interface UserUpsertClient {
+  user: {
+    upsert(args: {
+      where: { authProviderId: string };
+      create: {
+        authProviderId: string;
+        email: string;
+        name: string | null;
+        imageUrl: string | null;
+      };
+      update: { email: string; name: string | null; imageUrl: string | null };
+      select: { id: true };
+    }): Promise<{ id: string }>;
+  };
+}
+
 /**
- * Persist (upsert) a synced user. DEFERRED: Day 4 wires the Prisma upsert
- * keyed on `authProviderId` (idempotent). Until then this is a no-op that returns
- * the computed shape so callers + tests are ready.
+ * Upsert a synced user keyed on authProviderId (idempotent). Email is required +
+ * unique, so a user with no Clerk email gets a stable synthetic placeholder.
+ * Runs on the owner client (User has no RLS; sync is auth-infra).
  */
-export async function syncUser(data: ClerkUserData): Promise<UserUpsert> {
-  const upsert = mapClerkUserToUpsert(data);
-  // TODO(Day 4): await db.user.upsert({ where: { authProviderId }, create/update })
-  return upsert;
+export async function upsertUserFromClerk(
+  db: UserUpsertClient,
+  data: ClerkUserData,
+): Promise<{ id: string }> {
+  const u = mapClerkUserToUpsert(data);
+  const email = u.email ?? `${u.authProviderId}@noemail.vocaliq.local`;
+  return db.user.upsert({
+    where: { authProviderId: u.authProviderId },
+    create: { authProviderId: u.authProviderId, email, name: u.name, imageUrl: u.imageUrl },
+    update: { email, name: u.name, imageUrl: u.imageUrl },
+    select: { id: true },
+  });
 }

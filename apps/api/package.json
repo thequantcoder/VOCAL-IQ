@@ -17,11 +17,13 @@
     "@nestjs/core": "^10.4.15",
     "@nestjs/platform-express": "^10.4.15",
     "@sentry/node": "^8.47.0",
+    "@vocaliq/db": "workspace:*",
     "@vocaliq/shared": "workspace:*",
     "posthog-node": "^4.4.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "svix": "^1.96.1"
+    "svix": "^1.96.1",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
