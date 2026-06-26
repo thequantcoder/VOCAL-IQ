@@ -35,6 +35,9 @@ importers:
       '@sentry/node':
         specifier: ^8.47.0
         version: 8.55.2
+      '@vocaliq/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@vocaliq/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -53,6 +56,9 @@ importers:
       svix:
         specifier: ^1.96.1
         version: 1.96.1
+      zod:
+        specifier: ^3.23.8
+        version: 3.25.76
     devDependencies:
       '@biomejs/biome':
         specifier: ^1.9.4
