@@ -8,7 +8,8 @@
     "lineWidth": 100
   },
   "javascript": {
-    "formatter": { "quoteStyle": "single", "trailingCommas": "all", "semicolons": "always" }
+    "formatter": { "quoteStyle": "single", "trailingCommas": "all", "semicolons": "always" },
+    "parser": { "unsafeParameterDecoratorsEnabled": true }
   },
   "linter": {
     "enabled": true,

@@ -147,3 +147,45 @@ K. Build/CI: ✅ all green locally (CI to confirm on PR #2).
 Fixes applied this audit: AppExceptionFilter initially flattened framework `HttpException`s to 500 — fixed to preserve status (404 stays 404) while keeping messages generic; cleaned stray iCloud `* 2.*` duplicate files inside gitignored `apps/web/.next` that broke web typecheck (build output only — not in git/CI).
 Open/deferred: field-level validation surfacing + domain interfaces — both intentional, logged above.
 Proactive suggestions: when the global ValidationPipe lands, surface Zod field errors through the same envelope (e.g. an optional `details[]`); add a contract test that asserts every Prisma enum (Day 4) is mirrored 1:1 in `enums.ts` to prevent drift.
+
+## Day 03 — Authentication, Sessions & MFA (Clerk) — 2026-06-26
+Model: Opus (⚡ SONNET day; ran on Opus)
+Commits: branch `day/03-auth-sessions-mfa` → PR #3 (squash). Increments: `feat(shared)…` + `feat(api)…` + `feat(web)…`.
+Admin decision: **email + password only** (saved to memory; Clerk prebuilt components render whatever's enabled, so adding Google/MFA/magic-link later needs no code change).
+Built:
+- **Web (apps/web):** `ClerkProvider` (brand-violet accent) wraps the app; `middleware.ts` `clerkMiddleware` protects `/dashboard(.*)` (deny-by-default). Catch-all `sign-in`/`sign-up` pages (`<SignIn/>`/`<SignUp/>`); protected dashboard reads the verified user server-side; landing header swaps sign-in/up ⇄ Dashboard+`<UserButton/>` via server `auth()`.
+- **API (apps/api):** `ClerkAuthGuard` verifies Clerk session tokens (`@clerk/backend verifyToken`) → `req.auth`; decorator-free `authenticate()`/`extractBearerToken()` for unit-testing; `@CurrentUser()` decorator. `AuthController`: guarded `GET /auth/me` (enriches identity via `clerkClient().users.getUser`) + `POST /auth/clerk/webhook` (Svix raw-body signature verify → `syncUser`). `rawBody: true` enabled for webhook integrity.
+- **Shared/config:** `CLERK_WEBHOOK_SECRET` added; `parseEnv` now treats empty strings as unset (dotenv blank placeholders); Biome `unsafeParameterDecoratorsEnabled` so NestJS param decorators lint.
+- **Env loading:** both apps now load the **monorepo-root `.env`** via dotenv (Next `next.config.ts`; Nest `main.ts`) — first day real secrets are needed; one source of truth, no per-app env files.
+Verification:
+- `pnpm typecheck` 9/9 · `pnpm lint` 9/9 · `pnpm test` **48** (13 api + 35 shared) · `pnpm build` 7/7 — all green.
+- **API smoke (live):** `/auth/me` → `{"error":{"code":"AUTH"}}` 401 with no token and with a bad token; webhook → 401 without a valid Svix signature; `/healthz` 200.
+- **Web smoke (live, real keys):** `/` 200 with Sign in/Sign up controls; `/sign-in` 200; `/dashboard` signed-out → Clerk `protect-rewrite` (content NOT served; redirects to sign-in in a real browser).
+- **CI-parity check:** simulated CI (root `.env` absent) → `next build` exits 0 (auth routes are dynamic; no key needed at build).
+Decisions / trade-offs:
+- **User→DB sync DEFERRED to Day 4:** there is no Prisma `User` table until the data model (build order). The webhook **signature verification + the pure `mapClerkUserToUpsert` mapper are done and tested**; only the `db.user.upsert` is stubbed with a clear `TODO(Day 4)` — not faked.
+- `/me` returns the verified identity now; `memberships: []` until RBAC (Day 5).
+- Root-`.env` via dotenv (vs per-app `.env`) keeps the single-source-of-truth convention; missing file is a no-op so CI/Vercel (env-injected) are unaffected.
+- Landing uses server `auth()` + `SignInButton/UserButton` instead of `<SignedIn>/<SignedOut>` (not re-exported by @clerk/nextjs 7.5.9; replaced by `<Show>`).
+Migrations added: none (Day 4).
+Env / secrets added (names): `CLERK_WEBHOOK_SECRET`, `NEXT_PUBLIC_CLERK_SIGN_IN_URL`, `NEXT_PUBLIC_CLERK_SIGN_UP_URL`. **Admin has set** `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` + `CLERK_SECRET_KEY` in `.env` (verified present).
+Deviations from TECH-STACK: none. Added deps: `@clerk/nextjs@7`, `@clerk/backend@3`, `svix@1`, `dotenv@16`, `vitest` (api tests). All standard for this integration.
+Deferred (with reason): User/Membership DB upsert + the Clerk webhook endpoint registration in the dashboard (needs the deployed/tunnelled URL + `CLERK_WEBHOOK_SECRET`) → Day 4; full Clerk component theming for dark/light parity → a later UI pass.
+Admin actions needed next: Day 4 — `DATABASE_URL` + `DIRECT_URL` (Postgres 16 + timescaledb + pgvector) and the base-currency + plan-tier decision. (Optional now: add a Clerk webhook in the dashboard once there's a public URL, and paste `CLERK_WEBHOOK_SECRET` — otherwise User sync activates on Day 4 via first-request upsert.)
+
+## Self-Audit — Day 03 (Auth — Clerk)
+A. Correctness: ✅ — DoD: sign-in/up + sign-out + session work (email+password per decision); API rejects unauthenticated, accepts valid tokens (guard verified); `/me` works; tests pass. MFA/social are dashboard toggles (no code change) — noted, not built per decision. **User→DB sync intentionally deferred to Day 4** (no table yet) — logged.
+B. Tenancy: ✅ NA today — tenancy/RBAC are Day 4–5; `/me` returns `memberships: []` as a placeholder; no tenant data accessed.
+C. Security (focus): ✅ — tokens verified server-side via Clerk JWKS using the secret from env (never hard-coded); 401 reasons stay internal (safe envelope, tested); webhook trusted only after **Svix signature verify over the raw body** (tested: valid/tamper/missing-secret/missing-headers); no secret logged (boot log checked); `.env` git-ignored (verified).
+D. Cost/router: ✅ NA — no provider calls.
+E. Tests (focus on I): ✅ — 13 api unit tests (token, authenticate 401 paths, webhook sign/verify/tamper, user-sync idempotency) + 35 shared; all green, none skipped.
+F. Performance: ✅ — guard does one token verify; Clerk JWKS cached by the SDK; no N+1.
+G. Errors/obs: ✅ — auth failures → typed AuthError → global filter → safe 401 envelope; no silent catches (verify failure wrapped with cause kept internal).
+H. UI: ✅ (with noted follow-up) — sign-in/up/dashboard use `packages/ui` + tokens + the Waveform; Clerk accent set to brand violet. Full Clerk dark/light theming deferred to a UI pass (logged). Auth control copy is plain ("Sign in", "Sign up", "Dashboard").
+I. Regression (focus): ✅ — re-ran full typecheck/lint/test/build (9/9, 9/9, 48, 7/7); Day-1/2 intact (api `/healthz` 200, exception filter still maps 404→NOT_FOUND, shared 34 tests green); **simulated keyless CI build → exit 0**; the empty-string `parseEnv` change is covered by a new test and didn't break existing env tests.
+J. Quality/docs: ✅ — strict TS, no `any`/unjustified `!`; pure/testable seams; module headers; BUILD-LOG + `.env.example` updated.
+K. Build/CI: ✅ all green locally; added api `vitest`; CI `node` job already runs `pnpm test`/`build` so the api tests + web build are covered.
+
+Fixes applied this audit: dotenv exposed blank env placeholders → `parseEnv` now treats `''` as unset (+test); enabled Biome param-decorator parsing; corrected Clerk v7 import surface (`currentUser`/`auth` from `/server`; `<Show>` vs removed `<SignedIn>`).
+Open/deferred: User/Membership DB upsert (Day 4); Clerk webhook dashboard registration (needs public URL); Clerk component theming (UI pass) — all intentional, logged.
+Proactive suggestions: on Day 4, wire `syncUser` to `db.user.upsert({ where: { authProviderId } })` (idempotent) and add the cross-tenant isolation test; consider a tiny shared `loadRootEnv()` helper so workers/voice reuse the same root-`.env` loading; rotate the dev `sk_test_` key in Clerk after setup (it transited chat).

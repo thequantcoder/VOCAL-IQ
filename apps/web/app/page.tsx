@@ -1,19 +1,47 @@
+import { SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
+import { auth } from '@clerk/nextjs/server';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Waveform } from '@vocaliq/ui';
+import Link from 'next/link';
 import { ThemeToggle } from './theme-toggle';
 
 /*
- * Day 1 design-system proof surface: the signature Waveform + the base components
- * (Button, Card, Input) rendering in light & dark (DESIGN-SYSTEM §0/§5/§8). The
- * real §5a marketing hero is built at launch (~Day 66).
+ * Day 1 design-system proof surface + Day 3 auth controls. Server component: it
+ * reads the verified session to swap the header between signed-out (sign in/up)
+ * and signed-in (dashboard + account). The real §5a marketing hero is Day ~66.
  */
-export default function HomePage() {
+export default async function HomePage() {
+  const { userId } = await auth();
+
   return (
     <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-10 px-6 py-12">
       <header className="flex items-center justify-between">
         <span className="rounded-vq-pill border border-vq-border px-3 py-1 text-sm text-vq-text-lo">
-          Day 1 · design system
+          Day 3 · auth
         </span>
-        <ThemeToggle />
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          {userId ? (
+            <>
+              <Link href="/dashboard">
+                <Button variant="secondary" size="sm">
+                  Dashboard
+                </Button>
+              </Link>
+              <UserButton />
+            </>
+          ) : (
+            <>
+              <SignInButton mode="modal">
+                <Button variant="ghost" size="sm">
+                  Sign in
+                </Button>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <Button size="sm">Sign up</Button>
+              </SignUpButton>
+            </>
+          )}
+        </div>
       </header>
 
       <section className="flex flex-col items-center gap-6 text-center">
