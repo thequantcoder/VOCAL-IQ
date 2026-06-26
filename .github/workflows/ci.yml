@@ -40,8 +40,10 @@ jobs:
           --health-cmd "redis-cli ping"
           --health-interval 5s --health-timeout 3s --health-retries 10
     env:
+      # Owner role (migrations/seed) + non-superuser app role (RLS-constrained tests).
       DATABASE_URL: postgresql://vocaliq:vocaliq@localhost:5432/vocaliq
       DIRECT_URL: postgresql://vocaliq:vocaliq@localhost:5432/vocaliq
+      APP_DATABASE_URL: postgresql://vocaliq_app:vocaliq_app@localhost:5432/vocaliq
       REDIS_URL: redis://localhost:6379
     steps:
       - uses: actions/checkout@v4
@@ -55,13 +57,18 @@ jobs:
           node-version: 20
           cache: pnpm
 
+      # postinstall runs `prisma generate` so the client + types exist for the build/tests.
       - run: pnpm install --frozen-lockfile
 
-      # Enable extensions the suite expects (Day 4+ relies on them).
-      - name: Prime Postgres extensions
+      # Generate the Prisma client (explicit, so it never depends on postinstall
+      # running under --frozen-lockfile), then apply migrations (creates extensions,
+      # the vocaliq_app role, RLS, hypertable) and seed — so the @vocaliq/db
+      # introspection + RLS isolation tests run against a real DB.
+      - name: Generate client, migrate + seed database
         run: |
-          PGPASSWORD=vocaliq psql -h localhost -U vocaliq -d vocaliq \
-            -c "CREATE EXTENSION IF NOT EXISTS timescaledb; CREATE EXTENSION IF NOT EXISTS vector;"
+          pnpm --filter @vocaliq/db exec prisma generate
+          pnpm --filter @vocaliq/db exec prisma migrate deploy
+          pnpm --filter @vocaliq/db exec tsx prisma/seed.ts
 
       - run: pnpm typecheck
       - run: pnpm lint
