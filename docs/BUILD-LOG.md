@@ -273,3 +273,40 @@ K. Build/CI: ✅ — all green; CI already migrates+seeds and passes DB env to t
 Fixes applied this audit: type-only Prisma re-export (require-ESM interop); apps/api biome useImportType off (DI); reverted a stray root `biome --write` that type-imported injected providers (caught via a runtime boot, not just static checks).
 Open/deferred: HTTP/supertest e2e of guards; per-field validation surfacing — both intentional, logged.
 Proactive suggestions: add a Clerk-mocked supertest pass when the first feature endpoints land; write AuditLog entries for every privileged (owner-client) operation; add the enum-drift guard test (Prisma vs shared enums) flagged on Day 4.
+
+## Day 06 — Provider-Router Skeleton + First Proven AI Call — 2026-06-26
+Model: Opus (🧠 OPUS). Admin keys: OPENAI_API_KEY + ANTHROPIC_API_KEY (both validated live, HTTP 200).
+Commits: branch `day/06-router-skeleton-first-ai-call` → PR #6. Increments: `feat(router) …` + `feat(api) …`.
+Built:
+- **`@vocaliq/provider-router` (golden rule #2):** typed `LLMProvider` (complete/stream/embed); **OpenAI** (Chat + Embeddings, `gpt-4o-mini` / `text-embedding-3-small`) and **Anthropic** (Messages, `claude-opus-4-8`; thinking omitted/off, no sampling params per the claude-api reference) adapters — keys injected, never logged. Versioned **price table** with longest-prefix matching (handles provider date suffixes like `gpt-4o-mini-2024-07-18`). **Router**: selects by tenant model preference → default order; resolves **BYOK vs platform** key per provider; **falls back** to the next provider on failure; **emits a UsageRecord on every completion** (BYOK cost computed informationally but flagged → not billed; golden rule #4).
+- **api:** `RouterService` wraps the Router and persists a **tenant-scoped UsageRecord via the RLS client** on every call (no un-metered path). `key-resolver`: platform keys from env, tenant BYOK from `ProviderCredential` (envelope decryption deferred to Day 57, flagged). `POST /agents/:id/test-complete` — **config-writer roles only** (OWNER/ADMIN/BUILDER/RESELLER_ADMIN; ANALYST/AGENT blocked), RLS-scoped agent read, returns `{text, model, usage, costUsd}`.
+Verification:
+- `pnpm typecheck` 11/11 · `pnpm lint` 11/11 · `pnpm test` (provider-router 9 + api 28 + shared 35 + db 7) · `pnpm build` 7/7 — all green.
+- **First proven AI call (live):** the provider-router live test runs a real OpenAI completion through the Router → text returned + UsageRecord with **positive cost**. The api live test runs a real completion through `RouterService` → **a priced `UsageRecord` row is persisted** for the tenant under RLS. (Both key-gated: skip in CI, never block the gate.)
+- API smoke: `/agents/:id/test-complete` → 401 AUTH unauthenticated; DI boots clean.
+Decisions / gotchas:
+- **OpenAI returns dated model ids** → priced 0 at first; fixed with longest-prefix price matching (`gpt-4o-mini-…` → `gpt-4o-mini`, never the shorter `gpt-4o`).
+- **Build-staleness bite:** the api imports the compiled `provider-router/dist`; the pricing fix only took effect after rebuilding the package (vitest used src and masked it). Re-verified end-to-end.
+- BYOK cost is still **computed** (visibility) and flagged, not zeroed — matches CODE-PATTERNS §3 ("recorded informationally, not billed").
+- No provider-specific code outside the package (golden do-not #3); keys are constructor-injected and never logged.
+Env / secrets added: none new. Prices in `pricing.ts` are values, re-verify per CLAUDE.md §13/§15.
+Deviations from TECH-STACK: none. Added `@anthropic-ai/sdk@0.106`, `openai@6.45`.
+Deferred (with reason): streaming token-level cost metering (wired with the live call loop, Day 9 — voice service meters per segment); embeddings cost metering precision (Day 20 RAG); BYOK envelope decryption (Day 57 KMS); HTTP-layer e2e of the endpoint with a Clerk token (the live `RouterService` test proves the AI+cost+persist path headlessly; the endpoint is role-gated + DI-verified).
+Admin actions needed next: **Phase 1, Day 07** (provider-router core hardening) then the voice loop — ensure **LiveKit + Deepgram + ElevenLabs + Twilio** keys are ready (PREREQUISITES Group B).
+
+## Self-Audit — Day 06 (Provider-router + first AI call)
+A. Correctness: ✅ — DoD met: Router returns a working LLM client per tenant; both adapters exercised (live); selection + fallback + BYOK/managed tested; every completion emits a correct UsageRecord; a live completion returns a real result + cost and persists a priced UsageRecord.
+B. Tenancy: ✅ — UsageRecord persisted via `withTenant` (RLS); the endpoint reads the agent RLS-scoped and is tenant+role gated.
+C. Security (focus): ✅ — keys constructor-injected, never logged; no key in errors (ProviderError carries a generic safe message); no provider code outside the package; platform keys from env only. BYOK decryption explicitly deferred + flagged (no fake crypto).
+D. Cost/router (focus): ✅ — every metered path emits a UsageRecord; cost from the versioned table; BYOK flagged (not billed) but cost computed; fallback ensures one provider outage doesn't drop the call.
+E. Tests: ✅ — 9 provider-router (pricing, selection, fallback, BYOK, all-fail, live) + 2 live api/router; unit tests run in CI, live tests skip without keys.
+F. Performance: ✅ — single completion path; fallback only on error; no N+1.
+G. Errors/obs: ✅ — adapter failures → typed ProviderError → safe envelope; no silent catches (fallback is explicit, last error preserved as cause).
+H. UI: ✅ NA.
+I. Regression: ✅ — full typecheck/lint/test/build green; Days 1–5 intact (api 28 incl. RBAC/RLS; shared 35; db 7); `.env` DB urls had been blanked by earlier port-shuffling — restored to the 5434 stack and re-verified (local-only; `.env` is git-ignored).
+J. Quality/docs: ✅ — strict TS, no `any`; price table + deferrals documented; BUILD-LOG updated; provider-agnostic contract.
+K. Build/CI: ✅ — green; provider-router added to the build graph; live tests gated so CI (no keys) passes.
+
+Fixes applied this audit: longest-prefix price matching for dated model ids; rebuilt provider-router/dist so the api saw the pricing fix; restored blanked `.env` DB urls (5434).
+Open/deferred: stream/embedding cost metering, BYOK KMS decryption, HTTP e2e of the endpoint — all intentional, logged.
+Proactive suggestions: on Day 13 (cost attribution) add a reconciliation worker asserting zero metered calls without a UsageRecord; add a `.env` integrity check to `dev:infra` so blanked DB urls are caught early; seed a demo Agent so the HTTP endpoint can be manually exercised end-to-end.
