@@ -19,6 +19,9 @@
     },
     "test": {
       "dependsOn": ["^build"],
+      // DB connection strings the @vocaliq/db tests need (Turbo strict env mode
+      // strips undeclared vars; locally dotenv loads them, in CI the job sets them).
+      "env": ["DATABASE_URL", "DIRECT_URL", "APP_DATABASE_URL", "REDIS_URL"],
       "outputs": ["coverage/**"]
     }
   }

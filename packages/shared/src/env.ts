@@ -19,8 +19,10 @@ export const envSchema = z.object({
   VOICE_PORT: z.coerce.number().int().positive().default(8000),
 
   // ── Datastores ──────────────────────────────────────────────────────────────
-  DATABASE_URL: z.string().url().optional(),
+  DATABASE_URL: z.string().url().optional(), // owner role: migrations, seed, admin
   DIRECT_URL: z.string().url().optional(),
+  /** Runtime app role (non-superuser) — RLS-constrained. Falls back to DATABASE_URL. */
+  APP_DATABASE_URL: z.string().url().optional(),
   REDIS_URL: z.string().url().optional(),
   SUPABASE_URL: z.string().url().optional(),
   SUPABASE_ANON_KEY: z.string().optional(),

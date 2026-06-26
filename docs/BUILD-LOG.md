@@ -189,3 +189,47 @@ K. Build/CI: ✅ all green locally; added api `vitest`; CI `node` job already ru
 Fixes applied this audit: dotenv exposed blank env placeholders → `parseEnv` now treats `''` as unset (+test); enabled Biome param-decorator parsing; corrected Clerk v7 import surface (`currentUser`/`auth` from `/server`; `<Show>` vs removed `<SignedIn>`).
 Open/deferred: User/Membership DB upsert (Day 4); Clerk webhook dashboard registration (needs public URL); Clerk component theming (UI pass) — all intentional, logged.
 Proactive suggestions: on Day 4, wire `syncUser` to `db.user.upsert({ where: { authProviderId } })` (idempotent) and add the cross-tenant isolation test; consider a tiny shared `loadRootEnv()` helper so workers/voice reuse the same root-`.env` loading; rotate the dev `sk_test_` key in Clerk after setup (it transited chat).
+
+## Day 04 — Multi-Tenant Data Model + Prisma Schema + RLS — 2026-06-26
+Model: Opus (🧠 OPUS — the most important architectural day)
+Decisions (admin): DB = local Docker Postgres; base currency = USD; plan tiers = Free/Pro/Scale.
+Commits: branch `day/04-data-model-rls` → PR #4. Increments: `feat(db) schema+migrations` · `feat(db) client+seed+tests` · `chore(infra,ci)`.
+Built:
+- **`schema.prisma` — 31 models** exactly per DATA-MODEL: Tenant hierarchy (self-relation), User, Membership, ProviderCredential (+PlatformApiKeyPool), Agent, Flow/FlowVersion, Voice, KnowledgeBase/KbChunk (pgvector), AgentMemory, Contact, Lead, PhoneNumber, SipTrunk, Call, Transcript, Campaign/CampaignContact, Appointment, Plan, Subscription, Wallet, UsageRecord, Invoice, ResellerMargin, Integration, Webhook, SupportTicket, Notification, AuditLog, FeatureFlag. Every tenant table has `tenantId` + index (+composite on hot paths e.g. `(tenantId,status)`,`(tenantId,createdAt)`). Encrypted columns are `Bytes` (ciphertext only); `KbChunk.embedding` = `vector(1536)`; `FlowVersion` denormalizes `tenantId` for uniform RLS.
+- **Migrations:** `day04_initial_schema` (extensions + tables) + a separate `day04_rls_policies`:
+  - `current_tenant()` (reads `app.current_tenant`, empty→NULL→deny) and `is_in_subtree(child,ancestor)` (recursive over `parentTenantId`, SECURITY DEFINER so it reads the full tree).
+  - **Non-superuser `vocaliq_app` runtime role** + grants; ENABLE RLS + `tenant_isolation` policy on **31 tables** (nullable-tenant tables allow NULL platform rows; `ProviderCredential` stricter; `Tenant` self+descendants; `ResellerMargin` either side).
+  - **UsageRecord → Timescale hypertable** (PK `(id,ts)` includes the partition col); **KbChunk HNSW** vector index.
+- **`src/index.ts`:** runtime client bound to the app role; `withTenant(tenantId, fn)` sets `app.current_tenant` **transaction-locally** so RLS scopes every query and nothing leaks across pooled connections.
+- **Seed:** PLATFORM → demo RESELLER → demo CUSTOMER, SUPER_ADMIN + membership, Free/Pro/Scale plans (USD) — idempotent (fixed UUIDs + upserts).
+- **CI:** node job gains `APP_DATABASE_URL` + a generate→migrate→seed step so the db tests run on a real Postgres; `postinstall: prisma generate`; `dev:infra` now `--env-file .env`.
+Verification:
+- `pnpm typecheck` 9/9 · `pnpm lint` 9/9 · `pnpm test` **55** (db 7 + api 13 + shared 35) · `pnpm build` 7/7 — all green locally.
+- **RLS proven (psql + automated):** platform sees 3 tenants, reseller sees 2 (self+child), customer sees 1, no-context sees 0; as the app role, customer can't see a sibling's contacts, reseller sees its child's data but not a sibling reseller's. Hypertable + HNSW + both extensions present.
+- Migration applies cleanly to a fresh DB (reset + deploy); seed produces the tenant tree + super-admin.
+Decisions / gotchas:
+- The docker `vocaliq` user is a **superuser** → bypasses RLS; so RLS is only meaningful for the non-superuser **`vocaliq_app`** role. Runtime uses `APP_DATABASE_URL` (app role); migrations/seed/audited-admin use `DATABASE_URL` (owner) = the sanctioned privileged bypass.
+- Stopped Prisma from managing extensions (`postgresqlExtensions` preview fought the docker-precreated ones); extensions are `CREATE EXTENSION IF NOT EXISTS` at the top of the initial migration (self-sufficient for CI/hosted).
+- Local host ports moved to **5434 (pg) / 6390 (redis)** to dodge two other local Postgres instances; `DATABASE_URL`/`APP_DATABASE_URL` point at 5434.
+Migrations added: `day04_initial_schema`, `day04_rls_policies`.
+Env / secrets added (names): `APP_DATABASE_URL` (+ `.env` set to the vocaliq_app role). Admin already set `DATABASE_URL`/`DIRECT_URL`.
+Deviations from TECH-STACK: none. Added deps: `prisma`/`@prisma/client` 6.x, `tsx`, `dotenv`, `vitest` (db).
+Deferred (with reason): full RBAC + the expanded isolation suite → Day 5 (this is the Day-4 scaffold); Phase-6 tables (NumberReputation, AbuseSignal, etc.) → their own days (69–94); CallMetric hypertable → when that table exists (analytics, Day 41); wiring `syncUser` upsert (Day 3 stub) onto the new `User` table → Day 5.
+Admin actions needed next: Day 5 none (RBAC + isolation tests). Day 6 `OPENAI_API_KEY`/`ANTHROPIC_API_KEY` (router first AI call).
+
+## Self-Audit — Day 04 (Data model + RLS)
+A. Correctness: ✅ — DoD met: schema compiles; migrations apply to a fresh DB; extensions present; every tenant table has tenantId+index+RLS; subtree fn works; seed produces platform/reseller/customer + super-admin; connection helper sets current_tenant (verified via tests + psql).
+B. Tenancy (focus): ✅ — RLS on 31 tables; `is_in_subtree` gives reseller→descendants but NOT siblings (tested both directions); deny-by-default with no context; the superuser-bypass path is explicit + documented (privileged/admin only). Cross-tenant reads return zero rows.
+C. Security: ✅ — encrypted columns are ciphertext `Bytes` (no plaintext key column); RLS as the safety net; `vocaliq_app` is non-superuser/NOBYPASSRLS; functions pin `search_path`. Dev-only role passwords (same posture as the committed docker password) — no real secrets.
+D. Cost/router: ✅ NA — UsageRecord modelled + hypertable ready for the cost engine (Day 13).
+E. Tests (focus): ✅ — 7 db tests (introspection: tenantId⇒RLS+index; isolation: sibling + subtree + deny-by-default), all green; CI runs them against a real Postgres.
+F. Performance (focus): ✅ — tenantId indexed everywhere; composite indexes on hot paths; UsageRecord hypertable; HNSW on embeddings.
+G. Errors/obs: ✅ NA — schema/migrations; `current_tenant()` empty→NULL is a safe default.
+H. UI: ✅ NA.
+I. Regression: ✅ — full typecheck/lint/test/build green (9/9, 9/9, 55, 7/7); Days 1–3 intact (shared 35 incl. the new APP_DATABASE_URL optional; api 13; web unaffected).
+J. Quality/docs (focus): ✅ — schema matches DATA-MODEL entity-for-entity; enums mirror `@vocaliq/shared`; BUILD-LOG + `.env.example` updated; migration comments explain the RLS model.
+K. Build/CI: ✅ — all green locally; CI generates client + migrates + seeds before tests.
+
+Fixes applied this audit: dropped Prisma extension management (drift vs docker init); added FlowVersion.tenantId for uniform RLS; created the non-superuser app role after confirming the owner is a superuser (RLS no-op otherwise); composite PK (id,ts) on UsageRecord so the hypertable is valid; raw-SQL test-data inserts needed updatedAt → switched verification to the Prisma-client tests.
+Open/deferred: RBAC + expanded isolation suite (Day 5); Phase-6 tables; CallMetric hypertable; User-sync upsert wiring — all intentional, logged.
+Proactive suggestions: add a CI/test that asserts every Prisma enum is mirrored in `@vocaliq/shared` enums.ts (drift guard); on Day 5 add the RolesGuard + AuditLog writes for privileged (superuser-path) operations; consider connection pooling (pgbouncer) config + verify `withTenant`'s transaction-local setting under the pool.
