@@ -94,7 +94,9 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Type check (pyright)
-        run: pyright
+        # Pin pyright to the interpreter pip installed into, so dev deps (pytest, …)
+        # always resolve regardless of pyright's auto-detection.
+        run: pyright --pythonpath "$(python -c 'import sys; print(sys.executable)')"
 
       - name: Lint (ruff)
         run: ruff check .
