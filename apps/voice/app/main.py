@@ -9,16 +9,20 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.calls.router import active_session_count, router as calls_router
+from app.calls.router import (
+    active_session_count,
+    drain_active_calls,
+    router as calls_router,
+)
 from app.config import settings
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    """Graceful startup/shutdown — drains nothing yet, but the hook is in place so the
-    live loop (Day 09) can stop accepting calls and let in-flight ones finish."""
+    """Graceful startup/shutdown — on stop, in-flight sessions are ended via legal
+    terminal transitions and their LiveKit rooms deleted so none are orphaned."""
     yield
-    # On shutdown, in-flight call teardown happens here once the media bridge exists.
+    await drain_active_calls()
 
 
 app = FastAPI(title="VocalIQ Voice Service", version="0.0.0", lifespan=lifespan)

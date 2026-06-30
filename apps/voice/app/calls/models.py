@@ -21,6 +21,8 @@ class StartCallRequest(BaseModel):
 class CallTokens(BaseModel):
     participant: str
     agent: str
+    # The ws(s):// URL clients dial to join the room (set when LiveKit is configured).
+    server_url: str | None = None
 
 
 class StartCallResponse(BaseModel):
