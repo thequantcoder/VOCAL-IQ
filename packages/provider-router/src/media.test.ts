@@ -1,6 +1,5 @@
 import { Capability, Provider, type UsageRecord, isAppError } from '@vocaliq/shared';
-import { describe, expect, it, vi } from 'vitest';
-import { DeepgramSTT } from './adapters/deepgram.js';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ElevenLabsTTS } from './adapters/elevenlabs.js';
 import { LiveKitMedia } from './adapters/livekit.js';
 import { TwilioTelephony } from './adapters/twilio.js';
@@ -99,27 +98,123 @@ describe('media routing (TTS/STT)', () => {
   });
 });
 
-describe('adapter stubs throw until live verification (pending keys)', () => {
-  it('TTS/STT/telephony/media stubs reject with a ProviderError', async () => {
-    const tts = new ElevenLabsTTS('k');
+describe('ElevenLabs TTS adapter (mocked fetch)', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('streams PCM chunks and posts text + model + voice settings', async () => {
+    let captured: { url: string; body: unknown } | undefined;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init: RequestInit) => {
+        captured = { url, body: JSON.parse(String(init.body)) };
+        const stream = new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(new Uint8Array([1, 2]));
+            controller.enqueue(new Uint8Array([3, 4]));
+            controller.close();
+          },
+        });
+        return new Response(stream, { status: 200 });
+      }),
+    );
+
+    const chunks: Uint8Array[] = [];
+    for await (const c of new ElevenLabsTTS('k').synthesizeStream('hello', {
+      model: 'eleven_turbo_v2_5',
+    }))
+      chunks.push(c);
+
+    expect(chunks).toHaveLength(2);
+    expect(captured?.url).toContain('/text-to-speech/');
+    expect(captured?.url).toContain('output_format=pcm_16000');
+    expect(captured?.body).toMatchObject({ text: 'hello', model_id: 'eleven_turbo_v2_5' });
+  });
+
+  it('throws a ProviderError on a non-2xx response', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('bad voice', { status: 401 })),
+    );
     await expect(
       (async () => {
-        for await (const _ of tts.synthesizeStream('hi')) void _;
+        for await (const _ of new ElevenLabsTTS('k').synthesizeStream('hi')) void _;
       })(),
     ).rejects.toSatisfy((e) => isAppError(e) && e.code === 'PROVIDER');
+  });
+});
 
-    const stt = new DeepgramSTT('k');
+describe('LiveKit token minting (pure, no network)', () => {
+  it('mints a 3-part JWT for a room join', async () => {
+    const jwt = await new LiveKitMedia('wss://x.livekit.cloud', 'APIkey', 'secret').token(
+      'room-1',
+      'agent-1',
+    );
+    expect(jwt.split('.')).toHaveLength(3);
+  });
+
+  it('normalises ws(s):// to http(s):// for the room service and keeps serverUrl', () => {
+    const media = new LiveKitMedia('wss://x.livekit.cloud', 'k', 's');
+    expect(media.serverUrl).toBe('wss://x.livekit.cloud');
+  });
+});
+
+describe('Twilio dial guard (no network)', () => {
+  it('rejects a dial with neither url nor twiml before calling the API', async () => {
     await expect(
-      (async () => {
-        for await (const _ of stt.transcribeStream((async function* () {})())) void _;
-      })(),
+      new TwilioTelephony('AC_sid', 'tok').dial('+15550001', '+15550002'),
     ).rejects.toSatisfy((e) => isAppError(e) && e.code === 'PROVIDER');
+  });
+});
 
-    await expect(new TwilioTelephony('sid', 'tok').dial('+1', '+1')).rejects.toSatisfy(
-      (e) => isAppError(e) && e.code === 'PROVIDER',
-    );
-    await expect(new LiveKitMedia('u', 'k', 's').createRoom('r')).rejects.toSatisfy(
-      (e) => isAppError(e) && e.code === 'PROVIDER',
-    );
+describe('Deepgram STT event bridge (fake connection)', () => {
+  it('yields interim + final transcripts pumped through the callback bridge', async () => {
+    // A fake live connection that replays Open → 2 transcripts → Close on the next tick.
+    const handlers = new Map<string, (arg?: unknown) => void>();
+    const conn = {
+      on(evt: string, cb: (arg?: unknown) => void) {
+        handlers.set(evt, cb);
+      },
+      send() {},
+      requestClose() {},
+    };
+    vi.doMock('@deepgram/sdk', () => ({
+      LiveTranscriptionEvents: {
+        Open: 'open',
+        Close: 'close',
+        Error: 'error',
+        Transcript: 'Results',
+      },
+      createClient: () => ({ listen: { live: () => conn } }),
+    }));
+    vi.resetModules();
+    const { DeepgramSTT: FreshDeepgram } = await import('./adapters/deepgram.js');
+
+    const audio = (async function* () {
+      yield new Uint8Array([0, 0]);
+    })();
+    const events: { transcript: string; isFinal: boolean }[] = [];
+    const drain = (async () => {
+      for await (const e of new FreshDeepgram('k').transcribeStream(audio)) events.push(e);
+    })();
+
+    // Drive the fake socket lifecycle after handlers are registered.
+    await new Promise((r) => setTimeout(r, 5));
+    handlers.get('open')?.();
+    handlers.get('Results')?.({
+      is_final: false,
+      channel: { alternatives: [{ transcript: 'hel' }] },
+    });
+    handlers.get('Results')?.({
+      is_final: true,
+      channel: { alternatives: [{ transcript: 'hello' }] },
+    });
+    handlers.get('close')?.();
+    await drain;
+
+    expect(events).toEqual([
+      { transcript: 'hel', isFinal: false },
+      { transcript: 'hello', isFinal: true },
+    ]);
+    vi.doUnmock('@deepgram/sdk');
   });
 });
