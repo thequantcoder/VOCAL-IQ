@@ -16,8 +16,11 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.106.0",
+    "@deepgram/sdk": "^3.9.0",
     "@vocaliq/shared": "workspace:*",
-    "openai": "^6.45.0"
+    "livekit-server-sdk": "^2.9.7",
+    "openai": "^6.45.0",
+    "twilio": "^5.4.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

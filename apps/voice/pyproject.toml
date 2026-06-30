@@ -9,11 +9,15 @@ dependencies = [
     "pydantic>=2.10.0",
     "pydantic-settings>=2.7.0",
     "pyjwt>=2.10.0",
+    "httpx>=0.28.0",
+    "websockets>=14.0",
+    "livekit-api>=0.8.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
     "httpx>=0.28.0",
     "ruff>=0.8.0",
     "pyright>=1.1.390",
@@ -44,3 +48,5 @@ testpaths = ["tests"]
 # Put the service root on sys.path so `import app` resolves deterministically,
 # independent of editable-install state (PEP 660 finder vs .pth).
 pythonpath = ["."]
+# `async def` tests run without a per-test marker (pytest-asyncio).
+asyncio_mode = "auto"

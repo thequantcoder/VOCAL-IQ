@@ -4,15 +4,21 @@
 secret) with a room-join video grant, exactly as the LiveKit server validates it. No
 network, so it is fully testable with any key/secret.
 
-`create_room` is DEFERRED: it requires a live LiveKit server (RoomServiceClient). It
-lands with the LiveKit keys (Day 09); for now it raises a clear error.
+`LiveKitRoomService` performs live room provisioning over LiveKit's Twirp API. It pins
+certifi's CA bundle because venv/macOS Pythons frequently lack a system trust store
+(which otherwise fails the TLS handshake), and normalises the public ws(s):// URL to
+http(s):// for the API host. Verified live against the project's LiveKit Cloud instance.
 """
 
 from __future__ import annotations
 
+import ssl
 import time
 
+import aiohttp
+import certifi
 import jwt
+from livekit import api
 
 
 def mint_access_token(
@@ -48,11 +54,39 @@ def mint_access_token(
     return jwt.encode(claims, api_secret, algorithm="HS256")
 
 
-async def create_room(name: str) -> dict[str, str]:
-    """DEFERRED (pending LiveKit keys): create a room via RoomServiceClient.
+class LiveKitRoomService:
+    """Create/delete LiveKit rooms. Each op uses a short-lived aiohttp session with a
+    certifi CA context (the LiveKit SDK has no built-in CA override)."""
 
-    TODO(Day 09 live): livekit.api.LiveKitAPI(url, key, secret).room.create_room(...).
-    """
-    raise NotImplementedError(
-        f"LiveKit room creation not yet implemented (pending live keys): room={name}"
-    )
+    def __init__(self, url: str, api_key: str, api_secret: str) -> None:
+        self._http_url = url.replace("wss://", "https://").replace("ws://", "http://")
+        self._api_key = api_key
+        self._api_secret = api_secret
+        self._ssl = ssl.create_default_context(cafile=certifi.where())
+
+    def _client(self) -> tuple[api.LiveKitAPI, aiohttp.ClientSession]:
+        session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=self._ssl))
+        lk = api.LiveKitAPI(self._http_url, self._api_key, self._api_secret, session=session)
+        return lk, session
+
+    async def create_room(self, name: str) -> str:
+        """Provision the WebRTC room the caller + Pipecat agent join. Returns its name."""
+        lk, session = self._client()
+        try:
+            room = await lk.room.create_room(api.CreateRoomRequest(name=name))
+            return room.name
+        finally:
+            await lk.aclose()
+            await session.close()
+
+    async def delete_room(self, name: str) -> None:
+        """Tear a room down (idempotent — a missing room is not an error)."""
+        lk, session = self._client()
+        try:
+            await lk.room.delete_room(api.DeleteRoomRequest(room=name))
+        except api.TwirpError:
+            # Already gone / never created — nothing to clean up.
+            pass
+        finally:
+            await lk.aclose()
+            await session.close()
