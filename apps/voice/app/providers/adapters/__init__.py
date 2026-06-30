@@ -4,5 +4,6 @@ metering contract (the call loop meters; adapters never bill)."""
 
 from app.providers.adapters.deepgram import DeepgramSTT
 from app.providers.adapters.elevenlabs import ElevenLabsTTS
+from app.providers.adapters.openai import OpenAILLM
 
-__all__ = ["DeepgramSTT", "ElevenLabsTTS"]
+__all__ = ["DeepgramSTT", "ElevenLabsTTS", "OpenAILLM"]

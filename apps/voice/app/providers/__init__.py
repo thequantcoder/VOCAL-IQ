@@ -2,7 +2,7 @@
 `@vocaliq/provider-router`. The voice service routes its real-time STT/LLM/TTS
 calls through these (live adapters land with the call loop, Days 8–9)."""
 
-from app.providers.adapters import DeepgramSTT, ElevenLabsTTS
+from app.providers.adapters import DeepgramSTT, ElevenLabsTTS, OpenAILLM
 from app.providers.contracts import (
     CompletionResult,
     DialResult,
@@ -28,6 +28,7 @@ __all__ = [
     "DialResult",
     "ElevenLabsTTS",
     "LLMMessage",
+    "OpenAILLM",
     "LLMProvider",
     "STTEvent",
     "STTProvider",
