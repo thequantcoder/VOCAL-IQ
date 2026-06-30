@@ -393,3 +393,43 @@ K. Build/CI: ✅ — voice job green; pyright pinned to the install interpreter;
 Fixes applied this audit: deterministic pytest `pythonpath` + setuptools package discovery + CI pyright interpreter pin (fixed `ModuleNotFoundError: app` flake and a pytest-import-resolution gap).
 Open/deferred: the 5 live items above — intentional, tracked for the keyed session.
 Proactive suggestions: when keys land, add a key-gated LiveKit room smoke + an agent-join greeting test; wire the voice→Postgres connection with `SET LOCAL app.current_tenant` per call (mirror `withTenant`); use 32+ byte secrets in token tests to silence the PyJWT key-length warning.
+
+## Days 07 + 08 — LIVE upgrade (provider adapters + voice media room) — 2026-06-30 — ✅ DONE (live, key-gated)
+Model: Opus (🧠 OPUS). **Status: the items deferred in the Day-07/08 scaffolds are now implemented LIVE and verified against the real providers.** Keys arrived (LiveKit/Deepgram/ElevenLabs validated: LiveKit ListRooms 200, Deepgram /projects 200, ElevenLabs /user 200 — note ElevenLabs starter plan ~55 chars left).
+Branch: `day/07-provider-router-core` → PR. Three commits (TS adapters · Python mirror · voice room/events/drain).
+
+Built (DONE, live-verified before coding — CLAUDE.md §15):
+- **TS provider-router adapter bodies** (`packages/provider-router/src/adapters/`):
+  - `ElevenLabsTTS` — streaming PCM16@16k via `POST /v1/text-to-speech/{voice}/stream?output_format=pcm_16000` (native fetch; shape verified live = `audio/pcm`).
+  - `DeepgramSTT` — live WS (`@deepgram/sdk`) with an async-queue callback→iterator bridge (interim+final for barge-in).
+  - `LiveKitMedia` — real `createRoom` + join-token mint (`livekit-server-sdk`); ws→http host normalisation; `serverUrl` getter.
+  - `TwilioTelephony` — real dial/transfer/hangup over the Voice REST API (`twilio`); dial guards on missing TwiML (first live call = Day 10).
+  - Deps added: `@deepgram/sdk`, `livekit-server-sdk`, `twilio`.
+- **Python mirror** (`apps/voice/app/providers/adapters/`): `ElevenLabsTTS` (httpx stream) + `DeepgramSTT` (websockets + CloseStream flush); both protocols verified live. Deps: httpx/websockets/livekit-api + pytest-asyncio. **certifi CA pin** (venv Pythons lack a system trust store → TLS handshake failed for raw ws/aiohttp).
+- **Voice media room (Day 08 live)**: `LiveKitRoomService.create_room/delete_room` (Twirp; certifi-backed aiohttp session injected into `LiveKitAPI`). `POST /calls/start` now provisions the room for real + mints caller/agent tokens (+`server_url`) + emits `call.queued`/`call.ringing`; room-provision failure → 502 + `call.failed`. `EventSink` (in-process log + fan-out, Socket.IO/api publisher plugs in Day 9). Graceful-shutdown drain ends in-flight sessions via legal terminal transitions + deletes their rooms.
+
+Verification:
+- TS: typecheck + lint + **22 tests** + build green; **live smokes PASS** — LiveKit room+token (2.1s) and Deepgram live socket (1.5s). ElevenLabs synth smoke opt-in (`RUN_TTS_SMOKE=1`) to protect the char budget; mocked unit tests cover its stream + error paths.
+- Voice: ruff + pyright + **24 tests** green (incl. live LiveKit room create/delete + live Deepgram socket). ElevenLabs live synth skipped (opt-in).
+- Root: `pnpm typecheck` (11/11) + `pnpm build` (7/7) green — api/workers consuming provider-router unaffected.
+- **Demonstrated working**: `/calls/start` against live LiveKit → `RINGING` + room-scoped agent JWT + `server_url`; `createRoom` assigns a real sid.
+
+Provider behaviour noted (not a bug): LiveKit Cloud `ListRooms` only returns rooms with **active participants**, so a freshly-created empty room is absent from the list until the agent/caller join (Day 9). `createRoom` still returns a valid room object (name + sid + empty_timeout).
+
+Still deferred to **Day 09** (the real-time loop — heaviest): Pipecat agent worker JOINS the room + plays the greeting (router TTS); full caller-audio↔agent media bridge with barge-in; tenant-scoped **Call DB row** persistence with `app.current_tenant` set per call; wiring the EventSink to Socket.IO + the api callback.
+
+## Self-Audit — Days 07/08 (live upgrade, A–K)
+A. Correctness: ✅ — every adapter body implemented against the providers' real wire shapes (each verified with a live probe before coding); LiveKit room ops + token mint + lifecycle + drain demonstrated end-to-end.
+B. Tenancy: ✅/⏭ — `tenant_id` required + carried on every session and event; per-call `app.current_tenant` + Call-row write land Day 9 with the DB wiring (tracked).
+C. Security: ✅ — no secret in code/logs; keys read from env only; LiveKit JWT signed with the secret; certifi pin makes TLS verification correct (not disabled). ElevenLabs/Twilio errors surface status+truncated detail, never the key.
+D. Cost/router: ✅ — adapters never bill; metering stays in the Router (`meterMedia` + price tables, golden rule #4); TTS=chars, STT=seconds, telephony=minutes paths preserved.
+E. Tests: ✅ — 22 TS + 24 voice; mocked unit tests for stream/bridge/error logic + skip-guarded live smokes that prove the real path without blocking CI.
+F. Performance (async/streaming): ✅ — TTS/STT stream chunk-by-chunk (no full-clip buffering); endpoint async + non-blocking; Deepgram bridge wakes only on new data.
+G. Errors/obs + shutdown: ✅ — typed ProviderError/TTSError/STTError; room-provision failure → clean 502 + event; lifespan drain deletes rooms (no orphans).
+H. UI: ✅ NA.
+I. Regression: ✅ — root typecheck/build green; Days 1–8 gates intact; the obsolete "stubs throw" tests replaced with real ones.
+J. Quality/docs: ✅ — strict TS / typed Python; comments mark the Day-9 seams; BUILD-LOG records the live/deferred boundary + the LiveKit ListRooms behaviour.
+K. Build/CI: ✅ — live smokes skip without keys, so CI stays deterministic; new SDK deps pinned.
+
+Fixes applied this session: AppErrorOptions `meta` (not `context`); Deepgram `send` ArrayBuffer slice; removed unused imports; certifi CA pin for ws/aiohttp; LiveKit ws→http host normalisation; drain uses only legal transitions (no force-terminal).
+Admin actions needed next (Day 09): keys already set. Heads-up: **ElevenLabs starter plan is ~55 characters from its cap** — upgrade (Creator+) or wait for the monthly reset before the Day-9 greeting/loop will speak; STT + room + loop logic build and test fine without it.
