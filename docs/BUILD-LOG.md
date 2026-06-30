@@ -352,3 +352,44 @@ K. Build/CI: ✅ — green; live smokes will be key-gated like Day 6 so CI stays
 Fixes applied this audit: async stub methods so `notImplemented()` rejects (not throws synchronously); biome-ignore `useYield` on stub generators.
 Open/deferred: the 7 live items above — all intentional, tracked for the keyed session.
 Proactive suggestions: when keys land, add a key-gated live smoke per adapter (synth/transcribe/room/call) mirroring Day 6's live tests; extend the KeyResolver to return multi-field telephony/media creds; add a CI assertion that TS and Python price tables stay in sync.
+
+## Day 08 — Voice Service Skeleton (FastAPI control surface) — 2026-06-30 — ⚠️ PARTIAL (scaffold)
+Model: Opus (🧠 OPUS). **Status: key-independent control plane merged; live media bridge DEFERRED pending LiveKit/Deepgram/ElevenLabs keys.**
+Reason: room creation + Pipecat agent join + greeting need the live providers; CLAUDE.md §15. User chose "scaffold now".
+Commits: branch `day/08-voice-service-skeleton` → PR #8. `feat(voice) …`.
+Built (DONE):
+- **Call lifecycle** (`app/calls/lifecycle.py`): `CallSession` + state machine mirroring shared `CallStatus` — validated forward transitions (QUEUED→RINGING→IN_PROGRESS→terminal), illegal jumps raise `InvalidTransitionError`, terminal states final, transition history.
+- **LiveKit token minting** (`app/calls/livekit_service.py`): `mint_access_token` — REAL pure JWT (HS256 + room-join video grant), exactly as the LiveKit server validates; no network → testable with any key/secret. `create_room` deferred (needs the live server).
+- **Control endpoint** (`app/calls/router.py` + `models.py`): `POST /calls/start` validates the request (Pydantic), opens a session (QUEUED→RINGING), mints participant+agent tokens when keys are configured (else a clear pending note). `/healthz` now reports `livekit` config + `active_calls`; FastAPI `lifespan` hook for graceful shutdown.
+- **Config**: LiveKit settings (optional) + `livekit_configured` property; env loaded from the monorepo-root `.env`.
+Verification:
+- Voice: `ruff` clean · `pyright` 0 errors · `pytest` **15** (lifecycle transitions, token JWT claims/signature, `/calls/start` with+without keys + validation, + the Day-7 mirror tests).
+- TS side untouched → Days 1–7 gates remain green (CI re-verifies).
+Robustness fixes:
+- `pytest pythonpath=["."]` so `import app` resolves deterministically regardless of editable-install state (PEP 660 finder flakiness).
+- explicit `[tool.setuptools.packages.find] include=["app*"]` + a `[build-system]`.
+- CI `voice` job pins pyright to the pip interpreter (`--pythonpath $(python -c 'sys.executable')`) so dev-dep imports (pytest, …) always resolve.
+Deferred (Day 09 live, tracked):
+1. LiveKit **room creation** (RoomServiceClient).
+2. **Pipecat agent worker** joins the room + plays a **greeting** (router TTS).
+3. **Media bridge** (caller audio in / agent audio out).
+4. **Call DB row** persistence with `app.current_tenant` set per call (voice → Postgres).
+5. **Event emission** to api/clients (Socket.IO/callback).
+Admin actions needed next: set `LIVEKIT_*`, `DEEPGRAM_API_KEY`, `ELEVENLABS_API_KEY` to finish Day 08 live + build Day 09 (the full real-time loop — the heaviest day).
+
+## Self-Audit — Day 08 (scaffold)
+A. Correctness: ⚠️ partial — control plane (lifecycle, token minting, /calls/start shape, health, shutdown hook) done + tested; live media bridge + Call persistence explicitly deferred + logged (not faked).
+B. Tenancy (focus): ⚠️ — `tenant_id` is required on `StartCallRequest` and carried on `CallSession`; setting `app.current_tenant` on the DB session + the Call row write land Day 09 with DB wiring (deferred, logged).
+C. Security: ✅ — LiveKit token signed with the API secret (HS256); no secret logged; creds optional via env; request validated (Pydantic).
+D. Cost/router: ✅ NA — metering enters with the live loop (Day 9).
+E. Tests: ✅ — 15 voice tests incl. illegal-transition + signature-mismatch + validation paths.
+F. Performance (focus, async): ✅ — endpoint is async + non-blocking; token minting is pure/sync-cheap; no blocking I/O on the path.
+G. Errors/obs (focus, shutdown): ✅ — lifespan hook present for graceful shutdown; invalid transitions/requests raise typed/422 errors; deferred room ops raise a clear NotImplementedError.
+H. UI: ✅ NA.
+I. Regression: ✅ — voice ruff/pyright/pytest green; TS workspace untouched (Days 1–7 unaffected); pytest import made deterministic (fixed a real flake).
+J. Quality/docs: ✅ — typed Python; TODO blocks mark live seams; BUILD-LOG records every deferred item.
+K. Build/CI: ✅ — voice job green; pyright pinned to the install interpreter; live media stays out of CI (no keys).
+
+Fixes applied this audit: deterministic pytest `pythonpath` + setuptools package discovery + CI pyright interpreter pin (fixed `ModuleNotFoundError: app` flake and a pytest-import-resolution gap).
+Open/deferred: the 5 live items above — intentional, tracked for the keyed session.
+Proactive suggestions: when keys land, add a key-gated LiveKit room smoke + an agent-join greeting test; wire the voice→Postgres connection with `SET LOCAL app.current_tenant` per call (mirror `withTenant`); use 32+ byte secrets in token tests to silence the PyJWT key-length warning.
