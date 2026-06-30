@@ -433,3 +433,40 @@ K. Build/CI: ✅ — live smokes skip without keys, so CI stays deterministic; n
 
 Fixes applied this session: AppErrorOptions `meta` (not `context`); Deepgram `send` ArrayBuffer slice; removed unused imports; certifi CA pin for ws/aiohttp; LiveKit ws→http host normalisation; drain uses only legal transitions (no force-terminal).
 Admin actions needed next (Day 09): keys already set. Heads-up: **ElevenLabs starter plan is ~55 characters from its cap** — upgrade (Creator+) or wait for the monthly reset before the Day-9 greeting/loop will speak; STT + room + loop logic build and test fine without it.
+
+## Day 09 — Real-time conversation engine (STT→LLM→TTS, barge-in) — 2026-07-01 — ✅ DONE (engine live-proven; LiveKit transport = part 2)
+Model: Opus (🧠 OPUS). The heart of the product. Branch `day/09-live-call-loop` → PR.
+**Architecture decision (deviation from "use Pipecat", logged per CLAUDE.md §11/§13):** implemented the CODE-PATTERNS §9 loop shape as a **provider-agnostic engine over our router contracts** instead of adopting Pipecat's built-in STT/LLM/TTS services. Reason: those services would call providers directly, bypassing our **cost metering + BYOK + fallback** (golden rules #2/#3/#4); and a decoupled engine is **fully testable in CI without keys**. Pipecat/livekit-agents can host this engine as a transport later without changing it.
+
+Built (DONE):
+- `app/loop/vad.py` — energy VAD (RMS + start/end hysteresis); `audioop`-free (gone in py3.13+).
+- `app/loop/chunker.py` — sentence/clause chunking so TTS (and first audio) starts before the LLM completes.
+- `app/loop/context.py` — rolling conversation context trimmed to a token budget (bounds long-call latency/cost).
+- `app/loop/endpointer.py` — clock-injected turn-taking: commits a turn on `turn_timeout_ms` silence-after-speech + a final transcript; still-there backstop.
+- `app/loop/metrics.py` — per-turn TTFA / LLM-TTFT / turnaround (targets 800ms / 1500ms).
+- `app/loop/engine.py` — `ConversationLoop`: frame→VAD→endpoint cadence; the agent turn runs as a **concurrent task** so the frame loop keeps watching for **barge-in** (caller speech → cancel in-flight TTS + flush output + listen); streaming LLM→chunk→TTS→playback; **per-turn STT/LLM/TTS UsageRecords** attributed to tenant+call; event emission (partial transcript, agent.speaking, agent.interrupted, user.turn, turn.metrics); transcript-persistence hook. Transport-agnostic.
+- `app/providers/adapters/openai.py` — Python streaming LLM adapter (httpx SSE; shape verified live) — the loop's real brain.
+
+Verification:
+- Voice: ruff + pyright + **43 tests** (1 skipped opt-in) green. Acceptance suite (deterministic, no keys): full single + multi-turn conversation, barge-in (buffer flushed + `agent.interrupted`), endpointing (waits configured silence; no commit without a final), provider-failure resilience (LLM raises → call survives), per-turn STT+LLM+TTS usage records, TTFA+turnaround latency assertion under target, greeting.
+- **Demonstrated LIVE end-to-end** (real Deepgram→OpenAI→ElevenLabs): fed a synthesized caller question as 20ms frames → Deepgram transcribed "What are your opening hours on weekends?" → OpenAI replied "Our weekend hours are from 10 AM to 4 PM." → ElevenLabs spoke it (3.3s WAV). Usage metered: STT $0.000249, TTS $0.00615, LLM $0.000011.
+
+Observed live latency (synthetic harness, real network): TTFA ~2.75s, LLM-TTFT ~2.0s — **above the 800ms target**. Causes: per-call httpx client (new TLS connection each turn, no pooling), real provider network RTT, and an event loop busy with the 20ms frame-pacing sleep. The deterministic engine-overhead latency test passes under target; provider/network latency is a separate hardening concern (connection pooling + Day 63 latency hardening). Logged, not faked.
+
+Deferred to **Day 09 part 2** (next session): bind real **LiveKit RTC audio tracks** to the engine (agent worker joins the room, subscribes to the caller track, publishes the agent track) + a key-gated live call smoke; wire the EventSink to Socket.IO + the api callback; persist transcript segments + UsageRecords to Postgres with per-call `app.current_tenant`.
+
+## Self-Audit — Day 09 (A–K)
+A. Correctness (turn logic, focus): ✅ — VAD/endpointer/chunker/context unit-tested; full multi-turn convo + barge-in + endpointing proven deterministically and live end-to-end.
+B. Tenancy (focus): ✅/⏭ — every UsageEvent + event carries tenant_id + call_id; Postgres persistence with `app.current_tenant` lands in part 2 (tracked).
+C. Security: ✅ — no secrets in code/logs; keys via env; providers behind typed errors; the call survives a provider stream error without leaking internals.
+D. Cost/usage (focus): ✅ — each turn emits STT (audio seconds) + LLM (≈tokens) + TTS (chars) UsageRecords with cost + byok flag; metering lives in the engine, not the adapters (golden rule #4). LLM tokens approximated on the streaming path — noted; cost engine reconciles exact usage (Day 13).
+E. Tests: ✅ — 43 voice tests incl. the day's full acceptance list; deterministic (manual clock + scripted fakes) so CI never flakes.
+F. Performance/latency (focus, make-or-break): ✅ engine / ⚠️ live — streaming throughout (no full-clip buffering), TTS starts mid-LLM via chunking, barge-in cancels in-flight work; engine-overhead latency asserted under target. Live provider/network latency above target — connection pooling + Day 63 flagged.
+G. Errors/obs: ✅ — provider failure caught per-turn (call continues); turn cancellation is clean (no orphaned tasks); metrics emitted per turn.
+H. UI: ✅ NA.
+I. Regression: ✅ — TS workspace untouched (Days 1–8 green); voice suite green; new code isolated under app/loop + one adapter.
+J. Quality/docs: ✅ — typed Python, pyright clean; comments mark the §9 shape + the LiveKit-transport seam; deviation from Pipecat logged with rationale.
+K. Build/CI: ✅ — all tests deterministic + key-free; the live end-to-end demo is a local script (not in CI).
+
+Fixes this session: feed() real-time vs manual-clock modes; shared clock per test; LLM fakes implement the full protocol; dataclasses.replace for typed config overrides; pytest.approx for float metrics.
+Admin: ElevenLabs Creator key set + validated (131k chars). Next session = LiveKit RTC transport binding to make it a real phone call.
