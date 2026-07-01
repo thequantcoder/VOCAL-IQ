@@ -22,7 +22,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { AlertTriangle, Check, Loader2, Plus } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSaveFlow } from '../../lib/api';
+import { usePublishFlow, useSaveFlow } from '../../lib/api';
 import { NODE_META, type VQNodeData, nodeTypes } from './flow-nodes';
 import { NodeConfigForm } from './node-config-form';
 
@@ -79,6 +79,7 @@ export function FlowCanvas({ agentId, graph }: { agentId: string; graph: FlowGra
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const save = useSaveFlow(agentId);
+  const publish = usePublishFlow(agentId);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const firstRun = useRef(true);
 
@@ -170,7 +171,23 @@ export function FlowCanvas({ agentId, graph }: { agentId: string; graph: FlowGra
         <div className="ml-auto flex items-center gap-3 text-xs">
           <SaveBadge state={saveState} />
           <ValidityBadge errors={validation.errors} />
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={validation.errors.length > 0 || saveState === 'saving' || publish.isPending}
+            onClick={() => publish.mutate()}
+            title={
+              validation.errors.length > 0
+                ? 'Fix the issues before publishing'
+                : 'Publish this flow'
+            }
+          >
+            {publish.isPending ? 'Publishing…' : publish.isSuccess ? 'Published ✓' : 'Publish'}
+          </Button>
         </div>
+        {publish.isError ? (
+          <p className="text-vq-danger text-xs">{(publish.error as Error).message}</p>
+        ) : null}
       </div>
 
       <div className="relative flex-1 overflow-hidden rounded-vq-card border border-vq-border">

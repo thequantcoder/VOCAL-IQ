@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@vocaliq/db';
-import { NotFoundError, ValidationError, emptyFlowGraph, flowGraphSchema } from '@vocaliq/shared';
+import {
+  NotFoundError,
+  ValidationError,
+  compileFlow,
+  emptyFlowGraph,
+  flowGraphSchema,
+} from '@vocaliq/shared';
 import { PrismaService } from '../db/prisma.service';
 
 /**
@@ -23,9 +29,69 @@ export interface SaveResult {
   savedAt: string;
 }
 
+export interface PublishResult {
+  publishedVersion: number;
+  nextDraftVersion: number;
+  publishedAt: string;
+}
+
 @Injectable()
 export class FlowsService {
   constructor(private readonly db: PrismaService) {}
+
+  /**
+   * Publish the draft: compile it (Day 22) as a gate — reject if not runnable — then pin
+   * the version (publishedAt) + activate the flow + open a fresh draft for future edits so
+   * live calls keep running the pinned version (safe hot-swap).
+   */
+  async publishFlow(tenantId: string, agentId: string): Promise<PublishResult> {
+    return this.db.withTenant(tenantId, async (tx) => {
+      const flow = await tx.flow.findFirst({
+        where: { agentId },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
+      });
+      if (!flow) throw new NotFoundError('Flow not found — open the builder first');
+
+      const version = await tx.flowVersion.findFirst({
+        where: { flowId: flow.id, publishedAt: null },
+        orderBy: { version: 'desc' },
+        select: { id: true, version: true, graph: true },
+      });
+      if (!version) throw new NotFoundError('No draft version to publish');
+
+      const parsed = flowGraphSchema.safeParse(version.graph);
+      if (!parsed.success) throw new ValidationError('Draft graph is malformed');
+      const compiled = compileFlow(parsed.data);
+      if (!compiled.ok) {
+        const summary = compiled.errors
+          .slice(0, 3)
+          .map((e) => e.message)
+          .join('; ');
+        throw new ValidationError(
+          `Flow can’t be published (${compiled.errors.length} issue(s)): ${summary}`,
+        );
+      }
+
+      const publishedAt = new Date();
+      await tx.flowVersion.update({ where: { id: version.id }, data: { publishedAt } });
+      await tx.flow.update({ where: { id: flow.id }, data: { isActive: true } });
+      const nextDraft = await tx.flowVersion.create({
+        data: {
+          tenantId,
+          flowId: flow.id,
+          version: version.version + 1,
+          graph: parsed.data as unknown as Prisma.InputJsonValue,
+        },
+        select: { version: true },
+      });
+      return {
+        publishedVersion: version.version,
+        nextDraftVersion: nextDraft.version,
+        publishedAt: publishedAt.toISOString(),
+      };
+    });
+  }
 
   async getOrCreateDraft(tenantId: string, agentId: string): Promise<FlowDraft> {
     return this.db.withTenant(tenantId, async (tx) => {

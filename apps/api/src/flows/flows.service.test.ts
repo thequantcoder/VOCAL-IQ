@@ -67,3 +67,34 @@ describe('FlowsService', () => {
     ).rejects.toSatisfy((e) => isAppError(e) && e.code === 'NOT_FOUND');
   });
 });
+
+describe('FlowsService.publishFlow', () => {
+  it('compile-gates: rejects an unpublishable draft', async () => {
+    // Save a dead-end graph (SAY with no outgoing edge, no END path).
+    await svc.saveGraph(C1, AGENT, {
+      nodes: [
+        { id: 'start', type: 'START', position: { x: 0, y: 0 }, data: { config: {} } },
+        { id: 'say', type: 'SAY', position: { x: 200, y: 0 }, data: { config: {} } },
+      ],
+      edges: [{ id: 'e1', source: 'start', target: 'say' }],
+    });
+    await expect(svc.publishFlow(C1, AGENT)).rejects.toMatchObject({ code: 'VALIDATION' });
+  });
+
+  it('publishes a valid draft, pins the version, and opens a fresh draft', async () => {
+    await svc.saveGraph(C1, AGENT, {
+      nodes: [
+        { id: 'start', type: 'START', position: { x: 0, y: 0 }, data: { config: {} } },
+        { id: 'end', type: 'END', position: { x: 200, y: 0 }, data: { config: {} } },
+      ],
+      edges: [{ id: 'e1', source: 'start', target: 'end' }],
+    });
+    const res = await svc.publishFlow(C1, AGENT);
+    expect(res.publishedVersion).toBe(1);
+    expect(res.nextDraftVersion).toBe(2);
+
+    // The published version is pinned; the new draft is editable.
+    const draft = await svc.getOrCreateDraft(C1, AGENT);
+    expect(draft.version).toBe(2);
+  });
+});
