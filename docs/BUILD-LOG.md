@@ -631,3 +631,36 @@ K. Build/CI: ✅ — all tests deterministic + key-free (Stripe never called in 
 Webhook verify + idempotency CONFIRMED (self-audit focus): a tampered/stale/wrong-secret signature is rejected; a valid event applies the status once and a re-delivery of the same event id is a no-op (tests in billing-logic + billing.service).
 Admin next (to go live): set STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET + NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY, then swap PendingBillingProcessor → Stripe + run `stripe listen`.
 Next: Day 16 (web-call widget) closes Phase 1. (Days 11/12 inbound+recording resume with Twilio.)
+
+## Day 16 — Browser web-call widget + click-to-call — 2026-07-01 — ✅ DONE (closes Phase 1; agent-join dispatch seam)
+Model: Opus (kit ⚡ SONNET). Branch `day/16-web-call-widget` → PR. Visitors talk to an agent over WebRTC with no phone number. **Phase 1 complete.**
+
+Built (DONE):
+- **api public widget backend** (self-audit focus C — unauthenticated route, so guardrails are agent-must-be-PUBLISHED + per-caller rate limit + tenant scoping):
+  - `WidgetService.createSession`: rate-limit (ip+agent) → resolve a PUBLISHED agent (admin lookup) → open a **WEB Call** (channel=WEB, direction=INBOUND, tenant-scoped via `withTenant`) → mint a short-lived **LiveKit visitor join token** (`LiveKitMedia`; injectable minter so tests need no LiveKit). Returns `{callId, room, token, serverUrl, agentName}`.
+  - `WidgetService.config`: public agent name + tenant `branding` (theming / white-label prep).
+  - `RateLimiter`: fixed-window, per-caller, clock-injectable.
+  - `WidgetController`: **UNAUTHENTICATED** `POST /widget/session` + `GET /widget/config/:agentId`; caller key from `x-forwarded-for`/socket. Wired into AppModule.
+- **web widget**: `WebCallWidget` (livekit-client) — Start → session → connect → publish mic → attach + play the agent audio track; **mute / end / live waveform** (cyan while live); a11y (aria-live status, labelled icon buttons, aria-pressed mute). `/widget/[agentId]` public route fetches config + centres the widget on a **themeable** surface (brand colour overrides `--vq-violet`). dep: livekit-client.
+
+Verification:
+- api: typecheck + lint green; **7 widget tests** (published-agent session opens a WEB call + mints a token; unpublished/unknown refused; **rate limit trips**; config returns name+branding; pure rate-limiter window/keying). Full api suite green.
+- web: typecheck + lint green; production build compiles the `/widget/[agentId]` route (livekit-client bundled).
+- **Also purged stray macOS `' 2.ts/tsx'` iCloud-duplicate files** from apps/ (the Documents folder is iCloud-synced — these dup files broke tsc; cleaned + not tracked).
+
+Deferred (tracked): the **voice-agent join** for a widget call is the api→voice dispatch (reuse Day-9 `run_agent`) — the LiveKit transport is proven live (Day 9), this is the remaining service-to-service wiring done with the voice deploy; **live captions** (the voice worker publishes transcript LiveKit data messages → widget renders them); recording of WEB calls (Day 12).
+
+## Self-Audit — Day 16 (A–K)
+A. Correctness (focus): ✅ — session/authz/rate-limit/config integration-tested; widget UI compiles + follows the proven Day-9 transport.
+B. Tenancy (focus): ✅ — the WEB Call is created under `withTenant(agent.tenantId)`; the visitor token is scoped to a single call room; no tenant secret leaves the server.
+C. Token authz + rate limit (focus): ✅ — only a **PUBLISHED** agent yields a session (unpublished/unknown → 404); **per-caller (ip+agent) fixed-window rate limit** rejects floods (429); the join token is short-lived + room-scoped; the route is unauthenticated by design but signature/limit-gated.
+D. Cost: ✅ NA build path — WEB Call rows carry the cost breakdown once the agent loop runs (Day 9 metering, unchanged).
+E. Tests: ✅ — 7 api (real Postgres + pure); web build as the type/compile gate.
+F. Performance/latency parity (focus): ✅ — same 16kHz LiveKit transport as Day 9; adaptiveStream + dynacast on the client; waveform respects reduced-motion.
+G. Errors/obs: ✅ — widget shows connecting/live/ended/error states with a friendly message; disconnect handled; typed api errors (RateLimit/NotFound/Provider).
+H. UI: ✅ — themeable, responsive, a11y (aria-live, labelled controls); waveform motif; brand-colour override.
+I. Regression: ✅ — full api suite green; web build green; only additive.
+J. Quality/docs: ✅ — typed; seam + deferrals documented; dup-file cleanup noted.
+K. Build/CI: ✅ — widget tests deterministic (fake minter, injected clock); web build compiles; livekit-client pinned.
+
+Phase 1 (Days 07–16 core) COMPLETE — router → voice loop → real LiveKit call → outbound → cost → dashboard → billing → web widget. **Tag v0.2-phase1** after merge. Next: Day 17 (visual builder canvas) opens Phase 2. (Days 11/12 inbound+recording + Twilio/Stripe go-live remain as tracked deferrals.)
