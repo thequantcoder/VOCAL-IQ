@@ -502,3 +502,33 @@ K. Build/CI: ✅ — livekit rtc pinned; live smoke gated (RUN_LIVEKIT_CALL=1).
 
 Fix this session: odd-byte carry in LiveKitAudioSink (AudioFrame requires int16 alignment) — found + fixed via the first live round-trip.
 Admin: all keys set + validated. Next: Day 10 (outbound Twilio) or latency hardening.
+
+## Day 10 — Outbound calling + AMD (voicemail detection) — 2026-07-01 — ✅ DONE (orchestration + gates + AMD live-independent; PSTN dial gated on funded Twilio number)
+Model: Opus. Branch `day/10-outbound-voicemail` → PR. Built the full outbound brain now; the live PSTN leg is deferred behind the Dialer seam until a funded Twilio number + public tunnel exist (per user's "add Twilio later" — memory: [[twilio-live-test-pending]]).
+
+Built (DONE):
+- **api `POST /calls/outbound`** (BUILDER+) → `OutboundService.placeCall` (RLS-scoped): Zod-validates (E.164 + **required consent basis**), enforces the **DNC gate** (`Contact.dnc` + phone-based suppression), a **per-tenant concurrency cap** (in-flight outbound calls) + a **per-minute rate cap**, persists a QUEUED OUTBOUND/PSTN `Call`, then hands the vetted call to a **`Dialer`** seam. `recordDisposition` writes the terminal status + disposition + **costBreakdown** at call end.
+- **Dialer boundary** (`DIALER` token): `PendingDialer` records intent + no-ops the PSTN leg (ships + tests now); the HTTP dialer to the voice service swaps in at go-live — provider-agnostic (golden rule #2). `CallsModule` wired into `AppModule`.
+- **voice `app/telephony/`**: `decide_on_answer()` maps Twilio async-AMD `AnsweredBy` → action (RUN_AGENT / WAIT / LEAVE_VOICEMAIL / HANGUP) per `VoicemailPolicy` (unknown⇒human so real people aren't dropped); `build_call_params()` (pure) builds the Twilio `calls.create` request (async AMD + status/AMD callbacks + a bridge URL for the TwiML that joins the answered call into the caller's LiveKit room); `TwilioOutboundDialer.dial` runs the blocking SDK via `asyncio.to_thread`, client behind a narrow Protocol.
+
+Verification:
+- api: typecheck + lint green; **10 integration tests (real Postgres, RLS)** — vetted call persists + dispatches; DNC-by-flag + DNC-by-phone blocked (nothing dialed); consent required; non-E.164 rejected; unknown agent 404; **concurrency cap holds**; disposition + cost recorded; non-terminal status + unknown call rejected.
+- voice: ruff + pyright + **58 tests** (2 opt-in skipped) — every AMD branch + policy + unknown-as-human; dial params carry AMD/callbacks/call_id/room; AMD toggle; dialer places a call via a fake client.
+
+Deferred to go-live (needs funded Twilio number + public tunnel — [[twilio-live-test-pending]]): the real PSTN dial, the Twilio↔LiveKit media bridge TwiML + status/AMD webhook endpoints, and the end-to-end live outbound smoke (`RUN_TWILIO_CALL=1`). Also: swap `PendingDialer`→HTTP dialer; wire the voice AMD callback → RUN_AGENT dispatches the existing LiveKit agent worker / LEAVE_VOICEMAIL synth. §15 respected — Twilio webhook/TwiML shapes will be verified against the real API before finalizing the bridge.
+
+## Self-Audit — Day 10 (A–K)
+A. Correctness: ✅ — gate logic + AMD branch + dial-param builder unit/integration tested; live media bridge explicitly deferred (not faked).
+B. Tenancy (focus): ✅ — placeCall/recordDisposition run under `withTenant` (RLS); Call rows carry tenantId; tests use the seeded C1 tenant.
+C. Security/abuse (focus): ✅ — **DNC + consent gates block abuse before any dial**; concurrency + rate caps limit blast radius; inputs Zod-validated; no secret logged.
+D. Cost (focus): ✅ — `costBreakdown` persisted per call at disposition; the metered voice loop (Day 9) feeds it; telephony minutes priced in the router table.
+E. Tests: ✅ — 10 api (real DB) + 8 voice telephony; deterministic.
+F. Performance: ✅ — gate reads are indexed (tenantId/status/createdAt); blocking Twilio SDK kept off the loop via to_thread.
+G. Errors/obs: ✅ — typed AppErrors (Forbidden/RateLimit/Validation/NotFound); nothing dialed on a blocked gate.
+H. UI: ✅ NA.
+I. Regression: ✅ — root typecheck path unaffected; Days 1–9 green; new CallsModule isolated.
+J. Quality/docs: ✅ — strict TS + typed Python; Dialer seam documented; deferrals logged + in memory.
+K. Build/CI: ✅ — api integration tests run against CI Postgres; voice telephony tests offline; no live Twilio in CI.
+
+Concurrency cap CONFIRMED (self-audit focus): filled 10 in-flight OUTBOUND calls → the 11th placeCall throws RATE_LIMIT and dials nothing (test `enforces the outbound concurrency cap`).
+Admin next (to finish live): fund a Twilio number + provide a public tunnel URL, then run the gated outbound smoke.
