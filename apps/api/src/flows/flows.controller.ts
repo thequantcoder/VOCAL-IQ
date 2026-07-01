@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 import { CurrentMembership } from '../tenancy/current-tenant.decorator';
 import { CONFIG_WRITERS, Roles } from '../tenancy/roles';
@@ -27,5 +27,12 @@ export class FlowsController {
     @Body() body: unknown,
   ) {
     return this.flows.saveGraph(ctx.tenantId, agentId, body);
+  }
+
+  /** Compile-gate + publish the draft (pins the version, opens a fresh draft). BUILDER+. */
+  @Roles(...CONFIG_WRITERS)
+  @Post('publish')
+  async publish(@CurrentMembership() ctx: TenantContext, @Param('agentId') agentId: string) {
+    return this.flows.publishFlow(ctx.tenantId, agentId);
   }
 }

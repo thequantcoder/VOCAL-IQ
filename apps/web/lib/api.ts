@@ -207,3 +207,15 @@ export function useSaveFlow(agentId: string) {
       ),
   });
 }
+
+export function usePublishFlow(agentId: string) {
+  const { getToken } = useAuth();
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<{ publishedVersion: number; nextDraftVersion: number }>(
+        getToken,
+        `/agents/${agentId}/flow/publish`,
+        { method: 'POST' },
+      ),
+  });
+}

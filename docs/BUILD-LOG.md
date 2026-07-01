@@ -812,3 +812,33 @@ J. Quality/docs: ✅ — typed; the transfer/sub-flow tenant-safety guarantee do
 K. Build/CI: ✅ — deterministic; web build compiles.
 
 Node library COMPLETE — all 11 node types configurable on the canvas. Next: Day 22 (flow compiler — graph → executable spec) turns these into a runnable conversation.
+
+## Day 22 — Flow compiler → runnable spec + publish gate — 2026-07-01 — ✅ DONE
+Model: Opus (🧠 OPUS). Branch `day/22-flow-compiler` → PR. Connects the builder to the calling engine. Self-audit focus A (determinism / no dead-ends) + F + B.
+
+Built (DONE):
+- **shared `compileFlow(graph)`**: React Flow graph → deterministic runtime spec `{entry, nodes:{id → {type, config, captures, transitions}}}`. Validates: structural (reuses validateFlowGraph), **no dead-ends** (only END may lack a next), **Decision needs an else/default fallback**, reachability from entry, and — critically — **at least one END is reachable so a call always terminates** (cycles allowed; a live-lock with no reachable End is rejected). Returns typed `CompileError[]`.
+- **shared runtime executor**: `nextNode()` picks the next node deterministically (first match wins; `always` > `intent`/`expression` > `else` fallback); `FlowRunner` tracks the active node + history for the loop to emit node-active events. **7 tests** — compile, dead-end, termination guard, decision-fallback, valid-loop, branch eval, full simulated conversation. 64 shared total.
+- **api publish** (`FlowsService.publishFlow` + POST `/agents/:agentId/flow/publish`): **compile-gate** — if the draft isn't runnable, publish is rejected with the issues; on success it **pins the version** (publishedAt) + activates the flow + **opens a fresh draft** so live calls keep the pinned spec (safe hot-swap). 2 tests.
+- **web**: Publish button in the builder toolbar — disabled while validation issues exist, surfaces the compile-gate error, confirms on success.
+
+Verification:
+- shared: typecheck + lint + build + **64 tests**. api: typecheck + lint + **91 tests** (incl. publish gate + version pin). web: typecheck + lint + **build compiles**.
+
+Deferred (tracked): the in-loop Python executor that consumes the compiled spec (drive Say/Listen/Decision per node, emit node-active events, evaluate branches on captured data/intent/sentiment) — the deterministic executor logic + traversal are built + tested in TS; the Day-9 loop wiring is the remaining integration (like tools/transfer). Sub-flow expansion (inline the referenced flow's spec) + the compiler ↔ voice hand-off land with that wiring.
+
+## Self-Audit — Day 22 (A–K)
+A. Determinism / no dead-ends (THE focus): ✅ — compiler rejects dead-ends, unreachable nodes, and any graph where no End is reachable (termination guaranteed); `nextNode` is deterministic (first-match, explicit else fallback); a full simulated conversation traverses START→…→END. All unit-tested.
+B. Tenancy: ✅ — publish runs under `withTenant` (RLS); the compiler is pure over the tenant's own graph.
+C. Security: ✅ — publish gated to BUILDER+; the draft is schema-validated then compile-validated before it can go live; safe error messages summarise issues.
+D. Cost: ✅ NA.
+E. Tests: ✅ — 7 compiler + 2 publish; deterministic.
+F. Runtime (focus): ✅ — the executor is O(1) per step (map lookup + first-match); reachability is a single BFS; result caps preserved.
+G. Errors/obs: ✅ — typed CompileError codes (DEAD_END, UNREACHABLE, NO_REACHABLE_END, …); FlowRunner exposes active node + history for node-active events.
+H. UI: ✅ — Publish button reflects validity + compile-gate errors; disabled when unsafe.
+I. Regression: ✅ — api 91 + shared 64 green; web build green; branched from the Day-21 merge.
+J. Quality/docs: ✅ — typed; the termination guarantee + hot-swap model documented; loop-wiring deferral logged.
+K. Build/CI: ✅ — all deterministic; compiler is pure (no keys/DB); publish tested on CI Postgres.
+
+Termination + determinism CONFIRMED (self-audit focus A): a graph with no reachable End is rejected, dead-ends are flagged, and the executor deterministically drives a conversation to an End (tests in flow-compiler).
+Next: Day 23 (test panel — simulate a flow in-browser against the compiled spec + the executor).
