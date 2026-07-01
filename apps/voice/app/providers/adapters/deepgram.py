@@ -42,6 +42,7 @@ class DeepgramSTT:
         model: str | None = None,
         interim_results: bool = True,
         language: str | None = None,
+        detect_language: bool = False,
     ) -> AsyncIterator[STTEvent]:
         query = {
             "model": model or self.default_model,
@@ -51,7 +52,11 @@ class DeepgramSTT:
             "interim_results": "true" if interim_results else "false",
             "smart_format": "true",
         }
-        if language:
+        if detect_language:
+            # Auto-detect the caller's language mid-call (Day 25) — Deepgram returns it per
+            # result; the loop's LanguageSwitcher debounces + swaps the TTS voice.
+            query["detect_language"] = "true"
+        elif language:
             query["language"] = language
         url = f"{WS_BASE}?{urlencode(query)}"
 
@@ -69,10 +74,15 @@ class DeepgramSTT:
                         data = json.loads(message)
                         if data.get("type") != "Results":
                             continue
-                        alts = data.get("channel", {}).get("alternatives", [])
+                        channel = data.get("channel", {})
+                        alts = channel.get("alternatives", [])
                         transcript = alts[0].get("transcript", "") if alts else ""
                         if transcript:
-                            yield STTEvent(transcript=transcript, is_final=bool(data.get("is_final")))
+                            yield STTEvent(
+                                transcript=transcript,
+                                is_final=bool(data.get("is_final")),
+                                language=channel.get("detected_language"),
+                            )
                 finally:
                     await sender
         except websockets.WebSocketException as exc:

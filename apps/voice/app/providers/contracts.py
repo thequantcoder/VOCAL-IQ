@@ -34,6 +34,7 @@ class CompletionResult:
 class STTEvent:
     transcript: str
     is_final: bool
+    language: str | None = None  # detected language (Day 25), when detect_language is on
 
 
 @dataclass(slots=True)
