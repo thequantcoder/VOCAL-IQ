@@ -8,6 +8,7 @@ import {
   ValidationError,
 } from '@vocaliq/shared';
 import { z } from 'zod';
+import { EntitlementsService } from '../billing/entitlements.service';
 import { PrismaService } from '../db/prisma.service';
 
 /** Explicit DTOs so the public API type never leaks Prisma's runtime types (TS2742). */
@@ -68,7 +69,10 @@ const AGENT_SELECT = {
 
 @Injectable()
 export class AgentsService {
-  constructor(private readonly db: PrismaService) {}
+  constructor(
+    private readonly db: PrismaService,
+    private readonly entitlements: EntitlementsService,
+  ) {}
 
   /** List the tenant's agents, newest first (small tenants; pagination lands with scale). */
   async list(tenantId: string): Promise<AgentListItem[]> {
@@ -101,6 +105,8 @@ export class AgentsService {
     if (!parsed.success) {
       throw new ValidationError(parsed.error.issues[0]?.message ?? 'Invalid agent');
     }
+    // Enforce the plan's agent limit before creating (Day 15 gating).
+    await this.entitlements.assertCanCreateAgent(tenantId);
     const { name, systemPrompt, type, status, languages, turnTimeoutMs, defaultVoiceId } =
       parsed.data;
     return this.db.withTenant(tenantId, (tx) =>
