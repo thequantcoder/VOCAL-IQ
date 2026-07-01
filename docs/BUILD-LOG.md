@@ -874,3 +874,33 @@ K. Build/CI: ✅ — deterministic; simulator needs no keys; web build compiles.
 
 Draft isolation CONFIRMED (self-audit focus B): restore writes only the draft and can't touch a published version or another tenant's versions (RLS + the test proving v1's graph lands in the draft).
 Next: Day 24 (agent personas + templates).
+
+## Day 24 — Persona studio schema + templates marketplace — 2026-07-01 — ✅ DONE
+Model: Opus (kit ⚡ SONNET). Branch `day/24-persona-templates` → PR. Agents creatable in one tap from a template.
+
+Built (DONE):
+- **shared persona** (`persona.ts`): `personaSchema` (role, tone, instructions, guardrails, bannedWords, optional systemPrompt override) + `buildSystemPrompt()` (composes the runtime prompt) + `estimateTokens`/`estimateCostUsd` (studio preview) + `lintPersona` (flags missing role/guardrails, long prompt, a banned word that also appears in the instructions).
+- **shared templates** (`agent-templates.ts`): five clone-to-agent starters (Sales, Support, Scheduling, Survey, Healthcare intake), each a persona + a minimal **runnable** starter graph.
+- **api**: `TemplatesService.clone` (persona → agent system prompt via AgentsService — so the plan agent-limit gate applies — + install the starter flow as the draft) ; `GET /templates` + `POST /templates/:id/clone` (BUILDER+).
+- **web**: templates marketplace (`/dashboard/agents/templates`) with cards + one-tap "Use template" → clone → builder; a Templates link on the agents header.
+
+Verification:
+- shared: typecheck + lint + build + **70 tests** (persona compose/override, lint, all 5 templates present, **every template's starter graph compiles**). api: typecheck + lint + **2 templates tests** (clone installs persona + starter flow; 404). Full api suite green. web: typecheck + lint + **build compiles** the templates route.
+
+Deferred (tracked): the full **persona studio UI** (structured role/tone/guardrails/banned-words editor + live token/cost preview + lint warnings on the agent form) — the schema + buildSystemPrompt + lint + estimate helpers are all built + tested in shared, ready to wire onto the create/edit form; "save my agent as a private template" + multi-language template variants; template preview modal.
+
+## Self-Audit — Day 24 (A–K)
+A. Correctness: ✅ — persona compose/override + lint + template compilation unit-tested; clone creates a working agent whose graph compiles + persona → system prompt (tested end-to-end vs the DB).
+B. Tenancy: ✅ — clone goes through AgentsService/FlowsService under `withTenant` (RLS); templates are global read-only built-ins (no tenant data).
+C. Security: ✅ — clone gated to BUILDER+ and passes the plan agent-limit gate; banned-words persisted in persona; safe errors.
+D. Cost: ✅ — estimateTokens/estimateCostUsd power the studio preview; a cloned agent's first real turn meters via the loop (Day 9).
+E. Tests: ✅ — 6 shared persona/template + 2 api clone; every template graph compiles (guards against shipping a broken starter).
+F. Performance: ✅ — templates are static; clone is a couple of indexed writes.
+G. Errors/obs: ✅ — unknown template 404; typed errors; lint surfaces prompt issues.
+H. UI: ✅ — marketplace cards (category/description/tone), one-tap clone → builder, four states, dark tokens.
+I. Regression: ✅ — shared 70 + api suite green; web build green; branched from the Day-23 merge.
+J. Quality/docs: ✅ — typed; persona/lint documented; studio-UI deferral logged.
+K. Build/CI: ✅ — deterministic; templates + persona need no keys.
+
+Templates integrity CONFIRMED: every built-in template's starter graph compiles to a runnable spec (test in persona.test), so a cloned agent is immediately valid + testable.
+Next: Day 25 (multilingual — per-language voices/prompts + auto language detection).
