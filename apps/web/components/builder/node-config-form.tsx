@@ -349,6 +349,129 @@ export function NodeConfigForm({
     );
   }
 
+  if (nodeType === 'COLLECT_CONFIRM') {
+    const fields = arr(config.fields) as string[];
+    return (
+      <div className="flex flex-col gap-3">
+        <span className="text-vq-text-lo text-xs">Fields to confirm</span>
+        {fields.map((f, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: rows are positional, no stable id
+          <div key={i} className="flex items-center gap-1.5">
+            <input
+              className={cn(field, 'flex-1')}
+              value={f}
+              onChange={(e) =>
+                set({ fields: fields.map((x, idx) => (idx === i ? e.target.value : x)) })
+              }
+              placeholder="captured_variable"
+              aria-label="Field to confirm"
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label="Remove field"
+              onClick={() => set({ fields: fields.filter((_, idx) => idx !== i) })}
+            >
+              <X size={14} />
+            </Button>
+          </div>
+        ))}
+        <Button variant="secondary" size="sm" onClick={() => set({ fields: [...fields, ''] })}>
+          <Plus size={14} /> Add field
+        </Button>
+        <Labeled label="Confirmation prompt (optional)">
+          <input
+            className={field}
+            value={str(config.confirmPrompt)}
+            onChange={(e) => set({ confirmPrompt: e.target.value })}
+            placeholder="Let me confirm what I have."
+          />
+        </Labeled>
+        <Labeled label="Max correction retries">
+          <input
+            type="number"
+            min={0}
+            max={5}
+            className={field}
+            value={typeof config.maxRetries === 'number' ? config.maxRetries : 2}
+            onChange={(e) => set({ maxRetries: Number(e.target.value) })}
+          />
+        </Labeled>
+      </div>
+    );
+  }
+
+  if (nodeType === 'TRANSFER') {
+    return (
+      <div className="flex flex-col gap-3">
+        <Labeled label="Transfer to">
+          <select
+            className={field}
+            value={str(config.target) || 'human'}
+            onChange={(e) => set({ target: e.target.value })}
+          >
+            <option value="human">Human (Agent Desk)</option>
+            <option value="agent">Another agent</option>
+            <option value="number">Phone number</option>
+          </select>
+        </Labeled>
+        <Labeled label="Destination">
+          <input
+            className={field}
+            value={str(config.destination)}
+            onChange={(e) => set({ destination: e.target.value })}
+            placeholder="queue / agentId / +1555…"
+          />
+        </Labeled>
+        <Labeled label="Mode">
+          <select
+            className={field}
+            value={str(config.mode) || 'warm'}
+            onChange={(e) => set({ mode: e.target.value })}
+          >
+            <option value="warm">Warm (announce with context)</option>
+            <option value="cold">Cold (transfer immediately)</option>
+          </select>
+        </Labeled>
+        <label className="flex items-center gap-2 text-sm text-vq-text-hi">
+          <input
+            type="checkbox"
+            checked={config.summarizeContext !== false}
+            onChange={(e) => set({ summarizeContext: e.target.checked })}
+          />
+          Summarise call context to the target
+        </label>
+      </div>
+    );
+  }
+
+  if (nodeType === 'SUBFLOW') {
+    return (
+      <div className="flex flex-col gap-3">
+        <Labeled label="Flow ID">
+          <input
+            className={field}
+            value={str(config.flowId)}
+            onChange={(e) => set({ flowId: e.target.value })}
+            placeholder="Reusable flow to invoke (uuid)"
+          />
+        </Labeled>
+        <Labeled label="Return label (optional)">
+          <input
+            className={field}
+            value={str(config.returnLabel)}
+            onChange={(e) => set({ returnLabel: e.target.value })}
+            placeholder="Where to continue after it returns"
+          />
+        </Labeled>
+        <p className="text-vq-text-lo text-xs">
+          Sub-flows run within your workspace only — a flow from another tenant can never be
+          invoked.
+        </p>
+      </div>
+    );
+  }
+
   if (nodeType === 'KNOWLEDGE') {
     return <KnowledgeForm config={config} set={set} />;
   }

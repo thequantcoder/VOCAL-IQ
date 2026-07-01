@@ -114,6 +114,66 @@ export const knowledgeConfigSchema = z.object({
 });
 export type KnowledgeConfig = z.infer<typeof knowledgeConfigSchema>;
 
+// ── Day 21 nodes: Collect&Confirm, Transfer, Sub-flow ─────────────────────────
+
+/** Read back captured fields and confirm/correct before acting. */
+export const collectConfirmConfigSchema = z.object({
+  fields: z.array(z.string().min(1).max(60)).default([]), // captured variable names to confirm
+  confirmPrompt: z.string().max(500).default(''),
+  maxRetries: z.number().int().min(0).max(5).default(2),
+});
+export type CollectConfirmConfig = z.infer<typeof collectConfirmConfigSchema>;
+
+/** Hand the call to a human or another agent (warm = spoken context first). */
+export const transferConfigSchema = z.object({
+  target: z.enum(['human', 'agent', 'number']).default('human'),
+  destination: z.string().max(200).default(''), // E.164 number / agentId / queue name
+  mode: z.enum(['warm', 'cold']).default('warm'),
+  summarizeContext: z.boolean().default(true),
+});
+export type TransferConfig = z.infer<typeof transferConfigSchema>;
+
+/** Invoke another flow as a reusable component, then continue. */
+export const subflowConfigSchema = z.object({
+  flowId: z.string().uuid().or(z.literal('')).default(''),
+  returnLabel: z.string().max(80).default(''),
+});
+export type SubflowConfig = z.infer<typeof subflowConfigSchema>;
+
+/**
+ * Runtime helper: the spoken confirmation for the captured fields (Collect&Confirm). Only
+ * fields that were actually captured are read back.
+ */
+export function buildConfirmation(
+  fields: string[],
+  captured: Record<string, unknown>,
+  prompt = '',
+): string {
+  const parts = fields
+    .filter((f) => captured[f] !== undefined && captured[f] !== null && captured[f] !== '')
+    .map((f) => `${f.replace(/_/g, ' ')} as ${String(captured[f])}`);
+  if (parts.length === 0) return prompt || 'I don’t have anything to confirm yet.';
+  const lead = prompt ? `${prompt} ` : '';
+  return `${lead}I have your ${parts.join(', ')}. Is that correct?`;
+}
+
+/**
+ * Runtime helper: the handoff context passed to a transfer target. Carries only the
+ * current call's captured data — it is assembled per-call inside the tenant's loop, so it
+ * can never include another tenant's data (self-audit B).
+ */
+export function buildTransferContext(
+  captured: Record<string, unknown>,
+  note = '',
+): { summary: string; data: Record<string, unknown> } {
+  const entries = Object.entries(captured).filter(
+    ([, v]) => v !== undefined && v !== null && v !== '',
+  );
+  const facts = entries.map(([k, v]) => `${k.replace(/_/g, ' ')}: ${String(v)}`).join('; ');
+  const summary = [note, facts].filter(Boolean).join(' — ') || 'No context captured yet.';
+  return { summary, data: Object.fromEntries(entries) };
+}
+
 /** Build the JSON-schema `{ properties, required }` the executor validates args against. */
 export function toolParamsToJsonSchema(params: ToolParam[]): {
   properties: Record<string, { type: string }>;
@@ -142,6 +202,9 @@ const CONFIG_SCHEMAS = {
   [FlowNodeType.END]: endConfigSchema,
   [FlowNodeType.TOOL]: toolConfigSchema,
   [FlowNodeType.KNOWLEDGE]: knowledgeConfigSchema,
+  [FlowNodeType.COLLECT_CONFIRM]: collectConfirmConfigSchema,
+  [FlowNodeType.TRANSFER]: transferConfigSchema,
+  [FlowNodeType.SUBFLOW]: subflowConfigSchema,
 } as const;
 
 /** The config schema for a node type, or null if the type has no config schema yet. */

@@ -95,3 +95,33 @@ describe('compileNode', () => {
     expect((spec.config as { mode: string }).mode).toBe('scripted');
   });
 });
+
+describe('Day 21 nodes (Collect/Confirm, Transfer, Sub-flow)', () => {
+  it('validates the three node configs', async () => {
+    const m = await import('./flow-node-config');
+    expect(
+      m.validateNodeConfig('COLLECT_CONFIRM', { fields: ['name', 'appt_date'], maxRetries: 2 })
+        .valid,
+    ).toBe(true);
+    expect(m.validateNodeConfig('TRANSFER', { target: 'human', mode: 'warm' }).valid).toBe(true);
+    expect(m.validateNodeConfig('TRANSFER', { target: 'nope' }).valid).toBe(false);
+    expect(m.validateNodeConfig('SUBFLOW', { flowId: 'not-a-uuid' }).valid).toBe(false);
+    expect(m.validateNodeConfig('SUBFLOW', { flowId: '' }).valid).toBe(true);
+  });
+
+  it('buildConfirmation reads back only captured fields', async () => {
+    const { buildConfirmation } = await import('./flow-node-config');
+    expect(
+      buildConfirmation(['caller_name', 'appt_date'], { caller_name: 'Ada', appt_date: 'Friday' }),
+    ).toBe('I have your caller name as Ada, appt date as Friday. Is that correct?');
+    expect(buildConfirmation(['x'], {})).toContain('confirm yet');
+  });
+
+  it('buildTransferContext carries only this call’s captured data', async () => {
+    const { buildTransferContext } = await import('./flow-node-config');
+    const ctx = buildTransferContext({ name: 'Ada', empty: '', topic: 'billing' }, 'Escalation');
+    expect(ctx.summary).toContain('Escalation');
+    expect(ctx.summary).toContain('name: Ada');
+    expect(ctx.data).toEqual({ name: 'Ada', topic: 'billing' }); // empty dropped
+  });
+});

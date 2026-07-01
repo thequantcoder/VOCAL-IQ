@@ -26,7 +26,17 @@ import { useSaveFlow } from '../../lib/api';
 import { NODE_META, type VQNodeData, nodeTypes } from './flow-nodes';
 import { NodeConfigForm } from './node-config-form';
 
-const PALETTE = ['SAY', 'LISTEN', 'DECISION', 'TOOL', 'KNOWLEDGE', 'TRANSFER', 'END'] as const;
+const PALETTE = [
+  'SAY',
+  'LISTEN',
+  'DECISION',
+  'TOOL',
+  'KNOWLEDGE',
+  'COLLECT_CONFIRM',
+  'TRANSFER',
+  'SUBFLOW',
+  'END',
+] as const;
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
