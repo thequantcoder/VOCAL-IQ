@@ -166,3 +166,34 @@ export function usePlaceTestCall() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['calls'] }),
   });
 }
+
+// ── Builder flow graph ────────────────────────────────────────────────────────
+
+export interface FlowDraft {
+  flowId: string;
+  versionId: string;
+  version: number;
+  graph: unknown;
+}
+
+export function useFlow(agentId: string) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['flow', agentId],
+    queryFn: () => apiFetch<FlowDraft>(getToken, `/agents/${agentId}/flow`),
+    enabled: Boolean(agentId),
+    staleTime: Number.POSITIVE_INFINITY, // load once; the canvas owns the live state
+  });
+}
+
+export function useSaveFlow(agentId: string) {
+  const { getToken } = useAuth();
+  return useMutation({
+    mutationFn: (graph: unknown) =>
+      apiFetch<{ versionId: string; version: number; savedAt: string }>(
+        getToken,
+        `/agents/${agentId}/flow`,
+        { method: 'PUT', body: JSON.stringify(graph) },
+      ),
+  });
+}

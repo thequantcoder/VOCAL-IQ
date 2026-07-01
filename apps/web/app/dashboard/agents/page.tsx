@@ -52,7 +52,14 @@ export default function AgentsPage() {
                     {agent.languages.length ? ` · ${agent.languages.join(', ')}` : ''}
                   </span>
                 </div>
-                <StatusBadge status={agent.status} />
+                <div className="flex items-center gap-3">
+                  <StatusBadge status={agent.status} />
+                  <Link href={`/dashboard/agents/${agent.id}/builder`}>
+                    <Button variant="secondary" size="sm">
+                      Build
+                    </Button>
+                  </Link>
+                </div>
               </Card>
             </li>
           ))}
