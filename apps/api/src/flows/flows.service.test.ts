@@ -98,3 +98,51 @@ describe('FlowsService.publishFlow', () => {
     expect(draft.version).toBe(2);
   });
 });
+
+describe('FlowsService versioning + rollback', () => {
+  const VALID = {
+    nodes: [
+      { id: 'start', type: 'START', position: { x: 0, y: 0 }, data: { config: {} } },
+      { id: 'end', type: 'END', position: { x: 200, y: 0 }, data: { config: {} } },
+    ],
+    edges: [{ id: 'e1', source: 'start', target: 'end' }],
+  };
+
+  it('lists versions with a draft flag and rolls a prior version back into the draft', async () => {
+    // Publish v1 (→ opens draft v2), then edit + publish v2 (→ draft v3).
+    await svc.saveGraph(C1, AGENT, VALID);
+    await svc.publishFlow(C1, AGENT);
+    const edited = {
+      ...VALID,
+      nodes: [
+        ...VALID.nodes,
+        {
+          id: 'say',
+          type: 'SAY',
+          position: { x: 100, y: 0 },
+          data: { config: { mode: 'scripted', text: 'Hi' } },
+        },
+      ],
+      edges: [
+        { id: 'e1', source: 'start', target: 'say' },
+        { id: 'e2', source: 'say', target: 'end' },
+      ],
+    };
+    await svc.saveGraph(C1, AGENT, edited);
+    await svc.publishFlow(C1, AGENT);
+
+    const versions = await svc.listVersions(C1, AGENT);
+    expect(versions[0]?.isDraft).toBe(true); // newest is the working draft
+    expect(versions.filter((v) => !v.isDraft).length).toBeGreaterThanOrEqual(2); // v1 + v2 published
+
+    // Roll v1 (the simple START→END) back into the current draft.
+    const res = await svc.restoreVersion(C1, AGENT, 1);
+    expect(res.restoredFrom).toBe(1);
+    const draft = await svc.getOrCreateDraft(C1, AGENT);
+    expect((draft.graph as { nodes: unknown[] }).nodes).toHaveLength(2); // restored to v1's 2 nodes
+  });
+
+  it('404s an unknown version', async () => {
+    await expect(svc.restoreVersion(C1, AGENT, 999)).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+});

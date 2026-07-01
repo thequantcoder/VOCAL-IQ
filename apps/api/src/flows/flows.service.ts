@@ -35,9 +35,72 @@ export interface PublishResult {
   publishedAt: string;
 }
 
+export interface VersionSummary {
+  version: number;
+  publishedAt: Date | null;
+  createdAt: Date;
+  isDraft: boolean;
+}
+
 @Injectable()
 export class FlowsService {
   constructor(private readonly db: PrismaService) {}
+
+  /** List a flow's versions (newest first) for the version-history panel. */
+  async listVersions(tenantId: string, agentId: string): Promise<VersionSummary[]> {
+    return this.db.withTenant(tenantId, async (tx) => {
+      const flow = await tx.flow.findFirst({
+        where: { agentId },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
+      });
+      if (!flow) return [];
+      const versions = await tx.flowVersion.findMany({
+        where: { flowId: flow.id },
+        orderBy: { version: 'desc' },
+        select: { version: true, publishedAt: true, createdAt: true },
+      });
+      return versions.map((v) => ({ ...v, isDraft: v.publishedAt === null }));
+    });
+  }
+
+  /**
+   * Rollback: copy a prior version's graph into the current draft (draft-isolated — it
+   * never mutates a published version). The builder can then re-publish it. RLS-scoped.
+   */
+  async restoreVersion(
+    tenantId: string,
+    agentId: string,
+    version: number,
+  ): Promise<{ restoredFrom: number; draftVersion: number }> {
+    return this.db.withTenant(tenantId, async (tx) => {
+      const flow = await tx.flow.findFirst({
+        where: { agentId },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
+      });
+      if (!flow) throw new NotFoundError('Flow not found');
+
+      const source = await tx.flowVersion.findFirst({
+        where: { flowId: flow.id, version },
+        select: { graph: true },
+      });
+      if (!source) throw new NotFoundError(`Version ${version} not found`);
+
+      const draft = await tx.flowVersion.findFirst({
+        where: { flowId: flow.id, publishedAt: null },
+        orderBy: { version: 'desc' },
+        select: { id: true, version: true },
+      });
+      if (!draft) throw new NotFoundError('No editable draft to restore into');
+
+      await tx.flowVersion.update({
+        where: { id: draft.id },
+        data: { graph: source.graph as unknown as Prisma.InputJsonValue },
+      });
+      return { restoredFrom: version, draftVersion: draft.version };
+    });
+  }
 
   /**
    * Publish the draft: compile it (Day 22) as a gate — reject if not runnable — then pin
