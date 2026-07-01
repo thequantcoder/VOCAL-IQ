@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DbModule } from '../db/db.module';
+import { CallsReadService } from './calls-read.service';
 import { CallsController } from './calls.controller';
 import { DIALER, PendingDialer } from './dialer';
 import { OutboundService } from './outbound.service';
@@ -12,7 +13,7 @@ import { OutboundService } from './outbound.service';
 @Module({
   imports: [DbModule],
   controllers: [CallsController],
-  providers: [OutboundService, { provide: DIALER, useClass: PendingDialer }],
-  exports: [OutboundService],
+  providers: [OutboundService, CallsReadService, { provide: DIALER, useClass: PendingDialer }],
+  exports: [OutboundService, CallsReadService],
 })
 export class CallsModule {}
