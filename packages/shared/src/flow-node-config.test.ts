@@ -5,6 +5,8 @@ import {
   compileNode,
   listenConfigSchema,
   sayConfigSchema,
+  toolConfigSchema,
+  toolParamsToJsonSchema,
   validateNodeConfig,
 } from './flow-node-config';
 
@@ -41,6 +43,26 @@ describe('validateNodeConfig', () => {
 
   it('passes types without a config schema (opaque config)', () => {
     expect(validateNodeConfig('TOOL', { anything: true }).valid).toBe(true);
+  });
+});
+
+describe('tool config', () => {
+  it('validates a function tool and rejects a bad URL', () => {
+    expect(
+      toolConfigSchema.safeParse({ kind: 'function', name: 'get_weather', endpoint: 'https://x/w' })
+        .success,
+    ).toBe(true);
+    expect(toolConfigSchema.safeParse({ endpoint: 'not-a-url' }).success).toBe(false);
+    expect(validateNodeConfig('TOOL', { name: '1bad' }).valid).toBe(false); // invalid identifier
+  });
+
+  it('builds a JSON schema from typed params', () => {
+    const schema = toolParamsToJsonSchema([
+      { name: 'city', type: 'string', required: true },
+      { name: 'days', type: 'integer', required: false },
+    ]);
+    expect(schema.properties).toEqual({ city: { type: 'string' }, days: { type: 'integer' } });
+    expect(schema.required).toEqual(['city']);
   });
 });
 

@@ -73,6 +73,53 @@ export const endConfigSchema = z.object({
   hangup: z.boolean().default(true),
 });
 
+/**
+ * Tool node (Day 19). `function` = a typed function the LLM may call mid-call; `webhook`
+ * = a fire-and-forget signed REST call. `params` is the JSON-schema `properties` map the
+ * executor validates LLM args against. Endpoints are SSRF-guarded at execution time.
+ */
+export const toolParamSchema = z.object({
+  name: z
+    .string()
+    .min(1)
+    .max(60)
+    .regex(/^[a-zA-Z_][a-zA-Z0-9_]*$/, 'must be a valid parameter name'),
+  type: z.enum(['string', 'number', 'integer', 'boolean', 'object', 'array']),
+  required: z.boolean().default(false),
+});
+
+export const toolConfigSchema = z.object({
+  kind: z.enum(['function', 'webhook']).default('function'),
+  name: z
+    .string()
+    .max(60)
+    .regex(/^[a-zA-Z_][a-zA-Z0-9_]*$/, 'must be a valid tool name')
+    .or(z.literal(''))
+    .default(''),
+  description: z.string().max(500).default(''),
+  endpoint: z.string().url('must be a valid URL').or(z.literal('')).default(''),
+  method: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']).default('POST'),
+  params: z.array(toolParamSchema).default([]),
+  authHeader: z.string().max(200).default(''),
+  signPayload: z.boolean().default(false),
+});
+export type ToolParam = z.infer<typeof toolParamSchema>;
+export type ToolConfig = z.infer<typeof toolConfigSchema>;
+
+/** Build the JSON-schema `{ properties, required }` the executor validates args against. */
+export function toolParamsToJsonSchema(params: ToolParam[]): {
+  properties: Record<string, { type: string }>;
+  required: string[];
+} {
+  const properties: Record<string, { type: string }> = {};
+  const required: string[] = [];
+  for (const p of params) {
+    properties[p.name] = { type: p.type };
+    if (p.required) required.push(p.name);
+  }
+  return { properties, required };
+}
+
 export type StartConfig = z.infer<typeof startConfigSchema>;
 export type SayConfig = z.infer<typeof sayConfigSchema>;
 export type ListenConfig = z.infer<typeof listenConfigSchema>;
@@ -85,6 +132,7 @@ const CONFIG_SCHEMAS = {
   [FlowNodeType.LISTEN]: listenConfigSchema,
   [FlowNodeType.DECISION]: decisionConfigSchema,
   [FlowNodeType.END]: endConfigSchema,
+  [FlowNodeType.TOOL]: toolConfigSchema,
 } as const;
 
 /** The config schema for a node type, or null if the type has no config schema yet. */
