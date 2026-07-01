@@ -597,3 +597,37 @@ J. Quality/docs: ✅ — typed hooks + DTOs; components documented; deferrals lo
 K. Build/CI: ✅ — web build compiles; Playwright kept out of CI test so the gate stays deterministic; new deps pinned (@tanstack/react-query, @playwright/test).
 
 Next: Day 15 (billing) — Stripe plans + metered usage on top of the Day-13 cost engine. (Days 11/12 inbound+recording resume with the Twilio number/tunnel.)
+
+## Day 15 — Stripe billing: plans, entitlements, metered usage, proration, dunning, webhook — 2026-07-01 — ✅ DONE (Stripe gated)
+Model: Opus. Branch `day/15-stripe-billing-metering` → PR. **Stripe keys are EMPTY** → built the full billing logic now with Stripe behind a `BillingProcessor` seam; live checkout/webhooks deferred until keys are set (memory: [[stripe-live-test-pending]]) — same build-now/gate-live pattern as Twilio (§7 admin block not emitted; user endorses this pattern).
+
+Built (DONE):
+- **EntitlementsService** — resolves a tenant's plan (active subscription → plan, else the seeded global **Free**) and enforces limits. **Agent creation now gates on `agentLimit`** (Free 1 / Pro 10 / Scale 50). `GET /billing/subscription` → plan + entitlements + usage.
+- **PlansService** + `GET /billing/plans` — the Free/Pro/Scale catalog.
+- **UsageReporterService** — sums **billable (non-BYOK) telephony seconds** from UsageRecords (Day 13) → minutes + **overage beyond included minutes** (self-audit D).
+- **Stripe webhook** (self-audit C): `verifyStripeSignature` reimplements Stripe's `t=…,v1=…` HMAC-SHA256-over-raw-body scheme (constant-time compare + replay tolerance) — no SDK, offline-testable; `BillingWebhookService` verifies → dedupes by event id (**idempotent**) → applies the subscription status transition (cross-tenant lookup by `externalId` via admin client). **Unauthenticated controller** (security = the signature); `main.ts` already exposes `rawBody`.
+- Pure **proration** + **overage** math; **dunning** state machine (ACTIVE→PAST_DUE→CANCELLED with retry/grace + reactivate), mapped onto the DB SubscriptionStatus enum.
+- **BillingProcessor seam** — `PendingBillingProcessor` now (checkout → clear "not configured" error; usage push = no-op); StripeBillingProcessor swaps in at go-live.
+
+Verification:
+- api: typecheck + lint green; **33 billing+agents tests** — signature accept/tamper/wrong-secret/**replay**/malformed, event mapping, proration + overage, dunning transitions, entitlements default + **limit gate**, plan resolution (Pro raises limit), usage minutes + overage (**BYOK excluded**), webhook **apply + idempotency (duplicate no-op)** + bad-signature reject. **Full api suite 72 green**; build green.
+- Tests use a dedicated tenant (billing) + a Scale sub for C1 (agents test) so the new agent-limit gate doesn't flake against parallel suites sharing a tenant.
+
+Deferred to go-live (needs STRIPE_* keys — [[stripe-live-test-pending]]): real Stripe product/price creation, Checkout session, live subscription webhooks, usage-record push to Stripe, and Resend dunning/low-balance emails. Wallet balance + low-balance alerts scaffolded via the Wallet model (full reseller wallet = Day 53). §15 — verify Stripe event/webhook shapes against the real API before finalising.
+
+## Self-Audit — Day 15 (A–K)
+A. Correctness/journey (focus): ✅ — subscribe→entitlements→limit enforced; usage→minutes+overage; webhook→status transition; all integration/unit tested.
+B. Tenancy: ✅ — entitlements/usage read under `withTenant` (RLS); the webhook is cross-tenant BY DESIGN (Stripe has no tenant context) and looks up the subscription by its own externalId via the admin client (documented).
+C. Security (focus, webhook verify + no leak): ✅ — **signature verified over the raw body with constant-time compare + replay tolerance**; unverified events rejected (400, safe message); webhook controller unauthenticated but signature-gated; no secret logged; checkout gated with a safe error until Stripe is set.
+D. Usage→billing accuracy (focus): ✅ — integer cents throughout (no float drift); billable excludes BYOK; overage only beyond included minutes; proration credits/charges pro-rated — all unit-tested.
+E. Tests: ✅ — 33 new (pure + real-Postgres); idempotency + replay + limit-gate explicitly covered.
+F. Performance: ✅ — usage via an indexed aggregate; entitlement reads are small + indexed.
+G. Errors/obs: ✅ — typed BillingError/ValidationError; dunning returns explicit actions (email/suspend/reactivate) for the caller to act on.
+H. UI: ✅ NA (billing screens consume these = later).
+I. Regression: ✅ — full api 72 green; agent-create gate added without breaking existing suites (dedicated tenant + C1 Scale sub); no other app touched.
+J. Quality/docs: ✅ — typed DTOs; seam + gating documented; deferrals logged + in memory.
+K. Build/CI: ✅ — all tests deterministic + key-free (Stripe never called in CI); build green.
+
+Webhook verify + idempotency CONFIRMED (self-audit focus): a tampered/stale/wrong-secret signature is rejected; a valid event applies the status once and a re-delivery of the same event id is a no-op (tests in billing-logic + billing.service).
+Admin next (to go live): set STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET + NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY, then swap PendingBillingProcessor → Stripe + run `stripe listen`.
+Next: Day 16 (web-call widget) closes Phase 1. (Days 11/12 inbound+recording resume with Twilio.)
