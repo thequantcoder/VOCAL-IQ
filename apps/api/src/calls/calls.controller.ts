@@ -1,16 +1,32 @@
-import { Body, Controller, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 import { CurrentMembership } from '../tenancy/current-tenant.decorator';
 import { CONFIG_WRITERS, Roles } from '../tenancy/roles';
 import { RolesGuard } from '../tenancy/roles.guard';
 import type { TenantContext } from '../tenancy/tenant-context';
 import { TenantGuard } from '../tenancy/tenant.guard';
+import { CallsReadService } from './calls-read.service';
 import { OutboundService } from './outbound.service';
 
 @UseGuards(ClerkAuthGuard, TenantGuard, RolesGuard)
 @Controller('calls')
 export class CallsController {
-  constructor(private readonly outbound: OutboundService) {}
+  constructor(
+    private readonly outbound: OutboundService,
+    private readonly reads: CallsReadService,
+  ) {}
+
+  /** Cursor-paginated call list (any member — RLS-scoped read). */
+  @Get()
+  async list(@CurrentMembership() ctx: TenantContext, @Query() query: unknown) {
+    return this.reads.list(ctx.tenantId, query);
+  }
+
+  /** Call detail + transcript (any member — RLS-scoped read). */
+  @Get(':id')
+  async detail(@CurrentMembership() ctx: TenantContext, @Param('id') id: string) {
+    return this.reads.detail(ctx.tenantId, id);
+  }
 
   /**
    * Place an outbound call. Config-writer roles only (BUILDER+). Enforces DNC, consent,

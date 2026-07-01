@@ -567,3 +567,33 @@ K. Build/CI: ✅ — workers now has a test script (CI picks it up); cost tests 
 
 Reconciliation invariant CONFIRMED (self-audit focus): a COMPLETED call with zero UsageRecords is flagged by `reconcile`; a metered call + a NO_ANSWER call are not (test `flags a COMPLETED call with zero usage…`).
 Next: Day 14 (first usable dashboard) consumes these cost APIs — or resume Days 11/12 when the Twilio number/tunnel are ready.
+
+## Day 14 — First dashboard (agents, place call, transcript + cost) — 2026-07-01 — ✅ DONE (full authed E2E deferred)
+Model: Opus (kit marks ⚡ SONNET; built as Opus). Branch `day/14-first-dashboard` → PR. The first demoable product surface. Resumes strict sequence after the Day-13 detour.
+
+Built (DONE):
+- **api backing endpoints** (RLS-scoped, DTO-typed): `AgentsService` → `GET /agents`, `GET /agents/:id`, `POST /agents` (BUILDER+), `PATCH /agents/:id` (BUILDER+); `CallsReadService` → `GET /calls` (cursor-paginated, status/direction/agent filters), `GET /calls/:id` (detail + transcript). 8 integration tests (real Postgres).
+- **web data layer**: TanStack Query added to `providers.tsx`; `lib/api.ts` typed client attaches the Clerk bearer token per request (tenant resolved server-side by TenantGuard) + surfaces only the safe error message. Hooks for agents/calls/place-test-call.
+- **shell + views** (DESIGN-SYSTEM §5c/§7): `DashboardShell` (responsive sidebar→top-bar nav, theme toggle, UserButton) wrapping content in a **React ErrorBoundary** (Sentry-reported, retry — never a white screen). Overview (waveform hero + stats + CTAs); Agents (list + create form); Calls (place-test-call form + accessible calls table); Call detail (waveform, recording player, cost breakdown, speaker-diarized mono transcript). Reusable four-state components (Skeleton/Loading/Empty/Error) + StatusBadge; colour always paired with text; skeletons still under `prefers-reduced-motion`; dark-first.
+
+Verification:
+- api: typecheck + lint green; **8 new integration tests** (agent CRUD + validation/404; call list ordering + cursor pagination + status filter; detail with transcript + 404). Full api suite green.
+- web: typecheck + lint green; **production build compiles all 5 dashboard routes** (`/dashboard`, `/agents`, `/agents/new`, `/calls`, `/calls/[id]`).
+- Fixed a stale `.next/*  2.ts` macOS-duplicate artifact that broke tsc (cleaned `.next`).
+
+Deferred (tracked): **full authenticated E2E** (sign up → create agent → place test call → transcript+cost) — Playwright config + a public-shell smoke are in place via a separate `test:e2e` script kept OUT of the CI `test` pipeline (no browser install → CI stays deterministic); the authed journey needs a Clerk test user + the api/db harness running. Also: transcript shows live-captured segments once the voice→api persistence is wired; cursor "load more" UI + list virtualization for large tenants; tenant switcher (single default tenant for now).
+
+## Self-Audit — Day 14 (A–K)
+A. Correctness/journey (focus): ✅ — create agent → it appears in the list; place test call → Call row created (PendingDialer) → shows in the table → detail renders transcript + cost. Backend paths integration-tested.
+B. Tenancy (focus, only own data): ✅ — every api read/write under `withTenant` (RLS); the web never sends a tenant id (server resolves it from membership), so a user can only see their own data.
+C. Security: ✅ — Clerk bearer per request; safe error messages only (no internals); mutations gated to BUILDER+; no secret in client (only NEXT_PUBLIC_API_URL).
+D. Cost: ✅ — call list + detail surface billable + per-capability cost from Day-13 breakdowns.
+E. Tests: ✅ api 8 integration; web build as the type/compile gate; ⏭ full authed Playwright E2E deferred (scaffold in place, logged).
+F. Performance: ✅ — TanStack Query caching (staleTime); skeletons not spinners; route-split pages. ⏭ list virtualization noted for large tenants.
+G. Errors/obs: ✅ — ErrorBoundary (Sentry) at the shell; every view has an error state with retry (`messageFromError`).
+H. UI (focus): ✅ — four states everywhere; dark-first + light equal; responsive (sidebar→top bar); a11y (aria-current, labelled controls, focus rings, colour+text, sr-only captions); waveform motif; motion respects reduced-motion.
+I. Regression: ✅ — api unchanged paths green; web typecheck/lint/build green; no other app touched.
+J. Quality/docs: ✅ — typed hooks + DTOs; components documented; deferrals logged.
+K. Build/CI: ✅ — web build compiles; Playwright kept out of CI test so the gate stays deterministic; new deps pinned (@tanstack/react-query, @playwright/test).
+
+Next: Day 15 (billing) — Stripe plans + metered usage on top of the Day-13 cost engine. (Days 11/12 inbound+recording resume with the Twilio number/tunnel.)
