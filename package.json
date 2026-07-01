@@ -32,6 +32,9 @@
       "@nestjs/core",
       "sharp",
       "msgpackr-extract"
-    ]
+    ],
+    "overrides": {
+      "ioredis": "5.11.1"
+    }
   }
 }
