@@ -12,6 +12,7 @@ their rooms. A Redis-backed registry replaces this map when the loop scales out.
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 
 from fastapi import APIRouter, HTTPException
@@ -21,11 +22,18 @@ from app.calls.lifecycle import CallSession, CallStatus
 from app.calls.livekit_service import LiveKitRoomService, mint_access_token
 from app.calls.models import CallTokens, StartCallRequest, StartCallResponse
 from app.config import settings
+from app.loop import livekit_agent
+from app.loop.engine import LoopConfig
 
 router = APIRouter(prefix="/calls", tags=["calls"])
 
-# In-memory registry of active sessions (Redis-backed registry arrives with the loop).
+# In-memory registries (Redis-backed versions arrive when the loop scales out).
 _sessions: dict[str, CallSession] = {}
+_agent_tasks: dict[str, asyncio.Task[None]] = {}
+
+# Default agent persona until the compiled Agent config is loaded from the api (Day 17+).
+_DEFAULT_SYSTEM_PROMPT = "You are a helpful, friendly voice assistant. Keep replies short and natural."
+_DEFAULT_GREETING = "Hello! Thanks for calling. How can I help you today?"
 
 
 def _room_service() -> LiveKitRoomService | None:
@@ -71,15 +79,21 @@ async def start_call(req: StartCallRequest) -> StartCallResponse:
             session.transition(CallStatus.FAILED)
             await events.emit(call_id, req.tenant_id, "call.failed", reason="room_create_failed")
             raise HTTPException(status_code=502, detail="Failed to provision media room") from exc
+        agent_token = mint_access_token(
+            key, secret, room, f"agent-{call_id}", name="VocalIQ Agent", metadata=req.agent_id
+        )
         tokens = CallTokens(
             participant=mint_access_token(key, secret, room, f"caller-{call_id}", name="Caller"),
-            agent=mint_access_token(
-                key, secret, room, f"agent-{call_id}", name="VocalIQ Agent", metadata=req.agent_id
-            ),
+            agent=agent_token,
             server_url=settings.livekit_url,
         )
+        # Put the AI agent in the room so the caller has someone to talk to.
+        if settings.voice_ai_configured:
+            _dispatch_agent(call_id, room, agent_token, req)
+        else:
+            note = "Voice-AI keys (Deepgram/OpenAI/ElevenLabs) not set — room ready, no agent dispatched."
     else:
-        note = "LiveKit keys not configured — room + tokens + media bridge pending (Day 09)."
+        note = "LiveKit keys not configured — room + tokens + media bridge pending."
 
     session.transition(CallStatus.RINGING)
     await events.emit(call_id, req.tenant_id, "call.ringing", room=room, media=tokens is not None)
@@ -87,6 +101,31 @@ async def start_call(req: StartCallRequest) -> StartCallResponse:
     return StartCallResponse(
         call_id=call_id, room=room, status=session.status, tokens=tokens, note=note
     )
+
+
+def _dispatch_agent(call_id: str, room: str, agent_token: str, req: StartCallRequest) -> None:
+    """Launch the conversation-loop agent worker to join the room (background task)."""
+    assert settings.livekit_url and settings.deepgram_api_key
+    assert settings.openai_api_key and settings.elevenlabs_api_key
+    config = LoopConfig(
+        tenant_id=req.tenant_id,
+        call_id=call_id,
+        agent_id=req.agent_id,
+        system_prompt=_DEFAULT_SYSTEM_PROMPT,
+        greeting=_DEFAULT_GREETING,
+    )
+    task = asyncio.create_task(
+        livekit_agent.run_agent(
+            url=settings.livekit_url,
+            token=agent_token,
+            config=config,
+            stt_key=settings.deepgram_api_key,
+            llm_key=settings.openai_api_key,
+            tts_key=settings.elevenlabs_api_key,
+        )
+    )
+    _agent_tasks[call_id] = task
+    task.add_done_callback(lambda _t: _agent_tasks.pop(call_id, None))
 
 
 def active_session_count() -> int:
@@ -101,6 +140,10 @@ async def drain_active_calls() -> None:
     for session in list(_sessions.values()):
         if session.is_terminal:
             continue
+        # Stop the agent worker for this call, if one is running.
+        agent = _agent_tasks.pop(session.call_id, None)
+        if agent is not None and not agent.done():
+            agent.cancel()
         # IN_PROGRESS calls complete; earlier stages are cut short (FAILED) — both legal.
         terminal = CallStatus.COMPLETED if session.status is CallStatus.IN_PROGRESS else CallStatus.FAILED
         session.transition(terminal)
