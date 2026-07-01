@@ -20,11 +20,13 @@ import {
   useNodesState,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { AlertTriangle, Check, Loader2, Plus } from 'lucide-react';
+import { AlertTriangle, Check, FlaskConical, History, Loader2, Plus } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePublishFlow, useSaveFlow } from '../../lib/api';
 import { NODE_META, type VQNodeData, nodeTypes } from './flow-nodes';
 import { NodeConfigForm } from './node-config-form';
+import { SimulatorPanel } from './simulator-panel';
+import { VersionsPanel } from './versions-panel';
 
 const PALETTE = [
   'SAY',
@@ -77,6 +79,8 @@ export function FlowCanvas({ agentId, graph }: { agentId: string; graph: FlowGra
   const [nodes, setNodes, onNodesChange] = useNodesState(initial.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initial.edges);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [rightPanel, setRightPanel] = useState<'test' | 'versions' | null>(null);
+  const [simNode, setSimNode] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const save = useSaveFlow(agentId);
   const publish = usePublishFlow(agentId);
@@ -95,12 +99,21 @@ export function FlowCanvas({ agentId, graph }: { agentId: string; graph: FlowGra
     return m;
   }, [validation, nodes]);
 
-  // Reflect validation errors onto node styling.
+  // Reflect validation errors + the simulator's active node onto node styling.
   const decorated = useMemo(
     () =>
-      nodes.map((n) => ({ ...n, data: { ...n.data, hasError: errorByNode.get(n.id) ?? false } })),
-    [nodes, errorByNode],
+      nodes.map((n) => ({
+        ...n,
+        data: {
+          ...n.data,
+          hasError: errorByNode.get(n.id) ?? false,
+          simActive: n.id === simNode,
+        },
+      })),
+    [nodes, errorByNode, simNode],
   );
+
+  const currentGraph = useMemo(() => toGraph(nodes, edges), [nodes, edges]);
 
   // Debounced autosave whenever the graph changes.
   useEffect(() => {
@@ -169,6 +182,20 @@ export function FlowCanvas({ agentId, graph }: { agentId: string; graph: FlowGra
           </Button>
         ))}
         <div className="ml-auto flex items-center gap-3 text-xs">
+          <Button
+            variant={rightPanel === 'test' ? 'primary' : 'secondary'}
+            size="sm"
+            onClick={() => setRightPanel((p) => (p === 'test' ? null : 'test'))}
+          >
+            <FlaskConical size={14} /> Test
+          </Button>
+          <Button
+            variant={rightPanel === 'versions' ? 'primary' : 'secondary'}
+            size="sm"
+            onClick={() => setRightPanel((p) => (p === 'versions' ? null : 'versions'))}
+          >
+            <History size={14} /> Versions
+          </Button>
           <SaveBadge state={saveState} />
           <ValidityBadge errors={validation.errors} />
           <Button
@@ -210,8 +237,19 @@ export function FlowCanvas({ agentId, graph }: { agentId: string; graph: FlowGra
           <MiniMap pannable zoomable className="!bg-vq-bg-elevated" />
         </ReactFlow>
 
-        {/* Config drawer */}
-        {selected ? (
+        {/* Test / Versions panel takes precedence over the config drawer. */}
+        {rightPanel ? (
+          <aside className="absolute top-3 right-3 flex max-h-[calc(100%-1.5rem)] w-72 flex-col gap-3 overflow-y-auto rounded-vq-card border border-vq-border bg-vq-bg-elevated p-4 shadow-sm">
+            <p className="font-medium text-[11px] text-vq-text-lo uppercase tracking-wide">
+              {rightPanel === 'test' ? 'Simulate' : 'Versions'}
+            </p>
+            {rightPanel === 'test' ? (
+              <SimulatorPanel graph={currentGraph} onActiveNode={setSimNode} />
+            ) : (
+              <VersionsPanel agentId={agentId} />
+            )}
+          </aside>
+        ) : selected ? (
           <aside className="absolute top-3 right-3 flex max-h-[calc(100%-1.5rem)] w-72 flex-col gap-3 overflow-y-auto rounded-vq-card border border-vq-border bg-vq-bg-elevated p-4 shadow-sm">
             <p className="font-medium text-[11px] text-vq-text-lo uppercase tracking-wide">
               {NODE_META[(selected.data as VQNodeData).nodeType]?.label ??

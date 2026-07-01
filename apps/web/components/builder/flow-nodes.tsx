@@ -12,6 +12,8 @@ export interface VQNodeData extends Record<string, unknown> {
   nodeType: string;
   label?: string;
   hasError?: boolean;
+  /** The simulator's current active node (Day 23) — pulses cyan. */
+  simActive?: boolean;
 }
 
 // Accent per node type (border + dot); paired with the type label (never colour-only).
@@ -45,6 +47,8 @@ export function VQNode({ data, selected }: NodeProps) {
         meta.accent,
         selected && 'shadow-[0_0_0_2px_var(--vq-cyan)]',
         d.hasError && 'border-vq-danger ring-1 ring-vq-danger',
+        d.simActive &&
+          'shadow-[0_0_0_3px_var(--vq-cyan)] ring-2 ring-vq-cyan animate-pulse motion-reduce:animate-none',
       )}
     >
       {!isStart && <Handle type="target" position={Position.Left} className="!bg-vq-text-lo" />}

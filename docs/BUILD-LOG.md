@@ -842,3 +842,35 @@ K. Build/CI: ✅ — all deterministic; compiler is pure (no keys/DB); publish t
 
 Termination + determinism CONFIRMED (self-audit focus A): a graph with no reachable End is rejected, dead-ends are flagged, and the executor deterministically drives a conversation to an End (tests in flow-compiler).
 Next: Day 23 (test panel — simulate a flow in-browser against the compiled spec + the executor).
+
+## Day 23 — Live test panel + versioning + rollback — 2026-07-01 — ✅ DONE
+Model: Opus (kit ⚡ SONNET). Branch `day/23-test-panel-versioning` → PR. Builders test flows in-browser + manage versions.
+
+Built (DONE):
+- **api versioning** (`FlowsService`): `listVersions` (newest-first + isDraft flag) and `restoreVersion` (copy a prior version's graph into the CURRENT draft — draft-isolated, never mutates a published version). GET `/…/flow/versions` + POST `/…/flow/restore` (BUILDER+). **2 tests** (list across publish cycles + roll v1 into draft; 404 unknown version). flows suite **8**.
+- **web SimulatorPanel**: compiles the current graph with the Day-22 compiler → drives the deterministic `FlowRunner` step-by-step; the **active node pulses cyan** on the canvas (simActive), steps stream into a mono transcript, Decision nodes offer their branches as buttons; shows compile-gate errors when not runnable. Fully client-side.
+- **web VersionsPanel**: FlowVersions list (draft vs published) + one-click **Restore**.
+- Wired into the canvas: Test / Versions toolbar toggles + a right panel; simulator highlights the live active node. `useFlowVersions`/`useRestoreVersion` hooks.
+
+Verification:
+- api: typecheck + lint + **8 flows tests** (versioning/rollback + earlier publish/save). Full api suite green.
+- web: typecheck + lint green; **production build compiles the builder route**.
+- The simulator reuses the compiler + FlowRunner already unit-tested (Day 22) — the traversal/branch logic is covered there.
+
+Deferred (tracked): a LIVE voice/text test session (reuse the web-call widget) with real STT/LLM/TTS + token/cost overlay (the current simulator is spec-level, driven by the deterministic executor — no providers); auto-reloading the canvas after a Restore (today it invalidates the flow query + tells the user to reopen); version diff summary UI.
+
+## Self-Audit — Day 23 (A–K)
+A. Correctness (focus): ✅ — simulator drives the same compiled spec + FlowRunner unit-tested on Day 22; active-node events reflect the executor's transitions; rollback copies the exact prior graph (tested).
+B. Tenancy / draft isolation (focus): ✅ — list/restore run under `withTenant` (RLS); **restore only ever writes the current draft** and reads a version within the same flow → a published version is never mutated and no cross-tenant version is reachable.
+C. Security: ✅ — restore/publish gated to BUILDER+; version reads are member-level + RLS-scoped; safe errors.
+D. Cost: ✅ NA (spec-level sim; live session with cost is the deferred item).
+E. Tests: ✅ — 2 api versioning (8 flows total); simulator logic covered by Day-22 compiler/runner tests; web via typecheck + build.
+F. Performance: ✅ — compile + step are O(1)/O(n) client-side; memoised; transcript is append-only.
+G. Errors/obs: ✅ — simulator surfaces compile-gate errors; restore shows success/error; typed API errors.
+H. UI: ✅ — active-node cyan pulse (reduced-motion respected), mono transcript, branch buttons, version list; panels toggle cleanly with the config drawer.
+I. Regression: ✅ — api 8 flows green (full suite green); web build green; branched from the Day-22 merge.
+J. Quality/docs: ✅ — typed; draft-isolation guarantee documented; live-session + diff deferrals logged.
+K. Build/CI: ✅ — deterministic; simulator needs no keys; web build compiles.
+
+Draft isolation CONFIRMED (self-audit focus B): restore writes only the draft and can't touch a published version or another tenant's versions (RLS + the test proving v1's graph lands in the draft).
+Next: Day 24 (agent personas + templates).

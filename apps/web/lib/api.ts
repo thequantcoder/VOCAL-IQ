@@ -210,6 +210,7 @@ export function useSaveFlow(agentId: string) {
 
 export function usePublishFlow(agentId: string) {
   const { getToken } = useAuth();
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: () =>
       apiFetch<{ publishedVersion: number; nextDraftVersion: number }>(
@@ -217,5 +218,36 @@ export function usePublishFlow(agentId: string) {
         `/agents/${agentId}/flow/publish`,
         { method: 'POST' },
       ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['flow-versions', agentId] }),
+  });
+}
+
+export interface VersionSummary {
+  version: number;
+  publishedAt: string | null;
+  createdAt: string;
+  isDraft: boolean;
+}
+
+export function useFlowVersions(agentId: string) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['flow-versions', agentId],
+    queryFn: () => apiFetch<VersionSummary[]>(getToken, `/agents/${agentId}/flow/versions`),
+    enabled: Boolean(agentId),
+  });
+}
+
+export function useRestoreVersion(agentId: string) {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (version: number) =>
+      apiFetch<{ restoredFrom: number; draftVersion: number }>(
+        getToken,
+        `/agents/${agentId}/flow/restore`,
+        { method: 'POST', body: JSON.stringify({ version }) },
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['flow', agentId] }),
   });
 }
