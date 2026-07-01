@@ -904,3 +904,32 @@ K. Build/CI: ✅ — deterministic; templates + persona need no keys.
 
 Templates integrity CONFIRMED: every built-in template's starter graph compiles to a runnable spec (test in persona.test), so a cloned agent is immediately valid + testable.
 Next: Day 25 (multilingual — per-language voices/prompts + auto language detection).
+
+## Day 25 — Multilingual + auto language detection — 2026-07-01 — ✅ DONE
+Model: Opus (🧠 OPUS). Branch `day/25-multilingual` → PR. Prereqs met (Deepgram/ElevenLabs support the target languages; keys set). Self-audit focus A (detection/switch) + D (routing cost) + F.
+
+Built (DONE):
+- **shared multilingual** (`multilingual.ts`): `multilingualConfigSchema` (per-language voices, default, autoDetect, pronunciation dictionary); `resolveVoice` (language voice → default-language voice → null), `supportsLanguage`, `applyPronunciations` (whole-word, case-insensitive, longest-first), `detectScriptLanguage` (coarse script hint ja/ko/zh/ar/hi/ru else 'und'). Start node config gains `autoDetectLanguage` + `pronunciations`.
+- **voice** `app/loop/language.py`: `LanguageSwitcher` — **debounces the STT-detected language** (N consecutive detections before switching; ignores noise/und) so the agent doesn't flap, then swaps once; `resolve_voice` + `apply_pronunciations` mirror the shared helpers. DeepgramSTT gains `detect_language` (Deepgram's mid-call detection) and surfaces `STTEvent.language`.
+- **web** Start-node form: 'Auto-detect the caller's language' toggle + a pronunciations editor (term→say rows).
+
+Verification:
+- shared: typecheck + lint + build + **75 tests** (voice resolution/fallback, supportsLanguage, pronunciations whole-word, script detection). voice: ruff + pyright + **72 tests** (debounced switch, noise/und ignored, switch-back, voice fallback, pronunciations). web: typecheck + lint + **build compiles**.
+
+Deferred (tracked): the LIVE mid-call swap wired into the Day-9 loop (feed `STTEvent.language` → `LanguageSwitcher.observe` → on switch, change the TTS voice + STT language + apply pronunciations before synthesis) — the pieces are built + tested; the loop integration is the remaining wiring (alongside tools/transfer/compiler-executor). Per-language voice picker UI lands with the voices library (Day 26); provider-strength STT/TTS routing by language is a router policy refinement.
+
+## Self-Audit — Day 25 (A–K)
+A. Detection / switch (THE focus): ✅ — `LanguageSwitcher` debounces detections (no flapping), ignores noise/'und', switches once, and can switch back — all unit-tested; Deepgram `detect_language` is the live detection source + `STTEvent.language` carries it.
+B. Tenancy: ✅ — config lives in the flow graph (RLS-scoped save); language logic is pure/per-call.
+C. Security: ✅ — no new external surface; pronunciation replacement is whole-word regex-escaped (no injection); safe.
+D. Routing cost (focus): ✅ — `resolveVoice`/`resolve_voice` pick the per-language voice; STT/TTS still route through the metered router; switching reuses the same providers (no extra cost path).
+E. Tests: ✅ — 5 shared + 5 voice; deterministic.
+F. Performance (focus): ✅ — switcher is O(1) per event; pronunciation apply is linear; detection is provider-side (no added latency in our loop).
+G. Errors/obs: ✅ — typed; unknown language falls back to the default voice; 'und'/noise ignored.
+H. UI: ✅ — Start-node auto-detect toggle + pronunciations editor (a11y labels).
+I. Regression: ✅ — shared 75 + voice 72 green; web build green; STTEvent field is backward-compatible (optional default); branched from the Day-24 merge.
+J. Quality/docs: ✅ — typed; detection/switch + deferred loop-wiring documented.
+K. Build/CI: ✅ — deterministic; detection tested without live providers.
+
+Detection/switch determinism CONFIRMED (self-audit focus A): the debounced switcher never flaps on noise and switches exactly once after the stability threshold (tests in test_language + multilingual.test).
+Next: Day 26 (voices — voice library, cloning, per-language voice picker).
