@@ -186,6 +186,37 @@ export function useKbs() {
   return useQuery({ queryKey: ['kb'], queryFn: () => apiFetch<KbListItem[]>(getToken, '/kb') });
 }
 
+export interface AgentTemplateDto {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  type: string;
+  languages: string[];
+  persona: { role: string; tone: string; guardrails: string[]; bannedWords: string[] };
+}
+
+export function useTemplates() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['templates'],
+    queryFn: () => apiFetch<AgentTemplateDto[]>(getToken, '/templates'),
+  });
+}
+
+export function useCloneTemplate() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; name?: string }) =>
+      apiFetch<{ agentId: string; name: string }>(getToken, `/templates/${vars.id}/clone`, {
+        method: 'POST',
+        body: JSON.stringify(vars.name ? { name: vars.name } : {}),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['agents'] }),
+  });
+}
+
 export function useFlow(agentId: string) {
   const { getToken } = useAuth();
   return useQuery({

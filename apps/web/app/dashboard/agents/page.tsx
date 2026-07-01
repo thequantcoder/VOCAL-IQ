@@ -17,11 +17,18 @@ export default function AgentsPage() {
           <h1 className="font-display font-semibold text-xl text-vq-text-hi">Agents</h1>
           <p className="text-sm text-vq-text-lo">Prompt-based voice agents in this workspace.</p>
         </div>
-        <Link href="/dashboard/agents/new">
-          <Button variant="primary" size="sm">
-            <Plus size={16} /> New agent
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/dashboard/agents/templates">
+            <Button variant="secondary" size="sm">
+              Templates
+            </Button>
+          </Link>
+          <Link href="/dashboard/agents/new">
+            <Button variant="primary" size="sm">
+              <Plus size={16} /> New agent
+            </Button>
+          </Link>
+        </div>
       </header>
 
       {isLoading ? (
