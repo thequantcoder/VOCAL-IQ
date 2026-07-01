@@ -231,6 +231,123 @@ export function NodeConfigForm({
     );
   }
 
+  if (nodeType === 'TOOL') {
+    const kind = str(config.kind) || 'function';
+    const params = arr(config.params) as { name?: string; type?: string; required?: boolean }[];
+    const updateParam = (i: number, patch: Config) =>
+      set({ params: params.map((p, idx) => (idx === i ? { ...p, ...patch } : p)) });
+    return (
+      <div className="flex flex-col gap-3">
+        <Labeled label="Kind">
+          <select className={field} value={kind} onChange={(e) => set({ kind: e.target.value })}>
+            <option value="function">Function (LLM-callable)</option>
+            <option value="webhook">Webhook (fire-and-forget)</option>
+          </select>
+        </Labeled>
+        {kind === 'function' ? (
+          <Labeled label="Function name">
+            <input
+              className={field}
+              value={str(config.name)}
+              onChange={(e) => set({ name: e.target.value })}
+              placeholder="get_weather"
+            />
+          </Labeled>
+        ) : null}
+        <Labeled label="Description">
+          <textarea
+            rows={2}
+            className={field}
+            value={str(config.description)}
+            onChange={(e) => set({ description: e.target.value })}
+            placeholder="What this does / when the agent should call it"
+          />
+        </Labeled>
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <Labeled label="Endpoint (https)">
+              <input
+                className={field}
+                value={str(config.endpoint)}
+                onChange={(e) => set({ endpoint: e.target.value })}
+                placeholder="https://api.example.com/…"
+              />
+            </Labeled>
+          </div>
+          <Labeled label="Method">
+            <select
+              className={cn(field, 'w-24')}
+              value={str(config.method) || 'POST'}
+              onChange={(e) => set({ method: e.target.value })}
+            >
+              {['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </Labeled>
+        </div>
+
+        {kind === 'function' ? (
+          <div className="flex flex-col gap-2">
+            <span className="text-vq-text-lo text-xs">Parameters</span>
+            {params.map((p, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: rows are positional, no stable id
+              <div key={i} className="flex items-center gap-1.5">
+                <input
+                  className={cn(field, 'flex-1')}
+                  value={p.name ?? ''}
+                  onChange={(e) => updateParam(i, { name: e.target.value })}
+                  placeholder="param"
+                  aria-label="Parameter name"
+                />
+                <select
+                  className={cn(field, 'w-24')}
+                  value={p.type ?? 'string'}
+                  onChange={(e) => updateParam(i, { type: e.target.value })}
+                  aria-label="Parameter type"
+                >
+                  {['string', 'number', 'integer', 'boolean', 'object', 'array'].map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Remove parameter"
+                  onClick={() => set({ params: params.filter((_, idx) => idx !== i) })}
+                >
+                  <X size={14} />
+                </Button>
+              </div>
+            ))}
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() =>
+                set({ params: [...params, { name: '', type: 'string', required: false }] })
+              }
+            >
+              <Plus size={14} /> Add parameter
+            </Button>
+          </div>
+        ) : (
+          <label className="flex items-center gap-2 text-sm text-vq-text-hi">
+            <input
+              type="checkbox"
+              checked={config.signPayload === true}
+              onChange={(e) => set({ signPayload: e.target.checked })}
+            />
+            Sign payload (HMAC)
+          </label>
+        )}
+      </div>
+    );
+  }
+
   return <p className="text-vq-text-lo text-xs">Configuration for this node arrives soon.</p>;
 }
 
