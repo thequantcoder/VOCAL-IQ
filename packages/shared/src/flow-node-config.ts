@@ -106,6 +106,14 @@ export const toolConfigSchema = z.object({
 export type ToolParam = z.infer<typeof toolParamSchema>;
 export type ToolConfig = z.infer<typeof toolConfigSchema>;
 
+/** Knowledge node (Day 20): retrieve top-k chunks from a tenant KB and ground the reply. */
+export const knowledgeConfigSchema = z.object({
+  kbId: z.string().uuid().or(z.literal('')).default(''),
+  topK: z.number().int().min(1).max(20).default(4),
+  attribution: z.boolean().default(false),
+});
+export type KnowledgeConfig = z.infer<typeof knowledgeConfigSchema>;
+
 /** Build the JSON-schema `{ properties, required }` the executor validates args against. */
 export function toolParamsToJsonSchema(params: ToolParam[]): {
   properties: Record<string, { type: string }>;
@@ -133,6 +141,7 @@ const CONFIG_SCHEMAS = {
   [FlowNodeType.DECISION]: decisionConfigSchema,
   [FlowNodeType.END]: endConfigSchema,
   [FlowNodeType.TOOL]: toolConfigSchema,
+  [FlowNodeType.KNOWLEDGE]: knowledgeConfigSchema,
 } as const;
 
 /** The config schema for a node type, or null if the type has no config schema yet. */

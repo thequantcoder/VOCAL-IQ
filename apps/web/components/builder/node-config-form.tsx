@@ -3,6 +3,7 @@
 import { VARIABLE_TYPES } from '@vocaliq/shared';
 import { Button, cn } from '@vocaliq/ui';
 import { Plus, X } from 'lucide-react';
+import { useKbs } from '../../lib/api';
 
 /**
  * Per-type config editor for the core nodes (Day 18). Edits a node's opaque `config`
@@ -348,7 +349,51 @@ export function NodeConfigForm({
     );
   }
 
+  if (nodeType === 'KNOWLEDGE') {
+    return <KnowledgeForm config={config} set={set} />;
+  }
+
   return <p className="text-vq-text-lo text-xs">Configuration for this node arrives soon.</p>;
+}
+
+function KnowledgeForm({ config, set }: { config: Config; set: (patch: Config) => void }) {
+  const kbs = useKbs();
+  return (
+    <div className="flex flex-col gap-3">
+      <Labeled label="Knowledge base">
+        <select
+          className={field}
+          value={str(config.kbId)}
+          onChange={(e) => set({ kbId: e.target.value })}
+        >
+          <option value="">Select a knowledge base…</option>
+          {kbs.data?.map((kb) => (
+            <option key={kb.id} value={kb.id}>
+              {kb.name}
+            </option>
+          ))}
+        </select>
+      </Labeled>
+      <Labeled label="Top-K chunks">
+        <input
+          type="number"
+          min={1}
+          max={20}
+          className={field}
+          value={typeof config.topK === 'number' ? config.topK : 4}
+          onChange={(e) => set({ topK: Number(e.target.value) })}
+        />
+      </Labeled>
+      <label className="flex items-center gap-2 text-sm text-vq-text-hi">
+        <input
+          type="checkbox"
+          checked={config.attribution === true}
+          onChange={(e) => set({ attribution: e.target.checked })}
+        />
+        Show source attribution
+      </label>
+    </div>
+  );
 }
 
 function Labeled({ label, children }: { label: string; children: React.ReactNode }) {

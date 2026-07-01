@@ -755,3 +755,33 @@ K. Build/CI: ✅ — all deterministic (no live endpoint); no network in CI.
 
 SSRF protection CONFIRMED (self-audit focus): loopback/private/link-local/metadata + hostnames resolving to internal IPs + non-http(s) schemes are all blocked, and the executor refuses before sending (tests in test_tools).
 Next: Day 20 (RAG knowledge node) — grounded answers from a knowledge base.
+
+## Day 20 — Knowledge node + RAG ingestion (pgvector) — 2026-07-01 — ✅ DONE
+Model: Opus (🧠 OPUS). Branch `day/20-rag-knowledge` → PR. Prereqs met (OPENAI_API_KEY set; pgvector enabled Day 4). Self-audit focus B (no cross-tenant chunks — CRITICAL) + D (embedding cost) + F (vector index).
+
+Built (DONE):
+- **api RagService** (`src/rag/`): `chunkText` (paragraph/sentence-boundary overlapping chunks, pure+tested); `ingestText` (chunk → embed via injected `Embedder` → **raw INSERT** of the `vector(1536)` column, RLS-scoped via `withTenant`) metering embedding cost; `retrieve` (embed query → **raw cosine search** `embedding <=> $query::vector` ORDER BY + LIMIT, RLS-scoped) metering the query embed. `openAiEmbedder` (text-embedding-3-small) + `prismaUsageSink` (EMBEDDING UsageRecord) wired in RagModule; both **injectable** so the service is tested with a deterministic keyword embedder.
+- **api RagController** `/kb`: GET (list) · POST (create) · POST `/:id/ingest` (BUILDER+) · POST `/:id/search`.
+- **shared** `knowledgeConfigSchema` (kbId, topK, attribution) → KNOWLEDGE in `validateNodeConfig`; **web** NodeConfigForm KNOWLEDGE editor (KB `<select>` via `useKbs`, top-K, attribution toggle). KNOWLEDGE already in the canvas palette.
+
+Verification:
+- api: typecheck + lint green; **6 RAG tests (real Postgres + pgvector)** — chunking, top-k relevance, embedding cost metered, and the **CRITICAL tenant isolation**: A's retrieval never returns B's chunks, **RLS hides B's chunks from A even in a raw scan**, and querying B's KB from A returns nothing. Full api suite **89 green**.
+- shared **54 tests** + build; web typecheck + lint + **build compiles**.
+
+Deferred (tracked): file parsing (PDF/DOC/TXT) + URL crawling in a worker (raw text ingest only now — needs parser libs); wiring the Knowledge node into the Day-9 loop (retrieve top-k → inject into LLM context) + source-attribution surfacing (prep Day 39); HNSW/IVFFlat index tuning + re-index UI; the KB management UI (upload/status) beyond the endpoints; live OpenAI-embedding smoke (openAiEmbedder is a thin standard-endpoint wrapper).
+
+## Self-Audit — Day 20 (A–K)
+A. Correctness: ✅ — chunk/ingest/retrieve tested; similarity ordering deterministic via the keyword embedder; cost metered.
+B. Tenancy (THE focus — no cross-tenant chunks): ✅✅ — every ingest + search runs under `withTenant`; the raw vector search is RLS-constrained (non-superuser app role + tenant GUC), PROVEN by three tests incl. a raw-scan count of B's chunks from A = 0. This is the day's critical property and it holds.
+C. Security: ✅ — raw SQL parameterises all values (content/vector/ids via tagged template); ingest/create gated to BUILDER+; no secret in code (OPENAI key from env).
+D. Cost (focus): ✅ — ingest + query embeds both metered as EMBEDDING UsageRecords via the injected sink (embeddingCostUsd, text-embedding-3-small); the cost engine (Day 13) rolls them up.
+E. Tests: ✅ — 6 RAG (real pgvector) + full api 89; deterministic (fake embedder).
+F. Vector index (focus): ✅ — KbChunk.embedding is a pgvector column with the HNSW index from the Day-4 RLS/extra SQL; retrieval uses `<=>` cosine distance; result capped (LIMIT ≤ 20).
+G. Errors/obs: ✅ — typed NotFound/Validation; empty text → 0 chunks; missing embedding rows excluded.
+H. UI: ✅ — Knowledge node editor (KB select, top-K, attribution) wired + autosaved.
+I. Regression: ✅ — api 89 + shared 54 green; web build green; only additive.
+J. Quality/docs: ✅ — typed; the tenant-isolation guarantee is documented + tested; deferrals logged.
+K. Build/CI: ✅ — deterministic (fake embedder, no live OpenAI in CI); pgvector runs in the CI Postgres (timescaledb-ha image has it).
+
+Tenant isolation CONFIRMED (self-audit focus B): raw cross-tenant scan under RLS returns zero, and no retrieval path leaks another tenant's chunks (tests in rag.service).
+Next: Day 21 (Collect/Confirm, Transfer, Sub-flow nodes).

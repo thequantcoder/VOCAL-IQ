@@ -176,6 +176,16 @@ export interface FlowDraft {
   graph: unknown;
 }
 
+export interface KbListItem {
+  id: string;
+  name: string;
+}
+
+export function useKbs() {
+  const { getToken } = useAuth();
+  return useQuery({ queryKey: ['kb'], queryFn: () => apiFetch<KbListItem[]>(getToken, '/kb') });
+}
+
 export function useFlow(agentId: string) {
   const { getToken } = useAuth();
   return useQuery({
