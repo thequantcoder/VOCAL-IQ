@@ -80,7 +80,42 @@ async function main(): Promise<void> {
     });
   }
 
-  console.log('[seed] platform/reseller/customer + super-admin + Free/Pro/Scale plans ready.');
+  // Public preset voices (tenantId = null → visible to all via RLS). Fixed ids so
+  // re-seeding is idempotent (Day 26). ElevenLabs stock voices, all approved + non-cloned.
+  const presets = [
+    { vid: 'CwhRBWXzGAHq8TQ4Fs17', name: 'Roger', gender: 'male', age: 'middle-aged', accent: 'american', style: 'conversational' },
+    { vid: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah', gender: 'female', age: 'young', accent: 'american', style: 'professional' },
+    { vid: 'FGY2WhTYpPnrIDTdsKH5', name: 'Laura', gender: 'female', age: 'young', accent: 'american', style: 'upbeat' },
+    { vid: 'IKne3meq5aSn9XLyUdCD', name: 'Charlie', gender: 'male', age: 'middle-aged', accent: 'australian', style: 'casual' },
+    { vid: 'JBFqnCBsd6RMkjVDRZzb', name: 'George', gender: 'male', age: 'middle-aged', accent: 'british', style: 'warm' },
+    { vid: 'XB0fDUnXU5powFXDhCwa', name: 'Charlotte', gender: 'female', age: 'young', accent: 'swedish', style: 'seductive' },
+    { vid: 'pqHfZKP75CvOlQylNhV4', name: 'Bill', gender: 'male', age: 'old', accent: 'american', style: 'trustworthy' },
+    { vid: 'cgSgspJ2msm6clMCkdW9', name: 'Jessica', gender: 'female', age: 'young', accent: 'american', style: 'expressive' },
+  ];
+  for (let i = 0; i < presets.length; i++) {
+    const p = presets[i];
+    const id = `00000000-0000-0000-0000-0000000001${(i + 16).toString(16).padStart(2, '0')}`;
+    await prisma.voice.upsert({
+      where: { id },
+      create: {
+        id,
+        tenantId: null,
+        provider: 'ELEVENLABS',
+        providerVoiceId: p.vid,
+        name: p.name,
+        language: 'en',
+        gender: p.gender,
+        age: p.age,
+        accent: p.accent,
+        style: p.style,
+        isCloned: false,
+        approved: true,
+      },
+      update: { name: p.name, gender: p.gender, age: p.age, accent: p.accent, style: p.style },
+    });
+  }
+
+  console.log('[seed] platform/reseller/customer + super-admin + plans + preset voices ready.');
 }
 
 main()

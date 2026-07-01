@@ -346,8 +346,11 @@ model Voice {
   name            String
   language        String?
   gender          String?
+  age             String?
+  accent          String?
   style           String?
   isCloned        Boolean  @default(false)
+  approved        Boolean  @default(false) // cloned voices stay unusable until an operator approves (Day 26)
   consentRef      Json?
   settings        Json     @default("{}")
   createdAt       DateTime @default(now())

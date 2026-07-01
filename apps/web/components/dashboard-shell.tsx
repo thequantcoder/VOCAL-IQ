@@ -2,7 +2,7 @@
 
 import { UserButton } from '@clerk/nextjs';
 import { cn } from '@vocaliq/ui';
-import { Bot, LayoutDashboard, PhoneCall } from 'lucide-react';
+import { Bot, LayoutDashboard, Mic, PhoneCall } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
@@ -13,6 +13,7 @@ const NAV = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard, exact: true },
   { href: '/dashboard/agents', label: 'Agents', icon: Bot, exact: false },
   { href: '/dashboard/calls', label: 'Calls', icon: PhoneCall, exact: false },
+  { href: '/dashboard/voices', label: 'Voices', icon: Mic, exact: false },
 ] as const;
 
 /**

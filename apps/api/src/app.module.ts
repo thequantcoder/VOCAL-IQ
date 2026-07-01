@@ -10,6 +10,7 @@ import { HealthController } from './health.controller';
 import { RagModule } from './rag/rag.module';
 import { TemplatesModule } from './templates/templates.module';
 import { TenancyModule } from './tenancy/tenancy.module';
+import { VoicesModule } from './voices/voices.module';
 import { WidgetModule } from './widget/widget.module';
 
 /** Root module. Feature modules (agents, billing, …) are added per the build sequence. */
@@ -26,6 +27,7 @@ import { WidgetModule } from './widget/widget.module';
     FlowsModule,
     RagModule,
     TemplatesModule,
+    VoicesModule,
   ],
   controllers: [HealthController],
 })

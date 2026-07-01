@@ -282,3 +282,85 @@ export function useRestoreVersion(agentId: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['flow', agentId] }),
   });
 }
+
+// ── Voices (Day 26): library + tuning + gated cloning ─────────────────────────
+
+export interface VoiceDto {
+  id: string;
+  provider: string;
+  providerVoiceId: string;
+  name: string;
+  language: string | null;
+  gender: string | null;
+  age: string | null;
+  accent: string | null;
+  style: string | null;
+  isCloned: boolean;
+  approved: boolean;
+  isPreset: boolean;
+  usable: boolean;
+  settings: { stability: number; similarity: number; style: number; pace: number; pitch: number };
+  createdAt: string;
+}
+
+export interface VoiceFilterParams {
+  gender?: string;
+  accent?: string;
+  age?: string;
+  language?: string;
+}
+
+export function useVoices(params: VoiceFilterParams = {}) {
+  const { getToken } = useAuth();
+  const qs = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v) as [string, string][],
+  ).toString();
+  return useQuery({
+    queryKey: ['voices', params],
+    queryFn: () => apiFetch<VoiceDto[]>(getToken, `/voices${qs ? `?${qs}` : ''}`),
+  });
+}
+
+export function useUpdateVoiceSettings() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; settings: Partial<VoiceDto['settings']> }) =>
+      apiFetch<VoiceDto>(getToken, `/voices/${vars.id}/settings`, {
+        method: 'PATCH',
+        body: JSON.stringify(vars.settings),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['voices'] }),
+  });
+}
+
+export interface CloneVoiceBody {
+  name: string;
+  language?: string;
+  gender?: string;
+  sampleUrls: string[];
+  consent: { consentGiven: true; subjectName: string; statement: string };
+}
+
+export function useCloneVoice() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CloneVoiceBody) =>
+      apiFetch<VoiceDto>(getToken, '/voices/clone', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['voices'] }),
+  });
+}
+
+export function useApproveVoice() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<VoiceDto>(getToken, `/voices/${id}/approve`, { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['voices'] }),
+  });
+}
