@@ -11,5 +11,6 @@ import { AgentsService } from './agents.service';
   imports: [TenancyModule, BillingModule], // guards/tenant + EntitlementsService (plan gating)
   controllers: [AgentController],
   providers: [RouterService, ClerkAuthGuard, AgentsService],
+  exports: [AgentsService],
 })
 export class AgentsModule {}
