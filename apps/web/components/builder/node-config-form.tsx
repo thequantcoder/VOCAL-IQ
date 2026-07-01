@@ -46,6 +46,15 @@ export function NodeConfigForm({
             onChange={(e) => set({ language: e.target.value })}
           />
         </Labeled>
+        <label className="flex items-center gap-2 text-sm text-vq-text-hi">
+          <input
+            type="checkbox"
+            checked={config.autoDetectLanguage === true}
+            onChange={(e) => set({ autoDetectLanguage: e.target.checked })}
+          />
+          Auto-detect the caller’s language
+        </label>
+        <PronunciationEditor config={config} set={set} />
       </div>
     );
   }
@@ -515,6 +524,52 @@ function KnowledgeForm({ config, set }: { config: Config; set: (patch: Config) =
         />
         Show source attribution
       </label>
+    </div>
+  );
+}
+
+function PronunciationEditor({ config, set }: { config: Config; set: (patch: Config) => void }) {
+  const items = arr(config.pronunciations) as { term?: string; say?: string }[];
+  const update = (i: number, patch: Config) =>
+    set({ pronunciations: items.map((p, idx) => (idx === i ? { ...p, ...patch } : p)) });
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-vq-text-lo text-xs">Pronunciations (names, brands, jargon)</span>
+      {items.map((p, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: positional rows, no stable id
+        <div key={i} className="flex items-center gap-1.5">
+          <input
+            className={cn(field, 'flex-1')}
+            value={p.term ?? ''}
+            onChange={(e) => update(i, { term: e.target.value })}
+            placeholder="VocalIQ"
+            aria-label="Term"
+          />
+          <span className="text-vq-text-lo text-xs">→</span>
+          <input
+            className={cn(field, 'flex-1')}
+            value={p.say ?? ''}
+            onChange={(e) => update(i, { say: e.target.value })}
+            placeholder="Vocal I Q"
+            aria-label="Say as"
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label="Remove"
+            onClick={() => set({ pronunciations: items.filter((_, idx) => idx !== i) })}
+          >
+            <X size={14} />
+          </Button>
+        </div>
+      ))}
+      <Button
+        variant="secondary"
+        size="sm"
+        onClick={() => set({ pronunciations: [...items, { term: '', say: '' }] })}
+      >
+        <Plus size={14} /> Add pronunciation
+      </Button>
     </div>
   );
 }

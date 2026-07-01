@@ -40,6 +40,12 @@ export const startConfigSchema = z.object({
   openingLine: z.string().max(1000).default(''),
   language: z.string().max(10).default('en'),
   voiceId: z.string().uuid().nullish(),
+  // Multilingual (Day 25): auto-detect the caller's language mid-call + pronunciation fixes.
+  autoDetectLanguage: z.boolean().default(false),
+  pronunciations: z
+    .array(z.object({ term: z.string().min(1).max(80), say: z.string().min(1).max(120) }))
+    .max(100)
+    .default([]),
 });
 
 export const sayConfigSchema = z
