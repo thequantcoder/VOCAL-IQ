@@ -11,6 +11,7 @@ export * from './agent-templates.js';
 export * from './flow-compiler.js';
 export * from './flow-graph.js';
 export * from './flow-node-config.js';
+export * from './multilingual.js';
 export * from './persona.js';
 export * from './query-keys.js';
 export * from './result.js';
