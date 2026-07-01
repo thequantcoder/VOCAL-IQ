@@ -1,6 +1,11 @@
 'use client';
 
-import { type FlowGraph, type FlowGraphError, validateFlowGraph } from '@vocaliq/shared';
+import {
+  type FlowGraph,
+  type FlowGraphError,
+  validateFlowGraph,
+  validateNodeConfig,
+} from '@vocaliq/shared';
 import { Button, Input, cn } from '@vocaliq/ui';
 import {
   Background,
@@ -19,6 +24,7 @@ import { AlertTriangle, Check, Loader2, Plus } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSaveFlow } from '../../lib/api';
 import { NODE_META, type VQNodeData, nodeTypes } from './flow-nodes';
+import { NodeConfigForm } from './node-config-form';
 
 const PALETTE = ['SAY', 'LISTEN', 'DECISION', 'TOOL', 'KNOWLEDGE', 'TRANSFER', 'END'] as const;
 
@@ -70,8 +76,13 @@ export function FlowCanvas({ agentId, graph }: { agentId: string; graph: FlowGra
   const errorByNode = useMemo(() => {
     const m = new Map<string, boolean>();
     for (const e of validation.errors) if (e.nodeId) m.set(e.nodeId, true);
+    // Also flag nodes whose per-type config is invalid (Day 18).
+    for (const n of nodes) {
+      const d = n.data as VQNodeData;
+      if (!validateNodeConfig(d.nodeType, d.config).valid) m.set(n.id, true);
+    }
     return m;
-  }, [validation]);
+  }, [validation, nodes]);
 
   // Reflect validation errors onto node styling.
   const decorated = useMemo(
@@ -128,6 +139,13 @@ export function FlowCanvas({ agentId, graph }: { agentId: string; graph: FlowGra
       ),
     [selectedId, setNodes],
   );
+  const updateConfig = useCallback(
+    (config: Record<string, unknown>) =>
+      setNodes((ns) =>
+        ns.map((n) => (n.id === selectedId ? { ...n, data: { ...n.data, config } } : n)),
+      ),
+    [selectedId, setNodes],
+  );
 
   return (
     <div className="flex h-[calc(100vh-8rem)] w-full flex-col gap-3">
@@ -167,12 +185,12 @@ export function FlowCanvas({ agentId, graph }: { agentId: string; graph: FlowGra
 
         {/* Config drawer */}
         {selected ? (
-          <aside className="absolute top-3 right-3 w-64 rounded-vq-card border border-vq-border bg-vq-bg-elevated p-4 shadow-sm">
+          <aside className="absolute top-3 right-3 flex max-h-[calc(100%-1.5rem)] w-72 flex-col gap-3 overflow-y-auto rounded-vq-card border border-vq-border bg-vq-bg-elevated p-4 shadow-sm">
             <p className="font-medium text-[11px] text-vq-text-lo uppercase tracking-wide">
               {NODE_META[(selected.data as VQNodeData).nodeType]?.label ??
                 (selected.data as VQNodeData).nodeType}
             </p>
-            <label htmlFor="node-label" className="mt-3 flex flex-col gap-1.5">
+            <label htmlFor="node-label" className="flex flex-col gap-1">
               <span className="text-sm text-vq-text-hi">Label</span>
               <Input
                 id="node-label"
@@ -181,9 +199,13 @@ export function FlowCanvas({ agentId, graph }: { agentId: string; graph: FlowGra
                 placeholder="Node label"
               />
             </label>
-            <p className="mt-3 text-vq-text-lo text-xs">
-              Per-type configuration arrives with the node library.
-            </p>
+            <div className="border-vq-border border-t pt-3">
+              <NodeConfigForm
+                nodeType={(selected.data as VQNodeData).nodeType}
+                config={((selected.data as VQNodeData).config as Record<string, unknown>) ?? {}}
+                onChange={updateConfig}
+              />
+            </div>
           </aside>
         ) : null}
       </div>
