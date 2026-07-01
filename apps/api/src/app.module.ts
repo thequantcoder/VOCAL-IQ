@@ -7,6 +7,7 @@ import { CostModule } from './cost/cost.module';
 import { DbModule } from './db/db.module';
 import { HealthController } from './health.controller';
 import { TenancyModule } from './tenancy/tenancy.module';
+import { WidgetModule } from './widget/widget.module';
 
 /** Root module. Feature modules (agents, billing, …) are added per the build sequence. */
 @Module({
@@ -18,6 +19,7 @@ import { TenancyModule } from './tenancy/tenancy.module';
     CallsModule,
     CostModule,
     BillingModule,
+    WidgetModule,
   ],
   controllers: [HealthController],
 })
