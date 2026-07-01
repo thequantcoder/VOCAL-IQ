@@ -8,6 +8,7 @@ export * from './enums.js';
 export * from './env.js';
 export * from './errors.js';
 export * from './flow-graph.js';
+export * from './flow-node-config.js';
 export * from './query-keys.js';
 export * from './result.js';
 export * from './schemas.js';
