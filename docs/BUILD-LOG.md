@@ -723,3 +723,35 @@ K. Build/CI: ✅ — shared tests deterministic; web build compiles.
 
 Captured-variable typing CONFIRMED (self-audit focus): capture names must be valid identifiers, types are enum-constrained, and duplicates are flagged (tests in flow-node-config).
 Next: Day 19 (Tool + Webhook nodes) — external calls from the flow.
+
+## Day 19 — Tool node + function calling + Webhook node — 2026-07-01 — ✅ DONE
+Model: Opus (🧠 OPUS). Branch `day/19-tool-function-nodes` → PR. Agents can act mid-call. Self-audit focus C (SSRF/secrets/validation) is the crown jewel.
+
+Built (DONE):
+- **voice SSRF-safe execution engine** (`app/tools/`):
+  - `ssrf.py` `assert_safe_url`: resolves the host and blocks loopback/private/link-local (incl. cloud metadata **169.254.169.254**)/reserved/multicast + non-http(s) schemes; injectable DNS resolver → unit-tested offline.
+  - `executor.py`: `validate_args` (LLM args vs the tool's JSON-schema params — required keys, types, **bool≠integer**, no unexpected args) BEFORE any call; `ToolExecutor.execute` (SSRF-guard → httpx call with timeout + bounded **retry on 5xx/network** → `ToolResult` fed back to the LLM); `WebhookExecutor.send` (**HMAC-SHA256-signs** the payload → `x-vocaliq-signature`). httpx client injected.
+- **shared Tool config** (`toolConfigSchema`): kind function|webhook, name (valid identifier), description, endpoint URL, method, typed **params** + `toolParamsToJsonSchema()` (→ the executor's validation schema), authHeader, signPayload. TOOL registered in `validateNodeConfig`/`compileNode`.
+- **web Tool form**: NodeConfigForm TOOL editor — function vs webhook mode, name, description, endpoint+method, typed parameter rows, sign-payload toggle. TOOL already in the canvas palette.
+
+Verification:
+- voice: ruff + pyright + **9 tools tests** (SSRF blocks internal/metadata/hostname-resolving-internal + allows public https; arg validation incl. bool≠int + unexpected; tool returns result + retries on 5xx + refuses SSRF before sending; webhook signs + refuses SSRF). Full voice suite **67 passed**.
+- shared: **54 tests** + lint + build. web: typecheck + lint + build green.
+
+Deferred (tracked): wire the executor into the Day-9 loop as LLM function-calling (register tools → the model calls → execute → feed result back) + **backchannel filler** during execution + **per-tool usage metering** (self-audit D — the hook exists via the loop meter); per-tool **trust scope** + encrypted secret resolution (prep MCP Day 46 + key vault Day 57); the actual live tool call needs a real endpoint (mock ok per prereq).
+
+## Self-Audit — Day 19 (A–K)
+A. Correctness: ✅ — SSRF/validation/retry/signing unit-tested; tool config schema + params→JSON-schema round-trip tested.
+B. Tenancy: ✅ — tool config lives in the flow graph (Day-17 RLS-scoped save); execution is per-call within the tenant's loop.
+C. Security (THE focus — SSRF/secrets/validation): ✅ — **every outbound URL is SSRF-guarded** (host resolved, internal/metadata/private/link-local/non-http(s) blocked) BEFORE the request; args validated against the typed schema first; webhook payloads HMAC-signed; secrets pass via auth header config (encrypted-secret resolution + trust scope deferred to key vault/MCP, logged). No SSRF path reaches the network in tests.
+D. Cost/latency (focus): ⏭ — timeout + bounded retry cap tool latency; per-tool usage metering wires into the loop meter when function-calling is connected (deferred, logged).
+E. Tests: ✅ — 9 voice tools + 2 shared; deterministic (injected client + resolver).
+F. Performance: ✅ — timeout (8s) + retry; async httpx.
+G. Errors/obs: ✅ — typed ToolError/SsrfError; a blocked/invalid call raises before any side effect.
+H. UI: ✅ — Tool form with function/webhook modes, typed params, a11y labels.
+I. Regression: ✅ — full voice 67 + shared 54 green; web build green; base rebased onto the Day-18 merge.
+J. Quality/docs: ✅ — typed; SSRF + validation documented; deferrals logged.
+K. Build/CI: ✅ — all deterministic (no live endpoint); no network in CI.
+
+SSRF protection CONFIRMED (self-audit focus): loopback/private/link-local/metadata + hostnames resolving to internal IPs + non-http(s) schemes are all blocked, and the executor refuses before sending (tests in test_tools).
+Next: Day 20 (RAG knowledge node) — grounded answers from a knowledge base.
