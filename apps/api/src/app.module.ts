@@ -7,6 +7,7 @@ import { CostModule } from './cost/cost.module';
 import { DbModule } from './db/db.module';
 import { FlowsModule } from './flows/flows.module';
 import { HealthController } from './health.controller';
+import { RagModule } from './rag/rag.module';
 import { TenancyModule } from './tenancy/tenancy.module';
 import { WidgetModule } from './widget/widget.module';
 
@@ -22,6 +23,7 @@ import { WidgetModule } from './widget/widget.module';
     BillingModule,
     WidgetModule,
     FlowsModule,
+    RagModule,
   ],
   controllers: [HealthController],
 })
