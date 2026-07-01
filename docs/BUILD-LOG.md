@@ -532,3 +532,38 @@ K. Build/CI: ✅ — api integration tests run against CI Postgres; voice teleph
 
 Concurrency cap CONFIRMED (self-audit focus): filled 10 in-flight OUTBOUND calls → the 11th placeCall throws RATE_LIMIT and dials nothing (test `enforces the outbound concurrency cap`).
 Admin next (to finish live): fund a Twilio number + provide a public tunnel URL, then run the gated outbound smoke.
+
+## Day 13 — Cost attribution engine + usage rollups — 2026-07-01 — ✅ DONE
+Model: Opus. Branch `day/13-cost-attribution` → PR. **Sequence deviation (logged per CLAUDE.md §11):** built Day 13 before Days 11–12 — user chose it (fully key-independent; consolidates the metering already emitted by Days 6–10), whereas Days 11/12 (inbound, recording) stack on the deferred Twilio number/tunnel. Days 11–12 resume after.
+
+Built (DONE):
+- **api `CostService` + `CostController`**:
+  - `aggregateCall` → sums a call's UsageRecords per capability into `Call.costBreakdown` `{stt,llm,tts,telephony,total,billable}`; recomputed from the immutable records so it's always accurate. **BYOK in `total` (informational) but excluded from `billable`** (tenant brought their own key).
+  - `GET /calls/:id/cost` (`callCost`) — breakdown + underlying records.
+  - `GET /costs/rollup` (`rollup`) — by **day (Timescale `time_bucket`)** / capability / provider / agent over a date range; RLS-scoped; only the date bounds are interpolated (parameterized), each grouping a distinct static query.
+  - `POST /costs/reconcile` (BUILDER+) — the **no-un-metered-call invariant**: flags COMPLETED calls with zero UsageRecords.
+  - **Price-table versioning:** cost is stored on each UsageRecord at metering time, so a later rate change never rewrites history.
+- **workers — daily reconciliation sweep**: pure `runReconciliation` (alarms on findings) + `createDbFindUnmetered` (one admin-scoped cross-tenant query) wired as a **BullMQ repeatable job** (guarded on `REDIS_URL`). Added `@vocaliq/db` + vitest to workers; **pnpm override pins ioredis 5.11.1** (bullmq bundled-version skew broke tsc under exactOptionalPropertyTypes).
+
+Verification:
+- api: typecheck + lint green; **cost tests (7, real Postgres, RLS)** — BYOK excluded from billable; day/capability/agent rollups accurate; **reconciliation flags an un-metered COMPLETED call** and ignores metered + NO_ANSWER. Full api suite **45 tests** green.
+- workers: lint + **2 tests** (alarm-on-findings / all-clear).
+- root: typecheck 11/11 + build 7/7 + lint 11/11 green.
+
+Deferred/notes: wire `CostService.aggregateCall` into the voice→api disposition callback (currently `callCost` recomputes authoritatively on read, so stored breakdown is always corrected); Sentry alarm sink for the reconciliation worker; reseller-margin computation consumes `billable` (Phase 4). The voice loop emits UsageRecords with `callId` when the call-attributed metering callback is wired (needs the voice→api service token, Day 13-follow / Day 57).
+
+## Self-Audit — Day 13 (A–K)
+A. Correctness: ✅ — aggregation/rollup/reconcile unit+integration tested against real Postgres; math verified (total vs billable, BYOK).
+B. Tenancy (focus): ✅ — every read/write under `withTenant` (RLS); raw rollup SQL runs in the tenant transaction so RLS still scopes it; the cross-tenant reconcile worker uses the owner client deliberately (infra sweep).
+C. Security: ✅ — rollup SQL parameterizes date bounds; groupings are static (no identifier injection); reads open to tenant members, reconcile gated to BUILDER+.
+D. Cost (THE POINT, focus): ✅ — authoritative per-call breakdown from immutable records; BYOK=0-to-billable; reconciliation proves no un-metered COMPLETED call slips through (test adds one → flagged).
+E. Tests: ✅ — 7 api cost + 2 workers; deterministic (fixed historical window isolates rollups).
+F. Performance/rollups (focus): ✅ — Timescale hypertable + `time_bucket`; indexed `(tenantId, ts)` + `(callId)`.
+G. Errors/obs: ✅ — typed AppErrors; worker alarms on findings + logs all-clear; NotFound on unknown call.
+H. UI: ✅ NA (dashboard consumes these = Day 14).
+I. Regression: ✅ — full api suite 45 green; root build/lint/typecheck green; ioredis override fixed the only breakage.
+J. Quality/docs: ✅ — typed; immutability + BYOK semantics documented; sequence deviation logged.
+K. Build/CI: ✅ — workers now has a test script (CI picks it up); cost tests run on CI Postgres.
+
+Reconciliation invariant CONFIRMED (self-audit focus): a COMPLETED call with zero UsageRecords is flagged by `reconcile`; a metered call + a NO_ANSWER call are not (test `flags a COMPLETED call with zero usage…`).
+Next: Day 14 (first usable dashboard) consumes these cost APIs — or resume Days 11/12 when the Twilio number/tunnel are ready.
