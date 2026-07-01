@@ -1,0 +1,105 @@
+import { Injectable } from '@nestjs/common';
+import type { Prisma } from '@vocaliq/db';
+import { NotFoundError, ValidationError, emptyFlowGraph, flowGraphSchema } from '@vocaliq/shared';
+import { PrismaService } from '../db/prisma.service';
+
+/**
+ * Flow persistence for the builder (Day 17): the agent's draft FlowVersion.graph round-
+ * trips to Postgres. `getOrCreateDraft` lazily creates the Flow + v1 (a single START
+ * node) on first open; `saveGraph` validates the schema and autosaves into the current
+ * unpublished version (publishing new versions is Day 22). All RLS-scoped.
+ */
+
+export interface FlowDraft {
+  flowId: string;
+  versionId: string;
+  version: number;
+  graph: unknown;
+}
+
+export interface SaveResult {
+  versionId: string;
+  version: number;
+  savedAt: string;
+}
+
+@Injectable()
+export class FlowsService {
+  constructor(private readonly db: PrismaService) {}
+
+  async getOrCreateDraft(tenantId: string, agentId: string): Promise<FlowDraft> {
+    return this.db.withTenant(tenantId, async (tx) => {
+      const agent = await tx.agent.findFirst({ where: { id: agentId }, select: { id: true } });
+      if (!agent) throw new NotFoundError('Agent not found');
+
+      let flow = await tx.flow.findFirst({
+        where: { agentId },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
+      });
+      if (!flow) {
+        flow = await tx.flow.create({
+          data: { tenantId, agentId, name: 'Main flow' },
+          select: { id: true },
+        });
+      }
+
+      let version = await tx.flowVersion.findFirst({
+        where: { flowId: flow.id },
+        orderBy: { version: 'desc' },
+        select: { id: true, version: true, graph: true },
+      });
+      if (!version) {
+        version = await tx.flowVersion.create({
+          data: {
+            tenantId,
+            flowId: flow.id,
+            version: 1,
+            graph: emptyFlowGraph() as unknown as Prisma.InputJsonValue,
+          },
+          select: { id: true, version: true, graph: true },
+        });
+      }
+
+      return {
+        flowId: flow.id,
+        versionId: version.id,
+        version: version.version,
+        graph: version.graph,
+      };
+    });
+  }
+
+  /** Autosave: schema-validate + store the graph into the current unpublished version. */
+  async saveGraph(tenantId: string, agentId: string, input: unknown): Promise<SaveResult> {
+    const parsed = flowGraphSchema.safeParse(input);
+    if (!parsed.success) throw new ValidationError('Invalid flow graph');
+
+    return this.db.withTenant(tenantId, async (tx) => {
+      const flow = await tx.flow.findFirst({
+        where: { agentId },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
+      });
+      if (!flow) throw new NotFoundError('Flow not found — open the builder first');
+
+      const version = await tx.flowVersion.findFirst({
+        where: { flowId: flow.id, publishedAt: null },
+        orderBy: { version: 'desc' },
+        select: { id: true, version: true },
+      });
+      if (!version) throw new NotFoundError('No editable draft version');
+
+      const updated = await tx.flowVersion.update({
+        where: { id: version.id },
+        data: { graph: parsed.data as unknown as Prisma.InputJsonValue },
+        select: { id: true, version: true },
+      });
+      return {
+        versionId: updated.id,
+        version: updated.version,
+        savedAt: new Date().toISOString(),
+      };
+    });
+  }
+}
