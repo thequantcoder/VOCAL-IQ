@@ -5,6 +5,7 @@ import { BillingModule } from './billing/billing.module';
 import { CallsModule } from './calls/calls.module';
 import { CostModule } from './cost/cost.module';
 import { DbModule } from './db/db.module';
+import { FlowsModule } from './flows/flows.module';
 import { HealthController } from './health.controller';
 import { TenancyModule } from './tenancy/tenancy.module';
 import { WidgetModule } from './widget/widget.module';
@@ -20,6 +21,7 @@ import { WidgetModule } from './widget/widget.module';
     CostModule,
     BillingModule,
     WidgetModule,
+    FlowsModule,
   ],
   controllers: [HealthController],
 })

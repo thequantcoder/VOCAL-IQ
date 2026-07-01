@@ -664,3 +664,33 @@ J. Quality/docs: ✅ — typed; seam + deferrals documented; dup-file cleanup no
 K. Build/CI: ✅ — widget tests deterministic (fake minter, injected clock); web build compiles; livekit-client pinned.
 
 Phase 1 (Days 07–16 core) COMPLETE — router → voice loop → real LiveKit call → outbound → cost → dashboard → billing → web widget. **Tag v0.2-phase1** after merge. Next: Day 17 (visual builder canvas) opens Phase 2. (Days 11/12 inbound+recording + Twilio/Stripe go-live remain as tracked deferrals.)
+
+## Day 17 — React Flow builder canvas + typed graph model — 2026-07-01 — ✅ DONE (opens Phase 2)
+Model: Opus (🧠 OPUS). Branch `day/17-reactflow-canvas` → PR. The builder's soul — the visual agent designer.
+
+Built (DONE):
+- **shared typed graph model** (`flow-graph.ts`): Zod schemas for the FlowGraph document (nodes {id,type,position,data{label,config}}, edges {+condition}, all 11 FlowNodeTypes), `emptyFlowGraph()`, `parseFlowGraph()`, and **`validateFlowGraph`** (self-audit focus A) returning ALL structural errors — duplicate ids, missing/multiple Start, missing End, dangling edges, Start-with-incoming, End-with-outgoing, orphan (unreachable) nodes. **11 tests** (JSON round-trip, defaults, every rule).
+- **api flow persistence** (`FlowsService` + `GET/PUT /agents/:agentId/flow`): `getOrCreateDraft` lazily creates the Flow + v1 (single START); `saveGraph` schema-validates + autosaves into the current unpublished version (publishing = Day 22). **4 tests** (round-trip, malformed reject, 404). RLS-scoped.
+- **web React Flow canvas** (`FlowCanvas`, @xyflow/react): typed node renderers (per-type accent, cyan glow on select, danger ring on error; START/END handle rules), add-from-palette, drag-to-connect, keyboard delete, pan/zoom, minimap + controls; **debounced autosave** (800ms → PUT) with a Saving/Saved badge; **live validation** badge (issue count + messages, error rings via `validateFlowGraph`); config drawer (label edit now, per-type = Day 18). Builder route `/dashboard/agents/[agentId]/builder` + a Build link on each agent card. deps: @xyflow/react, zustand.
+
+Verification:
+- shared: typecheck + lint + build + **11 tests**. api: typecheck + lint + **4 tests**; full api suite green. web: typecheck + lint green; **production build compiles the builder route**.
+- Also re-purged stray macOS `' 2.ts'` iCloud-duplicate files.
+
+Deviation note (CLAUDE.md §11): Zustand is added (dep) but the live graph is owned by React Flow's `useNodesState/useEdgesState` today; a dedicated Zustand store lands if/when cross-component canvas state grows (kept lean now).
+Deferred (tracked): per-type node config (Day 18); publish → new FlowVersion (Day 22); undo/redo + cmd-K palette; canvas e2e (Playwright, same harness note as Day 14).
+
+## Self-Audit — Day 17 (A–K)
+A. Graph integrity (focus): ✅ — the shared model is the single source of truth; `validateFlowGraph` covers duplicate/orphan/dangling/start-end rules and is unit-tested; the graph **round-trips** shared↔API↔canvas without loss (tested).
+B. Tenancy: ✅ — flow read/save under `withTenant` (RLS); the canvas only touches its own agent's flow.
+C. Security: ✅ — PUT gated to BUILDER+; graph schema-validated server-side before store (no arbitrary JSON); safe errors.
+D. Cost: ✅ NA.
+E. Tests: ✅ — 11 shared + 4 api; the canvas is covered by typecheck + build (interaction e2e deferred, logged).
+F. Performance: ✅ — validation/serialisation memoised; autosave debounced; React Flow virtualises the canvas.
+G. Errors/obs: ✅ — builder page has loading/error states; save-failed + invalid-graph states surfaced; typed API errors.
+H. UI (focus): ✅ — spatial dark canvas, typed node colours, selected-node cyan glow, animated edges, minimap/controls; responsive; a11y (labelled config input, keyboard delete, colour+text badges); reduced-motion respected.
+I. Regression: ✅ — full api suite green; web build green; only additive.
+J. Quality/docs (focus): ✅ — typed throughout; the graph model is documented as the source of truth; deviations + deferrals logged.
+K. Build/CI: ✅ — shared/api tests deterministic; web build compiles; new deps pinned.
+
+Next: Day 18 (core node library — per-type config + renderers) builds on this canvas.
