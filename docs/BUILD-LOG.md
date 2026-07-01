@@ -933,3 +933,33 @@ K. Build/CI: ✅ — deterministic; detection tested without live providers.
 
 Detection/switch determinism CONFIRMED (self-audit focus A): the debounced switcher never flaps on noise and switches exactly once after the stability threshold (tests in test_language + multilingual.test).
 Next: Day 26 (voices — voice library, cloning, per-language voice picker).
+
+## Day 26 — Voice library + per-agent voice + gated cloning — 2026-07-02 — ✅ DONE
+Model: Opus (🧠 OPUS). Branch `day/26-voices` → PR. Prereqs met (ELEVENLABS_API_KEY = Creator plan, cloning-capable, set + validated Day 07; consent process = mandatory in-app consent capture stored on `consentRef`). Self-audit focus C (consent gate) + B (private voices scoped) + A.
+
+Built (DONE):
+- **DB**: `Voice` gains `age`, `accent` (library filters) + `approved` (the clone gate). Migration `day26_voice_library` backfills existing/preset rows to `approved = true`. Seed now creates 8 public ElevenLabs preset voices (tenantId = null, visible to all via RLS). RLS on `Voice` was already the public-nullable policy from Day 04 (presets shared, tenant voices isolated).
+- **shared** (`voice.ts`): `voiceSettingsSchema` (stability/similarity/style/pace/pitch, clamped), `normalizeVoiceSettings`; `voiceFilterSchema` + `filterVoices` (language/gender/age/accent/style/includeCloned); **`isVoiceUsable`** — the single gate predicate (`!isCloned || approved`); `cloneConsentSchema` (requires `consentGiven: true` literal) + `cloneRequestSchema` (≥1 sample URL); `VOICE_PRESETS` catalogue.
+- **api** `voices` module: `VoicesService` (RLS-scoped `withTenant`) — `list` (presets + tenant, filtered), `get`, `updateSettings` (presets read-only), `assignToAgent` (default+fallback; **rejects unapproved clones** — the gate enforced at assignment), `clone` (consent mandatory → creates `isCloned:true, approved:false` + stores `consentRef`), `approve` (owner/admin only — the only path to usable). Cloner is an injected port (`VOICE_CLONER`); live `elevenLabsCloner` (`POST /v1/voices/add` multipart) wired from env, fake in tests. Controller: reads open to members, mutations to config-writers, approval to OWNER/ADMIN (separation of duty).
+- **web**: `/dashboard/voices` — library grid with gender filter chips, per-voice stability slider (tenant voices), ready/pending badges, an **Approve clone** action, and a clone form with a **mandatory consent checkbox** (locked until checked). Nav link added.
+
+Verification:
+- shared: typecheck + lint + build + **86 tests** (isVoiceUsable gate, settings clamp, filters, consent/sample schema, preset uniqueness). api: typecheck + lint + **voices 4 tests** (presets visible + filtered, settings persist + presets read-only, **clone gated → unapproved unassignable → approve → assignable**, consent stored, no-consent rejected) — full api suite green. db: migrate + seed + **7 RLS/schema tests**. web: typecheck + lint + **build** (route `/dashboard/voices` prerendered).
+
+Deferred (tracked): live ElevenLabs clone smoke (create a real cloned voice from a consented sample) — gated behind the funded/consented sample, cloner is wired + unit-tested with a fake; the per-language voice **picker on the agent form** (wiring `assignToAgent` + Day-25 `resolveVoice` into the builder Start node) lands with the agent-config UI; loop resolve of tuned `settings` into the live TTS call rides with the deferred Day-9 loop wiring.
+
+## Self-Audit — Day 26 (A–K)
+A. Correctness: ✅ — `isVoiceUsable` is the one gate; presets/approved clones usable, fresh clones not; settings clamp + filters unit-tested; assignment is transactional.
+B. Tenancy (focus): ✅ — every read/write via `withTenant`; presets are tenantId=null (shared by the Day-04 public-nullable RLS); a tenant's private/cloned voices are RLS-isolated; assignment re-checks voice visibility inside the tenant tx.
+C. Consent gate (THE focus): ✅ — `cloneConsentSchema` requires `consentGiven: true` (no-consent rejected, tested); consent record persisted to `consentRef` (subjectName + statement + server-stamped `consentedAt`, tested); clone is created UNAPPROVED and cannot be assigned until `approve` (owner/admin only) — proven end-to-end in the test.
+D. Cost: ✅ — no new calling path; cloning is a one-off provider op (no per-minute meter); TTS synthesis still routes through the metered router.
+E. Tests: ✅ — 5 shared + 4 api (RLS-real); deterministic (fake cloner, no live call in CI).
+F. Performance: ✅ — library filter is in-memory over an RLS-scoped list; assignment is O(1) lookups in one tx.
+G. Errors/obs: ✅ — typed AppErrors (NotFound/Validation/Provider); provider failure wrapped in `ProviderError`; no internals leaked.
+H. UI/a11y: ✅ — labelled inputs, consent checkbox gates submit, ready/pending badges, design tokens (vq-violet/success/warn/danger); responsive grid.
+I. Regression: ✅ — additive migration backfills existing rows to approved; `STTEvent`/prior suites untouched; api + shared + db + web all green; branched from the Day-25 merge.
+J. Quality/docs: ✅ — explicit DTOs (no Prisma type leak), doc comments explain the gate; deferred items tracked above.
+K. Build/CI: ✅ — deterministic; live cloner isolated behind an injected port + env key.
+
+Consent/approval gate CONFIRMED (self-audit focus C): a freshly cloned voice is `usable:false` and `assignToAgent` throws until `approve` flips it — demonstrated by the passing "gates use until approved" test.
+Next: Day 27 (Squads — multi-agent teams / routing).
