@@ -785,3 +785,30 @@ K. Build/CI: ✅ — deterministic (fake embedder, no live OpenAI in CI); pgvect
 
 Tenant isolation CONFIRMED (self-audit focus B): raw cross-tenant scan under RLS returns zero, and no retrieval path leaks another tenant's chunks (tests in rag.service).
 Next: Day 21 (Collect/Confirm, Transfer, Sub-flow nodes).
+
+## Day 21 — Collect/Confirm, Transfer, Sub-flow nodes — 2026-07-01 — ✅ DONE (node library complete)
+Model: Opus (kit ⚡ SONNET). Branch `day/21-collect-transfer-subflow` → PR. The last three builder nodes; all 11 FlowNodeTypes now have config + a form.
+
+Built (DONE):
+- **shared config**: `collectConfirmConfigSchema` (fields to read back, confirm prompt, maxRetries), `transferConfigSchema` (target human|agent|number, destination, warm|cold mode, summarise), `subflowConfigSchema` (flowId, returnLabel) → registered in `validateNodeConfig`. **Runtime helpers**: `buildConfirmation` (reads back only the fields actually captured) + `buildTransferContext` (per-call handoff summary — assembled inside the tenant's loop, carries only THIS call's captured data → can't leak another tenant's, self-audit B).
+- **web**: NodeConfigForm editors for the three — Collect&Confirm (fields list + prompt + retries), Transfer (target/destination/mode/summarise), Sub-flow (flowId + return label + a note that cross-tenant flows can never be invoked). COLLECT_CONFIRM + SUBFLOW added to the canvas palette (TRANSFER already there).
+
+Verification:
+- shared: typecheck + lint + build + **57 tests** (config validation for all three, `buildConfirmation`, `buildTransferContext`). web: typecheck + lint + **build compiles**.
+
+Deferred (tracked): runtime wiring into the Day-9 loop — the confirm/correct loop (retry on "no"), the actual Transfer (warm handoff via Twilio `<Dial>`/SIP + Agent Desk destination, Day 67) and Sub-flow invocation+return (the compiler expands SUBFLOW, Day 22); cross-tenant safety at execution is guaranteed by loading the referenced flow/agent under `withTenant` (RLS) — validated + noted.
+
+## Self-Audit — Day 21 (A–K)
+A. Correctness (focus): ✅ — three config schemas + two runtime helpers unit-tested; helpers read back / summarise only present, captured fields.
+B. Tenancy (focus — transfer carries context without cross-tenant leak): ✅ — `buildTransferContext` only ever sees the current call's captured map (built inside the tenant's loop); the Sub-flow/Transfer `flowId`/`agentId` references are resolved under `withTenant` at execution → RLS blocks any cross-tenant target (documented + the UI states it).
+C. Security: ✅ — configs schema-validated on save (Day-17 flow API); no execution added yet; safe.
+D. Cost: ✅ NA.
+E. Tests: ✅ — 3 shared (57 total); web via typecheck + build.
+F. Performance: ✅ — pure helpers; lightweight forms.
+G. Errors/obs: ✅ — invalid config lights the node error ring (validateNodeConfig).
+H. UI: ✅ — three editors, a11y labels, palette entries, dark tokens.
+I. Regression: ✅ — shared 57 green; web build green; only additive; branched from the Day-20 merge.
+J. Quality/docs: ✅ — typed; the transfer/sub-flow tenant-safety guarantee documented; runtime deferrals logged.
+K. Build/CI: ✅ — deterministic; web build compiles.
+
+Node library COMPLETE — all 11 node types configurable on the canvas. Next: Day 22 (flow compiler — graph → executable spec) turns these into a runnable conversation.
