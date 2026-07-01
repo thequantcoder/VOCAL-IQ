@@ -694,3 +694,32 @@ J. Quality/docs (focus): ✅ — typed throughout; the graph model is documented
 K. Build/CI: ✅ — shared/api tests deterministic; web build compiles; new deps pinned.
 
 Next: Day 18 (core node library — per-type config + renderers) builds on this canvas.
+
+## Day 18 — Core nodes (Start, Say, Listen, Decision, End) — 2026-07-01 — ✅ DONE
+Model: Opus (kit ⚡ SONNET). Branch `day/18-core-nodes` → PR. Basic linear/branching conversations are now designable visually.
+
+Built (DONE):
+- **shared per-type config** (`flow-node-config.ts`): Zod schemas — startConfig (openingLine/language/voice), sayConfig (scripted|generated, refined so each mode needs its field), listenConfig (typed captures + timeout), decisionConfig (intent/sentiment/value/else branches), endConfig (outcome + hangup). **capturedVariableSchema** = sound variable typing (valid identifier name + type from text/number/date/email/phone/boolean/intent — self-audit focus A). `nodeConfigSchema` + `validateNodeConfig` (opaque config passes for schemaless types; flags duplicate Listen captures). `compileNode` → runtime spec (parsed config + declared captures) for the compiler (Day 22). **9 tests** (52 shared total).
+- **web config forms** (`NodeConfigForm`): per-type editors wired into the canvas drawer — Start/Say/Listen (add-remove typed captures)/Decision (add-remove branches)/End. Edits persist into `node.data.config` and autosave through the graph. Nodes with invalid config now get the **error ring** (`validateNodeConfig` feeds the canvas error map alongside structural validation).
+
+Verification:
+- shared: typecheck + lint + build + **52 tests**. web: typecheck + lint green; **production build compiles the builder route**. Config round-trips shared↔API↔canvas.
+- Process note: rebuilt `@vocaliq/shared` dist so the web typechecks against the new exports (the app resolves the package's build output, not source).
+
+Deferred (tracked): dynamic-variable insertion UI ({{lead.field}} picker); inline single-node preview (needs the test panel, Day 23); Tool/Webhook/RAG/Transfer/Collect nodes (Days 19–21); voice picker in Start (needs the voices list, Day 26).
+
+## Self-Audit — Day 18 (A–K)
+A. Graph/config integrity (focus): ✅ — each node type has a Zod schema; `validateNodeConfig` covers required fields, enum types, and duplicate captures; captured variables carry a sound type + valid identifier name (unit-tested); `compileNode` emits the typed runtime contribution.
+B. Tenancy: ✅ — config is stored inside the flow graph, saved under the Day-17 RLS-scoped flow API; no new data path.
+C. Security: ✅ — config is schema-validated server-side on save (Day 17 saveGraph); no arbitrary execution; safe errors.
+D. Cost: ✅ NA.
+E. Tests: ✅ — 9 shared config tests (per-type valid/invalid, refinement, capture typing + duplicates, compileNode); web covered by typecheck + build.
+F. Performance: ✅ — validation memoised; forms are lightweight controlled inputs.
+G. Errors/obs: ✅ — invalid config surfaces as a node error ring + the canvas validity badge.
+H. UI: ✅ — per-type drawer, add/remove rows, a11y labels on every control, dark tokens; scrollable drawer.
+I. Regression: ✅ — full shared suite green; web build green; only additive; base rebased cleanly onto the Day-17 merge.
+J. Quality/docs (focus): ✅ — typed schemas + runtime contribution documented; deferrals logged; captured-variable typing is the focus and is sound + tested.
+K. Build/CI: ✅ — shared tests deterministic; web build compiles.
+
+Captured-variable typing CONFIRMED (self-audit focus): capture names must be valid identifiers, types are enum-constrained, and duplicates are flagged (tests in flow-node-config).
+Next: Day 19 (Tool + Webhook nodes) — external calls from the flow.
