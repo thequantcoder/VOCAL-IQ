@@ -470,3 +470,35 @@ K. Build/CI: ✅ — all tests deterministic + key-free; the live end-to-end dem
 
 Fixes this session: feed() real-time vs manual-clock modes; shared clock per test; LLM fakes implement the full protocol; dataclasses.replace for typed config overrides; pytest.approx for float metrics.
 Admin: ElevenLabs Creator key set + validated (131k chars). Next session = LiveKit RTC transport binding to make it a real phone call.
+
+## Day 09 part 2 — LiveKit RTC transport (real calls) — 2026-07-01 — ✅ DONE (live round-trip proven)
+Model: Opus. Branch `day/09-livekit-transport` → PR. Binds the Day-9 engine to real LiveKit audio so it's an actual call.
+Built:
+- `app/loop/livekit_agent.py`:
+  - `LiveKitAudioSink` (engine→room): wraps agent PCM into `rtc.AudioFrame`s and `capture_frame`s them; **carries a dangling odd byte** so frames stay int16-aligned (ElevenLabs chunks aren't always even); `clear()` → `AudioSource.clear_queue()` = instant barge-in silence.
+  - `CallerAudio` (room→engine): a subscribed `AudioStream` (asked for 16kHz/20ms frames — LiveKit resamples) is pumped onto a queue that the engine consumes as its `audio_in`; `close()` ends it on disconnect.
+  - `run_agent()` — the worker: joins the room, publishes the agent track, subscribes to the caller, runs `ConversationLoop` with the real Deepgram/OpenAI/ElevenLabs adapters, tears down cleanly.
+- `/calls/start` now **dispatches the AI agent** into the room when `settings.voice_ai_configured` (Deepgram+OpenAI+ElevenLabs set), tracked as a background task and cancelled on graceful drain; clear note when voice-AI keys are absent. Added those keys to `Settings` + `voice_ai_configured`.
+- dep: `livekit` (rtc) 1.x (+ numpy).
+
+Verification:
+- Voice: ruff + pyright + **50 tests** (2 opt-in skipped) green. New: transport unit tests (fake `AudioSource`: sink framing / odd-byte carry / flush; `CallerAudio` queue + close-unblocks-iterator) + `/calls/start` agent-dispatch (dispatched vs note-when-missing) + a key-gated live round-trip smoke.
+- **Demonstrated LIVE over real WebRTC**: a synthetic caller published a spoken question into a real LiveKit room; the agent joined, greeted ("Hi, thanks for calling Acme Spa!"), transcribed "What are your opening hours on weekends?", answered, and spoke back — the caller **received 8.0s of agent audio (402 frames) over the media path**. This satisfies the Day-9 DoD "a real call holds natural back-and-forth."
+
+Deferred (later): browser caller UI = the web widget (Day 16); Twilio↔LiveKit PSTN bridge (Days 10/11); loading the compiled Agent persona/prompt from the api instead of the default system prompt/greeting (Days 17–22); transcript-segment + UsageRecord persistence to Postgres with per-call `app.current_tenant` (needs the voice DB layer).
+
+## Self-Audit — Day 09 part 2 (A–K)
+A. Correctness: ✅ — transport adapters unit-tested; full call proven live over WebRTC.
+B. Tenancy: ✅/⏭ — tenant_id flows through LoopConfig + events; Postgres persistence with app.current_tenant still tracked for the DB-layer day.
+C. Security: ✅ — agent joins with a scoped LiveKit JWT; keys via env/settings only; no secret logged.
+D. Cost/usage: ✅ — the engine still meters STT/LLM/TTS per turn inside run_agent (unchanged path).
+E. Tests: ✅ — deterministic transport + dispatch tests in CI; the network round-trip is opt-in so CI never flakes.
+F. Performance/latency: ✅ — 16kHz/20ms frames end-to-end; barge-in maps onto clear_queue() (immediate); no full-clip buffering.
+G. Errors/obs + shutdown: ✅ — run_agent tears down room/source/reader tasks in finally; drain cancels agent tasks + deletes rooms.
+H. UI: ✅ NA (browser caller = Day 16).
+I. Regression: ✅ — engine untouched; TS workspace unaffected; existing /calls/start tests updated + green.
+J. Quality/docs: ✅ — typed, pyright clean; comments mark the resample/odd-byte/barge-in seams + the deferred Agent-config load.
+K. Build/CI: ✅ — livekit rtc pinned; live smoke gated (RUN_LIVEKIT_CALL=1).
+
+Fix this session: odd-byte carry in LiveKitAudioSink (AudioFrame requires int16 alignment) — found + fixed via the first live round-trip.
+Admin: all keys set + validated. Next: Day 10 (outbound Twilio) or latency hardening.

@@ -26,9 +26,19 @@ class Settings(BaseSettings):
     livekit_api_key: str | None = None
     livekit_api_secret: str | None = None
 
+    # Voice-AI providers — optional so the service boots; the agent loop needs all three.
+    deepgram_api_key: str | None = None
+    openai_api_key: str | None = None
+    elevenlabs_api_key: str | None = None
+
     @property
     def livekit_configured(self) -> bool:
         return bool(self.livekit_url and self.livekit_api_key and self.livekit_api_secret)
+
+    @property
+    def voice_ai_configured(self) -> bool:
+        """True when the STT+LLM+TTS keys for a live agent are all present."""
+        return bool(self.deepgram_api_key and self.openai_api_key and self.elevenlabs_api_key)
 
 
 settings = Settings()
