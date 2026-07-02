@@ -435,3 +435,97 @@ export function useDeleteSquad() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['squads'] }),
   });
 }
+
+// ── Campaigns (Day 28): bulk outbound ─────────────────────────────────────────
+
+export interface CampaignListItem {
+  id: string;
+  name: string;
+  status: string;
+  contactCount: number;
+  createdAt: string;
+}
+
+export interface CampaignDetail {
+  id: string;
+  name: string;
+  agentId: string;
+  status: string;
+  schedule: unknown;
+  pacing: number;
+  concurrency: number;
+  retryPolicy: unknown;
+  createdAt: string;
+}
+
+export interface ImportSummary {
+  imported: number;
+  invalid: number;
+  duplicates: number;
+  suppressed: number;
+}
+
+export interface MonitorSummary {
+  total: number;
+  byStatus: Record<string, number>;
+}
+
+export function useCampaigns() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['campaigns'],
+    queryFn: () => apiFetch<CampaignListItem[]>(getToken, '/campaigns'),
+  });
+}
+
+export function useCampaignMonitor(id: string) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['campaigns', id, 'monitor'],
+    queryFn: () => apiFetch<MonitorSummary>(getToken, `/campaigns/${id}/monitor`),
+    enabled: Boolean(id),
+    refetchInterval: 5000, // live monitor
+  });
+}
+
+export function useCreateCampaign() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { name: string; agentId: string; pacing?: number; concurrency?: number }) =>
+      apiFetch<CampaignDetail>(getToken, '/campaigns', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['campaigns'] }),
+  });
+}
+
+export function useImportContacts(campaignId: string) {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      csv: string;
+      mapping: { phone: string; name?: string; email?: string };
+    }) =>
+      apiFetch<ImportSummary>(getToken, `/campaigns/${campaignId}/import`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['campaigns'] }),
+  });
+}
+
+export function useSetCampaignStatus() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; status: string }) =>
+      apiFetch<CampaignDetail>(getToken, `/campaigns/${vars.id}/status`, {
+        method: 'POST',
+        body: JSON.stringify({ status: vars.status }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['campaigns'] }),
+  });
+}

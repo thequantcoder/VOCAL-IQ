@@ -604,15 +604,18 @@ model CampaignContact {
   tenantId   String   @db.Uuid
   campaignId String   @db.Uuid
   campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  contactId  String   @db.Uuid
-  status     String   @default("PENDING")
-  attempts   Int      @default(0)
-  lastCallId String?  @db.Uuid
-  createdAt  DateTime @default(now())
+  contactId       String   @db.Uuid
+  status          String   @default("PENDING")
+  attempts        Int      @default(0)
+  lastCallId      String?  @db.Uuid
+  lastDisposition String? // last call outcome, drives the retry state machine (Day 28)
+  nextAttemptAt   DateTime? // when this contact becomes due (null = due now)
+  createdAt       DateTime @default(now())
 
   @@unique([campaignId, contactId])
   @@index([tenantId])
   @@index([campaignId])
+  @@index([campaignId, status])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
