@@ -78,12 +78,25 @@ export interface TranscriptSegment {
   endMs: number;
 }
 
+export interface CallEntity {
+  type: string;
+  value: string;
+}
+
 export interface CallDetail extends CallListItem {
   sentiment: number | null;
   recordingUrl: string | null;
   startedAt: string | null;
   endedAt: string | null;
-  transcript: { segments: TranscriptSegment[]; summary: string | null; keywords: string[] } | null;
+  transcript: {
+    segments: TranscriptSegment[];
+    summary: string | null;
+    keywords: string[];
+    topics: string[];
+    entities: CallEntity[];
+    sentiment: string | null;
+    intelAt: string | null;
+  } | null;
 }
 
 export interface AgentInput {

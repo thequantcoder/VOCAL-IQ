@@ -157,6 +157,9 @@ importers:
       '@vocaliq/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@vocaliq/provider-router':
+        specifier: workspace:*
+        version: link:../../packages/provider-router
       '@vocaliq/shared':
         specifier: workspace:*
         version: link:../../packages/shared
