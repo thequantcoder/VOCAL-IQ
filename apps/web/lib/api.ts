@@ -529,3 +529,42 @@ export function useSetCampaignStatus() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['campaigns'] }),
   });
 }
+
+// ── Leads (Day 29): scored pipeline ───────────────────────────────────────────
+
+export interface LeadListItem {
+  id: string;
+  contactId: string;
+  contactName: string | null;
+  phone: string | null;
+  tags: string[];
+  status: string;
+  score: number;
+  pipelineStage: string | null;
+  owner: string | null;
+  updatedAt: string;
+}
+
+export function useLeads(params: { status?: string; stage?: string; owner?: string } = {}) {
+  const { getToken } = useAuth();
+  const qs = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v) as [string, string][],
+  ).toString();
+  return useQuery({
+    queryKey: ['leads', params],
+    queryFn: () => apiFetch<LeadListItem[]>(getToken, `/leads${qs ? `?${qs}` : ''}`),
+  });
+}
+
+export function useMoveLeadStage() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; stage: string }) =>
+      apiFetch<LeadListItem>(getToken, `/leads/${vars.id}/stage`, {
+        method: 'POST',
+        body: JSON.stringify({ stage: vars.stage }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['leads'] }),
+  });
+}
