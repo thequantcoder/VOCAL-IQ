@@ -994,3 +994,34 @@ K. Build/CI: ✅ — deterministic; squad logic tested without live providers.
 
 Handoff + context preservation CONFIRMED (focus A + B): `resolveHandoff` routes to the right specialist and `ContextBus.snapshot()`/`forHandoff()` carry every earlier-captured field to the next agent — demonstrated in both `squad.test.ts` and `test_squad.py`. Squad tenant-isolation CONFIRMED: the RLS test proves C1 can neither read R1's squad nor enroll R1's agent.
 Next: Day 28 (campaign manager) — or Day 27 session-2 loop wiring when the deferred loop bundle lands.
+
+## Day 28 — Campaign manager (import, schedule, pace, retry, monitor) — 2026-07-02 — ✅ DONE
+Model: Opus (🧠 OPUS). Branch `day/28-campaigns` → PR. Prereqs met (Day 10 outbound + workers running; no new credentials). Self-audit focus C (DNC/caps/abuse) + B + F (pacing under load) + D.
+
+Built (DONE):
+- **shared** (`campaign.ts`): the safety-critical pure core — `normalizePhone` (E.164, rejects ambiguous locals — never dial a guess), `parseCsv` + `importContacts` (header→field map, **dedupe by phone + DNC suppression**, counts every drop), `callWindowSchema` + `isWithinWindow` (**timezone-aware** via `Intl`, day + time-of-day), `retryPolicySchema` + **`nextRetry`** (state machine: retry retryable dispositions with backoff, stop at maxAttempts/terminal/success), **`selectDueContacts`** (pacing + concurrency selection — can never exceed caps regardless of backlog), status constants.
+- **DB**: `CampaignContact` gains `lastDisposition` + `nextAttemptAt` (retry gating) + a `(campaignId,status)` index; migration `day28_campaigns`. RLS already present from Day 04.
+- **api** `campaigns` module: RLS-scoped `CampaignsService` — CRUD, **import** (upserts Contacts + enrolls PENDING; suppresses the tenant's DNC set up front), gated status transitions (state machine), and **live `monitor`** (counts grouped by status). Agent must belong to the tenant. Controller: reads to members, mutations to config-writers.
+- **workers**: `runCampaignTick` (pure, injected-deps, mirrors the reconciliation pattern) — for each RUNNING campaign in its local window, select due contacts within caps and hand to `dial`; **one campaign's failure is isolated**. `createDbSchedulerDeps` wires the admin-client production deps; registered as a **15s repeatable BullMQ tick**. Live outbound placement is a marked TODO (gated until a funded number — Day 10 pattern); the tick flips the contact to CALLING.
+- **web**: `/dashboard/campaigns` — list + create (agent picker, pace/concurrency), CSV import panel (reports imported/dup/DNC/invalid), run/pause, and a **live monitor** (5s refetch) of status counts. Nav link + hooks.
+
+Verification:
+- shared: typecheck + lint + build + **93 tests** (phone normalise, import dedupe+DNC+counts, timezone window, retry state machine, pacing/concurrency caps). api: typecheck + lint + **campaigns 3** (create+import+monitor, illegal-transition gating, foreign-agent rejection) + full **106**. workers: typecheck + lint + **scheduler 4** (window gating, caps, in-flight concurrency, failure isolation) — 6 total. db: migrate + **7**. web: typecheck + lint + **build** (route `/dashboard/campaigns` prerendered).
+
+Deferred (tracked): the **live outbound dial** from the scheduler (enqueue the metered call at the marked TODO once a funded Twilio number is attached — selection/caps already guarantee pace+concurrency); **retry writeback** wiring `nextRetry` to call-completion (set `nextAttemptAt`/`status` on disposition) rides with the call-lifecycle webhook; best-time-of-day heuristics are a scheduling refinement.
+
+## Self-Audit — Day 28 (A–K)
+A. Correctness: ✅ — import pipeline, window, retry SM, and pacing selection are pure + exhaustively unit-tested (edge cases: dup, invalid, DNC, closed window, max attempts, at-capacity).
+B. Tenancy: ✅ — all campaign/contact reads+writes via `withTenant`; import builds the DNC set from the tenant's own contacts; agent ownership enforced; the worker uses the admin client only for the cross-tenant infra sweep (documented, like reconciliation).
+C. DNC / caps / abuse (THE focus): ✅ — DNC numbers are suppressed at import (never enrolled) AND the live outbound path still re-checks DNC/consent (Day 10); `selectDueContacts` can never exceed concurrency or pace regardless of backlog size — proven by tests.
+D. Cost: ✅ — no unmetered path added; the live dial (deferred) routes through the metered outbound path; pacing/concurrency caps bound spend.
+E. Tests: ✅ — 6 shared + 3 api (RLS-real) + 4 workers; deterministic (fixed clocks, injected deps).
+F. Pacing under load (focus): ✅ — selection is O(due) with a hard cap = min(concurrency-inFlight, pace); a 100k backlog still launches ≤ cap per tick; the 15s tick bounds throughput.
+G. Errors/obs: ✅ — typed AppErrors; illegal transitions rejected with a clear message; one campaign's tick error is isolated + logged, others proceed.
+H. UI/a11y: ✅ — labelled inputs (htmlFor/id), import reports every drop, live monitor; design tokens; responsive.
+I. Regression: ✅ — additive migration; existing suites untouched; shared 93 / api 106 / workers 6 / db 7 / web build all green; branched from the Day-27 merge.
+J. Quality/docs: ✅ — explicit DTOs (no Prisma type leak); doc comments explain the caps + gated live dial; deferred items tracked.
+K. Build/CI: ✅ — deterministic; scheduler tested without Redis/Postgres/a live dialer.
+
+DNC + caps CONFIRMED (focus C + F): import suppresses DNC numbers (counted, never enrolled) and `selectDueContacts`/`runCampaignTick` never exceed pace or concurrency even with a large backlog — demonstrated across `campaign.test.ts` + `campaign-scheduler.test.ts`.
+Next: Day 29 (lead workspace + scoring).

@@ -3,6 +3,7 @@ import { AgentsModule } from './agents/agents.module';
 import { AuthModule } from './auth/auth.module';
 import { BillingModule } from './billing/billing.module';
 import { CallsModule } from './calls/calls.module';
+import { CampaignsModule } from './campaigns/campaigns.module';
 import { CostModule } from './cost/cost.module';
 import { DbModule } from './db/db.module';
 import { FlowsModule } from './flows/flows.module';
@@ -22,6 +23,7 @@ import { WidgetModule } from './widget/widget.module';
     TenancyModule,
     AgentsModule,
     CallsModule,
+    CampaignsModule,
     CostModule,
     BillingModule,
     WidgetModule,

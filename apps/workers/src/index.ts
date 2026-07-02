@@ -2,6 +2,7 @@ import { createPrismaClient } from '@vocaliq/db';
 import { parseEnv } from '@vocaliq/shared';
 import { Queue, Worker } from 'bullmq';
 import IORedis from 'ioredis';
+import { createDbSchedulerDeps, runCampaignTick } from './campaign-scheduler';
 import { createDbFindUnmetered, runReconciliation } from './reconciliation';
 
 /**
@@ -12,6 +13,38 @@ import { createDbFindUnmetered, runReconciliation } from './reconciliation';
  */
 
 const RECONCILE_QUEUE = 'cost-reconciliation';
+const CAMPAIGN_QUEUE = 'campaign-scheduler';
+
+/** Register the campaign scheduler tick (repeatable job + worker) — every 15s. */
+function registerCampaignScheduler(
+  redisUrl: string,
+  databaseUrl: string | undefined,
+): () => Promise<void> {
+  const connection = new IORedis(redisUrl, { maxRetriesPerRequest: null });
+  const admin = createPrismaClient(databaseUrl);
+  const deps = createDbSchedulerDeps(admin, (msg) => console.log(`[campaigns] ${msg}`));
+
+  const queue = new Queue(CAMPAIGN_QUEUE, { connection });
+  void queue.add('tick', {}, { repeat: { every: 15_000 }, jobId: 'campaign-scheduler:tick' });
+
+  const worker = new Worker(
+    CAMPAIGN_QUEUE,
+    async () => {
+      const res = await runCampaignTick(deps, new Date());
+      return res;
+    },
+    { connection },
+  );
+  worker.on('failed', (job, err) => console.error(`[campaigns] job ${job?.id} failed:`, err));
+
+  console.log('[workers] campaign-scheduler queue + worker registered (15s tick).');
+  return async () => {
+    await worker.close();
+    await queue.close();
+    await connection.quit();
+    await admin.$disconnect();
+  };
+}
 
 /** Register the daily cost-reconciliation sweep (repeatable job + worker). */
 function registerReconciliation(
@@ -67,6 +100,7 @@ async function main(): Promise<void> {
     return;
   }
   registerReconciliation(env.REDIS_URL, env.DATABASE_URL);
+  registerCampaignScheduler(env.REDIS_URL, env.DATABASE_URL);
 }
 
 void main();

@@ -8,6 +8,7 @@ export * from './enums.js';
 export * from './env.js';
 export * from './errors.js';
 export * from './agent-templates.js';
+export * from './campaign.js';
 export * from './flow-compiler.js';
 export * from './flow-graph.js';
 export * from './flow-node-config.js';
