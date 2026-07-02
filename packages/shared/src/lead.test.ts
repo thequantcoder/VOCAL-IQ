@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  canTransition,
-  renderTemplate,
-  scoreLead,
-  templateVariables,
-} from './lead.js';
+import { canTransition, renderTemplate, scoreLead, templateVariables } from './lead.js';
 
 describe('scoreLead (Hot/Warm/Cold)', () => {
   it('scores a ready + positive + booked call HOT', () => {
@@ -30,8 +25,18 @@ describe('scoreLead (Hot/Warm/Cold)', () => {
   });
 
   it('is monotonic and clamped 0..100, and deterministic', () => {
-    const a = scoreLead({ intent: 'ready', sentiment: 'positive', outcome: 'booked', talkSeconds: 9999 });
-    const b = scoreLead({ intent: 'ready', sentiment: 'positive', outcome: 'booked', talkSeconds: 9999 });
+    const a = scoreLead({
+      intent: 'ready',
+      sentiment: 'positive',
+      outcome: 'booked',
+      talkSeconds: 9999,
+    });
+    const b = scoreLead({
+      intent: 'ready',
+      sentiment: 'positive',
+      outcome: 'booked',
+      talkSeconds: 9999,
+    });
     expect(a).toEqual(b);
     expect(a.score).toBeLessThanOrEqual(100);
     const cold = scoreLead({});

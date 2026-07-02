@@ -11,11 +11,16 @@ import { LeadStatus } from './enums.js';
 // ── Scoring ─────────────────────────────────────────────────────────────────────
 
 /** Temperature buckets the score maps to (a subset of LeadStatus). */
-export type LeadTemperature = typeof LeadStatus.HOT | typeof LeadStatus.WARM | typeof LeadStatus.COLD;
+export type LeadTemperature =
+  | typeof LeadStatus.HOT
+  | typeof LeadStatus.WARM
+  | typeof LeadStatus.COLD;
 
 export const leadSignalsSchema = z.object({
   // Classified buyer intent for the call (0..1 confidence folds into the weight).
-  intent: z.enum(['ready', 'interested', 'neutral', 'not_interested', 'unknown']).default('unknown'),
+  intent: z
+    .enum(['ready', 'interested', 'neutral', 'not_interested', 'unknown'])
+    .default('unknown'),
   sentiment: z.enum(['positive', 'neutral', 'negative']).default('neutral'),
   outcome: z
     .enum(['booked', 'completed', 'callback', 'no_answer', 'voicemail', 'declined', 'failed'])
