@@ -1,7 +1,7 @@
-import { FlowNodeType } from './enums';
-import type { FlowGraph } from './flow-graph';
-import { validateFlowGraph } from './flow-graph';
-import { type CapturedVariable, compileNode } from './flow-node-config';
+import { FlowNodeType } from './enums.js';
+import type { FlowGraph } from './flow-graph.js';
+import { validateFlowGraph } from './flow-graph.js';
+import { type CapturedVariable, compileNode } from './flow-node-config.js';
 
 /**
  * Flow compiler (Day 22): a validated React Flow graph → a deterministic runtime spec the
