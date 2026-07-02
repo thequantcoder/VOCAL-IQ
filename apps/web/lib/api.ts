@@ -364,3 +364,74 @@ export function useApproveVoice() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['voices'] }),
   });
 }
+
+// ── Squads (Day 27): multi-agent teams ────────────────────────────────────────
+
+export interface SquadListItem {
+  id: string;
+  name: string;
+  memberCount: number;
+  updatedAt: string;
+}
+
+export interface HandoffRule {
+  fromAgentId: string;
+  on: string;
+  toAgentId: string;
+}
+
+export interface SquadDetail {
+  id: string;
+  name: string;
+  description: string | null;
+  entryAgentId: string | null;
+  handoffRules: HandoffRule[];
+  members: Array<{ agentId: string; role: string; order: number }>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpsertSquadBody {
+  name: string;
+  description?: string;
+  entryAgentId?: string | null;
+  members: Array<{ agentId: string; role: string; order: number }>;
+  handoffRules: HandoffRule[];
+}
+
+export function useSquads() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['squads'],
+    queryFn: () => apiFetch<SquadListItem[]>(getToken, '/squads'),
+  });
+}
+
+export function useSquad(id: string) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['squads', id],
+    queryFn: () => apiFetch<SquadDetail>(getToken, `/squads/${id}`),
+    enabled: Boolean(id),
+  });
+}
+
+export function useCreateSquad() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: UpsertSquadBody) =>
+      apiFetch<SquadDetail>(getToken, '/squads', { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['squads'] }),
+  });
+}
+
+export function useDeleteSquad() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ id: string }>(getToken, `/squads/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['squads'] }),
+  });
+}

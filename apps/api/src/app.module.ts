@@ -8,6 +8,7 @@ import { DbModule } from './db/db.module';
 import { FlowsModule } from './flows/flows.module';
 import { HealthController } from './health.controller';
 import { RagModule } from './rag/rag.module';
+import { SquadsModule } from './squads/squads.module';
 import { TemplatesModule } from './templates/templates.module';
 import { TenancyModule } from './tenancy/tenancy.module';
 import { VoicesModule } from './voices/voices.module';
@@ -26,6 +27,7 @@ import { WidgetModule } from './widget/widget.module';
     WidgetModule,
     FlowsModule,
     RagModule,
+    SquadsModule,
     TemplatesModule,
     VoicesModule,
   ],

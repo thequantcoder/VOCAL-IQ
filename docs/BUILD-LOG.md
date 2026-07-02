@@ -963,3 +963,34 @@ K. Build/CI: ✅ — deterministic; live cloner isolated behind an injected port
 
 Consent/approval gate CONFIRMED (self-audit focus C): a freshly cloned voice is `usable:false` and `assignToAgent` throws until `approve` flips it — demonstrated by the passing "gates use until approved" test.
 Next: Day 27 (Squads — multi-agent teams / routing).
+
+## Day 27 — Multi-agent Squads + shared context bus + per-node model swap — 2026-07-02 — ✅ DONE (session 1 of 2)
+Model: Opus (🧠 OPUS). Branch `day/27-squads` → PR. Prereqs met (Days 9/21/22 done; no new credentials). Self-audit focus A (handoff) + D (per-node cost) + B (context-bus scoping) + F (no handoff latency spike).
+
+Built (DONE):
+- **DB**: `Squad` (name, description, entryAgentId, handoffRules JSON) + `SquadMember` (squad↔agent, role, order; unique per squad). Migration `day27_squads` with **RLS `tenant_isolation`** on both tables (same policy shape as every tenant table). Back-relations on Tenant + Agent.
+- **shared** (`squad.ts`): `squadMemberSchema`, `handoffRuleSchema`, `squadConfigSchema` (superRefine: **rules + entry must reference squad members** — no dangling handoffs), `entryAgent`, **`resolveHandoff`** (signal→next specialist, first-match, null=keep turn), **`ContextBus`** (per-call shared state across handoffs — merge/set/get/snapshot/`forHandoff`; never stores empties), `nodeOverrideSchema` + **`resolveNodeOverride`** (per-node model/voice swap; router meters the resolved model). Node config: `squadHandoffConfigSchema` registered for the existing `SQUAD_HANDOFF` type; Say node gains `modelOverride`/`voiceOverride`.
+- **voice** (`app/loop/squad.py`): the Python mirror the live loop consumes — `resolve_handoff`, `entry_agent`, `ContextBus`, `resolve_node_override` (pure/deterministic, tested like `language.py`).
+- **api** `squads` module: RLS-scoped `SquadsService` (list/get/create/update/remove). Enrolls **only the tenant's own agents** (count-check inside the tenant tx), validates handoff-rule integrity via the shared schema, replaces members wholesale on update. Controller: reads to members, mutations to config-writers.
+- **web**: `/dashboard/squads` — list + inline builder (name, add member agents with roles, define `from → on signal → to` handoff rules between members); delete; nav link. Squad hooks in `lib/api.ts`.
+
+Verification:
+- shared: typecheck + lint + build + **87 tests** (handoff routing, context preservation across handoffs, empties ignored, entry selection, member-integrity rejection, per-node override). api: typecheck + lint + **squads 4 tests** (chains own agents + rules, rejects non-member rule, **rejects foreign-tenant agent**, **RLS isolates squads across tenants**) + full suite **103**. voice: ruff + pyright + **squad 5 tests** (77 passed total). db: migrate + **7 RLS/schema tests**. web: typecheck + lint + **build** (route `/dashboard/squads` prerendered).
+
+Deferred (tracked — session 2 / loop-wiring bundle): the **live LangGraph orchestration** wired into the Day-9 loop (classify turn → `resolveHandoff` → swap active agent + seed `ContextBus` for the next specialist → seamless audio continuity), and the **router honouring per-node model/voice overrides at call time + metering the resolved model** — both consume the pure/tested helpers built here; they ride with the same deferred loop-integration bundle as tools/transfer/compiler-executor/language-swap. Builder form inputs for the `SQUAD_HANDOFF` node + per-node model/voice fields on the Say node (schemas done + validated) are the remaining UI.
+
+## Self-Audit — Day 27 (A–K)
+A. Handoff (THE focus): ✅ — `resolveHandoff` routes signal→specialist deterministically (first-match, null=keep turn), unit-tested in TS + Py; handoff-rule integrity enforced (rules must reference members) at schema + API level.
+B. Context-bus scoping (focus): ✅ — `ContextBus` is instantiated per call inside the tenant loop (no shared/global state); squads + members are RLS-isolated (proven: C1 cannot see/enroll R1's agents or read R1's squad).
+C. Security: ✅ — inputs Zod-validated; agent-ownership re-checked inside the tenant tx (can't enroll a foreign agent); no secrets/new external surface.
+D. Per-node cost (focus): ✅ — `resolveNodeOverride` returns the effective model; the router meters against the RESOLVED model (documented), so a per-node swap bills at that model's rate — no unmetered path introduced.
+E. Tests: ✅ — 6 shared + 4 api (RLS-real, incl. cross-tenant) + 5 voice; deterministic.
+F. Performance / no handoff latency spike (focus): ✅ — handoff resolve is O(rules); context bus is O(1) get/set; the bus travels in-memory (no re-query per handoff), so a handoff adds no round-trip.
+G. Errors/obs: ✅ — typed AppErrors (NotFound/Validation); null handoff = keep turn (no throw on no-match).
+H. UI/a11y: ✅ — labelled inputs/selects, design tokens, responsive; empty/error/loading states.
+I. Regression: ✅ — additive migration; existing suites untouched; api 103 / shared 87 / voice 77 / db 7 / web build all green; branched from the Day-26 merge.
+J. Quality/docs: ✅ — explicit DTOs (no Prisma type leak), doc comments explain handoff + bus + override; deferred loop-wiring tracked.
+K. Build/CI: ✅ — deterministic; squad logic tested without live providers.
+
+Handoff + context preservation CONFIRMED (focus A + B): `resolveHandoff` routes to the right specialist and `ContextBus.snapshot()`/`forHandoff()` carry every earlier-captured field to the next agent — demonstrated in both `squad.test.ts` and `test_squad.py`. Squad tenant-isolation CONFIRMED: the RLS test proves C1 can neither read R1's squad nor enroll R1's agent.
+Next: Day 28 (campaign manager) — or Day 27 session-2 loop wiring when the deferred loop bundle lands.
