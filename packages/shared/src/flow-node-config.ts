@@ -53,10 +53,25 @@ export const sayConfigSchema = z
     mode: z.enum(['scripted', 'generated']).default('scripted'),
     text: z.string().max(2000).default(''),
     prompt: z.string().max(2000).default(''),
+    // Per-node model/voice swap (Day 27): cheap model for routing, premium for high-stakes.
+    modelOverride: z.string().max(80).default(''),
+    voiceOverride: z.string().max(80).default(''),
   })
   .refine((c) => (c.mode === 'scripted' ? c.text.length > 0 : c.prompt.length > 0), {
     message: 'Scripted needs text; generated needs a prompt',
   });
+
+/**
+ * Squad-handoff node (Day 27): pass the live call to another specialist in the squad when
+ * `on` (the classified signal) fires. The shared context bus travels with the handoff so
+ * the receiving agent doesn't re-ask; `note` is optional spoken/internal context.
+ */
+export const squadHandoffConfigSchema = z.object({
+  on: z.string().min(1).max(60).default('handoff'), // signal that triggers the handoff
+  toRole: z.string().max(60).default(''), // target specialist role (resolved to an agent at runtime)
+  note: z.string().max(500).default(''),
+});
+export type SquadHandoffConfig = z.infer<typeof squadHandoffConfigSchema>;
 
 export const listenConfigSchema = z.object({
   captures: z.array(capturedVariableSchema).default([]),
@@ -211,6 +226,7 @@ const CONFIG_SCHEMAS = {
   [FlowNodeType.COLLECT_CONFIRM]: collectConfirmConfigSchema,
   [FlowNodeType.TRANSFER]: transferConfigSchema,
   [FlowNodeType.SUBFLOW]: subflowConfigSchema,
+  [FlowNodeType.SQUAD_HANDOFF]: squadHandoffConfigSchema,
 } as const;
 
 /** The config schema for a node type, or null if the type has no config schema yet. */

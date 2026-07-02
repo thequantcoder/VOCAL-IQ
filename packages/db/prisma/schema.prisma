@@ -206,6 +206,8 @@ model Tenant {
   kbChunks            KbChunk[]
   resellerMargins     ResellerMargin[] @relation("ResellerOfMargin")
   childMargins        ResellerMargin[] @relation("ChildOfMargin")
+  squads              Squad[]
+  squadMembers        SquadMember[]
 
   @@index([parentTenantId])
   @@index([type])
@@ -299,6 +301,7 @@ model Agent {
   agentMemories AgentMemory[]
   phoneNumbers  PhoneNumber[]
   knowledgeBases KnowledgeBase[]
+  squadMembers  SquadMember[]
 
   @@index([tenantId])
   @@index([tenantId, status])
@@ -356,6 +359,42 @@ model Voice {
   createdAt       DateTime @default(now())
 
   @@index([tenantId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Squads (multi-agent teams — Day 27)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Squad {
+  id           String        @id @default(uuid()) @db.Uuid
+  tenantId     String        @db.Uuid
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name         String
+  description  String?
+  entryAgentId String?       @db.Uuid // the specialist that answers first
+  handoffRules Json          @default("[]") // [{ fromAgentId, on, toAgentId }] — routes turns between specialists
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  members      SquadMember[]
+
+  @@index([tenantId])
+}
+
+model SquadMember {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  squadId   String   @db.Uuid
+  squad     Squad    @relation(fields: [squadId], references: [id], onDelete: Cascade)
+  agentId   String   @db.Uuid
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  role      String   // receptionist / booking / billing / …
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@unique([squadId, agentId])
+  @@index([tenantId])
+  @@index([squadId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
