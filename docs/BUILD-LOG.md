@@ -1088,3 +1088,16 @@ Split + significance CONFIRMED (focus A): `assignVariant` is stable-per-key + we
 
 ### 🏁 Phase 2 complete (Days 17–30) — Builder & conversations
 Canvas → nodes → tool/webhook → RAG → collect/transfer/subflow → compiler → simulator → persona/templates → multilingual → voices/cloning → **Squads** → **campaigns** → **lead workspace** → **A/B testing**. Tag **v0.3-phase2**. Next: Phase 2.5 (Days 31–40: post-call intel, simulator, batch testing, memory, SIP, appointments, sheets/forms, cost protection, transcription controls, integrations) — with Day 67 (Agent Desk) slotted after Day 27's transfer destinations.
+
+## 🔧 STACK PIVOT — CodeCanyon self-hosted (2026-07, after Day 30, before Day 31)
+**Decision (overrides the kit's pinned stack):** the product is being sold on **CodeCanyon as a self-hosted SaaS**, so the stack moves to what buyers can run for free and customize:
+- **Backend: Node.js + Express** (NestJS ELIMINATED — buyer-familiar; Express *is* Node.js + one small MIT lib).
+- **Auth: self-hosted email/password + JWT (bcrypt)** — **Clerk ELIMINATED** (paid SaaS breaks self-hosting).
+- **DB: PostgreSQL + Prisma KEPT** (rejected MongoDB — keeps RLS multi-tenancy + pgvector RAG self-hostable + relational + zero rewrite; rejected Drizzle — keep Prisma).
+- **Frontend: Next.js (latest) + React KEPT** (rejected Vite SPA) + **shadcn/ui** + **Framer Motion** + Tailwind.
+- **Deploy: PM2 + Nginx + Docker.** Everything free & open-source (MIT/Apache/permissive).
+- **Providers stay BYOK + swappable for self-hosted OSS** (Ollama/Whisper/Piper/self-hosted LiveKit); only PSTN minutes unavoidably cost money. Sentry/PostHog/Stripe are OPTIONAL (already no-op without keys).
+
+Executed in two phases to keep `apps/api` always-buildable:
+- **Phase 1 (this commit) — self-hosted deploy layer:** `ecosystem.config.cjs` (PM2: api/workers/web/voice), `infra/nginx/vocaliq.conf.sample` (reverse proxy + TLS + WS), `docs/SELF-HOSTING.md` (stack + honest free-vs-paid + prod steps). Additive only; all suites still green.
+- **Phase 2 (next, dedicated pass) — `refactor/api-express`:** NestJS→Express (16 controllers→routers, 3 guards→middleware, DI→composition root, exception filter→error middleware) + Clerk→JWT (User.passwordHash migration, register/login, swap the `authenticate` verifier — the auth is already abstracted around a pluggable verifier). Services + service-tests are framework-agnostic and stay green throughout; land as one buildable unit.
