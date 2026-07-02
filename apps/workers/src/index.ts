@@ -3,6 +3,7 @@ import { parseEnv } from '@vocaliq/shared';
 import { Queue, Worker } from 'bullmq';
 import IORedis from 'ioredis';
 import { createDbSchedulerDeps, runCampaignTick } from './campaign-scheduler';
+import { createDbPostCallDeps, runPostCallIntel } from './post-call-intel';
 import { createDbFindUnmetered, runReconciliation } from './reconciliation';
 
 /**
@@ -14,6 +15,36 @@ import { createDbFindUnmetered, runReconciliation } from './reconciliation';
 
 const RECONCILE_QUEUE = 'cost-reconciliation';
 const CAMPAIGN_QUEUE = 'campaign-scheduler';
+const POST_CALL_QUEUE = 'post-call-intel';
+
+/**
+ * Post-call intelligence worker (Day 31). Consumes `{ transcriptId }` jobs (the live call
+ * loop enqueues one on call-end — that wiring rides with the Day-9 loop bundle) and runs a
+ * metered LLM summary/keyword extraction onto the transcript. Exported so the loop can
+ * enqueue via the same queue name.
+ */
+function registerPostCallIntel(
+  redisUrl: string,
+  databaseUrl: string | undefined,
+): () => Promise<void> {
+  const connection = new IORedis(redisUrl, { maxRetriesPerRequest: null });
+  const admin = createPrismaClient(databaseUrl);
+  const deps = createDbPostCallDeps(admin, (msg) => console.log(`[post-call] ${msg}`));
+
+  const worker = new Worker<{ transcriptId: string }>(
+    POST_CALL_QUEUE,
+    async (job) => runPostCallIntel(deps, job.data.transcriptId),
+    { connection },
+  );
+  worker.on('failed', (job, err) => console.error(`[post-call] job ${job?.id} failed:`, err));
+
+  console.log('[workers] post-call-intel queue + worker registered.');
+  return async () => {
+    await worker.close();
+    await connection.quit();
+    await admin.$disconnect();
+  };
+}
 
 /** Register the campaign scheduler tick (repeatable job + worker) — every 15s. */
 function registerCampaignScheduler(
@@ -101,6 +132,7 @@ async function main(): Promise<void> {
   }
   registerReconciliation(env.REDIS_URL, env.DATABASE_URL);
   registerCampaignScheduler(env.REDIS_URL, env.DATABASE_URL);
+  registerPostCallIntel(env.REDIS_URL, env.DATABASE_URL);
 }
 
 void main();

@@ -37,7 +37,15 @@ export interface CallDetail {
   endedAt: Date | null;
   createdAt: Date;
   agent: { id: string; name: string };
-  transcript: { segments: unknown; summary: string | null; keywords: string[] } | null;
+  transcript: {
+    segments: unknown;
+    summary: string | null;
+    keywords: string[];
+    topics: string[];
+    entities: unknown;
+    sentiment: string | null;
+    intelAt: Date | null;
+  } | null;
 }
 
 /**
@@ -127,7 +135,17 @@ export class CallsReadService {
           endedAt: true,
           createdAt: true,
           agent: { select: { id: true, name: true } },
-          transcript: { select: { segments: true, summary: true, keywords: true } },
+          transcript: {
+            select: {
+              segments: true,
+              summary: true,
+              keywords: true,
+              topics: true,
+              entities: true,
+              sentiment: true,
+              intelAt: true,
+            },
+          },
         },
       }),
     );

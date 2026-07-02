@@ -596,6 +596,10 @@ model Transcript {
   segments  Json     @default("[]")
   summary   String?
   keywords  String[] @default([])
+  topics    String[] @default([]) // post-call intel (Day 31)
+  entities  Json     @default("[]") // [{ type, value }]
+  sentiment String? // positive / neutral / negative
+  intelAt   DateTime? // when post-call intel was generated (null = pending)
   createdAt DateTime @default(now())
 
   @@index([tenantId])
