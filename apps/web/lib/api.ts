@@ -568,3 +568,87 @@ export function useMoveLeadStage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['leads'] }),
   });
 }
+
+// ── Experiments (Day 30): A/B testing ─────────────────────────────────────────
+
+export interface ExperimentListItem {
+  id: string;
+  name: string;
+  status: string;
+  metric: string;
+  variantCount: number;
+  updatedAt: string;
+}
+
+export interface ExperimentVariant {
+  id: string;
+  label: string;
+  weight: number;
+  config: Record<string, string | number | boolean | null>;
+}
+
+export interface VariantResultRow {
+  variant: string;
+  label: string;
+  total: number;
+  conversions: number;
+  rate: number;
+  isControl: boolean;
+  lift: number;
+  pValue: number;
+  significant: boolean;
+}
+
+export interface ExperimentResults {
+  metric: string;
+  totalCalls: number;
+  rows: VariantResultRow[];
+}
+
+export function useExperiments() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['experiments'],
+    queryFn: () => apiFetch<ExperimentListItem[]>(getToken, '/experiments'),
+  });
+}
+
+export function useExperimentResults(id: string) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['experiments', id, 'results'],
+    queryFn: () => apiFetch<ExperimentResults>(getToken, `/experiments/${id}/results`),
+    enabled: Boolean(id),
+    refetchInterval: 10000,
+  });
+}
+
+export function useCreateExperiment() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      name: string;
+      metric: string;
+      variants: Array<{ id: string; label: string; weight: number }>;
+    }) =>
+      apiFetch<ExperimentListItem>(getToken, '/experiments', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['experiments'] }),
+  });
+}
+
+export function useSetExperimentStatus() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; status: string }) =>
+      apiFetch<ExperimentListItem>(getToken, `/experiments/${vars.id}/status`, {
+        method: 'POST',
+        body: JSON.stringify({ status: vars.status }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['experiments'] }),
+  });
+}

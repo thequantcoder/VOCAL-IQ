@@ -7,6 +7,7 @@ export * from './constants.js';
 export * from './enums.js';
 export * from './env.js';
 export * from './errors.js';
+export * from './experiment.js';
 export * from './agent-templates.js';
 export * from './campaign.js';
 export * from './flow-compiler.js';

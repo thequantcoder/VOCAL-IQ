@@ -6,6 +6,7 @@ import { CallsModule } from './calls/calls.module';
 import { CampaignsModule } from './campaigns/campaigns.module';
 import { CostModule } from './cost/cost.module';
 import { DbModule } from './db/db.module';
+import { ExperimentsModule } from './experiments/experiments.module';
 import { FlowsModule } from './flows/flows.module';
 import { HealthController } from './health.controller';
 import { LeadsModule } from './leads/leads.module';
@@ -26,6 +27,7 @@ import { WidgetModule } from './widget/widget.module';
     CallsModule,
     CampaignsModule,
     CostModule,
+    ExperimentsModule,
     BillingModule,
     WidgetModule,
     FlowsModule,
