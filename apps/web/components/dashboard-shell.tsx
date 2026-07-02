@@ -1,11 +1,11 @@
 'use client';
 
-import { UserButton } from '@clerk/nextjs';
 import { cn } from '@vocaliq/ui';
 import {
   Bot,
   FlaskConical,
   LayoutDashboard,
+  LogOut,
   Megaphone,
   Mic,
   PhoneCall,
@@ -13,9 +13,10 @@ import {
   Users,
 } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { ThemeToggle } from '../app/theme-toggle';
+import { useAuth } from '../lib/auth';
 import { ErrorBoundary } from './error-boundary';
 
 const NAV = [
@@ -73,12 +74,35 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       <div className="flex min-w-0 flex-col">
         <header className="flex items-center justify-end gap-3 border-vq-border border-b px-6 py-3">
           <ThemeToggle />
-          <UserButton />
+          <UserMenu />
         </header>
         <main className="min-w-0 flex-1 px-6 py-8">
           <ErrorBoundary>{children}</ErrorBoundary>
         </main>
       </div>
+    </div>
+  );
+}
+
+/** The signed-in user's email + a sign-out control (replaces Clerk's UserButton). */
+function UserMenu() {
+  const { user, signOut } = useAuth();
+  const router = useRouter();
+  return (
+    <div className="flex items-center gap-3">
+      {user?.email && (
+        <span className="hidden text-sm text-vq-text-lo sm:inline">{user.email}</span>
+      )}
+      <button
+        type="button"
+        onClick={() => {
+          signOut();
+          router.push('/sign-in');
+        }}
+        className="flex items-center gap-1 rounded-vq border border-vq-border px-2.5 py-1.5 text-sm text-vq-text-lo hover:text-vq-text-hi"
+      >
+        <LogOut size={15} aria-hidden /> Sign out
+      </button>
     </div>
   );
 }

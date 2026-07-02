@@ -1,23 +1,21 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { type NextRequest, NextResponse } from 'next/server';
 
 /**
- * Clerk auth middleware. Public routes (landing, auth pages, health) stay open;
- * everything under /dashboard requires a signed-in session — unauthenticated hits
- * are redirected to sign-in (CODING-RULES §6, deny-by-default for app surfaces).
+ * Self-hosted route protection (replaces Clerk middleware). Everything under /dashboard
+ * requires the `vq_token` session cookie; unauthenticated hits redirect to /sign-in
+ * (deny-by-default for app surfaces, CODING-RULES §6). The JWT itself is verified by the
+ * API on every request — this is just the cheap edge gate for the UI.
  */
-const isProtectedRoute = createRouteMatcher(['/dashboard(.*)']);
-
-export default clerkMiddleware(async (auth, req) => {
-  if (isProtectedRoute(req)) {
-    await auth.protect();
+export function middleware(req: NextRequest) {
+  const token = req.cookies.get('vq_token')?.value;
+  if (!token) {
+    const url = req.nextUrl.clone();
+    url.pathname = '/sign-in';
+    return NextResponse.redirect(url);
   }
-});
+  return NextResponse.next();
+}
 
 export const config = {
-  matcher: [
-    // Skip Next internals and static files unless referenced in search params.
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    // Always run for API routes.
-    '/(api|trpc)(.*)',
-  ],
+  matcher: ['/dashboard/:path*'],
 };
