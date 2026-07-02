@@ -1,4 +1,3 @@
-import { Injectable, type OnModuleDestroy } from '@nestjs/common';
 import { type PrismaClient, type TxClient, createPrismaClient, withTenant } from '@vocaliq/db';
 
 /**
@@ -9,8 +8,7 @@ import { type PrismaClient, type TxClient, createPrismaClient, withTenant } from
  *             tenants (lazy user sync + resolving which tenants a user belongs to).
  *             It bypasses RLS, so it is never used for business reads/writes.
  */
-@Injectable()
-export class PrismaService implements OnModuleDestroy {
+export class PrismaService {
   // Built at construction so the connection URLs are read after env is loaded.
   readonly app: PrismaClient = createPrismaClient(
     process.env.APP_DATABASE_URL ?? process.env.DATABASE_URL,
@@ -22,7 +20,7 @@ export class PrismaService implements OnModuleDestroy {
     return withTenant(tenantId, fn, this.app);
   }
 
-  async onModuleDestroy(): Promise<void> {
+  async disconnect(): Promise<void> {
     await Promise.all([this.app.$disconnect(), this.admin.$disconnect()]);
   }
 }

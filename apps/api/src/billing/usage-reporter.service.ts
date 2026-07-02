@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { Capability } from '@vocaliq/shared';
 import { PrismaService } from '../db/prisma.service';
 import { EntitlementsService } from './entitlements.service';
@@ -20,7 +19,6 @@ export interface UsageReport {
   overageCents: number;
 }
 
-@Injectable()
 export class UsageReporterService {
   constructor(
     private readonly db: PrismaService,

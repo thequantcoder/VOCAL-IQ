@@ -1,7 +1,6 @@
 import { TenantError } from '@vocaliq/shared';
-import type { NextFunction, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import type { TenantService } from '../tenancy/tenant.service';
-import type { AppRequest } from './context';
 
 /**
  * Resolve + attach the active tenant scope (`req.ctx`). Runs AFTER authMiddleware. With
@@ -10,7 +9,7 @@ import type { AppRequest } from './context';
  * Replaces Nest's TenantGuard. Factory takes the TenantService (composition root wires it).
  */
 export function tenantMiddleware(tenants: TenantService) {
-  return async (req: AppRequest, _res: Response, next: NextFunction): Promise<void> => {
+  return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
     try {
       if (!req.auth) throw new TenantError('Authentication required before tenant resolution');
       const requested = req.headers['x-tenant-id'] as string | undefined;

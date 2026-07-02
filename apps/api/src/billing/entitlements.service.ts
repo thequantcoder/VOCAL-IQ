@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { BillingError } from '@vocaliq/shared';
 import { PrismaService } from '../db/prisma.service';
 
@@ -21,7 +20,6 @@ export interface Entitlements {
   usage: { agents: number };
 }
 
-@Injectable()
 export class EntitlementsService {
   constructor(private readonly db: PrismaService) {}
 

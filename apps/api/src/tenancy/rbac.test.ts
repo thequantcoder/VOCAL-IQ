@@ -89,7 +89,7 @@ beforeAll(async () => {
   });
 });
 
-afterAll(() => db.onModuleDestroy());
+afterAll(() => db.disconnect());
 
 describe('TenantService.resolveContext', () => {
   it('resolves a member to their tenant + role', async () => {

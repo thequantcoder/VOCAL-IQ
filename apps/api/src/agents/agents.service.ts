@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import {
   AgentStatus,
   type AgentStatus as AgentStatusT,
@@ -67,7 +66,6 @@ const AGENT_SELECT = {
   createdAt: true,
 } as const;
 
-@Injectable()
 export class AgentsService {
   constructor(
     private readonly db: PrismaService,

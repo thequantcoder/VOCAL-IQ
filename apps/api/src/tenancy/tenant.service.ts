@@ -1,7 +1,4 @@
-import { Injectable } from '@nestjs/common';
 import { ForbiddenError, type Role, TenantError } from '@vocaliq/shared';
-import { clerkClient } from '../auth/clerk';
-import type { ClerkClaims } from '../auth/clerk';
 import { PrismaService } from '../db/prisma.service';
 import type { TenantContext } from './tenant-context';
 
@@ -10,35 +7,8 @@ import type { TenantContext } from './tenant-context';
  * auth-infra that legitimately spans tenants, so it uses the owner (`admin`)
  * client. Business data never flows through here; it goes via `withTenant` + RLS.
  */
-@Injectable()
 export class TenantService {
   constructor(private readonly db: PrismaService) {}
-
-  /**
-   * Find or lazily create the local User for a verified Clerk identity (the
-   * first-request fallback to the webhook sync). Idempotent on authProviderId.
-   */
-  async ensureLocalUser(claims: ClerkClaims): Promise<{ id: string }> {
-    const existing = await this.db.admin.user.findUnique({
-      where: { authProviderId: claims.userId },
-      select: { id: true },
-    });
-    if (existing) return existing;
-
-    const cu = await clerkClient().users.getUser(claims.userId);
-    const email =
-      cu.primaryEmailAddress?.emailAddress ??
-      cu.emailAddresses[0]?.emailAddress ??
-      `${claims.userId}@noemail.vocaliq.local`;
-    const name = [cu.firstName, cu.lastName].filter(Boolean).join(' ').trim() || null;
-
-    return this.db.admin.user.upsert({
-      where: { authProviderId: claims.userId },
-      create: { authProviderId: claims.userId, email, name, imageUrl: cu.imageUrl ?? null },
-      update: { email, name, imageUrl: cu.imageUrl ?? null },
-      select: { id: true },
-    });
-  }
 
   /**
    * Resolve the active tenant + role for a local user. Honours the `x-tenant-id`

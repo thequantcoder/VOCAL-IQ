@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { Capability, NotFoundError } from '@vocaliq/shared';
 import { PrismaService } from '../db/prisma.service';
 
@@ -54,7 +53,6 @@ function emptyBreakdown(): CostBreakdown {
   return { stt: 0, llm: 0, tts: 0, telephony: 0, total: 0, billable: 0 };
 }
 
-@Injectable()
 export class CostService {
   constructor(private readonly db: PrismaService) {}
 

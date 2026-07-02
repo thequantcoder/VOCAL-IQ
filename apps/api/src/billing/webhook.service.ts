@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { ValidationError } from '@vocaliq/shared';
 import { PrismaService } from '../db/prisma.service';
 import { mapEventToStatus, verifyStripeSignature } from './stripe-webhook';
@@ -26,7 +25,6 @@ export class InMemoryProcessedEvents implements ProcessedEvents {
   }
 }
 
-@Injectable()
 export class BillingWebhookService {
   constructor(
     private readonly db: PrismaService,

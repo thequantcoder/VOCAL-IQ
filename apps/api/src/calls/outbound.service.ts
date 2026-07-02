@@ -1,4 +1,3 @@
-import { Inject, Injectable } from '@nestjs/common';
 import {
   CallChannel,
   CallDirection,
@@ -11,7 +10,7 @@ import {
 } from '@vocaliq/shared';
 import { z } from 'zod';
 import { PrismaService } from '../db/prisma.service';
-import { DIALER, type Dialer } from './dialer';
+import type { Dialer } from './dialer';
 
 /** E.164: leading +, country digit 1-9, up to 15 total digits. */
 const E164 = /^\+[1-9]\d{6,14}$/;
@@ -62,7 +61,6 @@ export interface DispositionResult {
   costBreakdown: unknown;
 }
 
-@Injectable()
 export class OutboundService {
   // Per-tenant safety caps until plan-driven quotas wire in (Day 15/56/58).
   private readonly maxConcurrency = 10;
@@ -70,7 +68,7 @@ export class OutboundService {
 
   constructor(
     private readonly db: PrismaService,
-    @Inject(DIALER) private readonly dialer: Dialer,
+    private readonly dialer: Dialer,
   ) {}
 
   /**

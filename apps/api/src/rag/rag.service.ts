@@ -1,4 +1,3 @@
-import { Inject, Injectable } from '@nestjs/common';
 import { embeddingCostUsd } from '@vocaliq/provider-router';
 import { Capability, NotFoundError, Provider, ValidationError } from '@vocaliq/shared';
 import { PrismaService } from '../db/prisma.service';
@@ -34,12 +33,11 @@ function toVectorLiteral(vec: number[]): string {
   return `[${vec.join(',')}]`;
 }
 
-@Injectable()
 export class RagService {
   constructor(
     private readonly db: PrismaService,
-    @Inject(EMBEDDER) private readonly embed: Embedder,
-    @Inject(RAG_USAGE) private readonly usage: UsageSink,
+    private readonly embed: Embedder,
+    private readonly usage: UsageSink,
   ) {}
 
   async createKb(

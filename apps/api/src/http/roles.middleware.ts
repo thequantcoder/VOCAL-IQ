@@ -1,7 +1,6 @@
 import { ForbiddenError, type Role, TenantError } from '@vocaliq/shared';
-import type { NextFunction, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { hasRequiredRole } from '../tenancy/roles';
-import type { AppRequest } from './context';
 
 /**
  * Restrict a route to specific tenant roles (deny-by-default). Runs AFTER tenantMiddleware,
@@ -9,7 +8,7 @@ import type { AppRequest } from './context';
  * listed = any authenticated member. Replaces Nest's RolesGuard + `@Roles()` decorator.
  */
 export function requireRoles(...required: Role[]) {
-  return (req: AppRequest, _res: Response, next: NextFunction): void => {
+  return (req: Request, _res: Response, next: NextFunction): void => {
     const role = req.ctx?.role;
     if (!role) {
       next(new TenantError('Tenant role not resolved (tenantMiddleware must run first)'));

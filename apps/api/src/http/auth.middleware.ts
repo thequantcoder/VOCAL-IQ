@@ -1,8 +1,7 @@
 import { AuthError } from '@vocaliq/shared';
-import type { NextFunction, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { verifyJwtToken } from '../auth/jwt';
 import { extractBearerToken } from '../auth/token';
-import type { AppRequest } from './context';
 
 /**
  * Require a valid self-hosted JWT. Extracts the Bearer token, verifies it, and attaches
@@ -10,7 +9,7 @@ import type { AppRequest } from './context';
  * (via the error middleware). Replaces Nest's ClerkAuthGuard.
  */
 export async function authMiddleware(
-  req: AppRequest,
+  req: Request,
   _res: Response,
   next: NextFunction,
 ): Promise<void> {

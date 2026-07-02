@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import {
   type CompletionResult,
   type LLMMessage,
@@ -24,7 +23,6 @@ export interface CompleteArgs {
  * persisting a tenant-scoped UsageRecord through the RLS client (golden rule #4) —
  * there is no un-metered LLM path.
  */
-@Injectable()
 export class RouterService {
   constructor(private readonly db: PrismaService) {}
 

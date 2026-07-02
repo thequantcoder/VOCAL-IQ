@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import {
   LeadStatus,
   type LeadStatus as LeadStatusT,
@@ -92,7 +91,6 @@ function toDetail(row: LeadRow): LeadDetail {
  * (self-audit A) and pipeline moves are guarded by `canTransition`. Dynamic vars personalise
  * the agent script at call time; tags/custom fields live on the shared Contact.
  */
-@Injectable()
 export class LeadsService {
   constructor(private readonly db: PrismaService) {}
 

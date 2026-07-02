@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@vocaliq/db';
 import {
   NotFoundError,
@@ -42,7 +41,6 @@ export interface VersionSummary {
   isDraft: boolean;
 }
 
-@Injectable()
 export class FlowsService {
   constructor(private readonly db: PrismaService) {}
 

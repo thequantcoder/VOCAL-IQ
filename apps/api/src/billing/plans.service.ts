@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../db/prisma.service';
 
 /** Plan catalog + current-subscription reads for the billing screens (Day 15). */
@@ -23,7 +22,6 @@ export interface SubscriptionDto {
   plan: { id: string; name: string; priceMonthly: number; currency: string };
 }
 
-@Injectable()
 export class PlansService {
   constructor(private readonly db: PrismaService) {}
 

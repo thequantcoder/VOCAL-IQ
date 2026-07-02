@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { NotFoundError, buildSystemPrompt, getAgentTemplate } from '@vocaliq/shared';
 import { AgentsService } from '../agents/agents.service';
 import { FlowsService } from '../flows/flows.service';
@@ -8,7 +7,6 @@ import { FlowsService } from '../flows/flows.service';
  * agent's system prompt, plus the starter flow installed as its draft graph. Goes through
  * AgentsService.create so the plan agent-limit gate still applies (Day 15). RLS-scoped.
  */
-@Injectable()
 export class TemplatesService {
   constructor(
     private readonly agents: AgentsService,
