@@ -1,11 +1,11 @@
 'use client';
 
-import { useAuth } from '@clerk/nextjs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { messageFromError } from './api-error';
+import { useAuth } from './auth';
 
 /**
- * Typed API layer for the dashboard. The Clerk session token is attached per request
+ * Typed API layer for the dashboard. The self-hosted JWT session token is attached per request
  * (`Authorization: Bearer`); the active tenant is resolved server-side from the user's
  * membership (TenantGuard), so no un-scoped call is possible. Errors surface only the
  * API's safe message (`messageFromError`).
