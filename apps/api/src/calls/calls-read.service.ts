@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import {
   type CallChannel as CallChannelT,
   CallDirection,
@@ -76,7 +75,6 @@ const LIST_SELECT = {
   agent: { select: { id: true, name: true } },
 } as const;
 
-@Injectable()
 export class CallsReadService {
   constructor(private readonly db: PrismaService) {}
 

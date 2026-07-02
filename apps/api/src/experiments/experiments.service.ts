@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import {
   type CallOutcome,
   type ExperimentMetric,
@@ -78,7 +77,6 @@ const EXPERIMENT_STATUSES = ['DRAFT', 'RUNNING', 'STOPPED'] as const;
  * (self-audit B). Assignment + stats use the pure, unit-tested shared helpers (self-audit
  * A). This service never dials — it assigns a stable variant the caller records on the Call.
  */
-@Injectable()
 export class ExperimentsService {
   constructor(private readonly db: PrismaService) {}
 

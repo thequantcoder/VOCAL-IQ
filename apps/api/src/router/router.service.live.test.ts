@@ -16,7 +16,7 @@ const CUSTOMER = '00000000-0000-0000-0000-000000000003';
 const db = new PrismaService();
 const svc = new RouterService(db);
 
-afterAll(() => db.onModuleDestroy());
+afterAll(() => db.disconnect());
 
 live('RouterService.complete (live)', () => {
   it('returns a completion and persists a UsageRecord with positive cost', async () => {

@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import {
   type HandoffRule,
   NotFoundError,
@@ -72,7 +71,6 @@ type ParsedSquad = z.infer<typeof upsertSquadSchema>;
  * only enroll its OWN agents (verified inside the tenant tx — golden rule #1 / self-audit
  * B). Handoff rules are validated to reference only squad members (no dangling handoffs).
  */
-@Injectable()
 export class SquadsService {
   constructor(private readonly db: PrismaService) {}
 

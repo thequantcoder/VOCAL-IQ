@@ -1,0 +1,91 @@
+import { AgentsService } from './agents/agents.service';
+import { AuthService } from './auth/auth.service';
+import { EntitlementsService } from './billing/entitlements.service';
+import { PlansService } from './billing/plans.service';
+import { PendingBillingProcessor } from './billing/processor';
+import { BillingWebhookService } from './billing/webhook.service';
+import { CallsReadService } from './calls/calls-read.service';
+import { PendingDialer } from './calls/dialer';
+import { OutboundService } from './calls/outbound.service';
+import { CampaignsService } from './campaigns/campaigns.service';
+import { CostService } from './cost/cost.service';
+import { PrismaService } from './db/prisma.service';
+import { ExperimentsService } from './experiments/experiments.service';
+import { FlowsService } from './flows/flows.service';
+import { LeadsService } from './leads/leads.service';
+import { RagService, openAiEmbedder, prismaUsageSink } from './rag/rag.service';
+import { RouterService } from './router/router.service';
+import { SquadsService } from './squads/squads.service';
+import { TemplatesService } from './templates/templates.service';
+import { TenantService } from './tenancy/tenant.service';
+import { VoicesService, elevenLabsCloner } from './voices/voices.service';
+import { WidgetService } from './widget/widget.service';
+
+/**
+ * Composition root — the plain-Node replacement for Nest's DI container. Instantiate every
+ * service once with its concrete dependencies (BYOK provider keys read from env) and hand
+ * the graph to `main.ts`, which mounts the Express routers. One place to see the whole
+ * wiring; no decorators, no magic.
+ */
+export function createServices() {
+  const prisma = new PrismaService();
+  const db = prisma;
+
+  const tenants = new TenantService(db);
+  const auth = new AuthService(db);
+
+  const entitlements = new EntitlementsService(db);
+  const agents = new AgentsService(db, entitlements);
+  const flows = new FlowsService(db);
+  const templates = new TemplatesService(agents, flows);
+
+  const callsRead = new CallsReadService(db);
+  const outbound = new OutboundService(db, new PendingDialer());
+
+  const cost = new CostService(db);
+  const rag = new RagService(
+    db,
+    openAiEmbedder(process.env.OPENAI_API_KEY ?? ''),
+    prismaUsageSink(db),
+  );
+
+  const campaigns = new CampaignsService(db);
+  const leads = new LeadsService(db);
+  const experiments = new ExperimentsService(db);
+  const squads = new SquadsService(db);
+  const voices = new VoicesService(db, elevenLabsCloner(process.env.ELEVENLABS_API_KEY ?? ''));
+  const routerSvc = new RouterService(db);
+
+  const plans = new PlansService(db);
+  const billingWebhook = new BillingWebhookService(db);
+  const processor = new PendingBillingProcessor();
+
+  const widget = new WidgetService(db);
+
+  return {
+    prisma,
+    db,
+    tenants,
+    auth,
+    entitlements,
+    agents,
+    flows,
+    templates,
+    callsRead,
+    outbound,
+    cost,
+    rag,
+    campaigns,
+    leads,
+    experiments,
+    squads,
+    voices,
+    routerSvc,
+    plans,
+    billingWebhook,
+    processor,
+    widget,
+  };
+}
+
+export type Services = ReturnType<typeof createServices>;

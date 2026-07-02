@@ -7,10 +7,8 @@
     "moduleResolution": "Node",
     "target": "ES2022",
     "lib": ["ES2022"],
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
     "useDefineForClassFields": false,
-    "types": ["node", "reflect-metadata"]
+    "types": ["node"]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "test"]

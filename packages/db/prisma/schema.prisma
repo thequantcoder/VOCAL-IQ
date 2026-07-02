@@ -218,7 +218,8 @@ model User {
   id             String       @id @default(uuid()) @db.Uuid
   email          String       @unique
   name           String?
-  authProviderId String       @unique // Clerk user id
+  passwordHash   String? // bcrypt hash for self-hosted email/password auth (Day 30 stack pivot)
+  authProviderId String?      @unique // legacy external auth id (was Clerk); null for self-hosted users
   imageUrl       String?
   mfaEnabled     Boolean      @default(false)
   createdAt      DateTime     @default(now())

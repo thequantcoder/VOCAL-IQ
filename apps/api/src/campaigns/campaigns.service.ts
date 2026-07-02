@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import {
   CampaignContactStatus,
   CampaignStatus,
@@ -78,7 +77,6 @@ const VALID_TRANSITIONS: Record<string, CampaignStatusT[]> = {
  * tenant's DNC numbers up front (self-audit C) and counts every dropped row (no silent
  * loss). Actual dialing is the scheduler worker's job — this service never dials.
  */
-@Injectable()
 export class CampaignsService {
   constructor(private readonly db: PrismaService) {}
 

@@ -1,14 +1,4 @@
-import { SetMetadata } from '@nestjs/common';
 import { Role } from '@vocaliq/shared';
-
-/** Metadata key holding the roles allowed on a handler. */
-export const ROLES_KEY = 'vq:roles';
-
-/**
- * Restrict a route to specific tenant roles (deny-by-default; CODING-RULES §6/§7).
- * SUPER_ADMIN always passes (platform operator). Example: `@Roles(Role.OWNER, Role.ADMIN)`.
- */
-export const Roles = (...roles: Role[]) => SetMetadata(ROLES_KEY, roles);
 
 /** Roles permitted to mutate tenant configuration (agents, flows, numbers, settings). */
 export const CONFIG_WRITERS: readonly Role[] = [

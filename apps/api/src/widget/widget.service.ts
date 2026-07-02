@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { LiveKitMedia } from '@vocaliq/provider-router';
 import { NotFoundError, ProviderError, RateLimitError } from '@vocaliq/shared';
 import { PrismaService } from '../db/prisma.service';
@@ -41,7 +40,6 @@ const envMinter: TokenMinter = async (room, identity) => {
   return { token: await media.token(room, identity), serverUrl: media.serverUrl };
 };
 
-@Injectable()
 export class WidgetService {
   private readonly limiter: RateLimiter;
   private readonly mint: TokenMinter;

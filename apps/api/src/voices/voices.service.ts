@@ -1,4 +1,3 @@
-import { Inject, Injectable } from '@nestjs/common';
 import {
   type CloneRequest,
   NotFoundError,
@@ -96,11 +95,10 @@ function toDto(row: VoiceRow): VoiceDto {
  * assigned to an agent until an operator approves it — the consent/approval gate lives in
  * `isVoiceUsable`, enforced on every assignment (self-audit B + C).
  */
-@Injectable()
 export class VoicesService {
   constructor(
     private readonly db: PrismaService,
-    @Inject(VOICE_CLONER) private readonly cloner: VoiceCloner,
+    private readonly cloner: VoiceCloner,
   ) {}
 
   /** The browsable library: presets + this tenant's voices, filtered. */
