@@ -1,0 +1,12 @@
+# gitleaks config — use the full default ruleset, but allow the obviously-fake
+# placeholder secrets that appear ONLY in unit tests. Real secrets never live in the
+# repo (they're in the git-ignored root .env); test files use throwaway values by design.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Fake, non-sensitive values used only in unit tests"
+paths = [
+  # JWT unit test sets APP_JWT_SECRET to a dummy 16+ char string to exercise sign/verify.
+  '''apps/api/src/auth/jwt.test.ts''',
+]
