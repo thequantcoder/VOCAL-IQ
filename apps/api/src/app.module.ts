@@ -8,6 +8,7 @@ import { CostModule } from './cost/cost.module';
 import { DbModule } from './db/db.module';
 import { FlowsModule } from './flows/flows.module';
 import { HealthController } from './health.controller';
+import { LeadsModule } from './leads/leads.module';
 import { RagModule } from './rag/rag.module';
 import { SquadsModule } from './squads/squads.module';
 import { TemplatesModule } from './templates/templates.module';
@@ -28,6 +29,7 @@ import { WidgetModule } from './widget/widget.module';
     BillingModule,
     WidgetModule,
     FlowsModule,
+    LeadsModule,
     RagModule,
     SquadsModule,
     TemplatesModule,

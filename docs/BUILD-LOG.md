@@ -1025,3 +1025,32 @@ K. Build/CI: ✅ — deterministic; scheduler tested without Redis/Postgres/a li
 
 DNC + caps CONFIRMED (focus C + F): import suppresses DNC numbers (counted, never enrolled) and `selectDueContacts`/`runCampaignTick` never exceed pace or concurrency even with a large backlog — demonstrated across `campaign.test.ts` + `campaign-scheduler.test.ts`.
 Next: Day 29 (lead workspace + scoring).
+
+## Day 29 — Lead workspace + custom fields/tags + Hot/Warm/Cold scoring — 2026-07-02 — ✅ DONE
+Model: Sonnet (⚡ SONNET). Branch `day/29-leads` → PR. Prereqs met (Day 28 + Day 13; no new credentials). Self-audit focus A (scoring) + B + H. No migration — the `Lead` model (status/score/owner/pipelineStage/dynamicVars) was already complete from Day 04.
+
+Built (DONE):
+- **shared** (`lead.ts`): the pure scoring/templating core — **`scoreLead`** (0–100 from intent≤50 + sentiment≤25 + outcome≤25 + engagement nudge → Hot ≥65 / Warm ≥35 / Cold; deterministic + clamped), **`renderTemplate`** (inject `{{var}}` dynamic variables into agent scripts, unknown → fallback so no raw token leaks) + `templateVariables`, and the pipeline stage machine `PIPELINE_STAGES` + **`canTransition`** (NEW→CONTACTED→QUALIFIED→BOOKED/LOST, reopen from LOST).
+- **api** `leads` module: RLS-scoped `LeadsService` — list (status/stage/owner filters), get, create (one lead per contact; contact must be the tenant's), update (owner + dynamicVars on the Lead; tags on the shared Contact), **`moveStage`** (guarded by `canTransition`), **`applyScore`** (post-call auto-scoring → persists score + Hot/Warm/Cold). Controller: reads to members, mutations to config-writers.
+- **web**: `/dashboard/leads` — **table + kanban** with a view toggle + temperature filter, both **URL-synced** (`?view=&status=`); the kanban uses native HTML5 drag-and-drop to move cards across pipeline columns (calls `moveStage`); Hot/Warm/Cold score badges, tags. Nav link + hooks.
+
+Verification:
+- shared: typecheck + lint + build + **101 tests** (scoring buckets + monotonic/clamped/deterministic, template injection + no-leak + fallback, pipeline transitions). api: typecheck + lint + **leads 3** (create+auto-score+pipeline gating, owner/tags/dynamicVars persistence, **foreign-contact rejection + RLS isolation**) + full **109**. web: typecheck + lint + **build** (route `/dashboard/leads` prerendered).
+
+Deviations/deferred (tracked): the design direction suggested **dnd-kit** + a virtualised table; to avoid adding a dependency mid-build I used **native HTML5 DnD** for the kanban (functional, zero-dep) — dnd-kit polish + row virtualisation for very large lists is a deferred UI refinement (note per CLAUDE.md §13). **Dynamic-var injection at call time** (feeding `lead.dynamicVars` through `renderTemplate` into the agent script) rides with the deferred Day-9 loop bundle; **auto-scoring wiring on call completion** (post-call intel calls `applyScore`) lands with Day 31 (post-call intel) — the pure scorer + endpoint are ready. CRM status sync is Day 40.
+
+## Self-Audit — Day 29 (A–K)
+A. Scoring (THE focus): ✅ — `scoreLead` is pure, deterministic, monotonic, clamped 0–100, and bucketed with explicit thresholds; unit-tested across hot/warm/cold + edge inputs.
+B. Tenancy: ✅ — every lead read/write via `withTenant`; create rejects a foreign-tenant contact; tags write to the tenant's own Contact; RLS isolation proven (C1 can't see R1's lead).
+C. Security: ✅ — inputs Zod-validated; dynamic vars constrained to scalars (JSON-safe, no injection); `renderTemplate` never leaks unknown tokens.
+D. Cost: ✅ — no calling path; scoring is pure compute; no unmetered path.
+E. Tests: ✅ — 8 shared + 3 api (RLS-real); deterministic.
+F. Performance: ✅ — scoring O(1); list is a single indexed query (`tenantId,status`); kanban filters in-memory over the RLS-scoped set.
+G. Errors/obs: ✅ — typed AppErrors; illegal stage transitions rejected with a clear message.
+H. UI/a11y (focus): ✅ — table + kanban, URL-synced filters/view (shareable + back-button friendly), draggable cards with grab cursors, temperature badges via design tokens; responsive grid; empty/error/loading states.
+I. Regression: ✅ — no migration/schema change; existing suites untouched; shared 101 / api 109 / web build all green; branched from the Day-28 merge.
+J. Quality/docs: ✅ — explicit DTOs; doc comments explain scoring weights + the stage machine; deviations/deferred tracked.
+K. Build/CI: ✅ — deterministic; scoring + templating tested without any live provider.
+
+Scoring CONFIRMED (focus A): `scoreLead` buckets Hot/Warm/Cold deterministically and `applyScore` persists score + temperature on the lead — demonstrated in `lead.test.ts` + the api test. Tenant isolation CONFIRMED: RLS hides R1's lead from C1 and blocks enrolling a foreign contact.
+Next: Day 30 (A/B testing) — closes Phase 2.
