@@ -208,6 +208,7 @@ model Tenant {
   childMargins        ResellerMargin[] @relation("ChildOfMargin")
   squads              Squad[]
   squadMembers        SquadMember[]
+  experiments         Experiment[]
 
   @@index([parentTenantId])
   @@index([type])
@@ -549,6 +550,9 @@ model Call {
   disposition   String?
   sentiment     Float?
   costBreakdown Json          @default("{}") // {stt, llm, tts, telephony, total}
+  experimentId  String?       @db.Uuid // A/B experiment this call was routed through (Day 30)
+  variant       String?       // the variant id assigned for that experiment
+  experiment    Experiment?   @relation(fields: [experimentId], references: [id], onDelete: SetNull)
   createdAt     DateTime      @default(now())
 
   transcript   Transcript?
@@ -558,6 +562,28 @@ model Call {
   @@index([tenantId, status])
   @@index([tenantId, createdAt])
   @@index([agentId])
+  @@index([experimentId, variant])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// A/B experiments (Day 30)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Experiment {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name      String
+  status    String   @default("DRAFT") // DRAFT / RUNNING / STOPPED
+  metric    String   @default("conversion") // conversion / booking / csat
+  variants  Json     @default("[]") // [{ id, label, weight, config }]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  calls Call[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
 }
 
 model Transcript {

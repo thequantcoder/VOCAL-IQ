@@ -1054,3 +1054,37 @@ K. Build/CI: ✅ — deterministic; scoring + templating tested without any live
 
 Scoring CONFIRMED (focus A): `scoreLead` buckets Hot/Warm/Cold deterministically and `applyScore` persists score + temperature on the lead — demonstrated in `lead.test.ts` + the api test. Tenant isolation CONFIRMED: RLS hides R1's lead from C1 and blocks enrolling a foreign contact.
 Next: Day 30 (A/B testing) — closes Phase 2.
+
+## Day 30 — A/B testing for scripts, voices & openers — 2026-07-02 — ✅ DONE (closes Phase 2)
+Model: Sonnet (⚡ SONNET). Branch `day/30-ab-testing` → PR. Prereqs met (Day 28; no new credentials). Self-audit focus A (split, stats) + B.
+
+Built (DONE):
+- **shared** (`experiment.ts`): the pure split/stats core — `experimentConfigSchema` (≥2 variants, unique ids), **`assignVariant`** (FNV-1a hash → weight-proportional bucket; **stable per key** so a contact keeps its variant across retries), `evaluateMetric` (conversion/booking/csat success), `aggregateResults` (per-variant totals + rate), and **`twoProportionTest`** (z-test → two-tailed p-value via a normal-CDF approx, 95% significance flag, lift; guards zero-sample → no NaN).
+- **DB**: `Experiment` model (name, status, metric, variants JSON) + `Call.experimentId` + `Call.variant` (variant recorded per call) + `(experimentId,variant)` index; migration `day30_experiments` with **RLS `tenant_isolation`** on Experiment. Tenant back-relation.
+- **api** `experiments` module: RLS-scoped `ExperimentsService` — CRUD (create validates via the shared schema), status DRAFT→RUNNING→STOPPED, **`assign`** (RUNNING-only, returns the stable variant + its config to record on the Call), and **`results`** (aggregates this experiment's calls, computes significance vs the control/first variant). Controller: reads to members, mutations to config-writers.
+- **web**: `/dashboard/experiments` — list + create (variants with id/label/weight, metric), run/stop, and a **live results table** (per-variant calls, rate, lift, significance p-value; 10s refetch). Nav link + hooks.
+
+Verification:
+- shared: typecheck + lint + build + **110 tests** (stable + weighted split, metric scoring, aggregation, z-test significant/n.s./zero-guard, config validation). api: typecheck + lint + **experiments 3** (create+run+stable-assign+significant results, <2-variant rejection, **RLS isolation**) + full **112**. db: migrate + **7**. web: typecheck + lint + **build** (route `/dashboard/experiments` prerendered). Full monorepo `pnpm lint` 11/11.
+
+Bug caught + fixed during the day: the experiments test seeded 200 **OUTBOUND** calls in the shared C1 tenant, which tripped the Day-10 outbound **rate-limit counter** in the parallel `outbound.service.test` (cross-suite interference). Fixed by seeding **INBOUND** calls (direction is irrelevant to A/B aggregation) — full api suite green again.
+
+Deferred (tracked): wiring `assign` into the live call-routing path (record `experimentId`/`variant` on each Call + apply the variant's opener/voice/script override) rides with the deferred Day-9 loop bundle + campaign live-dial; feeding results into the analytics dashboard is Day 41.
+
+## Self-Audit — Day 30 (A–K)
+A. Split + stats (THE focus): ✅ — `assignVariant` is deterministic + weight-proportional (stable per key, verified over 4000 keys); `twoProportionTest` matches hand-computed z/p, flags a real 10%→40% difference significant, leaves small-sample noise n.s., and never returns NaN.
+B. Tenancy: ✅ — Experiment has RLS; every read/write via `withTenant`; results read only this experiment's calls; RLS isolation proven (C1 can't see R1's experiment).
+C. Security: ✅ — inputs Zod-validated; variant config constrained to scalars (JSON-safe); status transitions validated.
+D. Cost: ✅ — no calling path; assignment/stats are pure compute; variant recording rides the existing metered call path.
+E. Tests: ✅ — 9 shared + 3 api (RLS-real, incl. significance on seeded calls); deterministic.
+F. Performance: ✅ — assign O(variants); results is one indexed query (`experimentId,variant`) + linear fold.
+G. Errors/obs: ✅ — typed AppErrors; zero-sample significance guarded; unknown status/metric rejected.
+H. UI/a11y: ✅ — labelled inputs, results table with significance/p-value, run/stop; design tokens; empty/error/loading states.
+I. Regression: ✅ — additive migration; existing suites green after the cross-suite-interference fix; shared 110 / api 112 / db 7 / web build all green; branched from the Day-29 merge.
+J. Quality/docs: ✅ — explicit DTOs; doc comments explain the hash split + z-test; deferred wiring tracked.
+K. Build/CI: ✅ — deterministic; split + stats tested without any live provider.
+
+Split + significance CONFIRMED (focus A): `assignVariant` is stable-per-key + weight-proportional and `twoProportionTest` flags a real difference significant while guarding small samples/zero — demonstrated in `experiment.test.ts` + the api results test.
+
+### 🏁 Phase 2 complete (Days 17–30) — Builder & conversations
+Canvas → nodes → tool/webhook → RAG → collect/transfer/subflow → compiler → simulator → persona/templates → multilingual → voices/cloning → **Squads** → **campaigns** → **lead workspace** → **A/B testing**. Tag **v0.3-phase2**. Next: Phase 2.5 (Days 31–40: post-call intel, simulator, batch testing, memory, SIP, appointments, sheets/forms, cost protection, transcription controls, integrations) — with Day 67 (Agent Desk) slotted after Day 27's transfer destinations.
