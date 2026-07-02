@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { FlowNodeType } from './enums';
-import type { FlowNode } from './flow-graph';
+import { FlowNodeType } from './enums.js';
+import type { FlowNode } from './flow-graph.js';
 
 /**
  * Per-node config schemas + runtime contribution for the five core nodes (Day 18):

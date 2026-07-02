@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { FlowNodeType } from './enums';
+import { FlowNodeType } from './enums.js';
 
 /**
  * The typed flow-graph model (Day 17) — the builder's soul. A FlowVersion.graph is a

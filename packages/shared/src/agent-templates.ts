@@ -1,6 +1,6 @@
-import { FlowNodeType } from './enums';
-import type { FlowGraph } from './flow-graph';
-import type { Persona } from './persona';
+import { FlowNodeType } from './enums.js';
+import type { FlowGraph } from './flow-graph.js';
+import type { Persona } from './persona.js';
 
 /**
  * Built-in agent templates (Day 24) — clone-to-agent starters for the common use cases.
