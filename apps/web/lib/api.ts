@@ -44,12 +44,28 @@ export interface AgentListItem {
 
 export interface AgentDetail extends AgentListItem {
   description: string | null;
-  persona: { systemPrompt?: string } | null;
+  persona: { systemPrompt?: string; bannedWords?: string[] } | null;
   turnTimeoutMs: number;
+  maxCallDurationSec: number;
+  maxSilenceSec: number;
+  endOnVoicemail: boolean;
+  bannedWordsAction: 'flag' | 'redact' | 'block';
   defaultVoiceId: string | null;
   memoryEnabled: boolean;
   createdAt: string;
 }
+
+export type AgentUpdateBody = Partial<{
+  name: string;
+  systemPrompt: string;
+  memoryEnabled: boolean;
+  turnTimeoutMs: number;
+  maxCallDurationSec: number;
+  maxSilenceSec: number;
+  endOnVoicemail: boolean;
+  bannedWords: string[];
+  bannedWordsAction: 'flag' | 'redact' | 'block';
+}>;
 
 export interface CostBreakdown {
   stt: number;
@@ -774,7 +790,7 @@ export function useUpdateAgent(id: string) {
   const { getToken } = useAuth();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: Partial<{ memoryEnabled: boolean; name: string; systemPrompt: string }>) =>
+    mutationFn: (body: AgentUpdateBody) =>
       apiFetch<AgentDetail>(getToken, `/agents/${id}`, {
         method: 'PATCH',
         body: JSON.stringify(body),
@@ -1066,5 +1082,62 @@ export function useDeleteForm() {
     mutationFn: (id: string) =>
       apiFetch<{ id: string }>(getToken, `/forms/${id}`, { method: 'DELETE' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['forms'] }),
+  });
+}
+
+// ── Platform key pool (Day 38, super-admin) ───────────────────────────────────
+
+export interface KeyPoolDto {
+  id: string;
+  provider: string;
+  label: string | null;
+  weight: number;
+  active: boolean;
+  failureCount: number;
+  ejected: boolean;
+  lastUsedAt: string | null;
+}
+
+export function useKeyPool() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['key-pool'],
+    queryFn: () => apiFetch<KeyPoolDto[]>(getToken, '/admin/key-pool'),
+  });
+}
+
+export function useAddPoolKey() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { provider: string; apiKey: string; weight?: number; label?: string }) =>
+      apiFetch<KeyPoolDto>(getToken, '/admin/key-pool', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['key-pool'] }),
+  });
+}
+
+export function useSetPoolKeyActive() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; active: boolean }) =>
+      apiFetch<{ id: string; active: boolean }>(getToken, `/admin/key-pool/${vars.id}/active`, {
+        method: 'POST',
+        body: JSON.stringify({ active: vars.active }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['key-pool'] }),
+  });
+}
+
+export function useDeletePoolKey() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ id: string }>(getToken, `/admin/key-pool/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['key-pool'] }),
   });
 }
