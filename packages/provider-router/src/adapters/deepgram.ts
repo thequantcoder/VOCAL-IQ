@@ -28,6 +28,9 @@ export class DeepgramSTT implements STTProvider {
       sample_rate: 16_000,
       channels: 1,
       ...(opts?.language ? { language: opts.language } : {}),
+      // Key-term boosting (Day 39): nova-3 accepts `keyterm`; recognition of custom
+      // brand/drug/SKU vocabulary is improved without a custom model.
+      ...(opts?.keyterms?.length ? { keyterm: opts.keyterms } : {}),
     };
 
     let connection: ReturnType<ReturnType<typeof createClient>['listen']['live']>;
