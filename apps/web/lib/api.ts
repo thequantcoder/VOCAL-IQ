@@ -1225,3 +1225,76 @@ export function useDisconnectIntegration() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['integrations'] }),
   });
 }
+
+// ── Analytics (Day 41) ────────────────────────────────────────────────────────
+
+export interface LiveSnapshot {
+  activeCalls: number;
+  minutesToday: number;
+  spendTodayUsd: number;
+  callsToday: number;
+  successRateToday: number;
+}
+
+export interface DayPoint {
+  day: string;
+  value: number;
+}
+
+export interface HistoricalAnalytics {
+  from: string;
+  to: string;
+  totalCalls: number;
+  totalMinutes: number;
+  successRate: number;
+  outcomes: Record<string, number>;
+  sentimentTrend: DayPoint[];
+  costByDay: DayPoint[];
+  callsByDay: DayPoint[];
+  talkListen: { agentMs: number; callerMs: number; agentRatio: number };
+  avgInterruptions: number;
+  dropOffRate: number;
+}
+
+export interface BudgetAlert {
+  metric: 'daily' | 'monthly' | 'anomaly';
+  level: 'ok' | 'warn' | 'critical';
+  message: string;
+}
+
+export interface BudgetStatus {
+  todaySpendUsd: number;
+  monthSpendUsd: number;
+  dailyPct: number | null;
+  monthlyPct: number | null;
+  anomaly: boolean;
+  alerts: BudgetAlert[];
+}
+
+export function useLiveAnalytics() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['analytics', 'live'],
+    queryFn: () => apiFetch<LiveSnapshot>(getToken, '/analytics/live'),
+    refetchInterval: 10_000, // poll for the real-time tiles (no Socket.IO in the self-hosted stack)
+  });
+}
+
+export function useHistoricalAnalytics(params: { from: string; to: string; agentId?: string }) {
+  const { getToken } = useAuth();
+  const qs = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v) as [string, string][],
+  ).toString();
+  return useQuery({
+    queryKey: ['analytics', 'historical', params],
+    queryFn: () => apiFetch<HistoricalAnalytics>(getToken, `/analytics/historical?${qs}`),
+  });
+}
+
+export function useBudget() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['analytics', 'budget'],
+    queryFn: () => apiFetch<BudgetStatus>(getToken, '/analytics/budget'),
+  });
+}

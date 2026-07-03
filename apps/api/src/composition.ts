@@ -1,4 +1,5 @@
 import { AgentsService } from './agents/agents.service';
+import { AnalyticsService } from './analytics/analytics.service';
 import { AppointmentsService } from './appointments/appointments.service';
 import { AuthService } from './auth/auth.service';
 import { EntitlementsService } from './billing/entitlements.service';
@@ -53,6 +54,7 @@ export function createServices() {
   const outbound = new OutboundService(db, new PendingDialer());
 
   const cost = new CostService(db);
+  const analytics = new AnalyticsService(db);
   const rag = new RagService(
     db,
     openAiEmbedder(process.env.OPENAI_API_KEY ?? ''),
@@ -92,6 +94,7 @@ export function createServices() {
     transcription,
     outbound,
     cost,
+    analytics,
     rag,
     campaigns,
     forms,

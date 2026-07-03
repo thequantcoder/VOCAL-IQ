@@ -2,6 +2,7 @@
 
 import { cn } from '@vocaliq/ui';
 import {
+  BarChart3,
   Bot,
   CalendarCheck,
   ClipboardList,
@@ -28,6 +29,7 @@ const NAV = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard, exact: true },
   { href: '/dashboard/agents', label: 'Agents', icon: Bot, exact: false },
   { href: '/dashboard/calls', label: 'Calls', icon: PhoneCall, exact: false },
+  { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3, exact: false },
   { href: '/dashboard/voices', label: 'Voices', icon: Mic, exact: false },
   { href: '/dashboard/squads', label: 'Squads', icon: Users, exact: false },
   { href: '/dashboard/campaigns', label: 'Campaigns', icon: Megaphone, exact: false },

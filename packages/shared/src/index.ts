@@ -9,6 +9,7 @@ export * from './env.js';
 export * from './errors.js';
 export * from './experiment.js';
 export * from './agent-templates.js';
+export * from './analytics.js';
 export * from './appointment.js';
 export * from './banned-words.js';
 export * from './campaign.js';

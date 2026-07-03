@@ -7,6 +7,7 @@ import express from 'express';
 loadDotenv({ path: resolve(process.cwd(), '../../.env') });
 
 import { agentsRoutes } from './agents/agents.routes';
+import { analyticsRoutes } from './analytics/analytics.routes';
 import { appointmentsRoutes } from './appointments/appointments.routes';
 import { authRoutes } from './auth/auth.routes';
 import { billingRoutes, billingWebhookHandler } from './billing/billing.routes';
@@ -67,6 +68,7 @@ function bootstrap(): void {
   app.use('/public/forms', publicFormsRoutes(s.forms));
   app.use('/admin/key-pool', keyPoolRoutes(s.keyPool, s.tenants));
   app.use('/integrations', integrationsRoutes(s.integrations, s.tenants));
+  app.use('/analytics', analyticsRoutes(s.analytics, s.tenants));
   app.use('/leads', leadsRoutes(s.leads, s.tenants));
   app.use('/memory', memoryRoutes(s.memory, s.tenants));
   app.use('/sip', sipRoutes(s.sip, s.tenants));
