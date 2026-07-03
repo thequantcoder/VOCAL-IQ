@@ -9,4 +9,7 @@ description = "Fake, non-sensitive values used only in unit tests"
 paths = [
   # JWT unit test sets APP_JWT_SECRET to a dummy 16+ char string to exercise sign/verify.
   '''apps/api/src/auth/jwt.test.ts''',
+  # Integration tests use throwaway CRM tokens (e.g. "pat-na1-…") to exercise connect/seal.
+  '''packages/shared/src/integrations.test.ts''',
+  '''apps/api/src/integrations/integrations.service.test.ts''',
 ]

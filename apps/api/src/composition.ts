@@ -14,6 +14,7 @@ import { PrismaService } from './db/prisma.service';
 import { ExperimentsService } from './experiments/experiments.service';
 import { FlowsService } from './flows/flows.service';
 import { FormsService } from './forms/forms.service';
+import { IntegrationsService } from './integrations/integrations.service';
 import { KeyPoolService } from './keypool/keypool.service';
 import { LeadsService } from './leads/leads.service';
 import { MemoryService } from './memory/memory.service';
@@ -60,6 +61,7 @@ export function createServices() {
 
   const campaigns = new CampaignsService(db);
   const forms = new FormsService(db);
+  const integrations = new IntegrationsService(db);
   const leads = new LeadsService(db);
   const memory = new MemoryService(db);
   const sip = new SipService(db, entitlements);
@@ -93,6 +95,7 @@ export function createServices() {
     rag,
     campaigns,
     forms,
+    integrations,
     leads,
     memory,
     sip,

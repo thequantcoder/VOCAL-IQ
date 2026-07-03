@@ -19,6 +19,7 @@ import { flowsRoutes } from './flows/flows.routes';
 import { formsRoutes, publicFormsRoutes } from './forms/forms.routes';
 import { healthRoutes } from './health.routes';
 import { errorMiddleware, notFoundMiddleware } from './http/error.middleware';
+import { integrationsRoutes } from './integrations/integrations.routes';
 import { keyPoolRoutes } from './keypool/keypool.routes';
 import { leadsRoutes } from './leads/leads.routes';
 import { memoryRoutes } from './memory/memory.routes';
@@ -65,6 +66,7 @@ function bootstrap(): void {
   app.use('/forms', formsRoutes(s.forms, s.tenants));
   app.use('/public/forms', publicFormsRoutes(s.forms));
   app.use('/admin/key-pool', keyPoolRoutes(s.keyPool, s.tenants));
+  app.use('/integrations', integrationsRoutes(s.integrations, s.tenants));
   app.use('/leads', leadsRoutes(s.leads, s.tenants));
   app.use('/memory', memoryRoutes(s.memory, s.tenants));
   app.use('/sip', sipRoutes(s.sip, s.tenants));
