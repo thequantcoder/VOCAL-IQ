@@ -26,6 +26,7 @@ import { leadsRoutes } from './leads/leads.routes';
 import { memoryRoutes } from './memory/memory.routes';
 import { initSentry, shutdownObservability } from './observability';
 import { ragRoutes } from './rag/rag.routes';
+import { searchRoutes } from './search/search.routes';
 import { sipRoutes } from './sip/sip.routes';
 import { squadsRoutes } from './squads/squads.routes';
 import { templatesRoutes } from './templates/templates.routes';
@@ -76,6 +77,7 @@ function bootstrap(): void {
   app.use('/squads', squadsRoutes(s.squads, s.tenants));
   app.use('/voices', voicesRoutes(s.voices, s.tenants));
   app.use('/kb', ragRoutes(s.rag, s.db, s.tenants));
+  app.use('/search', searchRoutes(s.search, s.tenants));
   app.use('/billing', billingRoutes(s.plans, s.entitlements, s.processor, s.tenants));
   app.use('/widget', widgetRoutes(s.widget));
   // Cost controller used @Controller() (no prefix) → its paths (/calls/:id/cost, /costs/*)

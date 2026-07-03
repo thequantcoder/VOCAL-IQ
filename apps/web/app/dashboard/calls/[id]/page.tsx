@@ -3,8 +3,8 @@
 import { Card, CardContent, CardHeader, CardTitle, Waveform, cn } from '@vocaliq/ui';
 import { ArrowLeft, BookMarked, Sparkles } from 'lucide-react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import { ErrorState, LoadingCard } from '../../../../components/states';
 import { StatusBadge, formatDuration, formatUsd } from '../../../../components/ui-bits';
 import { type CallDetail, type CostBreakdown, useCall } from '../../../../lib/api';
@@ -19,6 +19,7 @@ export default function CallDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params?.id ?? '';
   const { data, isLoading, isError, error, refetch } = useCall(id);
+  const searchParams = useSearchParams();
   const audioRef = useRef<HTMLAudioElement>(null);
   const [showClean, setShowClean] = useState(true);
 
@@ -29,6 +30,21 @@ export default function CallDetailPage() {
     audio.currentTime = ms / 1000;
     void audio.play().catch(() => {});
   }
+
+  // Deep-link from transcript search: /dashboard/calls/{id}?t={ms} seeks once loaded.
+  const tParam = searchParams?.get('t');
+  useEffect(() => {
+    if (!tParam || !data?.recordingUrl) return;
+    const ms = Number(tParam);
+    if (!Number.isFinite(ms)) return;
+    const audio = audioRef.current;
+    if (!audio) return;
+    const jump = () => {
+      audio.currentTime = ms / 1000;
+    };
+    if (audio.readyState >= 1) jump();
+    else audio.addEventListener('loadedmetadata', jump, { once: true });
+  }, [tParam, data?.recordingUrl]);
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">

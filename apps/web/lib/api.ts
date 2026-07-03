@@ -1298,3 +1298,44 @@ export function useBudget() {
     queryFn: () => apiFetch<BudgetStatus>(getToken, '/analytics/budget'),
   });
 }
+
+// ── Transcript search (Day 42) ─────────────────────────────────────────────────
+
+export type SearchMode = 'keyword' | 'semantic' | 'hybrid';
+
+export interface SearchHit {
+  callId: string;
+  agentId: string | null;
+  createdAt: string;
+  score: number;
+  snippet: string;
+  startMs: number;
+}
+
+export function useTranscriptSearch(params: {
+  q: string;
+  mode?: SearchMode;
+  agentId?: string;
+  enabled?: boolean;
+}) {
+  const { getToken } = useAuth();
+  const q = params.q.trim();
+  const qs = new URLSearchParams({ q });
+  if (params.mode) qs.set('mode', params.mode);
+  if (params.agentId) qs.set('agentId', params.agentId);
+  return useQuery({
+    queryKey: ['search', 'transcripts', params.mode ?? 'hybrid', params.agentId ?? '', q],
+    queryFn: () => apiFetch<SearchHit[]>(getToken, `/search/transcripts?${qs.toString()}`),
+    enabled: (params.enabled ?? true) && q.length > 0,
+  });
+}
+
+export function useReindexTranscripts() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<{ indexed: number }>(getToken, '/search/reindex', { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['search'] }),
+  });
+}
