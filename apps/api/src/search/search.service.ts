@@ -112,8 +112,15 @@ export class SearchService {
     );
     let indexed = 0;
     for (const { callId } of pending) {
-      const r = await this.indexTranscript(tenantId, callId);
-      if (r.indexed) indexed++;
+      try {
+        const r = await this.indexTranscript(tenantId, callId);
+        if (r.indexed) indexed++;
+      } catch (err) {
+        // Tolerate a transcript that was deleted between the scan and the index
+        // (concurrent deletion / retention purge); skip it and keep going.
+        if (err instanceof NotFoundError) continue;
+        throw err;
+      }
     }
     return { indexed };
   }

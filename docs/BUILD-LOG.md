@@ -1457,5 +1457,7 @@ I. Regression: ✅ — additive migration + new module/routes/page + one shared 
 J. Quality/docs: ✅ — pure logic isolated + tested in shared; SQL kept in the service with doc comments (RRF rationale, RLS-under-raw-SQL note, best-effort embed); explicit DTOs; migration comments explain the inherited RLS.
 K. Build/CI: ✅ — full `pnpm build` exits 0 (cleared a stale `.next` macOS "* 2.ts" duplicate-artifact typecheck flake first); all gates green locally.
 
+CI fix (post-push): the first CI run failed — `reindexTenant(C1)` raced a parallel test file (analytics) that creates + deletes transcripts under the same seeded tenant C1: my scan picked up a transient transcript that was deleted before `indexTranscript` read it → `NotFoundError`. Fixed by hardening `reindexTenant` to tolerate a transcript vanishing mid-scan (catch `NotFoundError` per item, skip, continue) — which is also the correct production behaviour under concurrent deletion / retention purge. Re-verified green locally (api 146).
+
 Keyword + semantic search with jump-to-moment, tenant-scoped, tests pass — DoD CONFIRMED. Cross-tenant isolation CONFIRMED (parent's transcript never surfaces for the child).
 Deferred (gated): auto-indexing transcripts from the post-call worker (needs an embedder in the worker — OpenAI key; today's `reindex` endpoint + on-demand `indexTranscript` cover backfill, and FTS degrades gracefully without embeddings). Next: Day 43 (QA scoring at scale).
