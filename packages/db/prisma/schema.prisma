@@ -269,12 +269,15 @@ model ProviderCredential {
 
 // Load-balanced platform key pool (not tenant-scoped — platform infrastructure).
 model PlatformApiKeyPool {
-  id           String    @id @default(uuid()) @db.Uuid
-  provider     Provider
-  encryptedKey Bytes
-  weight       Int       @default(1)
-  active       Boolean   @default(true)
-  lastUsedAt   DateTime?
+  id            String    @id @default(uuid()) @db.Uuid
+  provider      Provider
+  label         String? // operator label (last-4 hint, not the key)
+  encryptedKey  Bytes
+  weight        Int       @default(1)
+  active        Boolean   @default(true)
+  failureCount  Int       @default(0) // consecutive failures → ejection (Day 38)
+  lastFailureAt DateTime?
+  lastUsedAt    DateTime?
 
   @@index([provider, active])
 }
@@ -295,6 +298,10 @@ model Agent {
   languages       String[]      @default([])
   llmPolicy       Json          @default("{}")
   turnTimeoutMs   Int           @default(1500)
+  maxCallDurationSec Int        @default(600) // hard call-length cap (Day 38)
+  maxSilenceSec   Int           @default(15) // dead-air auto-hangup (0 disables)
+  endOnVoicemail  Boolean       @default(true)
+  bannedWordsAction String      @default("flag") // flag | redact | block
   type            AgentType     @default(INBOUND)
   status          AgentStatus   @default(DRAFT)
   memoryEnabled   Boolean       @default(false)
