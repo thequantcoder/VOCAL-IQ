@@ -1,7 +1,7 @@
 'use client';
 
 import { Button, Card, CardContent, CardHeader, CardTitle, cn } from '@vocaliq/ui';
-import { ArrowLeft, Ban, Gauge, ShieldAlert, Timer } from 'lucide-react';
+import { ArrowLeft, Ban, FileText, Gauge, ShieldAlert, Timer } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -56,6 +56,8 @@ function GuardsForm({ agentId, agent }: { agentId: string; agent: AgentDetail })
   const [endOnVoicemail, setEndOnVoicemail] = useState(agent.endOnVoicemail);
   const [bannedWordsAction, setAction] = useState(agent.bannedWordsAction);
   const [bannedWords, setBannedWords] = useState((agent.persona?.bannedWords ?? []).join(', '));
+  const [keyTerms, setKeyTerms] = useState((agent.keyTerms ?? []).join(', '));
+  const [noVerbatim, setNoVerbatim] = useState(agent.noVerbatim);
   const [saved, setSaved] = useState(false);
 
   // Reflect a re-fetch (e.g. after navigating back) into local state.
@@ -66,7 +68,15 @@ function GuardsForm({ agentId, agent }: { agentId: string; agent: AgentDetail })
     setEndOnVoicemail(agent.endOnVoicemail);
     setAction(agent.bannedWordsAction);
     setBannedWords((agent.persona?.bannedWords ?? []).join(', '));
+    setKeyTerms((agent.keyTerms ?? []).join(', '));
+    setNoVerbatim(agent.noVerbatim);
   }, [agent]);
+
+  const csv = (s: string) =>
+    s
+      .split(',')
+      .map((w) => w.trim())
+      .filter(Boolean);
 
   async function save() {
     setSaved(false);
@@ -76,10 +86,9 @@ function GuardsForm({ agentId, agent }: { agentId: string; agent: AgentDetail })
       maxSilenceSec,
       endOnVoicemail,
       bannedWordsAction,
-      bannedWords: bannedWords
-        .split(',')
-        .map((w) => w.trim())
-        .filter(Boolean),
+      bannedWords: csv(bannedWords),
+      keyTerms: csv(keyTerms),
+      noVerbatim,
     });
     setSaved(true);
   }
@@ -207,6 +216,42 @@ function GuardsForm({ agentId, agent }: { agentId: string; agent: AgentDetail })
               ))}
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Transcription controls (Day 39) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <FileText size={16} /> Transcription
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <label htmlFor="key-terms" className="flex flex-col gap-1 text-vq-text-lo text-xs">
+            Key terms (custom vocabulary, comma-separated)
+            <textarea
+              id="key-terms"
+              value={keyTerms}
+              onChange={(e) => setKeyTerms(e.target.value)}
+              placeholder="Nexium, Acme Pro, SKU-4417"
+              className={cn(inputCls, 'min-h-[3.5rem]')}
+            />
+            <span className="text-[11px] text-vq-text-lo">
+              Boosts recognition of brand / drug / SKU names the STT would otherwise mishear.
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-sm text-vq-text-lo">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={noVerbatim}
+              onChange={(e) => setNoVerbatim(e.target.checked)}
+            />
+            <span>
+              <span className="text-vq-text-hi">No-verbatim mode.</span> Store a clean copy with
+              fillers and false starts removed. The raw transcript is always kept.
+            </span>
+          </label>
         </CardContent>
       </Card>
 

@@ -34,6 +34,8 @@ export interface AgentDetail {
   maxSilenceSec: number;
   endOnVoicemail: boolean;
   bannedWordsAction: string;
+  keyTerms: string[];
+  noVerbatim: boolean;
   defaultVoiceId: string | null;
   memoryEnabled: boolean;
   updatedAt: Date;
@@ -59,6 +61,9 @@ export const createAgentSchema = z.object({
   endOnVoicemail: z.boolean().optional(),
   bannedWords: z.array(z.string().min(1).max(60)).max(100).optional(),
   bannedWordsAction: z.enum(BANNED_WORDS_ACTIONS).optional(),
+  // Transcription controls (Day 39).
+  keyTerms: z.array(z.string().min(1).max(60)).max(100).optional(),
+  noVerbatim: z.boolean().optional(),
   defaultVoiceId: z.string().uuid().optional(),
   memoryEnabled: z.boolean().optional(),
 });
@@ -78,6 +83,8 @@ const AGENT_SELECT = {
   maxSilenceSec: true,
   endOnVoicemail: true,
   bannedWordsAction: true,
+  keyTerms: true,
+  noVerbatim: true,
   defaultVoiceId: true,
   memoryEnabled: true,
   updatedAt: true,
@@ -135,6 +142,8 @@ export class AgentsService {
       endOnVoicemail,
       bannedWords,
       bannedWordsAction,
+      keyTerms,
+      noVerbatim,
       defaultVoiceId,
       memoryEnabled,
     } = parsed.data;
@@ -152,6 +161,8 @@ export class AgentsService {
           ...(maxSilenceSec !== undefined ? { maxSilenceSec } : {}),
           ...(endOnVoicemail !== undefined ? { endOnVoicemail } : {}),
           ...(bannedWordsAction !== undefined ? { bannedWordsAction } : {}),
+          ...(keyTerms !== undefined ? { keyTerms } : {}),
+          ...(noVerbatim !== undefined ? { noVerbatim } : {}),
           ...(defaultVoiceId ? { defaultVoiceId } : {}),
           ...(memoryEnabled !== undefined ? { memoryEnabled } : {}),
         },
@@ -198,6 +209,8 @@ export class AgentsService {
           ...(data.bannedWordsAction !== undefined
             ? { bannedWordsAction: data.bannedWordsAction }
             : {}),
+          ...(data.keyTerms !== undefined ? { keyTerms: data.keyTerms } : {}),
+          ...(data.noVerbatim !== undefined ? { noVerbatim: data.noVerbatim } : {}),
           ...(data.defaultVoiceId !== undefined ? { defaultVoiceId: data.defaultVoiceId } : {}),
           ...(data.memoryEnabled !== undefined ? { memoryEnabled: data.memoryEnabled } : {}),
         },

@@ -129,6 +129,8 @@ export interface STTOptions {
   language?: string;
   /** Emit interim (partial) transcripts as audio streams in. */
   interimResults?: boolean;
+  /** Custom vocabulary to boost recognition of brand/drug/SKU terms (Day 39). */
+  keyterms?: string[];
 }
 
 export interface STTEvent {

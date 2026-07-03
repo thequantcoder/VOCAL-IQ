@@ -5,7 +5,9 @@ import {
   type PostCallIntel,
   Provider,
   ProviderError,
+  type TranscriptSegment,
   buildIntelPrompt,
+  cleanSegments,
   parseIntel,
   segmentsToText,
 } from '@vocaliq/shared';
@@ -118,6 +120,19 @@ export function createDbPostCallDeps(admin: PrismaClient, log: (m: string) => vo
           intelAt: new Date(),
         },
       });
+      // No-verbatim mode (Day 39): store a filler-stripped clean copy when the agent asks
+      // for it. The raw `segments` are always kept; cleaning is the same tested pure fn.
+      const t = await admin.transcript.findUnique({
+        where: { id: transcriptId },
+        select: { segments: true, call: { select: { agent: { select: { noVerbatim: true } } } } },
+      });
+      if (t?.call?.agent?.noVerbatim) {
+        const raw = Array.isArray(t.segments) ? (t.segments as TranscriptSegment[]) : [];
+        await admin.transcript.update({
+          where: { id: transcriptId },
+          data: { cleanSegments: cleanSegments(raw) as unknown as object },
+        });
+      }
     },
     log,
   };

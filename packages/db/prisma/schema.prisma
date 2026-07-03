@@ -302,6 +302,8 @@ model Agent {
   maxSilenceSec   Int           @default(15) // dead-air auto-hangup (0 disables)
   endOnVoicemail  Boolean       @default(true)
   bannedWordsAction String      @default("flag") // flag | redact | block
+  keyTerms        String[]      @default([]) // custom STT vocabulary boost (Day 39)
+  noVerbatim      Boolean       @default(false) // store a filler-stripped clean transcript
   type            AgentType     @default(INBOUND)
   status          AgentStatus   @default(DRAFT)
   memoryEnabled   Boolean       @default(false)
@@ -680,7 +682,9 @@ model Transcript {
   call      Call     @relation(fields: [callId], references: [id], onDelete: Cascade)
   tenantId  String   @db.Uuid
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  segments  Json     @default("[]")
+  segments  Json     @default("[]") // raw verbatim segments (always kept)
+  cleanSegments Json? // no-verbatim clean copy (Day 39; null = not computed)
+  sources   Json     @default("[]") // RAG citations used on the call [{chunkId,kbId,kbName,score,snippet}]
   summary   String?
   keywords  String[] @default([])
   topics    String[] @default([]) // post-call intel (Day 31)

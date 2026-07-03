@@ -24,6 +24,7 @@ import { SquadsService } from './squads/squads.service';
 import { TemplatesService } from './templates/templates.service';
 import { TenantService } from './tenancy/tenant.service';
 import { TestsService, routerGrader } from './tests/tests.service';
+import { TranscriptionService } from './transcription/transcription.service';
 import { VoicesService, elevenLabsCloner } from './voices/voices.service';
 import { WidgetService } from './widget/widget.service';
 
@@ -47,6 +48,7 @@ export function createServices() {
   const templates = new TemplatesService(agents, flows);
 
   const callsRead = new CallsReadService(db);
+  const transcription = new TranscriptionService(db);
   const outbound = new OutboundService(db, new PendingDialer());
 
   const cost = new CostService(db);
@@ -85,6 +87,7 @@ export function createServices() {
     flows,
     templates,
     callsRead,
+    transcription,
     outbound,
     cost,
     rag,

@@ -39,6 +39,8 @@ export interface CallDetail {
   agent: { id: string; name: string };
   transcript: {
     segments: unknown;
+    cleanSegments: unknown;
+    sources: unknown;
     summary: string | null;
     keywords: string[];
     topics: string[];
@@ -138,6 +140,8 @@ export class CallsReadService {
           transcript: {
             select: {
               segments: true,
+              cleanSegments: true,
+              sources: true,
               summary: true,
               keywords: true,
               topics: true,
