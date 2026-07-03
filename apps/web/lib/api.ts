@@ -665,3 +665,104 @@ export function useSetExperimentStatus() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['experiments'] }),
   });
 }
+
+// ── Agent testing (Day 33): scenarios + eval runs ─────────────────────────────
+
+export interface Assertion {
+  type:
+    | 'outcome_is'
+    | 'visited'
+    | 'transcript_includes'
+    | 'captured'
+    | 'max_turns'
+    | 'cost_under'
+    | 'llm_rubric';
+  value?: string | number;
+  nodeId?: string;
+  text?: string;
+  name?: string;
+  prompt?: string;
+}
+
+export interface ScenarioDef {
+  name: string;
+  caller: Array<{ text: string; intent?: string }>;
+  assertions: Assertion[];
+}
+
+export interface ScenarioRow {
+  id: string;
+  name: string;
+  definition: ScenarioDef;
+  updatedAt: string;
+}
+
+export interface AssertionResult {
+  type: string;
+  label: string;
+  pass: boolean;
+  detail?: string;
+}
+export interface ScenarioResult {
+  name: string;
+  outcome: string;
+  passed: boolean;
+  estCostUsd: number;
+  results: AssertionResult[];
+}
+export interface SuiteReport {
+  runId: string;
+  total: number;
+  passed: number;
+  failed: number;
+  passRate: number;
+  estCostUsd: number;
+  scenarios: ScenarioResult[];
+}
+
+export function useScenarios(agentId: string) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['scenarios', agentId],
+    queryFn: () => apiFetch<ScenarioRow[]>(getToken, `/agents/${agentId}/tests/scenarios`),
+    enabled: Boolean(agentId),
+  });
+}
+
+export function useCreateScenario(agentId: string) {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: ScenarioDef) =>
+      apiFetch<ScenarioRow>(getToken, `/agents/${agentId}/tests/scenarios`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['scenarios', agentId] }),
+  });
+}
+
+export function useDeleteScenario(agentId: string) {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ id: string }>(getToken, `/agents/${agentId}/tests/scenarios/${id}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['scenarios', agentId] }),
+  });
+}
+
+export function useRunSuite(agentId: string) {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (opts: { llm?: boolean } = {}) =>
+      apiFetch<SuiteReport>(getToken, `/agents/${agentId}/tests/run`, {
+        method: 'POST',
+        body: JSON.stringify(opts),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['test-runs', agentId] }),
+  });
+}

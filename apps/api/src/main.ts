@@ -23,6 +23,7 @@ import { ragRoutes } from './rag/rag.routes';
 import { squadsRoutes } from './squads/squads.routes';
 import { templatesRoutes } from './templates/templates.routes';
 import { tenantRoutes } from './tenancy/tenant.routes';
+import { testsRoutes } from './tests/tests.routes';
 import { voicesRoutes } from './voices/voices.routes';
 import { widgetRoutes } from './widget/widget.routes';
 
@@ -51,6 +52,7 @@ function bootstrap(): void {
   app.use('/tenants', tenantRoutes(s.db, s.tenants));
   app.use('/agents', agentsRoutes(s.agents, s.routerSvc, s.db, s.tenants));
   app.use('/agents/:agentId/flow', flowsRoutes(s.flows, s.tenants));
+  app.use('/agents/:agentId/tests', testsRoutes(s.tests, s.tenants));
   app.use('/templates', templatesRoutes(s.templates, s.tenants));
   app.use('/calls', callsRoutes(s.outbound, s.callsRead, s.tenants));
   app.use('/campaigns', campaignsRoutes(s.campaigns, s.tenants));

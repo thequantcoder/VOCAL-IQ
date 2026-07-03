@@ -18,6 +18,7 @@ import { RouterService } from './router/router.service';
 import { SquadsService } from './squads/squads.service';
 import { TemplatesService } from './templates/templates.service';
 import { TenantService } from './tenancy/tenant.service';
+import { TestsService, routerGrader } from './tests/tests.service';
 import { VoicesService, elevenLabsCloner } from './voices/voices.service';
 import { WidgetService } from './widget/widget.service';
 
@@ -55,6 +56,7 @@ export function createServices() {
   const squads = new SquadsService(db);
   const voices = new VoicesService(db, elevenLabsCloner(process.env.ELEVENLABS_API_KEY ?? ''));
   const routerSvc = new RouterService(db);
+  const tests = new TestsService(db, (tenantId) => routerGrader(routerSvc, tenantId));
 
   const plans = new PlansService(db);
   const billingWebhook = new BillingWebhookService(db);
@@ -81,6 +83,7 @@ export function createServices() {
     squads,
     voices,
     routerSvc,
+    tests,
     plans,
     billingWebhook,
     processor,
