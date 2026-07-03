@@ -16,6 +16,7 @@ import { LeadsService } from './leads/leads.service';
 import { MemoryService } from './memory/memory.service';
 import { RagService, openAiEmbedder, prismaUsageSink } from './rag/rag.service';
 import { RouterService } from './router/router.service';
+import { SipService } from './sip/sip.service';
 import { SquadsService } from './squads/squads.service';
 import { TemplatesService } from './templates/templates.service';
 import { TenantService } from './tenancy/tenant.service';
@@ -54,6 +55,7 @@ export function createServices() {
   const campaigns = new CampaignsService(db);
   const leads = new LeadsService(db);
   const memory = new MemoryService(db);
+  const sip = new SipService(db, entitlements);
   const experiments = new ExperimentsService(db);
   const squads = new SquadsService(db);
   const voices = new VoicesService(db, elevenLabsCloner(process.env.ELEVENLABS_API_KEY ?? ''));
@@ -82,6 +84,7 @@ export function createServices() {
     campaigns,
     leads,
     memory,
+    sip,
     experiments,
     squads,
     voices,

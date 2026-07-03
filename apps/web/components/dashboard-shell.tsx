@@ -9,6 +9,7 @@ import {
   Megaphone,
   Mic,
   PhoneCall,
+  Server,
   Target,
   Users,
 } from 'lucide-react';
@@ -28,6 +29,7 @@ const NAV = [
   { href: '/dashboard/campaigns', label: 'Campaigns', icon: Megaphone, exact: false },
   { href: '/dashboard/leads', label: 'Leads', icon: Target, exact: false },
   { href: '/dashboard/experiments', label: 'Experiments', icon: FlaskConical, exact: false },
+  { href: '/dashboard/sip', label: 'SIP trunks', icon: Server, exact: false },
 ] as const;
 
 /**

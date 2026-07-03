@@ -560,7 +560,10 @@ model SipTrunk {
   tenantId         String   @db.Uuid
   tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   providerTemplate String
-  encryptedCreds   Bytes // envelope-encrypted ciphertext ONLY
+  name             String   @default("") // operator label (Day 35)
+  host             String   @default("") // SIP host/gateway (non-secret)
+  port             Int      @default(5060)
+  encryptedCreds   Bytes // envelope-encrypted ciphertext ONLY (authUsername/authPassword/sipDomain)
   transport        String   @default("TLS")
   inbound          Boolean  @default(true)
   outbound         Boolean  @default(true)
