@@ -1348,3 +1348,33 @@ K. Build/CI: ⚠️ — local `next build` hits the pre-existing Day-37 `/500` f
 Margin + reliability CONFIRMED: runaway calls auto-end (duration/silence/voicemail — tested), the key pool balances load + ejects and routes around a failing key + re-admits on recovery (tested against real Postgres), turn timeout clamps to 0.5–5.0s, and banned words are enforced (block/redact/flag). Voice-loop wiring of these guards is gated on the Python live loop (skeleton) — the decision functions it will call are shipped + tested.
 Deferred (gated): wiring `shouldAutoHangup`/`screenSpeech`/`clampTurnTimeoutMs` into the Python voice loop (apps/voice skeleton), and real KMS envelope encryption of pooled keys (Day 57).
 Next: Day 39 (advanced transcription controls).
+
+## Day 39 — Advanced Transcription Controls + Source Attribution — 2026-07-03 — ✅ DONE
+Model: Sonnet (⚡ SONNET). Branch `day/39-transcription-controls` → PR. Prereq: Deepgram/AssemblyAI (STT keys, set Day 7) + Day 20 RAG — both present. Migration `20260703200000_day39_transcription_controls`. Self-audit focus A + B + D. Three trust/quality controls; the STT key-term boost is wired into the Deepgram adapter, the no-verbatim cleaning + source attribution run at call finalize.
+
+Built (DONE):
+- **shared** `transcription.ts`: `normalizeKeyTerms` (trim/dedupe case-insensitive/cap 100), **`cleanTranscript`/`cleanSegments`** (no-verbatim — strip fillers `um/uh/like/you know/…` **with the commas that delimited them**, collapse immediate repetitions/false starts, drop segments that were pure filler; content words preserved), **`buildCitations`** (RAG attribution — dedupe by chunk id, rank by score, resolve KB name, 160-char snippet). 7 unit tests.
+- **db** — Agent: `keyTerms String[]` + `noVerbatim Boolean`. Transcript: `cleanSegments Json?` (null = not computed) + `sources Json` (citations). Raw `segments` always kept.
+- **provider-router** — `STTOptions.keyterms` wired into the **Deepgram** `LiveSchema` as `keyterm` (nova-3 custom-vocabulary boost, no custom model needed).
+- **api/workers** — `TranscriptionService` (RLS): `applyNoVerbatim(callId)` reads the call's `agent.noVerbatim` → stores `cleanSegments` (or null when verbatim), `recordSources(callId, chunks, kbNameById)` persists ranked citations. `AgentsService` create/update take `keyTerms` + `noVerbatim`. `CallsReadService` detail exposes `cleanSegments` + `sources`. The **post-call worker** applies no-verbatim cleaning at finalize using the same tested pure fn.
+- **web** — agent settings gains a **Transcription** card (key-terms editor + no-verbatim toggle). Call detail gains a **raw/clean transcript toggle** (only when a clean copy exists) + a **Knowledge sources** card (cited KB chunks with match %).
+
+Verification: shared lint + build + **7 tests** (key-term normalise; filler + false-start cleaning incl. comma-delimited fillers; segment drop; citation rank/dedupe/snippet/unknown-KB). api typecheck + lint + **transcription 4** (RLS-real: no-verbatim stores clean + keeps raw, verbatim writes nothing, sources recorded + surfaced on call detail, **child-can't-see-parent RLS**) + full **129**. provider-router build + **22**. web typecheck + lint clean. Full monorepo: **typecheck 11/11, lint 11/11, test all green** (shared 186 / api 129 / provider-router 22 / db 7 / workers 13).
+Build note: same pre-existing local `next build` `/500` `<Html>` flake (Day 37; CI-green) — CI is the build gate of record.
+
+## Self-Audit — Day 39 (A–K)
+A. Correctness (focus): ✅ — filler/false-start cleaning + citation ranking are pure + unit-tested (incl. the tricky comma-delimited filler "the, you know, refund" → "the refund" and pure-filler segment drop); raw segments are never mutated (clean is a separate column).
+B. Tenancy (focus): ✅ — `applyNoVerbatim`/`recordSources` run under `withTenant`; the call→agent→transcript reads are RLS-scoped; child-can't-see-parent proven against real Postgres. The post-call worker uses the admin client (cross-tenant infra path) but always writes the transcript's own `tenantId` row.
+C. Security: ✅ — no new secret surface; key-terms are plain vocabulary; sources store only chunk snippets the tenant already owns; no PII leak beyond the tenant's own transcript.
+D. Cost (focus): ✅ — no new provider path; key-term boosting rides the existing metered STT stream (no extra call); no-verbatim + attribution are pure DB writes; RAG retrieval cost is unchanged (attribution reuses chunks already retrieved).
+E. Errors/obs: ✅ — typed NotFoundError when a transcript is missing; `applyNoVerbatim` returns null (not an error) for verbatim agents; worker cleaning is best-effort after intel and never blocks the intel write.
+F. Performance: ✅ — cleaning is O(segments) string work at finalize (once per call); citations capped by retrieval k; call-detail select adds two columns.
+G. Tests: ✅ — 7 shared + 4 api (RLS-real); deterministic, no live STT.
+H. UI/a11y: ✅ — labelled key-terms textarea + no-verbatim checkbox; call-detail raw/clean pill toggle only shown when a clean copy exists; sources card with match %; existing jump-to-moment preserved.
+I. Regression: ✅ — additive migration + columns + optional STTOptions field; api 129 / shared 186 green; the worker change is additive (guarded by the agent flag).
+J. Quality/docs: ✅ — pure text logic isolated in shared; doc comments explain no-verbatim intent + attribution; explicit DTOs (no Prisma leak); the clean copy never overwrites raw.
+K. Build/CI: ⚠️ — local `next build` hits the pre-existing Day-37 `/500` flake (CI-green); typecheck/lint/test all green locally; CI is the authority for the web build.
+
+Transcript quality + trust CONFIRMED: custom key terms are passed to Deepgram (`keyterm`), no-verbatim stores a filler/false-start-stripped clean copy alongside the always-kept raw transcript (tenant-scoped, tested), and RAG source attribution is recorded + shown on the call detail. Live-loop STT boosting + in-call source capture ride the gated Python voice loop; the tested pure fns + api service they call are shipped.
+Deferred (gated): passing per-agent `keyTerms` into the live STT stream + recording sources during the live call (Python voice loop skeleton) — the api surface (`applyNoVerbatim`/`recordSources`, `STTOptions.keyterms`) is ready.
+Next: Day 40 (built-in CRM/helpdesk integrations).
