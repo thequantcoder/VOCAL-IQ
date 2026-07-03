@@ -955,3 +955,116 @@ export function useSetAppointmentStatus() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['appointments'] }),
   });
 }
+
+// ── Forms (Day 37) ────────────────────────────────────────────────────────────
+
+export type FormFieldType =
+  | 'text'
+  | 'textarea'
+  | 'email'
+  | 'phone'
+  | 'number'
+  | 'select'
+  | 'date'
+  | 'checkbox';
+
+export interface FormFieldDto {
+  key: string;
+  label: string;
+  type: FormFieldType;
+  required?: boolean;
+  options?: string[];
+}
+
+export interface FormRoutingDto {
+  webhookUrl?: string;
+  sheetId?: string;
+  triggerAgentId?: string;
+}
+
+export interface FormDto {
+  id: string;
+  name: string;
+  fields: FormFieldDto[];
+  routing: FormRoutingDto;
+  active: boolean;
+  submissionCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FormSubmissionDto {
+  id: string;
+  values: Record<string, string>;
+  synced: boolean;
+  createdAt: string;
+}
+
+export interface FormConfigInput {
+  name: string;
+  fields: FormFieldDto[];
+  routing?: FormRoutingDto;
+}
+
+export function useForms() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['forms'],
+    queryFn: () => apiFetch<FormDto[]>(getToken, '/forms'),
+  });
+}
+
+export function useFormSubmissions(id: string | null) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['forms', id, 'submissions'],
+    enabled: !!id,
+    queryFn: () => apiFetch<FormSubmissionDto[]>(getToken, `/forms/${id}/submissions`),
+  });
+}
+
+export function useCreateForm() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: FormConfigInput) =>
+      apiFetch<FormDto>(getToken, '/forms', { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['forms'] }),
+  });
+}
+
+export function useUpdateForm() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; body: FormConfigInput }) =>
+      apiFetch<FormDto>(getToken, `/forms/${vars.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(vars.body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['forms'] }),
+  });
+}
+
+export function useSetFormActive() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; active: boolean }) =>
+      apiFetch<FormDto>(getToken, `/forms/${vars.id}/active`, {
+        method: 'POST',
+        body: JSON.stringify({ active: vars.active }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['forms'] }),
+  });
+}
+
+export function useDeleteForm() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ id: string }>(getToken, `/forms/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['forms'] }),
+  });
+}
