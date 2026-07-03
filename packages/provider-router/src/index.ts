@@ -96,6 +96,9 @@ export interface ResolvedKey {
   apiKey: string;
   /** true → BYOK: usage is recorded informationally but NOT billed. */
   byok: boolean;
+  /** Set when the key came from the load-balanced platform pool (Day 38) — its id, so the
+   *  caller can report the call outcome for key health/ejection tracking. */
+  poolKeyId?: string;
 }
 
 // ── TTS / STT / Telephony / media contracts ───────────────────────────────────

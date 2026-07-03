@@ -14,6 +14,7 @@ import { PrismaService } from './db/prisma.service';
 import { ExperimentsService } from './experiments/experiments.service';
 import { FlowsService } from './flows/flows.service';
 import { FormsService } from './forms/forms.service';
+import { KeyPoolService } from './keypool/keypool.service';
 import { LeadsService } from './leads/leads.service';
 import { MemoryService } from './memory/memory.service';
 import { RagService, openAiEmbedder, prismaUsageSink } from './rag/rag.service';
@@ -63,7 +64,8 @@ export function createServices() {
   const experiments = new ExperimentsService(db);
   const squads = new SquadsService(db);
   const voices = new VoicesService(db, elevenLabsCloner(process.env.ELEVENLABS_API_KEY ?? ''));
-  const routerSvc = new RouterService(db);
+  const keyPool = new KeyPoolService(db);
+  const routerSvc = new RouterService(db, keyPool);
   const tests = new TestsService(db, (tenantId) => routerGrader(routerSvc, tenantId));
 
   const plans = new PlansService(db);
@@ -94,6 +96,7 @@ export function createServices() {
     experiments,
     squads,
     voices,
+    keyPool,
     routerSvc,
     tests,
     plans,

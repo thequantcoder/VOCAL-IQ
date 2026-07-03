@@ -6,6 +6,7 @@ import {
   CalendarCheck,
   ClipboardList,
   FlaskConical,
+  KeyRound,
   LayoutDashboard,
   LogOut,
   Megaphone,
@@ -36,6 +37,11 @@ const NAV = [
   { href: '/dashboard/appointments', label: 'Appointments', icon: CalendarCheck, exact: false },
 ] as const;
 
+/** Platform-operator (SUPER_ADMIN) nav — only shown to platform staff. */
+const SUPER_ADMIN_NAV = [
+  { href: '/dashboard/admin/key-pool', label: 'Key pool', icon: KeyRound, exact: false },
+] as const;
+
 /**
  * Dashboard app shell (DESIGN-SYSTEM §7): a sidebar on desktop that collapses to a top
  * bar on mobile, dark-mode toggle, and an error boundary around the routed content so a
@@ -43,6 +49,9 @@ const NAV = [
  */
 export function DashboardShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const { user } = useAuth();
+  const isSuperAdmin = user?.memberships?.some((m) => m.role === 'SUPER_ADMIN') ?? false;
+  const nav = isSuperAdmin ? [...NAV, ...SUPER_ADMIN_NAV] : NAV;
   const isActive = (href: string, exact: boolean) =>
     exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
 
@@ -54,7 +63,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           <span className="font-display font-semibold text-vq-text-hi">VocalIQ</span>
         </Link>
         <nav className="flex gap-1 md:flex-col" aria-label="Primary">
-          {NAV.map(({ href, label, icon: Icon, exact }) => {
+          {nav.map(({ href, label, icon: Icon, exact }) => {
             const active = isActive(href, exact);
             return (
               <Link

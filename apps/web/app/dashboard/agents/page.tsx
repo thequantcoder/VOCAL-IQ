@@ -61,6 +61,11 @@ export default function AgentsPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <StatusBadge status={agent.status} />
+                  <Link href={`/dashboard/agents/${agent.id}/settings`}>
+                    <Button variant="ghost" size="sm">
+                      Guards
+                    </Button>
+                  </Link>
                   <Link href={`/dashboard/agents/${agent.id}/builder`}>
                     <Button variant="secondary" size="sm">
                       Build
