@@ -36,13 +36,19 @@ describe('KeyPoolService', () => {
     await expect(svc.add({ provider: 'OPENAI', apiKey: 'short' })).rejects.toSatisfy(isAppError);
   });
 
-  it('selects keys (weighted-LRU) and stamps lastUsedAt', async () => {
-    const a = await add('sel-a');
-    const first = await svc.selectKey('OPENAI' as never);
+  it('selects keys (weighted-LRU), rotating to the least-recently-used', async () => {
+    // Dedicated provider so the (platform-global) pool only holds this test's two keys.
+    const a = await svc.add({ provider: 'ANTHROPIC', apiKey: 'sk-test-selA-1234', label: 'selA' });
+    const b = await svc.add({ provider: 'ANTHROPIC', apiKey: 'sk-test-selB-1234', label: 'selB' });
+    created.push(a.id, b.id);
+
+    const first = await svc.selectKey('ANTHROPIC' as never);
     expect(first?.apiKey).toContain('sk-test-'); // decrypted for the caller only
-    // The selected key now has a lastUsedAt, so a never-used peer is picked next.
-    const b = await add('sel-b');
-    const second = await svc.selectKey('OPENAI' as never);
+    expect([a.id, b.id]).toContain(first?.id);
+
+    // LRU: the just-used key is most-recently-used, so the other (never-used) is next.
+    const second = await svc.selectKey('ANTHROPIC' as never);
+    expect(second?.id).not.toBe(first?.id);
     expect([a.id, b.id]).toContain(second?.id);
   });
 
