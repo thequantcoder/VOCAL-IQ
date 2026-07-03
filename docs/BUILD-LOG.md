@@ -1406,3 +1406,29 @@ K. Build/CI: ⚠️ — local `next build` hits the pre-existing Day-37 `/500` f
 At least HubSpot fully syncs calls/leads (framework ready for more) CONFIRMED: a completed call upserts the HubSpot contact with qualification + sentiment note and opens a ticket on a negative call (proven with a spy connector against real Postgres); the framework is a clean `Connector` interface others extend (Salesforce/Zendesk recognised, gated). Tokens are verified-before-store, sealed, and never returned. Tenant isolation CONFIRMED.
 Deferred (gated on a real CRM account): a live HubSpot end-to-end smoke (a tenant connects a real private-app token), Salesforce/Zendesk connector bodies (same `Connector` pattern), and auto-triggering `syncCall` from the post-call worker.
 **Phase 2.5 complete** — tag `v0.4-phase2_5` after merge. Next: Day 41 (analytics — Phase 3).
+
+## Day 41 — Real-Time + Historical Analytics Dashboards — 2026-07-03 — ✅ DONE — opens Phase 3
+Model: Opus (🧠 OPUS). Branch `day/41-analytics-dashboards`. Prereq: Day 13 cost + Timescale + data from prior calls — all present; no new admin credential. No migration (reads existing `Call`/`UsageRecord`/`Transcript`). Self-audit focus F (query perf) + A (metrics) + B + H.
+
+Built (DONE):
+- **shared** `analytics.ts`: the pure metric core — `talkListen` (agent vs caller talk-time split + ratio), `countInterruptions` (talk-over detection over ordered segments), `outcomeCounts`/`successRate`, and **`evaluateBudget`** (spend vs daily/monthly caps → warn ≥80% / critical ≥100%, plus a trailing-average **anomaly** flag: today ≥3× the 7-day avg and ≥$5). 9 unit tests.
+- **api** `AnalyticsService` (RLS, all under `withTenant`): **`live`** (concurrency + today's calls/minutes/spend/success via scoped SQL), **`historical`** (Timescale `time_bucket` day-buckets for calls/sentiment/cost, outcome mix, success + drop-off rates, and talk/listen + avg interruptions over a **bounded 500-transcript sample** for perf), **`budget`** (today/month/trailing-avg spend → `evaluateBudget`). Routes `/analytics/{live,historical,budget}` (auth + tenant middleware; Zod-validated range/agent filter; `to>from` enforced). Wired into composition + main. 6 RLS-real integration tests.
+- **web** `/dashboard/analytics`: live tiles (poll every 10s; active-calls pulses cyan), a spend/budget alert banner, date-range + agent filters, and historical charts (calls/day, outcomes, sentiment trend, cost/day, talk-vs-listen ratio + avg interruptions). Charts are a **zero-dependency SVG set** (`components/charts.tsx` — LineChart/BarChart/RatioBar; no Recharts/visx bundle, per the CodeCanyon lean-self-host note). Nav link added.
+
+Verification: full monorepo **typecheck 11/11 green**, **lint 11/11 clean** (Biome), **build exit 0** (`/dashboard/analytics` route emitted, 4.31 kB). Tests: shared **201** (analytics 9), api **140** (analytics 6, RLS-real: outcomes/success/cost-by-day/drop-off correct + parent tenant excluded, talk/listen+interruptions from sample, agent filter, budget thresholds, live snapshot, child-can't-see-parent).
+
+## Self-Audit — Day 41 (A–K)
+A. Correctness (focus): ✅ — pure metrics (talk/listen, interruptions, outcomes, success, budget thresholds + anomaly) unit-tested in shared; SQL aggregations proven against real Postgres/Timescale (day-buckets, cost-by-day sum, drop-off = NO_ANSWER+FAILED+<10s, success = COMPLETED/total) with exact expected values.
+B. Tenancy (focus): ✅ — `live`/`historical`/`budget` all run inside `withTenant`; every query is RLS-scoped; a test asserts a child tenant's totals never include the parent's $99 / 5-min call, and the agent filter stays within the tenant.
+C. Creds/secrets: ✅ — read-only analytics; no secrets touched, none logged; no client-exposed keys.
+D. Cost: ✅ — no provider/LLM call added (pure DB reads); spend is *reported* from existing `UsageRecord` cost attribution, not re-metered. Budget monitoring is additive infra alerting, distinct from per-call attribution.
+E. Errors/obs: ✅ — Zod-validated query params (dates coerced, `to>from` enforced → ValidationError); numeric coercion guards nulls (`num()`); div-by-zero guarded (0 when no calls/segments).
+F. Performance (focus): ✅ — heavy aggregation stays in SQL via Timescale `time_bucket` (on `createdAt`/`ts`); the only row-scan (conversational metrics) is bounded to a 500-transcript sample, ordered newest-first; live tiles are three cheap COUNT/SUM queries.
+G. Error handling: ✅ — API surfaces typed errors; web has loading / error(+retry) / empty states; a failing query never blanks the shell (error boundary).
+H. UI/a11y (focus): ✅ — labelled date/agent filters (htmlFor/id), mono numbers, calm data-dense tiles, cyan pulse only when live>0, dark-mode tokens, empty/error/loading handled; charts carry `role="img"`+aria-label.
+I. Regression: ✅ — purely additive (new module + routes + page + charts; one shared export); no schema/migration; existing 11/11 typecheck + all tests green.
+J. Quality/docs: ✅ — pure logic isolated in shared and tested; SQL kept in the service with doc comments explaining the sample-bound perf tradeoff; explicit DTOs (no Prisma leak); zero-dep chart choice documented (lean self-host).
+K. Build/CI: ✅ — full `pnpm build` exits 0 this run (the earlier Day-37 `/500` flake did not recur); typecheck/lint/test all green locally.
+
+Live + historical analytics fast + accurate CONFIRMED (DoD met): real-time tiles poll concurrency/minutes/spend/success; historical gives outcomes, sentiment trend, talk/listen, interruptions, drop-off, cost-by-day filterable by date + agent; budget/anomaly alerting added. Tenant isolation CONFIRMED.
+Deferred (gated): Socket.IO push for the live tiles (currently 10s polling — fine for self-host); wiring `budget` caps/anomaly into a super-admin push notification (the evaluation + alerts payload are ready). Next: Day 42 (transcript search).
