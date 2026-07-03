@@ -7,6 +7,7 @@ import express from 'express';
 loadDotenv({ path: resolve(process.cwd(), '../../.env') });
 
 import { agentsRoutes } from './agents/agents.routes';
+import { appointmentsRoutes } from './appointments/appointments.routes';
 import { authRoutes } from './auth/auth.routes';
 import { billingRoutes, billingWebhookHandler } from './billing/billing.routes';
 import { callsRoutes } from './calls/calls.routes';
@@ -55,6 +56,7 @@ function bootstrap(): void {
   app.use('/agents', agentsRoutes(s.agents, s.routerSvc, s.db, s.tenants));
   app.use('/agents/:agentId/flow', flowsRoutes(s.flows, s.tenants));
   app.use('/agents/:agentId/tests', testsRoutes(s.tests, s.tenants));
+  app.use('/appointments', appointmentsRoutes(s.appointments, s.tenants));
   app.use('/templates', templatesRoutes(s.templates, s.tenants));
   app.use('/calls', callsRoutes(s.outbound, s.callsRead, s.tenants));
   app.use('/campaigns', campaignsRoutes(s.campaigns, s.tenants));

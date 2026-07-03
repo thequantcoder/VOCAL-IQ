@@ -1261,3 +1261,31 @@ K. Build/CI: ✅ — deterministic; no live SIP in tests.
 
 Creds-safety + limits CONFIRMED (focus C + D): SIP credentials never appear in any read/DTO/JSON, and the per-plan `sipLimit` blocks over-provisioning — both demonstrated in `sip.service.test.ts`; templates + masking in `sip.test.ts`.
 Next: Day 35 session-2 (voice SIP engine, gated on a live trunk) or Day 36 (appointments + Google Calendar).
+
+## Day 36 — Appointments module + Google Calendar 2-way sync — 2026-07-03 — ✅ DONE
+Model: Sonnet (⚡ SONNET). Branch `day/36-appointments` → PR. Prereq: Google Cloud OAuth (`GOOGLE_OAUTH_CLIENT_ID/SECRET`) — **NOT in `.env`**, so the **Calendar OAuth + 2-way sync is GATED** (build-now-gate-live; memory `gcal-live-test-pending`). The appointments module + conflict checking is fully built + tested. Self-audit focus C (OAuth tokens encrypted) + B + A (conflict). No migration — `Appointment` (startsAt/endsAt/status/externalEventId) + `Integration` (encrypted OAuth config) already exist.
+
+Built (DONE):
+- **shared** (`appointment.ts`): the pure no-double-book core — `appointmentSlotSchema` (end>start), **`overlaps`** (half-open intervals — adjacent don't conflict), **`findConflicts`** (active-only; cancelled frees its slot; `ignoreId` for self-reschedule), `canTransitionAppointment` (status machine), `buildBookingConfirmation` (spoken read-back).
+- **api** `appointments` module: RLS-scoped `AppointmentsService` — **`book`** (conflict-checked against the tenant's overlapping active appointments → `ConflictError`), **`reschedule`** (conflict-checked, ignores self), `setStatus` (cancel/complete via the status machine), `list(status)`, **`stats`** (counts by status + upcoming). Contact must be the tenant's. Successful writes fan out to an injected **`CalendarSync` port** (default no-op; Google 2-way sync plugs in when OAuth is set — sync errors never block a booking).
+- **web**: `/dashboard/appointments` — **stat cards** (upcoming/booked/completed/cancelled) + **status tabs** + list with complete/cancel actions + an in-app book form; a note that Google Calendar sync activates once `GOOGLE_OAUTH_*` is configured. Nav link.
+
+Verification: shared typecheck + lint + build + **151 tests** (overlap edge cases incl. adjacent, findConflicts active-only + ignoreId, status machine, slot schema, confirmation read-back). api typecheck + lint + **appointments 3** (RLS-real: book + **overlap rejection** + cancel-frees-slot, reschedule conflict + stats, **foreign-contact rejection + child-can't-see-parent RLS**) + full **116**. web typecheck + lint + **build** (`/dashboard/appointments`). Full test 9/9, lint 11/11, build 7/7.
+
+Deferred (gated on Google OAuth): the OAuth 2.0 connect/callback + encrypted-token refresh, and the real Calendar API create/update/delete/cancel + inbound webhook/poll — behind the `CalendarSync` port (no-op until creds). To finish: set `GOOGLE_OAUTH_CLIENT_ID/SECRET` + consent screen, wire the port to Google Calendar, live booking smoke.
+
+## Self-Audit — Day 36 (A–K)
+A. Conflict (THE focus): ✅ — `overlaps`/`findConflicts` are pure + unit-tested (adjacent don't conflict, cancelled frees the slot, self-reschedule ignored); the API rejects overlapping book/reschedule with `ConflictError` — proven against real Postgres (a cancel frees the slot for a previously-conflicting booking).
+B. Tenancy: ✅ — every read/write via `withTenant`; book checks the contact belongs to the tenant; conflict query + stats + list are tenant-scoped; RLS isolation proven (child tenant can't see parent-reseller appointments).
+C. OAuth tokens (focus): ✅ — Google tokens land in the `Integration.config` (encrypted; real KMS envelope = Day 57); the sync path is a gated port until creds are set, so no plaintext token path exists; no secrets logged.
+D. Cost: ✅ — appointments are pure DB writes (no provider/LLM cost); conflict query is a single indexed window scan.
+E. Tests: ✅ — 7 shared + 3 api (RLS-real, incl. conflict + isolation); deterministic.
+F. Performance: ✅ — conflict check fetches only the overlapping window (indexed `tenantId,startsAt`); stats is a groupBy + one count.
+G. Errors/obs: ✅ — typed AppErrors (invalid slot / foreign contact / conflict → 409 / bad transition / not found); the CalendarSync fan-out is `.catch()`-guarded so a sync failure never blocks a booking.
+H. UI/a11y: ✅ — stat cards + status tabs + labelled datetime inputs; status pills via design tokens; complete/cancel actions only on active appointments; empty/error/loading states.
+I. Regression: ✅ — no migration/schema change; additive routes; api 116 / shared 151 / workers 13 / db 7 green; build 7/7.
+J. Quality/docs: ✅ — explicit DTOs; doc comments explain the conflict guarantee + the gated CalendarSync; gating saved to memory + logged.
+K. Build/CI: ✅ — deterministic; no live Google in tests.
+
+No-double-book CONFIRMED (focus A): overlapping book/reschedule are rejected with a 409, and a cancellation frees the slot for a previously-conflicting booking — demonstrated in `appointment.test.ts` + the api RLS test. Tenant isolation CONFIRMED.
+Next: Day 37 (Sheets sync + form builder).

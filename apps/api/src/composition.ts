@@ -1,4 +1,5 @@
 import { AgentsService } from './agents/agents.service';
+import { AppointmentsService } from './appointments/appointments.service';
 import { AuthService } from './auth/auth.service';
 import { EntitlementsService } from './billing/entitlements.service';
 import { PlansService } from './billing/plans.service';
@@ -39,6 +40,7 @@ export function createServices() {
 
   const entitlements = new EntitlementsService(db);
   const agents = new AgentsService(db, entitlements);
+  const appointments = new AppointmentsService(db);
   const flows = new FlowsService(db);
   const templates = new TemplatesService(agents, flows);
 
@@ -75,6 +77,7 @@ export function createServices() {
     auth,
     entitlements,
     agents,
+    appointments,
     flows,
     templates,
     callsRead,
