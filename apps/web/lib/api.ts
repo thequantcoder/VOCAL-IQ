@@ -890,3 +890,68 @@ export function useDeleteSipTrunk() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sip'] }),
   });
 }
+
+// ── Appointments (Day 36) ─────────────────────────────────────────────────────
+
+export interface AppointmentDto {
+  id: string;
+  contactId: string;
+  contactName: string | null;
+  startsAt: string;
+  endsAt: string;
+  status: string;
+  calendarProvider: string | null;
+  externalEventId: string | null;
+  createdAt: string;
+}
+
+export interface AppointmentStats {
+  booked: number;
+  rescheduled: number;
+  completed: number;
+  cancelled: number;
+  upcoming: number;
+}
+
+export function useAppointments(status?: string) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['appointments', status ?? 'all'],
+    queryFn: () =>
+      apiFetch<AppointmentDto[]>(getToken, `/appointments${status ? `?status=${status}` : ''}`),
+  });
+}
+
+export function useAppointmentStats() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['appointments', 'stats'],
+    queryFn: () => apiFetch<AppointmentStats>(getToken, '/appointments/stats'),
+  });
+}
+
+export function useBookAppointment() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { contactId: string; startsAt: string; endsAt: string }) =>
+      apiFetch<AppointmentDto>(getToken, '/appointments', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['appointments'] }),
+  });
+}
+
+export function useSetAppointmentStatus() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; status: string }) =>
+      apiFetch<AppointmentDto>(getToken, `/appointments/${vars.id}/status`, {
+        method: 'POST',
+        body: JSON.stringify({ status: vars.status }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['appointments'] }),
+  });
+}

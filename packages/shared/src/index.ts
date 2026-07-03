@@ -9,6 +9,7 @@ export * from './env.js';
 export * from './errors.js';
 export * from './experiment.js';
 export * from './agent-templates.js';
+export * from './appointment.js';
 export * from './campaign.js';
 export * from './flow-compiler.js';
 export * from './flow-graph.js';

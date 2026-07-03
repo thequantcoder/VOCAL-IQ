@@ -3,6 +3,7 @@
 import { cn } from '@vocaliq/ui';
 import {
   Bot,
+  CalendarCheck,
   FlaskConical,
   LayoutDashboard,
   LogOut,
@@ -30,6 +31,7 @@ const NAV = [
   { href: '/dashboard/leads', label: 'Leads', icon: Target, exact: false },
   { href: '/dashboard/experiments', label: 'Experiments', icon: FlaskConical, exact: false },
   { href: '/dashboard/sip', label: 'SIP trunks', icon: Server, exact: false },
+  { href: '/dashboard/appointments', label: 'Appointments', icon: CalendarCheck, exact: false },
 ] as const;
 
 /**
