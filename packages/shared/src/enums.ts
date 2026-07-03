@@ -192,3 +192,15 @@ export const FeatureFlagScope = {
   TENANT: 'TENANT',
 } as const;
 export type FeatureFlagScope = (typeof FeatureFlagScope)[keyof typeof FeatureFlagScope];
+
+// ── Integrations (CRM / helpdesk / calendar connectors) ───────────────────────
+
+export const IntegrationType = {
+  HUBSPOT: 'HUBSPOT',
+  SALESFORCE: 'SALESFORCE',
+  ZENDESK: 'ZENDESK',
+  GOOGLE: 'GOOGLE',
+  ZAPIER: 'ZAPIER',
+  WEBHOOK: 'WEBHOOK',
+} as const;
+export type IntegrationType = (typeof IntegrationType)[keyof typeof IntegrationType];
