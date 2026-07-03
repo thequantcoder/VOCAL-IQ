@@ -1190,3 +1190,14 @@ K. Build/CI: ✅ — deterministic; grading tested without any live model.
 
 Grading determinism + cost-safety CONFIRMED (focus A + D): the same scenario grades identically every run, deterministic assertions cost $0, LLM rubrics are opt-in + metered, and `detectRegressions` flags a scenario that regressed from a passing baseline — all demonstrated in `scenario.test.ts` + the api RLS test.
 Next: Day 34 (agent memory).
+
+## 🔍 CHECKPOINT AUDIT — through Day 33 (2026-07-03)
+Full project self-audit at the Day-33 milestone (37 PRs merged; CodeCanyon stack pivot complete + live-smoke-verified).
+
+**Quality gates (whole monorepo + Python voice):** typecheck 11/11 · lint 11/11 (+ Ruff clean) · **353 tests green** (TS: shared 130, api 107, provider-router 22 [+1 skip], workers 10, db 7 = 276; Python: 77 [+2 skip]) · build 7/7 · Pyright 0 errors.
+
+**Invariants:** RLS on every tenant table (Day-04 FOREACH loop + explicit policies for Squad/SquadMember/Experiment/TestScenario/TestRun; 37/38 models tenant-scoped, `User` is global auth). `.env` git-ignored + untracked; gitleaks green. Git in sync, 0 unpushed, clean tree.
+
+**Stack (all free/OSS, self-hostable):** Next.js + React + Express + PostgreSQL/Prisma + self-hosted JWT + shadcn + Framer Motion + PM2/Nginx. Clerk + NestJS fully removed; auth smoke-tested live (register→login→tenant-scoped call→401).
+
+**Deferred (tracked, non-blocking):** the live-loop bundle (tool/transfer/compiler-executor, language-swap, Squad handoff, campaign live-dial, A/B variant recording, post-call enqueue) — all unit-tested, awaiting a funded Twilio number + one integration session; opt-in LLM eval grader / CI-on-publish gate / lead auto-scoring (endpoints ready). No open correctness/security issues found.
