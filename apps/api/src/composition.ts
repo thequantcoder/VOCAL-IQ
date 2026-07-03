@@ -13,6 +13,7 @@ import { CostService } from './cost/cost.service';
 import { PrismaService } from './db/prisma.service';
 import { ExperimentsService } from './experiments/experiments.service';
 import { FlowsService } from './flows/flows.service';
+import { FormsService } from './forms/forms.service';
 import { LeadsService } from './leads/leads.service';
 import { MemoryService } from './memory/memory.service';
 import { RagService, openAiEmbedder, prismaUsageSink } from './rag/rag.service';
@@ -55,6 +56,7 @@ export function createServices() {
   );
 
   const campaigns = new CampaignsService(db);
+  const forms = new FormsService(db);
   const leads = new LeadsService(db);
   const memory = new MemoryService(db);
   const sip = new SipService(db, entitlements);
@@ -85,6 +87,7 @@ export function createServices() {
     cost,
     rag,
     campaigns,
+    forms,
     leads,
     memory,
     sip,
