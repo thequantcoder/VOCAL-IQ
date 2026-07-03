@@ -19,6 +19,7 @@ export * from './persona.js';
 export * from './post-call.js';
 export * from './query-keys.js';
 export * from './result.js';
+export * from './scenario.js';
 export * from './schemas.js';
 export * from './simulator.js';
 export * from './squad.js';

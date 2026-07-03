@@ -1161,3 +1161,32 @@ K. Build/CI: ✅ — deterministic; no live providers in tests.
 
 Simulator determinism + cost-safety CONFIRMED (focus A + D): `runSimulation` reproduces the exact conversation/event-stream for a scripted caller, a scripted run costs $0, and only generated turns accrue a flagged estimate — all demonstrated in `simulator.test.ts`.
 Next: Day 33 (batch testing + rubrics).
+
+## Day 33 — Batch/scenario testing + eval rubrics — 2026-07-03 — ✅ DONE
+Model: Opus (🧠 OPUS). Branch `day/33-batch-testing` → PR. Prereqs met (Day-32 simulator). Self-audit focus A (grading reliability) + D (eval cost) + B.
+
+Built (DONE):
+- **shared** (`scenario.ts`): the graded-eval core — `scenarioSchema` (name + scripted `caller` + `assertions`), a discriminated-union **assertion model** (`outcome_is`/`visited`/`transcript_includes`/`captured`/`max_turns`/`cost_under` — all **deterministic + free**; `llm_rubric` — graded by an **injected** `RubricGrader`), `evaluateAssertion`, **`runScenario`** (simulate via Day-32 `runSimulation` → grade), **`runSuite`** (aggregate pass/fail + cost + passRate), and **`detectRegressions(current, baseline)`** (scenarios that passed in the baseline but now fail). An unconfigured rubric **fails closed** (never silently passes).
+- **DB**: `TestScenario` (per-agent scenario library) + `TestRun` (stored `SuiteReport` + pass counts); migration `day33_test_scenarios` with **RLS** on both.
+- **api** `tests` module (Express, new stack): RLS-scoped `TestsService` — scenarios CRUD + `run(tenantId, agentId, {llm?})` which **compiles the agent's PUBLISHED flow**, runs the suite, and stores a `TestRun`; `listRuns`. Deterministic by default; **LLM rubric grading is OPT-IN** (`llm:true`) and metered via `routerGrader` (router → tenant-scoped UsageRecord). Mounted at `/agents/:agentId/tests`.
+- **web**: `/dashboard/agents/[id]/tests` — scenario list + a compact builder (name, caller lines, expected-outcome/must-include/LLM-rubric fields), a **Run suite** button, and a **pass/fail report** (per-scenario ✓/✗ with each assertion + its detail, overall passRate).
+
+Verification: shared typecheck + lint + build + **130 tests** (deterministic grading, determinism-across-runs, llm_rubric via fake grader, fail-closed with no grader, suite aggregation, **regression detection**). api typecheck + lint + **tests 3** (RLS-real: create + run + report stored, no-published-flow rejected, invalid-scenario rejected) + full **107**. db migrate + **7**. web typecheck + lint + **build** (`/dashboard/agents/[id]/tests`). Full test 9/9, lint 11/11, build 7/7.
+
+Deferred (tracked): **CI-on-publish auto-run** (fire the suite + block/warn on regressions when a flow is published) is a small wiring on `FlowsService.publishFlow` — the run endpoint + `detectRegressions` are ready; the LLM grader is wired but opt-in per run (cost control); promptfoo/deepeval-style external export is optional.
+
+## Self-Audit — Day 33 (A–K)
+A. Grading reliability (THE focus): ✅ — deterministic assertions are pure over the seeded simulator (proven identical across runs); `llm_rubric` is isolated behind an injected grader so the core stays deterministic; an unconfigured rubric fails closed. Regression detection is set-based + tested.
+B. Tenancy: ✅ — scenarios + runs are RLS-scoped via `withTenant`; create checks the agent belongs to the tenant; the published-flow lookup + report write are tenant-scoped; the metered grader stamps the tenant's UsageRecord.
+C. Security: ✅ — scenario input Zod-validated (discriminated union); no secrets; the LLM grader routes keys via the resolver.
+D. Eval cost (focus): ✅ — deterministic assertions cost **$0**; LLM grading is **opt-in** per run and every grader call is metered (UsageRecord); the report carries the estimated sim cost so spend is visible.
+E. Tests: ✅ — 7 shared (grading/regression) + 3 api (RLS-real); deterministic (fake grader, no live LLM).
+F. Performance: ✅ — scenarios run in parallel (`Promise.all`); one compile per suite; runs are bounded by the simulator's step cap.
+G. Errors/obs: ✅ — typed AppErrors (no published flow / no scenarios / invalid def / bad compile); a failing rubric shows its reason.
+H. UI/a11y: ✅ — labelled inputs; report is ✓/✗ per assertion with details + passRate; design tokens; empty/loading states.
+I. Regression: ✅ — additive migration + additive routes; api 107 / shared 130 / workers 10 / db 7 green; build 7/7; second feature day on the Express/JWT stack — clean.
+J. Quality/docs: ✅ — explicit DTOs; doc comments explain deterministic-vs-LLM + opt-in cost; deferred on-publish gate tracked.
+K. Build/CI: ✅ — deterministic; grading tested without any live model.
+
+Grading determinism + cost-safety CONFIRMED (focus A + D): the same scenario grades identically every run, deterministic assertions cost $0, LLM rubrics are opt-in + metered, and `detectRegressions` flags a scenario that regressed from a passing baseline — all demonstrated in `scenario.test.ts` + the api RLS test.
+Next: Day 34 (agent memory).
