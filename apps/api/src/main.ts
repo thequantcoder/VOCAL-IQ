@@ -16,6 +16,7 @@ import { createServices } from './composition';
 import { costRoutes } from './cost/cost.routes';
 import { experimentsRoutes } from './experiments/experiments.routes';
 import { flowsRoutes } from './flows/flows.routes';
+import { formsRoutes, publicFormsRoutes } from './forms/forms.routes';
 import { healthRoutes } from './health.routes';
 import { errorMiddleware, notFoundMiddleware } from './http/error.middleware';
 import { leadsRoutes } from './leads/leads.routes';
@@ -60,6 +61,8 @@ function bootstrap(): void {
   app.use('/templates', templatesRoutes(s.templates, s.tenants));
   app.use('/calls', callsRoutes(s.outbound, s.callsRead, s.tenants));
   app.use('/campaigns', campaignsRoutes(s.campaigns, s.tenants));
+  app.use('/forms', formsRoutes(s.forms, s.tenants));
+  app.use('/public/forms', publicFormsRoutes(s.forms));
   app.use('/leads', leadsRoutes(s.leads, s.tenants));
   app.use('/memory', memoryRoutes(s.memory, s.tenants));
   app.use('/sip', sipRoutes(s.sip, s.tenants));

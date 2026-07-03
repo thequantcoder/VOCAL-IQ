@@ -1,6 +1,5 @@
 'use client';
 
-import * as Sentry from '@sentry/nextjs';
 import { Button } from '@vocaliq/ui';
 import { Component, type ReactNode } from 'react';
 
@@ -24,7 +23,9 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error): void {
-    Sentry.captureException(error);
+    // Lazy-load the Sentry SDK so it never lands in the static `/_error` prerender bundle —
+    // its top-level `next/document` reference otherwise breaks `next build` (App Router).
+    void import('@sentry/nextjs').then((Sentry) => Sentry.captureException(error)).catch(() => {});
   }
 
   private reset = () => this.setState({ error: null });

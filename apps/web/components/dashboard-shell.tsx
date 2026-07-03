@@ -4,6 +4,7 @@ import { cn } from '@vocaliq/ui';
 import {
   Bot,
   CalendarCheck,
+  ClipboardList,
   FlaskConical,
   LayoutDashboard,
   LogOut,
@@ -29,6 +30,7 @@ const NAV = [
   { href: '/dashboard/squads', label: 'Squads', icon: Users, exact: false },
   { href: '/dashboard/campaigns', label: 'Campaigns', icon: Megaphone, exact: false },
   { href: '/dashboard/leads', label: 'Leads', icon: Target, exact: false },
+  { href: '/dashboard/forms', label: 'Forms', icon: ClipboardList, exact: false },
   { href: '/dashboard/experiments', label: 'Experiments', icon: FlaskConical, exact: false },
   { href: '/dashboard/sip', label: 'SIP trunks', icon: Server, exact: false },
   { href: '/dashboard/appointments', label: 'Appointments', icon: CalendarCheck, exact: false },
