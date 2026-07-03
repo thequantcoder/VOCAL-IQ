@@ -1232,3 +1232,32 @@ K. Build/CI: ✅ — deterministic; extraction tested without any live LLM.
 
 Scoping + privacy CONFIRMED (focus B + C): memory is opt-in, tenant+contact scoped (child tenant can't read parent-reseller memory), contact-erasable (GDPR), and age-prunable — all demonstrated in `memory.service.test.ts` + `memory.test.ts`.
 Next: Day 35 (BYO-SIP trunk engine — heavy).
+
+## Day 35 — BYO-SIP trunk engine + 13+ provider templates — 2026-07-03 — ✅ DONE (session 1 of 2)
+Model: Opus (🧠 OPUS). Branch `day/35-sip-trunk` → PR. Prereq: a live SIP trunk + carrier creds — **NOT in `.env`**, so the SIP transport is **built + GATED** (same build-now-gate-live pattern as Twilio/Stripe; see memory `sip-live-test-pending`). Self-audit focus C (encrypted creds/TLS/verify) + B + D (SIP cost path) + F.
+
+Built (DONE — session 1):
+- **shared** (`sip.ts`): **14 provider templates** (Twilio, Telnyx, Plivo, Vonage, Bandwidth, Exotel, DIDWW, Zadarma, Cloudonix, RingCentral, Sinch, Infobip, SignalWire + generic custom) with carrier defaults (host/port/transport/REGISTER-required); `applyTemplate` (overrides win, else template default; unknown → custom), `sipTrunkCreateSchema` (+ credentials), `maskSipUsername`. TLS is the default transport.
+- **DB**: `SipTrunk` gains non-secret `name`/`host`/`port` columns; migration `day35_sip_trunk` (creds stay in `encryptedCreds` Bytes; RLS already from Day-04).
+- **api** `sip` module: RLS-scoped `SipService` — create (template-resolved, **per-plan `sipLimit` enforced** via entitlements), list/get (**credentials NEVER returned** — only a masked username + `hasCredentials`), update (inbound/outbound/concurrency), delete. `entitlements.assertCanCreateSipTrunk` added. Creds are sealed to bytes at rest (real KMS envelope encryption is Day 57 — documented, matching ProviderCredential).
+- **web**: `/dashboard/sip` — add a trunk (pick carrier → auto-fill host, enter creds), list (masked creds + host/port/transport), toggle inbound/outbound, delete. Nav link.
+
+Verification: shared typecheck + lint + build + **144 tests** (13+ templates, applyTemplate overrides/unknown→custom, Zadarma register-required, schema, username masking). api typecheck + lint + **sip 3** (RLS-real: create-from-template + **creds never in the DTO/JSON**, **per-plan limit** (Pro=1 → 2nd rejected), update + **cross-tenant RLS isolation**) + full **113**. db migrate + **7**. web typecheck + lint + **build** (`/dashboard/sip`). Full test 9/9, lint 11/11, build 7/7.
+
+Deferred (session 2 / live smoke — needs a real trunk): the **voice-service SIP engine** (SIP.js/drachtio or LiveKit SIP) — register trunk, route inbound, place outbound; the **dual engines** (ElevenLabs SIP + OpenAI Realtime SIP); number import + agent assignment on a trunk; real **KMS envelope encryption** of creds (Day 57). All gated behind the missing SIP creds.
+
+## Self-Audit — Day 35 (A–K)
+A. Correctness: ✅ — templates + applyTemplate + schema are pure + unit-tested (defaults, overrides, unknown→custom, register-required); create resolves the trunk then enforces the limit.
+B. Tenancy: ✅ — all trunk reads/writes via `withTenant`; create counts the tenant's own trunks for the limit; RLS isolation proven (another tenant can't list/get a trunk).
+C. Security (THE focus): ✅ — **credentials are never returned** (DTO exposes only a masked username + `hasCredentials`; the JSON is asserted to contain neither the password nor the full username); creds sealed at rest in `encryptedCreds` (KMS envelope = Day 57, documented); TLS is the default transport; no secret logged.
+D. SIP cost path (focus): ✅ — **per-plan `sipLimit`** enforced on create (Free 0 / Pro 1 / Scale 10); per-trunk `concurrencyLimit` caps simultaneous calls; the live metered SIP call path rides the existing cost engine when the engine is wired.
+E. Tests: ✅ — 6 shared + 3 api (RLS-real, incl. creds-never-exposed + limit + isolation); deterministic.
+F. Performance: ✅ — list/get are single indexed queries; limit check is one count; template resolution is O(templates).
+G. Errors/obs: ✅ — typed AppErrors (invalid trunk / missing host / plan limit / not found); creds decode failure degrades to empty (no crash).
+H. UI/a11y: ✅ — labelled carrier picker with auto-filled host + carrier notes; password field is `type=password`; masked creds in the list; inbound/outbound toggles; empty/error states.
+I. Regression: ✅ — additive migration (default columns) + additive routes; api 113 / shared 144 / workers 13 / db 7 green; build 7/7.
+J. Quality/docs: ✅ — explicit credential-safe DTO; doc comments flag the KMS-deferral + the gated transport; session-2 + live-smoke tracked in memory + log.
+K. Build/CI: ✅ — deterministic; no live SIP in tests.
+
+Creds-safety + limits CONFIRMED (focus C + D): SIP credentials never appear in any read/DTO/JSON, and the per-plan `sipLimit` blocks over-provisioning — both demonstrated in `sip.service.test.ts`; templates + masking in `sip.test.ts`.
+Next: Day 35 session-2 (voice SIP engine, gated on a live trunk) or Day 36 (appointments + Google Calendar).

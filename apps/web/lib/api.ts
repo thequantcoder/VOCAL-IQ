@@ -817,3 +817,76 @@ export function useEraseContactMemory() {
     onSuccess: (_d, contactId) => qc.invalidateQueries({ queryKey: ['memory', contactId] }),
   });
 }
+
+// ── SIP trunks (Day 35): BYO-SIP ──────────────────────────────────────────────
+
+export interface SipTrunkDto {
+  id: string;
+  name: string;
+  providerTemplate: string;
+  host: string;
+  port: number;
+  transport: string;
+  inbound: boolean;
+  outbound: boolean;
+  concurrencyLimit: number;
+  authUsernameMasked: string;
+  hasCredentials: boolean;
+  createdAt: string;
+}
+
+export interface SipTrunkCreateInput {
+  providerTemplate: string;
+  name: string;
+  host?: string;
+  port?: number;
+  transport?: string;
+  inbound: boolean;
+  outbound: boolean;
+  concurrencyLimit: number;
+  credentials: { authUsername: string; authPassword: string; sipDomain?: string };
+}
+
+export function useSipTrunks() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['sip'],
+    queryFn: () => apiFetch<SipTrunkDto[]>(getToken, '/sip'),
+  });
+}
+
+export function useCreateSipTrunk() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: SipTrunkCreateInput) =>
+      apiFetch<SipTrunkDto>(getToken, '/sip', { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sip'] }),
+  });
+}
+
+export function useUpdateSipTrunk() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: {
+      id: string;
+      body: Partial<Pick<SipTrunkDto, 'inbound' | 'outbound' | 'concurrencyLimit' | 'name'>>;
+    }) =>
+      apiFetch<SipTrunkDto>(getToken, `/sip/${vars.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(vars.body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sip'] }),
+  });
+}
+
+export function useDeleteSipTrunk() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ id: string }>(getToken, `/sip/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sip'] }),
+  });
+}

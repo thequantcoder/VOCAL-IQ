@@ -21,6 +21,7 @@ import { leadsRoutes } from './leads/leads.routes';
 import { memoryRoutes } from './memory/memory.routes';
 import { initSentry, shutdownObservability } from './observability';
 import { ragRoutes } from './rag/rag.routes';
+import { sipRoutes } from './sip/sip.routes';
 import { squadsRoutes } from './squads/squads.routes';
 import { templatesRoutes } from './templates/templates.routes';
 import { tenantRoutes } from './tenancy/tenant.routes';
@@ -59,6 +60,7 @@ function bootstrap(): void {
   app.use('/campaigns', campaignsRoutes(s.campaigns, s.tenants));
   app.use('/leads', leadsRoutes(s.leads, s.tenants));
   app.use('/memory', memoryRoutes(s.memory, s.tenants));
+  app.use('/sip', sipRoutes(s.sip, s.tenants));
   app.use('/experiments', experimentsRoutes(s.experiments, s.tenants));
   app.use('/squads', squadsRoutes(s.squads, s.tenants));
   app.use('/voices', voicesRoutes(s.voices, s.tenants));

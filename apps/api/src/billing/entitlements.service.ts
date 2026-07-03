@@ -71,4 +71,17 @@ export class EntitlementsService {
       );
     }
   }
+
+  /** Guard SIP-trunk creation against the plan's sipLimit (Day 35). */
+  async assertCanCreateSipTrunk(tenantId: string): Promise<void> {
+    const plan = await this.resolvePlan(tenantId);
+    const trunks = await this.db.withTenant(tenantId, (tx) => tx.sipTrunk.count());
+    if (trunks >= plan.sipLimit) {
+      throw new BillingError(
+        plan.sipLimit === 0
+          ? `Your ${plan.name} plan does not include SIP trunks. Upgrade to connect your own.`
+          : `Your ${plan.name} plan allows ${plan.sipLimit} SIP trunk${plan.sipLimit === 1 ? '' : 's'}. Upgrade to add more.`,
+      );
+    }
+  }
 }
