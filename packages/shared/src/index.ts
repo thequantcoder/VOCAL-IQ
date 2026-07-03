@@ -14,6 +14,7 @@ export * from './flow-compiler.js';
 export * from './flow-graph.js';
 export * from './flow-node-config.js';
 export * from './lead.js';
+export * from './memory.js';
 export * from './multilingual.js';
 export * from './persona.js';
 export * from './post-call.js';

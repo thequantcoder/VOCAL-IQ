@@ -18,6 +18,7 @@ import { flowsRoutes } from './flows/flows.routes';
 import { healthRoutes } from './health.routes';
 import { errorMiddleware, notFoundMiddleware } from './http/error.middleware';
 import { leadsRoutes } from './leads/leads.routes';
+import { memoryRoutes } from './memory/memory.routes';
 import { initSentry, shutdownObservability } from './observability';
 import { ragRoutes } from './rag/rag.routes';
 import { squadsRoutes } from './squads/squads.routes';
@@ -57,6 +58,7 @@ function bootstrap(): void {
   app.use('/calls', callsRoutes(s.outbound, s.callsRead, s.tenants));
   app.use('/campaigns', campaignsRoutes(s.campaigns, s.tenants));
   app.use('/leads', leadsRoutes(s.leads, s.tenants));
+  app.use('/memory', memoryRoutes(s.memory, s.tenants));
   app.use('/experiments', experimentsRoutes(s.experiments, s.tenants));
   app.use('/squads', squadsRoutes(s.squads, s.tenants));
   app.use('/voices', voicesRoutes(s.voices, s.tenants));
