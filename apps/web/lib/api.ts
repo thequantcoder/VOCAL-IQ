@@ -47,6 +47,7 @@ export interface AgentDetail extends AgentListItem {
   persona: { systemPrompt?: string } | null;
   turnTimeoutMs: number;
   defaultVoiceId: string | null;
+  memoryEnabled: boolean;
   createdAt: string;
 }
 
@@ -764,5 +765,55 @@ export function useRunSuite(agentId: string) {
         body: JSON.stringify(opts),
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['test-runs', agentId] }),
+  });
+}
+
+// ── Agent update + Agent Memory (Day 34) ──────────────────────────────────────
+
+export function useUpdateAgent(id: string) {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Partial<{ memoryEnabled: boolean; name: string; systemPrompt: string }>) =>
+      apiFetch<AgentDetail>(getToken, `/agents/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['agents', id] });
+      qc.invalidateQueries({ queryKey: ['agents'] });
+    },
+  });
+}
+
+export interface MemoryFact {
+  key: string;
+  value: string;
+  kind: string;
+}
+export interface MemoryDto {
+  agentId: string;
+  summary: string;
+  facts: MemoryFact[];
+  lastCallId: string | null;
+  updatedAt: string;
+}
+
+export function useContactMemory(contactId: string) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['memory', contactId],
+    queryFn: () => apiFetch<MemoryDto[]>(getToken, `/memory/contact/${contactId}`),
+    enabled: Boolean(contactId),
+  });
+}
+
+export function useEraseContactMemory() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (contactId: string) =>
+      apiFetch<{ erased: number }>(getToken, `/memory/contact/${contactId}`, { method: 'DELETE' }),
+    onSuccess: (_d, contactId) => qc.invalidateQueries({ queryKey: ['memory', contactId] }),
   });
 }

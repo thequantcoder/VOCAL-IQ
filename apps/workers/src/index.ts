@@ -3,6 +3,7 @@ import { parseEnv } from '@vocaliq/shared';
 import { Queue, Worker } from 'bullmq';
 import IORedis from 'ioredis';
 import { createDbSchedulerDeps, runCampaignTick } from './campaign-scheduler';
+import { createDbMemoryDeps, runMemoryExtraction } from './memory-extraction';
 import { createDbPostCallDeps, runPostCallIntel } from './post-call-intel';
 import { createDbFindUnmetered, runReconciliation } from './reconciliation';
 
@@ -39,6 +40,34 @@ function registerPostCallIntel(
   worker.on('failed', (job, err) => console.error(`[post-call] job ${job?.id} failed:`, err));
 
   console.log('[workers] post-call-intel queue + worker registered.');
+  return async () => {
+    await worker.close();
+    await connection.quit();
+    await admin.$disconnect();
+  };
+}
+
+const MEMORY_QUEUE = 'memory-extraction';
+
+/**
+ * Cross-call memory extraction worker (Day 34). Consumes `{ tenantId, agentId, contactId,
+ * transcriptId }` jobs (the live loop enqueues on call-end when the agent has memory on —
+ * that wiring rides with the Day-9 loop bundle) and merges distilled facts into AgentMemory.
+ */
+function registerMemoryExtraction(
+  redisUrl: string,
+  databaseUrl: string | undefined,
+): () => Promise<void> {
+  const connection = new IORedis(redisUrl, { maxRetriesPerRequest: null });
+  const admin = createPrismaClient(databaseUrl);
+  const deps = createDbMemoryDeps(admin, (msg) => console.log(`[memory] ${msg}`));
+
+  const worker = new Worker(MEMORY_QUEUE, async (job) => runMemoryExtraction(deps, job.data), {
+    connection,
+  });
+  worker.on('failed', (job, err) => console.error(`[memory] job ${job?.id} failed:`, err));
+
+  console.log('[workers] memory-extraction queue + worker registered.');
   return async () => {
     await worker.close();
     await connection.quit();
@@ -133,6 +162,7 @@ async function main(): Promise<void> {
   registerReconciliation(env.REDIS_URL, env.DATABASE_URL);
   registerCampaignScheduler(env.REDIS_URL, env.DATABASE_URL);
   registerPostCallIntel(env.REDIS_URL, env.DATABASE_URL);
+  registerMemoryExtraction(env.REDIS_URL, env.DATABASE_URL);
 }
 
 void main();

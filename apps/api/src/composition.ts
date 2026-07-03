@@ -13,6 +13,7 @@ import { PrismaService } from './db/prisma.service';
 import { ExperimentsService } from './experiments/experiments.service';
 import { FlowsService } from './flows/flows.service';
 import { LeadsService } from './leads/leads.service';
+import { MemoryService } from './memory/memory.service';
 import { RagService, openAiEmbedder, prismaUsageSink } from './rag/rag.service';
 import { RouterService } from './router/router.service';
 import { SquadsService } from './squads/squads.service';
@@ -52,6 +53,7 @@ export function createServices() {
 
   const campaigns = new CampaignsService(db);
   const leads = new LeadsService(db);
+  const memory = new MemoryService(db);
   const experiments = new ExperimentsService(db);
   const squads = new SquadsService(db);
   const voices = new VoicesService(db, elevenLabsCloner(process.env.ELEVENLABS_API_KEY ?? ''));
@@ -79,6 +81,7 @@ export function createServices() {
     rag,
     campaigns,
     leads,
+    memory,
     experiments,
     squads,
     voices,

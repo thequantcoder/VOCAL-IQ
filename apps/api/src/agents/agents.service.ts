@@ -30,6 +30,7 @@ export interface AgentDetail {
   languages: string[];
   turnTimeoutMs: number;
   defaultVoiceId: string | null;
+  memoryEnabled: boolean;
   updatedAt: Date;
   createdAt: Date;
 }
@@ -48,6 +49,7 @@ export const createAgentSchema = z.object({
   languages: z.array(z.string().min(2).max(10)).max(20).default([]),
   turnTimeoutMs: z.number().int().min(200).max(10_000).default(1500),
   defaultVoiceId: z.string().uuid().optional(),
+  memoryEnabled: z.boolean().optional(),
 });
 
 export const updateAgentSchema = createAgentSchema.partial();
@@ -62,6 +64,7 @@ const AGENT_SELECT = {
   languages: true,
   turnTimeoutMs: true,
   defaultVoiceId: true,
+  memoryEnabled: true,
   updatedAt: true,
   createdAt: true,
 } as const;
@@ -105,8 +108,16 @@ export class AgentsService {
     }
     // Enforce the plan's agent limit before creating (Day 15 gating).
     await this.entitlements.assertCanCreateAgent(tenantId);
-    const { name, systemPrompt, type, status, languages, turnTimeoutMs, defaultVoiceId } =
-      parsed.data;
+    const {
+      name,
+      systemPrompt,
+      type,
+      status,
+      languages,
+      turnTimeoutMs,
+      defaultVoiceId,
+      memoryEnabled,
+    } = parsed.data;
     return this.db.withTenant(tenantId, (tx) =>
       tx.agent.create({
         data: {
@@ -118,6 +129,7 @@ export class AgentsService {
           languages,
           turnTimeoutMs,
           ...(defaultVoiceId ? { defaultVoiceId } : {}),
+          ...(memoryEnabled !== undefined ? { memoryEnabled } : {}),
         },
         select: AGENT_SELECT,
       }),
@@ -145,6 +157,7 @@ export class AgentsService {
           ...(data.languages !== undefined ? { languages: data.languages } : {}),
           ...(data.turnTimeoutMs !== undefined ? { turnTimeoutMs: data.turnTimeoutMs } : {}),
           ...(data.defaultVoiceId !== undefined ? { defaultVoiceId: data.defaultVoiceId } : {}),
+          ...(data.memoryEnabled !== undefined ? { memoryEnabled: data.memoryEnabled } : {}),
         },
         select: AGENT_SELECT,
       });

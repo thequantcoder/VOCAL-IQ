@@ -1201,3 +1201,34 @@ Full project self-audit at the Day-33 milestone (37 PRs merged; CodeCanyon stack
 **Stack (all free/OSS, self-hostable):** Next.js + React + Express + PostgreSQL/Prisma + self-hosted JWT + shadcn + Framer Motion + PM2/Nginx. Clerk + NestJS fully removed; auth smoke-tested live (register→login→tenant-scoped call→401).
 
 **Deferred (tracked, non-blocking):** the live-loop bundle (tool/transfer/compiler-executor, language-swap, Squad handoff, campaign live-dial, A/B variant recording, post-call enqueue) — all unit-tested, awaiting a funded Twilio number + one integration session; opt-in LLM eval grader / CI-on-publish gate / lead auto-scoring (endpoints ready). No open correctness/security issues found.
+
+## Day 34 — Cross-call Agent Memory (persistent context) — 2026-07-03 — ✅ DONE
+Model: Opus (🧠 OPUS). Branch `day/34-agent-memory` → PR. Prereqs met (Day-20 embeddings). **Retention/privacy defaults (confirmed):** memory is **opt-in per agent** (`Agent.memoryEnabled` default false), **retained indefinitely** unless a tenant prunes by age, **contact-level erase always available (GDPR)**, scoping is **tenant + contact (+ agent)**. Self-audit focus C (PII/retention/erase) + B (scoping — critical) + A. No migration — the `AgentMemory` model (unique `[tenantId,agentId,contactId]`, RLS from Day-04) was already complete.
+
+Built (DONE):
+- **shared** (`memory.ts`): the pure core — `memoryFactSchema` (key/value/kind), `agentMemorySchema`, **`mergeMemoryFacts`** (same-key overwrite, newest-wins, capped — converges rather than grows), **`buildMemoryContext`** (the system-prompt snippet injected at call start; **empty for a first-time caller** so no phantom context), **`isMemoryExpired`** (retention; `≤0 days = keep forever`), plus `buildMemoryExtractionPrompt` + **`parseMemoryExtraction`** (fenced/prose-tolerant JSON → validated memory; **falls back to empty on garbage, never throws**).
+- **api** `memory` module: RLS-scoped `MemoryService` — `getForContact` / `getForAgent` (injection), **`upsert`** (merges facts; **no-op unless the agent has `memoryEnabled`** — opt-in), **`eraseContact`** (GDPR delete across agents), `prune(retentionDays)`. Mounted at `/memory`. `Agent.memoryEnabled` now settable via agent create/update.
+- **workers** (`memory-extraction.ts`): pure **`runMemoryExtraction`** — memory-off agents + empty transcripts **skip the LLM** (no spend); otherwise a **metered** LLM distils durable facts (router → tenant-scoped UsageRecord) → merge into `AgentMemory`. Registered as a BullMQ `memory-extraction` worker.
+- **web**: `/dashboard/agents/[id]/memory` — the **per-agent memory toggle** + a **contact-memory viewer** (look up by contact id → summary + fact chips) with a **GDPR erase** button.
+
+Verification: shared typecheck + lint + build + **138 tests** (merge/overwrite/cap, injection empty-vs-populated, retention keep-forever/expire, extraction prompt + parse fail-closed). api typecheck + lint + **memory 3** (RLS-real: opt-in write + merge + list, disabled=no-op, **erase + child-can't-see-parent-reseller RLS**) + full **110**. workers typecheck + lint + **memory 3** (metered path, disabled-skip, empty-skip) — 13 total. web typecheck + lint + **build** (`/dashboard/agents/[id]/memory`). Full test 9/9, lint 11/11, build 7/7.
+
+RLS note (learned): the seeded R1→C1 is a reseller→customer subtree, so R1 (parent) legitimately sees C1's data via `is_in_subtree`; isolation is the **child-can't-see-parent** direction (test asserts C1 cannot see R1's memory).
+
+Deferred (tracked): **enqueue on call-end** + **inject `buildMemoryContext` at call start** ride with the Day-9 live-loop bundle (the extraction runner, injection helper, and `getForAgent` are all ready); retention prune can be scheduled (endpoint ready).
+
+## Self-Audit — Day 34 (A–K)
+A. Correctness: ✅ — merge/injection/retention/extraction-parse are pure + unit-tested incl. fail-closed on bad LLM output; the merge converges (capped, newest-wins).
+B. Scoping (THE focus): ✅ — every path via `withTenant`; memory keyed by `[tenantId,agentId,contactId]`; upsert re-checks the agent + contact belong to the tenant; RLS isolation proven (child tenant can't read parent-reseller memory). No cross-tenant/contact bleed.
+C. PII / retention / erase (focus): ✅ — **opt-in** (memory off by default; write is a no-op when off); **contact-level GDPR erase** always available (deletes across agents); **retention prune** by age; the extraction prompt asks only for durable business facts (not raw PII dumps); no secrets logged.
+D. Cost: ✅ — memory-off + empty transcripts never call the LLM; extraction routes through the metered router (tenant-scoped UsageRecord); prompt token-capped.
+E. Tests: ✅ — 8 shared + 3 api (RLS-real) + 3 workers; deterministic (fake LLM).
+F. Performance: ✅ — merge is O(facts) capped at 50; get/upsert are single indexed queries (unique key); one bounded LLM call per call.
+G. Errors/obs: ✅ — typed AppErrors; bad generations degrade to empty memory (never corrupts a caller's record); worker logs per job.
+H. UI/a11y: ✅ — labelled toggle + lookup form; fact chips; GDPR erase is a clearly-labelled danger action; loading/empty states; design tokens.
+I. Regression: ✅ — no migration/schema change; additive routes + agent field; api 110 / shared 138 / workers 13 / db 7 green; build 7/7.
+J. Quality/docs: ✅ — explicit DTOs; doc comments explain opt-in + GDPR + retention; retention/privacy decision saved to memory + logged; deferred loop-wiring tracked.
+K. Build/CI: ✅ — deterministic; extraction tested without any live LLM.
+
+Scoping + privacy CONFIRMED (focus B + C): memory is opt-in, tenant+contact scoped (child tenant can't read parent-reseller memory), contact-erasable (GDPR), and age-prunable — all demonstrated in `memory.service.test.ts` + `memory.test.ts`.
+Next: Day 35 (BYO-SIP trunk engine — heavy).
