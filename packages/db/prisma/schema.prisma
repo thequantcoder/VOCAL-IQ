@@ -684,6 +684,8 @@ model Transcript {
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   segments  Json     @default("[]") // raw verbatim segments (always kept)
   cleanSegments Json? // no-verbatim clean copy (Day 39; null = not computed)
+  searchText String? // Day 42: flattened plain-text of segments for FTS + embedding source (null = not indexed)
+  embedding Unsupported("vector(1536)")? // Day 42: semantic-search vector over searchText; HNSW index in migration
   sources   Json     @default("[]") // RAG citations used on the call [{chunkId,kbId,kbName,score,snippet}]
   summary   String?
   keywords  String[] @default([])

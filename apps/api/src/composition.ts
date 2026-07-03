@@ -21,6 +21,7 @@ import { LeadsService } from './leads/leads.service';
 import { MemoryService } from './memory/memory.service';
 import { RagService, openAiEmbedder, prismaUsageSink } from './rag/rag.service';
 import { RouterService } from './router/router.service';
+import { SearchService } from './search/search.service';
 import { SipService } from './sip/sip.service';
 import { SquadsService } from './squads/squads.service';
 import { TemplatesService } from './templates/templates.service';
@@ -55,11 +56,9 @@ export function createServices() {
 
   const cost = new CostService(db);
   const analytics = new AnalyticsService(db);
-  const rag = new RagService(
-    db,
-    openAiEmbedder(process.env.OPENAI_API_KEY ?? ''),
-    prismaUsageSink(db),
-  );
+  const embedder = openAiEmbedder(process.env.OPENAI_API_KEY ?? '');
+  const rag = new RagService(db, embedder, prismaUsageSink(db));
+  const search = new SearchService(db, embedder, prismaUsageSink(db));
 
   const campaigns = new CampaignsService(db);
   const forms = new FormsService(db);
@@ -96,6 +95,7 @@ export function createServices() {
     cost,
     analytics,
     rag,
+    search,
     campaigns,
     forms,
     integrations,

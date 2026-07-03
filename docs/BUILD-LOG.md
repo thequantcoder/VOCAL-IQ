@@ -1432,3 +1432,32 @@ K. Build/CI: ✅ — full `pnpm build` exits 0 this run (the earlier Day-37 `/50
 
 Live + historical analytics fast + accurate CONFIRMED (DoD met): real-time tiles poll concurrency/minutes/spend/success; historical gives outcomes, sentiment trend, talk/listen, interruptions, drop-off, cost-by-day filterable by date + agent; budget/anomaly alerting added. Tenant isolation CONFIRMED.
 Deferred (gated): Socket.IO push for the live tiles (currently 10s polling — fine for self-host); wiring `budget` caps/anomaly into a super-admin push notification (the evaluation + alerts payload are ready). Next: Day 42 (transcript search).
+
+## Day 42 — Transcript Full-Text + Semantic Search — 2026-07-04 — ✅ DONE
+Model: Sonnet (⚡ SONNET). Branch `day/42-transcript-search`. Prereq: pgvector + transcripts populated — both present (Day 04/20). Migration `20260703220000_day42_transcript_search` (additive columns + indexes on the existing, already-RLS'd `Transcript`). Self-audit focus B (no cross-tenant results) + F + A.
+
+Built (DONE):
+- **db/migration**: `Transcript.searchText TEXT` (flattened plain-text, FTS + embedding source) + `Transcript.embedding vector(1536)`; a **GIN** index on `to_tsvector('english', coalesce("searchText",''))` and an **HNSW** cosine index on the embedding. Transcript already had RLS (Day 04) → columns inherit tenant isolation.
+- **shared** `transcript-search.ts`: pure core — `queryTokens`, **`bestMoment`** (jump-to-moment: the segment with the most query-token hits → its `startMs`), and **`fuseRankings`** (reciprocal-rank fusion of keyword + semantic lists — scale-free, so ts_rank vs cosine never need normalising). 7 unit tests.
+- **api** `SearchService` (RLS, all reads under `withTenant`; embedder + usage sink reused from the RAG pattern): `indexTranscript` (flatten → embed best-effort → raw update; FTS works even with no embedder), `reindexTenant` (backfill), and **`search`** (keyword via `websearch_to_tsquery` + `ts_rank` + `ts_headline` snippet; semantic via cosine `<=>`; hybrid via RRF), each hit carrying a snippet + jump-to-moment offset. Routes: `GET /search/transcripts` (members) + `POST /search/reindex` (config writers — spends embed budget). Wired into composition + main. 6 RLS-real integration tests.
+- **web** `/dashboard/search`: query box, keyword/semantic/hybrid toggle, agent filter, snippet results, reindex button; clicking a result deep-links to `/dashboard/calls/{id}?t={ms}` — the call detail page now reads `?t=` and seeks the recording to that moment (reuses the existing `seekTo`/audio player). Nav link added.
+
+Verification: typecheck api+web clean; `pnpm lint` 11/11 tasks pass (pre-existing `useImportType` warnings only, no errors); `pnpm build` exit 0 (`/dashboard/search` route emitted). Tests: shared **208** (transcript-search 7), api **146** (search 6 — FTS finds the right call, jump-to-moment resolves the caller segment offset, semantic ranks by the deterministic embedder, hybrid returns hits, **a child tenant NEVER sees the parent's "secret" refund transcript**, blank query → []).
+
+## Self-Audit — Day 42 (A–K)
+A. Correctness (focus): ✅ — pure jump-to-moment + RRF fusion unit-tested; FTS/semantic/hybrid proven against real Postgres (`websearch_to_tsquery`, `ts_rank`, cosine `<=>`) with a deterministic keyword embedder so ordering is predictable without live OpenAI.
+B. Tenancy (focus): ✅ — `indexTranscript`/`reindexTenant`/`search` all run inside `withTenant`; the raw FTS + vector SQL execute under the non-superuser app role with the tenant GUC set, so RLS on `Transcript` applies. A test seeds a parent (R1) transcript that also says "refund" and asserts C1's search never returns it.
+C. Creds/secrets: ✅ — no secrets in code/logs; the embedder key is read from env (reused from RAG), never echoed.
+D. Cost: ✅ — every embed (index + query) meters a tenant-scoped `UsageRecord` (EMBEDDING capability) via the same sink as RAG (golden rule #4); FTS-only paths add no provider cost.
+E. Errors/obs: ✅ — Zod-validated query (`q` required, mode enum, uuid agent, `to>from`); NotFound on a missing transcript; embedder failure is caught so a self-host without an OpenAI key still gets keyword search.
+F. Performance (focus): ✅ — GIN index backs FTS, HNSW backs semantic; both queries are `LIMIT`-bounded to a candidate pool (≤50); embed input capped at 8k chars; jump-to-moment is a bounded in-memory scan of one transcript's segments.
+G. Error handling: ✅ — API surfaces typed errors; web has loading/error(+retry)/empty states; reindex is a distinct config-writer action.
+H. UI/a11y: ✅ — labelled search input + agent select (htmlFor/id), keyboard-submittable form, mode toggle, mono timestamps, empty/error/loading states; deep-link seek is best-effort (guards missing audio).
+I. Regression: ✅ — additive migration + new module/routes/page + one shared export + 7 tracked-file wirings; existing typecheck/lint/tests green (shared 208, api 146). (Mid-day a root `biome --write` reformatted ~34 unrelated files via `useImportType`; all reverted — the final diff is exactly the Day-42 surface.)
+J. Quality/docs: ✅ — pure logic isolated + tested in shared; SQL kept in the service with doc comments (RRF rationale, RLS-under-raw-SQL note, best-effort embed); explicit DTOs; migration comments explain the inherited RLS.
+K. Build/CI: ✅ — full `pnpm build` exits 0 (cleared a stale `.next` macOS "* 2.ts" duplicate-artifact typecheck flake first); all gates green locally.
+
+CI fix (post-push): the first CI run failed — `reindexTenant(C1)` raced a parallel test file (analytics) that creates + deletes transcripts under the same seeded tenant C1: my scan picked up a transient transcript that was deleted before `indexTranscript` read it → `NotFoundError`. Fixed by hardening `reindexTenant` to tolerate a transcript vanishing mid-scan (catch `NotFoundError` per item, skip, continue) — which is also the correct production behaviour under concurrent deletion / retention purge. Re-verified green locally (api 146).
+
+Keyword + semantic search with jump-to-moment, tenant-scoped, tests pass — DoD CONFIRMED. Cross-tenant isolation CONFIRMED (parent's transcript never surfaces for the child).
+Deferred (gated): auto-indexing transcripts from the post-call worker (needs an embedder in the worker — OpenAI key; today's `reindex` endpoint + on-demand `indexTranscript` cover backfill, and FTS degrades gracefully without embeddings). Next: Day 43 (QA scoring at scale).

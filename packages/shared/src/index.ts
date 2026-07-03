@@ -32,6 +32,7 @@ export * from './schemas.js';
 export * from './simulator.js';
 export * from './sip.js';
 export * from './squad.js';
+export * from './transcript-search.js';
 export * from './transcription.js';
 export * from './usage.js';
 export * from './voice.js';
