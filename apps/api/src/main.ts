@@ -25,6 +25,7 @@ import { keyPoolRoutes } from './keypool/keypool.routes';
 import { leadsRoutes } from './leads/leads.routes';
 import { memoryRoutes } from './memory/memory.routes';
 import { initSentry, shutdownObservability } from './observability';
+import { qaRoutes } from './qa/qa.routes';
 import { ragRoutes } from './rag/rag.routes';
 import { searchRoutes } from './search/search.routes';
 import { sipRoutes } from './sip/sip.routes';
@@ -70,6 +71,7 @@ function bootstrap(): void {
   app.use('/admin/key-pool', keyPoolRoutes(s.keyPool, s.tenants));
   app.use('/integrations', integrationsRoutes(s.integrations, s.tenants));
   app.use('/analytics', analyticsRoutes(s.analytics, s.tenants));
+  app.use('/qa', qaRoutes(s.qa, s.tenants));
   app.use('/leads', leadsRoutes(s.leads, s.tenants));
   app.use('/memory', memoryRoutes(s.memory, s.tenants));
   app.use('/sip', sipRoutes(s.sip, s.tenants));

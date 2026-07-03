@@ -206,13 +206,15 @@ model Tenant {
   transcripts         Transcript[]
   agentMemories       AgentMemory[]
   kbChunks            KbChunk[]
-  resellerMargins     ResellerMargin[] @relation("ResellerOfMargin")
-  childMargins        ResellerMargin[] @relation("ChildOfMargin")
+  resellerMargins     ResellerMargin[]     @relation("ResellerOfMargin")
+  childMargins        ResellerMargin[]     @relation("ChildOfMargin")
   squads              Squad[]
   squadMembers        SquadMember[]
   experiments         Experiment[]
   testScenarios       TestScenario[]
   testRuns            TestRun[]
+  qaRubrics           QaRubric[]
+  qaScores            QaScore[]
 
   @@index([parentTenantId])
   @@index([type])
@@ -287,38 +289,39 @@ model PlatformApiKeyPool {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Agent {
-  id              String        @id @default(uuid()) @db.Uuid
-  tenantId        String        @db.Uuid
-  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name            String
-  description     String?
-  persona         Json          @default("{}")
-  defaultVoiceId  String?       @db.Uuid
-  fallbackVoiceId String?       @db.Uuid
-  languages       String[]      @default([])
-  llmPolicy       Json          @default("{}")
-  turnTimeoutMs   Int           @default(1500)
-  maxCallDurationSec Int        @default(600) // hard call-length cap (Day 38)
-  maxSilenceSec   Int           @default(15) // dead-air auto-hangup (0 disables)
-  endOnVoicemail  Boolean       @default(true)
-  bannedWordsAction String      @default("flag") // flag | redact | block
-  keyTerms        String[]      @default([]) // custom STT vocabulary boost (Day 39)
-  noVerbatim      Boolean       @default(false) // store a filler-stripped clean transcript
-  type            AgentType     @default(INBOUND)
-  status          AgentStatus   @default(DRAFT)
-  memoryEnabled   Boolean       @default(false)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  id                 String      @id @default(uuid()) @db.Uuid
+  tenantId           String      @db.Uuid
+  tenant             Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name               String
+  description        String?
+  persona            Json        @default("{}")
+  defaultVoiceId     String?     @db.Uuid
+  fallbackVoiceId    String?     @db.Uuid
+  languages          String[]    @default([])
+  llmPolicy          Json        @default("{}")
+  turnTimeoutMs      Int         @default(1500)
+  maxCallDurationSec Int         @default(600) // hard call-length cap (Day 38)
+  maxSilenceSec      Int         @default(15) // dead-air auto-hangup (0 disables)
+  endOnVoicemail     Boolean     @default(true)
+  bannedWordsAction  String      @default("flag") // flag | redact | block
+  keyTerms           String[]    @default([]) // custom STT vocabulary boost (Day 39)
+  noVerbatim         Boolean     @default(false) // store a filler-stripped clean transcript
+  type               AgentType   @default(INBOUND)
+  status             AgentStatus @default(DRAFT)
+  memoryEnabled      Boolean     @default(false)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
 
-  flows         Flow[]
-  calls         Call[]
-  campaigns     Campaign[]
-  agentMemories AgentMemory[]
-  phoneNumbers  PhoneNumber[]
+  flows          Flow[]
+  calls          Call[]
+  campaigns      Campaign[]
+  agentMemories  AgentMemory[]
+  phoneNumbers   PhoneNumber[]
   knowledgeBases KnowledgeBase[]
-  squadMembers  SquadMember[]
-  testScenarios TestScenario[]
-  testRuns      TestRun[]
+  squadMembers   SquadMember[]
+  testScenarios  TestScenario[]
+  qaRubrics      QaRubric[]
+  testRuns       TestRun[]
 
   @@index([tenantId])
   @@index([tenantId, status])
@@ -405,7 +408,7 @@ model SquadMember {
   squad     Squad    @relation(fields: [squadId], references: [id], onDelete: Cascade)
   agentId   String   @db.Uuid
   agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  role      String   // receptionist / booking / billing / …
+  role      String // receptionist / booking / billing / …
   order     Int      @default(0)
   createdAt DateTime @default(now())
 
@@ -447,6 +450,46 @@ model TestRun {
 
   @@index([tenantId])
   @@index([agentId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// QA scoring (Day 43) — tenant-defined rubrics, LLM-evaluated per call
+// ─────────────────────────────────────────────────────────────────────────────
+
+model QaRubric {
+  id           String    @id @default(uuid()) @db.Uuid
+  tenantId     String    @db.Uuid
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agentId      String?   @db.Uuid // optional scope: null = applies to every agent
+  agent        Agent?    @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  name         String
+  criteria     Json      @default("[]") // [{ key, description, weight }]
+  samplingRate Float     @default(1) // 0..1 fraction of calls to score (cost-aware)
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  scores       QaScore[]
+
+  @@index([tenantId])
+  @@index([agentId])
+}
+
+model QaScore {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  callId    String   @db.Uuid
+  call      Call     @relation(fields: [callId], references: [id], onDelete: Cascade)
+  rubricId  String   @db.Uuid
+  rubric    QaRubric @relation(fields: [rubricId], references: [id], onDelete: Cascade)
+  overall   Float // weighted 0..100
+  criteria  Json     @default("[]") // [{ key, score (0..1), weight, reason }]
+  model     String // evaluator model id (audit)
+  createdAt DateTime @default(now())
+
+  @@unique([callId, rubricId]) // one score per rubric per call (idempotent re-scoring)
+  @@index([tenantId])
+  @@index([tenantId, rubricId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -505,43 +548,43 @@ model AgentMemory {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Contact {
-  id        String        @id @default(uuid()) @db.Uuid
-  tenantId  String        @db.Uuid
-  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   phone     String?
   name      String?
   email     String?
-  fields    Json          @default("{}")
-  tags      String[]      @default([])
+  fields    Json     @default("{}")
+  tags      String[] @default([])
   source    String?
-  dnc       Boolean       @default(false)
+  dnc       Boolean  @default(false)
   kycStatus String?
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  leads            Lead[]
-  calls            Call[]
-  appointments     Appointment[]
-  agentMemories    AgentMemory[]
-  formSubmissions  FormSubmission[]
+  leads           Lead[]
+  calls           Call[]
+  appointments    Appointment[]
+  agentMemories   AgentMemory[]
+  formSubmissions FormSubmission[]
 
   @@index([tenantId])
   @@index([tenantId, phone])
 }
 
 model Lead {
-  id           String     @id @default(uuid()) @db.Uuid
-  tenantId     String     @db.Uuid
-  tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  contactId    String     @db.Uuid
-  contact      Contact    @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  status       LeadStatus @default(NEW)
-  score        Int        @default(0)
-  owner        String?    @db.Uuid
+  id            String     @id @default(uuid()) @db.Uuid
+  tenantId      String     @db.Uuid
+  tenant        Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contactId     String     @db.Uuid
+  contact       Contact    @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  status        LeadStatus @default(NEW)
+  score         Int        @default(0)
+  owner         String?    @db.Uuid
   pipelineStage String?
-  dynamicVars  Json       @default("{}")
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  dynamicVars   Json       @default("{}")
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 
   @@index([tenantId])
   @@index([tenantId, status])
@@ -551,15 +594,15 @@ model Lead {
 // Google Sheet / trigger-a-call). Submissions are validated + sanitised, then turned into
 // a Contact + Lead and optionally pushed to a Sheet (gated port) / webhook.
 model Form {
-  id          String           @id @default(uuid()) @db.Uuid
-  tenantId    String           @db.Uuid
-  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name        String
-  fields      Json             @default("[]") // FormField[] (validated by formConfigSchema)
-  routing     Json             @default("{}") // { webhookUrl?, sheetId?, triggerAgentId? }
-  active      Boolean          @default(true)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name      String
+  fields    Json     @default("[]") // FormField[] (validated by formConfigSchema)
+  routing   Json     @default("{}") // { webhookUrl?, sheetId?, triggerAgentId? }
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   submissions FormSubmission[]
 
@@ -641,12 +684,13 @@ model Call {
   sentiment     Float?
   costBreakdown Json          @default("{}") // {stt, llm, tts, telephony, total}
   experimentId  String?       @db.Uuid // A/B experiment this call was routed through (Day 30)
-  variant       String?       // the variant id assigned for that experiment
+  variant       String? // the variant id assigned for that experiment
   experiment    Experiment?   @relation(fields: [experimentId], references: [id], onDelete: SetNull)
   createdAt     DateTime      @default(now())
 
   transcript   Transcript?
   usageRecords UsageRecord[]
+  qaScores     QaScore[]
 
   @@index([tenantId])
   @@index([tenantId, status])
@@ -677,23 +721,23 @@ model Experiment {
 }
 
 model Transcript {
-  id        String   @id @default(uuid()) @db.Uuid
-  callId    String   @unique @db.Uuid
-  call      Call     @relation(fields: [callId], references: [id], onDelete: Cascade)
-  tenantId  String   @db.Uuid
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  segments  Json     @default("[]") // raw verbatim segments (always kept)
+  id            String                       @id @default(uuid()) @db.Uuid
+  callId        String                       @unique @db.Uuid
+  call          Call                         @relation(fields: [callId], references: [id], onDelete: Cascade)
+  tenantId      String                       @db.Uuid
+  tenant        Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  segments      Json                         @default("[]") // raw verbatim segments (always kept)
   cleanSegments Json? // no-verbatim clean copy (Day 39; null = not computed)
-  searchText String? // Day 42: flattened plain-text of segments for FTS + embedding source (null = not indexed)
-  embedding Unsupported("vector(1536)")? // Day 42: semantic-search vector over searchText; HNSW index in migration
-  sources   Json     @default("[]") // RAG citations used on the call [{chunkId,kbId,kbName,score,snippet}]
-  summary   String?
-  keywords  String[] @default([])
-  topics    String[] @default([]) // post-call intel (Day 31)
-  entities  Json     @default("[]") // [{ type, value }]
-  sentiment String? // positive / neutral / negative
-  intelAt   DateTime? // when post-call intel was generated (null = pending)
-  createdAt DateTime @default(now())
+  searchText    String? // Day 42: flattened plain-text of segments for FTS + embedding source (null = not indexed)
+  embedding     Unsupported("vector(1536)")? // Day 42: semantic-search vector over searchText; HNSW index in migration
+  sources       Json                         @default("[]") // RAG citations used on the call [{chunkId,kbId,kbName,score,snippet}]
+  summary       String?
+  keywords      String[]                     @default([])
+  topics        String[]                     @default([]) // post-call intel (Day 31)
+  entities      Json                         @default("[]") // [{ type, value }]
+  sentiment     String? // positive / neutral / negative
+  intelAt       DateTime? // when post-call intel was generated (null = pending)
+  createdAt     DateTime                     @default(now())
 
   @@index([tenantId])
 }
@@ -703,19 +747,19 @@ model Transcript {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Campaign {
-  id          String   @id @default(uuid()) @db.Uuid
-  tenantId    String   @db.Uuid
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name        String
-  agentId     String   @db.Uuid
-  agent       Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  status      String   @default("DRAFT")
-  scheduleJson Json    @default("{}")
-  pacing      Int      @default(1)
-  concurrency Int      @default(1)
-  retryPolicy Json     @default("{}")
-  channelMix  Json     @default("{}")
-  createdAt   DateTime @default(now())
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @db.Uuid
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name         String
+  agentId      String   @db.Uuid
+  agent        Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  status       String   @default("DRAFT")
+  scheduleJson Json     @default("{}")
+  pacing       Int      @default(1)
+  concurrency  Int      @default(1)
+  retryPolicy  Json     @default("{}")
+  channelMix   Json     @default("{}")
+  createdAt    DateTime @default(now())
 
   contacts CampaignContact[]
 
@@ -724,17 +768,17 @@ model Campaign {
 }
 
 model CampaignContact {
-  id         String   @id @default(uuid()) @db.Uuid
-  tenantId   String   @db.Uuid
-  campaignId String   @db.Uuid
-  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  contactId       String   @db.Uuid
-  status          String   @default("PENDING")
-  attempts        Int      @default(0)
-  lastCallId      String?  @db.Uuid
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @db.Uuid
+  campaignId      String    @db.Uuid
+  campaign        Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contactId       String    @db.Uuid
+  status          String    @default("PENDING")
+  attempts        Int       @default(0)
+  lastCallId      String?   @db.Uuid
   lastDisposition String? // last call outcome, drives the retry state machine (Day 28)
   nextAttemptAt   DateTime? // when this contact becomes due (null = due now)
-  createdAt       DateTime @default(now())
+  createdAt       DateTime  @default(now())
 
   @@unique([campaignId, contactId])
   @@index([tenantId])

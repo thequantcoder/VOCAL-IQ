@@ -19,6 +19,7 @@ import { IntegrationsService } from './integrations/integrations.service';
 import { KeyPoolService } from './keypool/keypool.service';
 import { LeadsService } from './leads/leads.service';
 import { MemoryService } from './memory/memory.service';
+import { QaService } from './qa/qa.service';
 import { RagService, openAiEmbedder, prismaUsageSink } from './rag/rag.service';
 import { RouterService } from './router/router.service';
 import { SearchService } from './search/search.service';
@@ -72,6 +73,15 @@ export function createServices() {
   const keyPool = new KeyPoolService(db);
   const routerSvc = new RouterService(db, keyPool);
   const tests = new TestsService(db, (tenantId) => routerGrader(routerSvc, tenantId));
+  // QA scoring completer: route through RouterService so every eval meters cost (rule #4).
+  const qa = new QaService(db, async ({ tenantId, system, user }) => {
+    const result = await routerSvc.complete({
+      tenantId,
+      system,
+      messages: [{ role: 'user', content: user }],
+    });
+    return { text: result.text, model: result.model };
+  });
 
   const plans = new PlansService(db);
   const billingWebhook = new BillingWebhookService(db);
@@ -96,6 +106,7 @@ export function createServices() {
     analytics,
     rag,
     search,
+    qa,
     campaigns,
     forms,
     integrations,
