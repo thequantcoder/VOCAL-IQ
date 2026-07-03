@@ -20,6 +20,7 @@ export * from './post-call.js';
 export * from './query-keys.js';
 export * from './result.js';
 export * from './schemas.js';
+export * from './simulator.js';
 export * from './squad.js';
 export * from './usage.js';
 export * from './voice.js';

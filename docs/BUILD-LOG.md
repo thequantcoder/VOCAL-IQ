@@ -1134,3 +1134,30 @@ K. Build/CI: ✅ — deterministic; intel tested without any live LLM.
 
 Metered + cost-safe CONFIRMED (focus D): the intel LLM call goes through the router's `UsageMeter` (tenant-scoped UsageRecord), and an empty transcript short-circuits before any LLM spend — both demonstrated in `post-call-intel.test.ts`.
 Next: Day 32 (agent testing suite / simulator).
+
+## Day 32 — Conversation simulator / sandbox — 2026-07-03 — ✅ DONE
+Model: Opus (🧠 OPUS). Branch `day/32-simulator` → PR. Prereqs met (Day-22 compiler + Day-9 loop). Self-audit focus A + D (sim cost flagged) + B.
+
+Built (DONE):
+- **shared** (`simulator.ts`): the pure sandbox runtime — **`runSimulation(compiledFlow, caller, {maxTurns})`** drives the Day-22 compiled flow with NO telephony/providers, emitting a typed **event stream** (`node`/`agent`/`caller`/`capture`/`tool`/`end`/`halt`); Listen nodes pull the next `caller` input + record captures, Decisions route on the caller's last `intent`, other nodes emit a simulated `tool` event. Returns `{events, transcript, visited, estCostUsd, outcome}`. **`scriptedCaller(lines)`** = a deterministic, FREE replay caller (`SimulatedCaller` port; the LLM-persona caller is the injectable production impl). Hard step cap guarantees termination even on a cyclic graph.
+- **web**: extended the builder simulator panel with a **"Scripted caller" auto-run** — a textarea (one caller line per row, `text | intent` to route decisions) → `runSimulation` → shows outcome + turn count + **estimated cost** + the transcript, and **replays the visited path** on the canvas (active-node highlight). The Day-23 manual step-through is kept alongside.
+
+Verification: shared typecheck + lint + build + **123 tests** (full deterministic conversation, intent routing to else, caller-hangup halt, scripted-caller = $0, generated-turn cost estimate, cyclic-flow termination via the step cap). web typecheck + lint + build. Full monorepo test 9/9, lint 11/11, build 7/7.
+
+Deferred (tracked): the **LLM-driven persona caller** (hands-free runs where an LLM plays the caller) is the injectable production `SimulatedCaller` — wiring it (metered, cost-flagged) rides with the same provider path as Day 31; **voice (mic) sandbox** input rides with the Day-9 live loop; batch runs over many scripted callers land on Day 33.
+
+## Self-Audit — Day 32 (A–K)
+A. Correctness (focus): ✅ — `runSimulation` is pure + deterministic given a scripted caller; event stream, transcript, captures, intent-routing, and every halt reason are unit-tested; the visited path matches the flow exactly.
+B. Tenancy: ✅ — the sandbox runs entirely client/pure over a compiled graph (no tenant data touched, no network); it can't cross tenants.
+C. Security: ✅ — no live providers/telephony; no secrets; input is the builder's own graph + typed script lines.
+D. Sim cost (focus): ✅ — a scripted caller is **free** (asserted $0); only 'generated' agent turns accrue an ESTIMATE (`estCostUsd`, documented as conservative, not billing) so the UI flags spend; the future LLM caller is the only real-cost path and stays injectable/flagged.
+E. Tests: ✅ — 6 shared, deterministic; covers happy path, branch, hangup, cost, termination.
+F. Performance: ✅ — O(steps) with a hard cap (maxTurns*6); no network; the canvas replay is a bounded timeout sequence.
+G. Errors/obs: ✅ — dead-end/no-match → `halt: dead_end`; caller exhausted → `halt: caller_ended`; cyclic → `halt: max_turns` (never hangs).
+H. UI/a11y: ✅ — textarea labelled; results show outcome/turns/cost + colour-coded transcript via design tokens; compile errors still block simulation with clear messages.
+I. Regression: ✅ — additive (new shared module + panel section); Day-23 step-through untouched; shared 123 / api 104 / workers 10 / db 7 green; build 7/7.
+J. Quality/docs: ✅ — typed events; doc comments explain the caller port + the cost estimate caveat; deferred LLM-caller/voice/batch tracked.
+K. Build/CI: ✅ — deterministic; no live providers in tests.
+
+Simulator determinism + cost-safety CONFIRMED (focus A + D): `runSimulation` reproduces the exact conversation/event-stream for a scripted caller, a scripted run costs $0, and only generated turns accrue a flagged estimate — all demonstrated in `simulator.test.ts`.
+Next: Day 33 (batch testing + rubrics).
