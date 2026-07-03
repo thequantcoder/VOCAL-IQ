@@ -12,6 +12,7 @@ import {
   Megaphone,
   Mic,
   PhoneCall,
+  Plug,
   Server,
   Target,
   Users,
@@ -35,6 +36,7 @@ const NAV = [
   { href: '/dashboard/experiments', label: 'Experiments', icon: FlaskConical, exact: false },
   { href: '/dashboard/sip', label: 'SIP trunks', icon: Server, exact: false },
   { href: '/dashboard/appointments', label: 'Appointments', icon: CalendarCheck, exact: false },
+  { href: '/dashboard/integrations', label: 'Integrations', icon: Plug, exact: false },
 ] as const;
 
 /** Platform-operator (SUPER_ADMIN) nav — only shown to platform staff. */

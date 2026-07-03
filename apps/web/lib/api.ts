@@ -1155,3 +1155,73 @@ export function useDeletePoolKey() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['key-pool'] }),
   });
 }
+
+// ── Integrations (Day 40) ─────────────────────────────────────────────────────
+
+export interface ConnectorCatalogItem {
+  type: string;
+  label: string;
+  capabilities: { contacts: boolean; tickets: boolean };
+  implemented: boolean;
+}
+
+export interface IntegrationDto {
+  id: string;
+  type: string;
+  label: string;
+  ticketOnNegative: boolean;
+  settings: Record<string, string>;
+  createdAt: string;
+}
+
+export function useIntegrationCatalog() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['integrations', 'catalog'],
+    queryFn: () => apiFetch<ConnectorCatalogItem[]>(getToken, '/integrations/catalog'),
+  });
+}
+
+export function useIntegrations() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['integrations'],
+    queryFn: () => apiFetch<IntegrationDto[]>(getToken, '/integrations'),
+  });
+}
+
+export function useConnectIntegration() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      type: string;
+      accessToken: string;
+      ticketOnNegative?: boolean;
+      settings?: Record<string, string>;
+    }) =>
+      apiFetch<IntegrationDto>(getToken, '/integrations', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['integrations'] }),
+  });
+}
+
+export function useTestIntegration() {
+  const { getToken } = useAuth();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ ok: boolean }>(getToken, `/integrations/${id}/test`, { method: 'POST' }),
+  });
+}
+
+export function useDisconnectIntegration() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ id: string }>(getToken, `/integrations/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['integrations'] }),
+  });
+}
