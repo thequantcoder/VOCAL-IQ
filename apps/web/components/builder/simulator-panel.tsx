@@ -1,8 +1,16 @@
 'use client';
 
-import { type CompiledFlow, type FlowGraph, FlowRunner, compileFlow } from '@vocaliq/shared';
+import {
+  type CompiledFlow,
+  type FlowGraph,
+  FlowRunner,
+  type SimResult,
+  compileFlow,
+  runSimulation,
+  scriptedCaller,
+} from '@vocaliq/shared';
 import { Button } from '@vocaliq/ui';
-import { Play, RotateCcw } from 'lucide-react';
+import { FastForward, Play, RotateCcw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { NODE_META } from './flow-nodes';
 
@@ -113,6 +121,82 @@ export function SimulatorPanel({
       <Button variant="ghost" size="sm" onClick={reset}>
         <RotateCcw size={14} /> Restart
       </Button>
+
+      <ScriptedRun flow={compiled.flow} onActiveNode={onActiveNode} />
+    </div>
+  );
+}
+
+/**
+ * Hands-free run (Day 32): a scriptable caller drives the whole conversation. Each textarea
+ * line is one caller turn — append ` | intent` to route Decision branches. The event stream,
+ * transcript, and estimated cost are shown, and the visited path replays on the canvas.
+ */
+function ScriptedRun({
+  flow,
+  onActiveNode,
+}: {
+  flow: CompiledFlow;
+  onActiveNode: (id: string | null) => void;
+}) {
+  const [script, setScript] = useState('I want to book an appointment | booking');
+  const [result, setResult] = useState<SimResult | null>(null);
+
+  const run = useCallback(() => {
+    const lines = script
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((l) => {
+        const [text, intent] = l.split('|').map((s) => s.trim());
+        return intent ? { text: text ?? '', intent } : { text: text ?? '' };
+      });
+    const res = runSimulation(flow, scriptedCaller(lines));
+    setResult(res);
+    // Replay the visited path on the canvas.
+    res.visited.forEach((id, i) => setTimeout(() => onActiveNode(id), i * 350));
+    setTimeout(() => onActiveNode(null), res.visited.length * 350 + 800);
+  }, [flow, script, onActiveNode]);
+
+  return (
+    <div className="flex flex-col gap-2 border-vq-border border-t pt-3">
+      <span className="text-vq-text-lo text-xs uppercase tracking-wide">Scripted caller</span>
+      <textarea
+        value={script}
+        onChange={(e) => setScript(e.target.value)}
+        rows={3}
+        placeholder={'one caller line per row\nadd " | intent" to route decisions'}
+        className="rounded-vq border border-vq-border bg-vq-bg-base px-2 py-1.5 font-mono text-vq-text-hi text-xs"
+      />
+      <Button variant="secondary" size="sm" onClick={run}>
+        <FastForward size={14} /> Auto-run
+      </Button>
+
+      {result && (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-vq-text-lo">
+              outcome: <span className="text-vq-text-hi">{result.outcome}</span> ·{' '}
+              {result.transcript.length} turns
+            </span>
+            <span className="text-vq-text-lo">
+              est. cost: <span className="text-vq-text-hi">${result.estCostUsd.toFixed(4)}</span>
+            </span>
+          </div>
+          <div className="max-h-40 overflow-y-auto rounded-vq border border-vq-border bg-vq-bg-base p-2 text-xs">
+            {result.transcript.map((t, i) => (
+              <div
+                // biome-ignore lint/suspicious/noArrayIndexKey: append-only transcript
+                key={i}
+                className={t.role === 'agent' ? 'text-vq-violet' : 'text-vq-cyan'}
+              >
+                <span className="uppercase">{t.role}:</span>{' '}
+                <span className="text-vq-text-hi">{t.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
