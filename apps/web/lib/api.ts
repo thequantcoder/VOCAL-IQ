@@ -50,6 +50,8 @@ export interface AgentDetail extends AgentListItem {
   maxSilenceSec: number;
   endOnVoicemail: boolean;
   bannedWordsAction: 'flag' | 'redact' | 'block';
+  keyTerms: string[];
+  noVerbatim: boolean;
   defaultVoiceId: string | null;
   memoryEnabled: boolean;
   createdAt: string;
@@ -65,6 +67,8 @@ export type AgentUpdateBody = Partial<{
   endOnVoicemail: boolean;
   bannedWords: string[];
   bannedWordsAction: 'flag' | 'redact' | 'block';
+  keyTerms: string[];
+  noVerbatim: boolean;
 }>;
 
 export interface CostBreakdown {
@@ -100,6 +104,14 @@ export interface CallEntity {
   value: string;
 }
 
+export interface CallSource {
+  chunkId: string;
+  kbId: string | null;
+  kbName: string | null;
+  score: number;
+  snippet: string;
+}
+
 export interface CallDetail extends CallListItem {
   sentiment: number | null;
   recordingUrl: string | null;
@@ -107,6 +119,8 @@ export interface CallDetail extends CallListItem {
   endedAt: string | null;
   transcript: {
     segments: TranscriptSegment[];
+    cleanSegments: TranscriptSegment[] | null;
+    sources: CallSource[];
     summary: string | null;
     keywords: string[];
     topics: string[];

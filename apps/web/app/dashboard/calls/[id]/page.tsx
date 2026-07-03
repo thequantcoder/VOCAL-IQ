@@ -1,10 +1,10 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, Waveform, cn } from '@vocaliq/ui';
-import { ArrowLeft, Sparkles } from 'lucide-react';
+import { ArrowLeft, BookMarked, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { ErrorState, LoadingCard } from '../../../../components/states';
 import { StatusBadge, formatDuration, formatUsd } from '../../../../components/ui-bits';
 import { type CallDetail, type CostBreakdown, useCall } from '../../../../lib/api';
@@ -20,6 +20,7 @@ export default function CallDetailPage() {
   const id = params?.id ?? '';
   const { data, isLoading, isError, error, refetch } = useCall(id);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const [showClean, setShowClean] = useState(true);
 
   /** Jump-to-moment: seek the recording to a segment's start and play. */
   function seekTo(ms: number) {
@@ -74,44 +75,86 @@ export default function CallDetailPage() {
 
           <CostCard cost={data.costBreakdown as CostBreakdown | null} />
 
+          {data.transcript?.sources && data.transcript.sources.length > 0 ? (
+            <SourcesCard transcript={data.transcript} />
+          ) : null}
+
           <Card>
-            <CardHeader>
+            <CardHeader className="flex-row items-center justify-between">
               <CardTitle>Transcript</CardTitle>
+              {data.transcript?.cleanSegments && data.transcript.cleanSegments.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setShowClean((v) => !v)}
+                  className="rounded-vq-pill border border-vq-border px-2.5 py-1 text-vq-text-lo text-xs hover:text-vq-text-hi"
+                >
+                  {showClean ? 'Showing clean · view raw' : 'Showing raw · view clean'}
+                </button>
+              ) : null}
             </CardHeader>
             <CardContent>
-              {data.transcript && data.transcript.segments.length > 0 ? (
-                <ol className="flex flex-col gap-3">
-                  {data.transcript.segments.map((seg) => (
-                    <li key={`${seg.startMs}:${seg.endMs}:${seg.speaker}`}>
-                      <button
-                        type="button"
-                        onClick={() => seekTo(seg.startMs)}
-                        title="Jump to this moment"
-                        className="flex w-full flex-col gap-0.5 rounded-vq px-2 py-1 text-left hover:bg-vq-bg-elevated"
-                      >
-                        <span
-                          className={cn(
-                            'font-medium text-xs uppercase tracking-wide',
-                            seg.speaker === 'agent' ? 'text-vq-violet' : 'text-vq-cyan',
-                          )}
+              {(() => {
+                const clean = data.transcript?.cleanSegments;
+                const segs =
+                  showClean && clean && clean.length > 0 ? clean : data.transcript?.segments;
+                return segs && segs.length > 0 ? (
+                  <ol className="flex flex-col gap-3">
+                    {segs.map((seg) => (
+                      <li key={`${seg.startMs}:${seg.endMs}:${seg.speaker}`}>
+                        <button
+                          type="button"
+                          onClick={() => seekTo(seg.startMs)}
+                          title="Jump to this moment"
+                          className="flex w-full flex-col gap-0.5 rounded-vq px-2 py-1 text-left hover:bg-vq-bg-elevated"
                         >
-                          {seg.speaker} · {formatDuration(Math.floor(seg.startMs / 1000))}
-                        </span>
-                        <span className="font-mono text-sm text-vq-text-hi">{seg.text}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <p className="text-sm text-vq-text-lo">
-                  No transcript yet — it’s captured live during the call.
-                </p>
-              )}
+                          <span
+                            className={cn(
+                              'font-medium text-xs uppercase tracking-wide',
+                              seg.speaker === 'agent' ? 'text-vq-violet' : 'text-vq-cyan',
+                            )}
+                          >
+                            {seg.speaker} · {formatDuration(Math.floor(seg.startMs / 1000))}
+                          </span>
+                          <span className="font-mono text-sm text-vq-text-hi">{seg.text}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="text-sm text-vq-text-lo">
+                    No transcript yet — it’s captured live during the call.
+                  </p>
+                );
+              })()}
             </CardContent>
           </Card>
         </>
       )}
     </div>
+  );
+}
+
+/** RAG source attribution (Day 39): which KB chunks the agent drew on during the call. */
+function SourcesCard({ transcript }: { transcript: NonNullable<CallDetail['transcript']> }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <BookMarked size={16} className="text-vq-cyan" /> Knowledge sources
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2">
+        {transcript.sources.map((s) => (
+          <div key={s.chunkId} className="rounded-vq border border-vq-border p-3">
+            <div className="mb-1 flex items-center justify-between text-vq-text-lo text-xs">
+              <span>{s.kbName ?? 'Knowledge base'}</span>
+              <span className="font-mono">match {Math.round(s.score * 100)}%</span>
+            </div>
+            <p className="text-sm text-vq-text-hi">{s.snippet}</p>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 }
 
