@@ -1339,3 +1339,130 @@ export function useReindexTranscripts() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['search'] }),
   });
 }
+
+// ── QA scoring (Day 43) ────────────────────────────────────────────────────────
+
+export interface QaCriterion {
+  key: string;
+  description: string;
+  weight: number;
+}
+
+export interface QaRubric {
+  id: string;
+  name: string;
+  criteria: QaCriterion[];
+  samplingRate: number;
+  active: boolean;
+  agentId: string | null;
+  updatedAt: string;
+}
+
+export interface QaCriterionScore {
+  key: string;
+  score: number;
+  weight: number;
+  reason: string;
+}
+
+export interface QaScore {
+  id: string;
+  callId: string;
+  rubricId: string;
+  overall: number;
+  criteria: QaCriterionScore[];
+  model: string;
+  createdAt: string;
+}
+
+export interface QaCriterionAggregate {
+  key: string;
+  avgScore: number;
+  count: number;
+}
+
+export interface QaRubricAggregate {
+  rubricId: string;
+  avgOverall: number;
+  count: number;
+  criteria: QaCriterionAggregate[];
+}
+
+export interface QaRubricInput {
+  name: string;
+  criteria: QaCriterion[];
+  samplingRate: number;
+  agentId?: string | null;
+  active?: boolean;
+}
+
+export function useQaRubrics() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['qa', 'rubrics'],
+    queryFn: () => apiFetch<QaRubric[]>(getToken, '/qa/rubrics'),
+  });
+}
+
+export function useCreateQaRubric() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: QaRubricInput) =>
+      apiFetch<QaRubric>(getToken, '/qa/rubrics', { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['qa'] }),
+  });
+}
+
+export function useUpdateQaRubric() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; body: Partial<QaRubricInput> }) =>
+      apiFetch<QaRubric>(getToken, `/qa/rubrics/${vars.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(vars.body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['qa'] }),
+  });
+}
+
+export function useDeleteQaRubric() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ deleted: true }>(getToken, `/qa/rubrics/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['qa'] }),
+  });
+}
+
+export function useQaAggregate(params: { from?: string; to?: string; agentId?: string } = {}) {
+  const { getToken } = useAuth();
+  const qs = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v) as [string, string][],
+  ).toString();
+  return useQuery({
+    queryKey: ['qa', 'aggregate', params],
+    queryFn: () => apiFetch<QaRubricAggregate[]>(getToken, `/qa/aggregate${qs ? `?${qs}` : ''}`),
+  });
+}
+
+export function useCallQaScores(callId: string) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['qa', 'scores', callId],
+    queryFn: () => apiFetch<QaScore[]>(getToken, `/qa/calls/${callId}/scores`),
+    enabled: Boolean(callId),
+  });
+}
+
+export function useScoreCallNow(callId: string) {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<QaScore[]>(getToken, `/qa/calls/${callId}/score`, { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['qa', 'scores', callId] }),
+  });
+}

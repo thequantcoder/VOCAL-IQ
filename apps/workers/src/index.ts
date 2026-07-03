@@ -5,6 +5,7 @@ import IORedis from 'ioredis';
 import { createDbSchedulerDeps, runCampaignTick } from './campaign-scheduler';
 import { createDbMemoryDeps, runMemoryExtraction } from './memory-extraction';
 import { createDbPostCallDeps, runPostCallIntel } from './post-call-intel';
+import { createDbQaDeps, runQaScoring } from './qa-scoring';
 import { createDbFindUnmetered, runReconciliation } from './reconciliation';
 
 /**
@@ -48,6 +49,33 @@ function registerPostCallIntel(
 }
 
 const MEMORY_QUEUE = 'memory-extraction';
+const QA_QUEUE = 'qa-scoring';
+
+/**
+ * Automated QA scoring worker (Day 43). Consumes `{ callId }` jobs (the post-call bundle
+ * enqueues one on call-end alongside intel) and scores the transcript against the tenant's
+ * active rubrics via a metered LLM call, persisting a QaScore per rubric. Cost-aware
+ * sampling lives in the pure `runQaScoring`.
+ */
+function registerQaScoring(redisUrl: string, databaseUrl: string | undefined): () => Promise<void> {
+  const connection = new IORedis(redisUrl, { maxRetriesPerRequest: null });
+  const admin = createPrismaClient(databaseUrl);
+  const deps = createDbQaDeps(admin, (msg) => console.log(`[qa] ${msg}`));
+
+  const worker = new Worker<{ callId: string }>(
+    QA_QUEUE,
+    async (job) => runQaScoring(deps, job.data.callId),
+    { connection },
+  );
+  worker.on('failed', (job, err) => console.error(`[qa] job ${job?.id} failed:`, err));
+
+  console.log('[workers] qa-scoring queue + worker registered.');
+  return async () => {
+    await worker.close();
+    await connection.quit();
+    await admin.$disconnect();
+  };
+}
 
 /**
  * Cross-call memory extraction worker (Day 34). Consumes `{ tenantId, agentId, contactId,
@@ -163,6 +191,7 @@ async function main(): Promise<void> {
   registerCampaignScheduler(env.REDIS_URL, env.DATABASE_URL);
   registerPostCallIntel(env.REDIS_URL, env.DATABASE_URL);
   registerMemoryExtraction(env.REDIS_URL, env.DATABASE_URL);
+  registerQaScoring(env.REDIS_URL, env.DATABASE_URL);
 }
 
 void main();

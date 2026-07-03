@@ -1,13 +1,19 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle, Waveform, cn } from '@vocaliq/ui';
-import { ArrowLeft, BookMarked, Sparkles } from 'lucide-react';
+import { Button, Card, CardContent, CardHeader, CardTitle, Waveform, cn } from '@vocaliq/ui';
+import { ArrowLeft, BookMarked, ClipboardCheck, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { ErrorState, LoadingCard } from '../../../../components/states';
 import { StatusBadge, formatDuration, formatUsd } from '../../../../components/ui-bits';
-import { type CallDetail, type CostBreakdown, useCall } from '../../../../lib/api';
+import {
+  type CallDetail,
+  type CostBreakdown,
+  useCall,
+  useCallQaScores,
+  useScoreCallNow,
+} from '../../../../lib/api';
 
 const SENTIMENT_STYLE: Record<string, string> = {
   positive: 'text-vq-success border-vq-success/40 bg-vq-success/10',
@@ -88,6 +94,9 @@ export default function CallDetailPage() {
 
           {/* Post-call intelligence (Day 31) */}
           {data.transcript?.intelAt ? <IntelCard transcript={data.transcript} /> : null}
+
+          {/* QA scoring (Day 43) */}
+          {data.transcript ? <QaCard callId={id} /> : null}
 
           <CostCard cost={data.costBreakdown as CostBreakdown | null} />
 
@@ -211,6 +220,71 @@ function IntelCard({ transcript }: { transcript: NonNullable<CallDetail['transcr
               ))}
             </div>
           </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function QaCard({ callId }: { callId: string }) {
+  const scores = useCallQaScores(callId);
+  const scoreNow = useScoreCallNow(callId);
+  const hasScores = scores.data && scores.data.length > 0;
+
+  return (
+    <Card>
+      <CardHeader className="flex-row items-center justify-between">
+        <CardTitle className="flex items-center gap-2">
+          <ClipboardCheck size={16} className="text-vq-cyan" /> QA scores
+        </CardTitle>
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={scoreNow.isPending}
+          onClick={() => scoreNow.mutate()}
+        >
+          {scoreNow.isPending ? 'Scoring…' : hasScores ? 'Re-score' : 'Score now'}
+        </Button>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        {scoreNow.isError && (
+          <p className="text-vq-danger text-xs">{(scoreNow.error as Error).message}</p>
+        )}
+        {!hasScores ? (
+          <p className="text-sm text-vq-text-lo">
+            Not scored yet. Run a rubric with “Score now”, or configure sampling in QA scoring.
+          </p>
+        ) : (
+          scores.data?.map((s) => (
+            <div
+              key={s.id}
+              className="flex flex-col gap-1.5 border-vq-border border-t pt-2 first:border-t-0 first:pt-0"
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-mono font-semibold text-lg text-vq-text-hi">
+                  {s.overall.toFixed(1)}
+                  <span className="text-vq-text-lo text-xs"> /100</span>
+                </span>
+                <span className="text-vq-text-lo text-xs">{s.model}</span>
+              </div>
+              {s.criteria.map((c) => (
+                <div key={c.key} className="flex items-center gap-2 text-xs">
+                  <span
+                    className={c.score >= 0.5 ? 'text-vq-success' : 'text-vq-danger'}
+                    aria-hidden
+                  >
+                    {c.score >= 0.5 ? '✓' : '✗'}
+                  </span>
+                  <span className="w-28 shrink-0 truncate text-vq-text-lo" title={c.key}>
+                    {c.key}
+                  </span>
+                  <span className="text-vq-text-hi">
+                    {c.reason || `${Math.round(c.score * 100)}%`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ))
         )}
       </CardContent>
     </Card>

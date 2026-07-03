@@ -1461,3 +1461,31 @@ CI fix (post-push): the first CI run failed — `reindexTenant(C1)` raced a para
 
 Keyword + semantic search with jump-to-moment, tenant-scoped, tests pass — DoD CONFIRMED. Cross-tenant isolation CONFIRMED (parent's transcript never surfaces for the child).
 Deferred (gated): auto-indexing transcripts from the post-call worker (needs an embedder in the worker — OpenAI key; today's `reindex` endpoint + on-demand `indexTranscript` cover backfill, and FTS degrades gracefully without embeddings). Next: Day 43 (QA scoring at scale).
+
+## Day 43 — Automated QA Scoring (LLM Rubrics) at Scale — 2026-07-04 — ✅ DONE
+Model: Opus (🧠 OPUS). Branch `day/43-qa-scoring`. Prereq: LLM keys (present) + transcripts + Day-33 rubric patterns — all satisfied. Migration `20260704120000_day43_qa_scoring` (two new tenant tables + RLS). Self-audit focus D (eval cost) + A (reliability) + B.
+
+Built (DONE):
+- **db/migration**: `QaRubric` (tenant + optional agent scope; `criteria` [{key,description,weight}], `samplingRate`, `active`) + `QaScore` (per call×rubric: `overall` 0..100, per-criterion `criteria`, `model`; `@@unique([callId,rubricId])` for idempotent re-scoring). Both RLS-protected (Day-04 policy shape); Tenant/Agent/Call reverse relations added.
+- **shared** `qa.ts`: the pure evaluator core — `qaRubricInputSchema` (Zod, snake_case keys, ≥1 criterion), `buildQaPrompt` (strict-JSON contract), **`parseQaResult`** (tolerant: extracts JSON from prose/fences, clamps 0..1, **fails closed** — an omitted criterion → 0, never silently skipped), **`scoreQa`** (weight-weighted 0..100), **`shouldSample`** (deterministic FNV-1a hash of `callId:rubricId` → stable cost-aware sampling), and `aggregateQaScores` (per-rubric/criterion averages for coaching). 12 unit tests.
+- **workers** `qa-scoring.ts`: `runQaScoring(deps,{callId})` — fetch call+transcript → active applicable rubrics → **cost-aware sample (skip = no LLM spend)** → metered LLM → parse → score → upsert QaScore. Injected deps (unit-tested without a live model); `createDbQaDeps` routes through the Router with a tenant-scoped `UsageRecord` meter (golden rule #4). Registered as the `qa-scoring` BullMQ queue. 6 unit tests.
+- **api** `QaService` (RLS via `withTenant`; injected completer = RouterService, metered): rubric CRUD, `scoreCallNow` (interactive — scores all active applicable rubrics, ignores sampling, upserts), `scoresForCall`, `aggregate` (coaching/analytics). Routes `/qa/rubrics` (CRUD, config-writers mutate), `/qa/aggregate`, `/qa/calls/:id/scores`, `/qa/calls/:id/score`. Wired composition+main. 4 RLS-real integration tests.
+- **web** `/dashboard/qa`: rubric builder (weighted criteria rows + sampling-rate slider), rubric list with active toggle/delete, and a **coaching view** (per-rubric avg + weakest-first per-criterion bars). Call detail gains a **QA scores card** ("Score now"/"Re-score", per-criterion pass/reason). Nav link added.
+
+Verification: full monorepo **typecheck 11/11**, **lint 11/11**, **build exit 0** (`/dashboard/qa` route emitted). Tests: shared **220** (qa 12), workers **19** (qa 6 — determinism, empty/no-rubric/sampled-out = no spend, fail-closed), api **150** (qa 4 — CRUD+RLS, weighted scoreCallNow incl. idempotent upsert, aggregate, **child never sees parent's scores**).
+
+## Self-Audit — Day 43 (A–K)
+A. Reliability/correctness (focus): ✅ — prompt/parse/score/sample are pure + unit-tested; `parseQaResult` fails closed (garbage or omitted criterion → 0, never skipped) so a flaky model can't inflate a score; `scoreQa` is a deterministic weighted mean; scoring proven end-to-end against real Postgres with a fake evaluator.
+B. Tenancy (focus): ✅ — every rubric/score read+write runs inside `withTenant`; QaRubric/QaScore carry RLS policies; a test proves a child tenant can't list/mutate a parent's rubric nor read the parent's call scores, and aggregates never cross tenants.
+C. Creds/secrets: ✅ — no secrets in code/logs; platform LLM keys read from env in the worker resolver; the model id stored on QaScore is non-sensitive audit metadata.
+D. Eval cost (focus): ✅ — every evaluator completion meters a tenant-scoped `UsageRecord` (LLM capability) both in the worker (Router meter) and the api (RouterService); **cost-aware sampling** skips the LLM entirely for sampled-out rubrics; empty transcript / no active rubric → no spend (asserted in tests).
+E. Errors/obs: ✅ — Zod-validated rubric input (keys, ≥1 criterion, sampling 0..1); NotFound on missing rubric/call/transcript; worker returns a typed `{status,...}` summary; failed jobs logged per queue.
+F. Performance: ✅ — scoring is one metered call per applicable rubric (rubrics per tenant are few); aggregate is a single indexed read folded in memory; unique index makes re-scoring an upsert, not a scan.
+G. Error handling: ✅ — api surfaces typed errors; web QA card/ builder have loading/error/empty states + inline validation (snake_case key + weight>0 before submit).
+H. UI/a11y: ✅ — labelled sampling slider + inputs, active checkbox, keyboard-usable builder, mono scores, weakest-first coaching bars (red<50%), pass/✗ markers `aria-hidden` with text reasons; empty/error/loading handled.
+I. Regression: ✅ — additive migration + new module/worker/routes/page + reverse relations + wirings; existing typecheck/lint/tests green (shared 220, workers 19, api 150). A mid-day scoped `biome --write` touched only Day-43 files (no repeat of the Day-42 mass-reformat).
+J. Quality/docs: ✅ — pure logic isolated + tested in shared; the worker mirrors the Day-31 post-call pattern; api completer injected (RouterService in prod, fake in tests); doc comments explain fail-closed + sampling + metering; explicit DTOs (no Prisma leak).
+K. Build/CI: ✅ — `pnpm build` exits 0; all gates green locally (cleared the `.next` macOS "* 2.ts" artifact first).
+
+Live calls auto-scored against rubrics, surfaced in analytics/coaching, cost-aware, tests pass — DoD CONFIRMED. Tenant isolation CONFIRMED.
+Deferred (gated): enqueuing the `qa-scoring` job automatically from the post-call bundle on call-end (needs the live loop's call-end hook — same deferral as post-call intel/memory); today the worker consumes `{callId}` jobs and the api `scoreCallNow` scores on demand. Next: Day 44 (multi-channel messaging — heavy).

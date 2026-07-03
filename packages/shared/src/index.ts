@@ -25,6 +25,7 @@ export * from './memory.js';
 export * from './multilingual.js';
 export * from './persona.js';
 export * from './post-call.js';
+export * from './qa.js';
 export * from './query-keys.js';
 export * from './result.js';
 export * from './scenario.js';
