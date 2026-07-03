@@ -1,11 +1,13 @@
 import {
   type CompletionResult,
+  type KeyResolver,
   type LLMMessage,
   Router,
   type UsageMeter,
 } from '@vocaliq/provider-router';
 import { Capability } from '@vocaliq/shared';
 import { PrismaService } from '../db/prisma.service';
+import type { KeyPoolService } from '../keypool/keypool.service';
 import { buildKeyResolver } from './key-resolver';
 
 export interface CompleteArgs {
@@ -24,7 +26,10 @@ export interface CompleteArgs {
  * there is no un-metered LLM path.
  */
 export class RouterService {
-  constructor(private readonly db: PrismaService) {}
+  constructor(
+    private readonly db: PrismaService,
+    private readonly keyPool?: KeyPoolService,
+  ) {}
 
   async complete(args: CompleteArgs): Promise<CompletionResult> {
     const meter: UsageMeter = async (rec) => {
@@ -42,7 +47,18 @@ export class RouterService {
       );
     };
 
-    const router = new Router({ resolveKey: buildKeyResolver(this.db), meter });
+    // Wrap the resolver so we can report the outcome of a pooled key for health/ejection
+    // (Day 38). We record the LAST pool key used — for the common single-provider path this
+    // is exact; across the Router's internal provider fallback it's best-effort attribution.
+    const base = buildKeyResolver(this.db, this.keyPool);
+    let lastPoolKeyId: string | undefined;
+    const resolveKey: KeyResolver = async (t, p, b) => {
+      const resolved = await base(t, p, b);
+      if (resolved.poolKeyId) lastPoolKeyId = resolved.poolKeyId;
+      return resolved;
+    };
+
+    const router = new Router({ resolveKey, meter });
     const llm = router.selectLLM({
       tenantId: args.tenantId,
       ...(args.agentId ? { agentId: args.agentId } : {}),
@@ -50,10 +66,17 @@ export class RouterService {
       ...(args.model ? { model: args.model } : {}),
       ...(args.byok ? { byok: args.byok } : {}),
     });
-    return llm.complete(args.messages, {
-      ...(args.model ? { model: args.model } : {}),
-      ...(args.system ? { system: args.system } : {}),
-      ...(args.maxTokens ? { maxTokens: args.maxTokens } : {}),
-    });
+    try {
+      const result = await llm.complete(args.messages, {
+        ...(args.model ? { model: args.model } : {}),
+        ...(args.system ? { system: args.system } : {}),
+        ...(args.maxTokens ? { maxTokens: args.maxTokens } : {}),
+      });
+      if (lastPoolKeyId) await this.keyPool?.recordResult(lastPoolKeyId, true);
+      return result;
+    } catch (err) {
+      if (lastPoolKeyId) await this.keyPool?.recordResult(lastPoolKeyId, false);
+      throw err;
+    }
   }
 }

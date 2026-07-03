@@ -3,6 +3,7 @@ import {
   type AgentStatus as AgentStatusT,
   AgentType,
   type AgentType as AgentTypeT,
+  BANNED_WORDS_ACTIONS,
   NotFoundError,
   ValidationError,
 } from '@vocaliq/shared';
@@ -29,6 +30,10 @@ export interface AgentDetail {
   status: AgentStatusT;
   languages: string[];
   turnTimeoutMs: number;
+  maxCallDurationSec: number;
+  maxSilenceSec: number;
+  endOnVoicemail: boolean;
+  bannedWordsAction: string;
   defaultVoiceId: string | null;
   memoryEnabled: boolean;
   updatedAt: Date;
@@ -48,6 +53,12 @@ export const createAgentSchema = z.object({
   status: z.enum([AgentStatus.DRAFT, AgentStatus.PUBLISHED]).default(AgentStatus.DRAFT),
   languages: z.array(z.string().min(2).max(10)).max(20).default([]),
   turnTimeoutMs: z.number().int().min(200).max(10_000).default(1500),
+  // Cost/reliability guards (Day 38).
+  maxCallDurationSec: z.number().int().min(30).max(7200).optional(),
+  maxSilenceSec: z.number().int().min(0).max(120).optional(),
+  endOnVoicemail: z.boolean().optional(),
+  bannedWords: z.array(z.string().min(1).max(60)).max(100).optional(),
+  bannedWordsAction: z.enum(BANNED_WORDS_ACTIONS).optional(),
   defaultVoiceId: z.string().uuid().optional(),
   memoryEnabled: z.boolean().optional(),
 });
@@ -63,6 +74,10 @@ const AGENT_SELECT = {
   status: true,
   languages: true,
   turnTimeoutMs: true,
+  maxCallDurationSec: true,
+  maxSilenceSec: true,
+  endOnVoicemail: true,
+  bannedWordsAction: true,
   defaultVoiceId: true,
   memoryEnabled: true,
   updatedAt: true,
@@ -115,6 +130,11 @@ export class AgentsService {
       status,
       languages,
       turnTimeoutMs,
+      maxCallDurationSec,
+      maxSilenceSec,
+      endOnVoicemail,
+      bannedWords,
+      bannedWordsAction,
       defaultVoiceId,
       memoryEnabled,
     } = parsed.data;
@@ -123,11 +143,15 @@ export class AgentsService {
         data: {
           tenantId,
           name,
-          persona: { systemPrompt },
+          persona: { systemPrompt, ...(bannedWords ? { bannedWords } : {}) },
           type,
           status,
           languages,
           turnTimeoutMs,
+          ...(maxCallDurationSec !== undefined ? { maxCallDurationSec } : {}),
+          ...(maxSilenceSec !== undefined ? { maxSilenceSec } : {}),
+          ...(endOnVoicemail !== undefined ? { endOnVoicemail } : {}),
+          ...(bannedWordsAction !== undefined ? { bannedWordsAction } : {}),
           ...(defaultVoiceId ? { defaultVoiceId } : {}),
           ...(memoryEnabled !== undefined ? { memoryEnabled } : {}),
         },
@@ -143,19 +167,37 @@ export class AgentsService {
     }
     const data = parsed.data;
     return this.db.withTenant(tenantId, async (tx) => {
-      const existing = await tx.agent.findFirst({ where: { id }, select: { id: true } });
+      const existing = await tx.agent.findFirst({ where: { id }, select: { persona: true } });
       if (!existing) throw new NotFoundError('Agent not found');
+
+      // Merge persona so a banned-words edit never wipes the system prompt (and vice-versa).
+      let persona: Record<string, unknown> | undefined;
+      if (data.systemPrompt !== undefined || data.bannedWords !== undefined) {
+        const current = (existing.persona ?? {}) as Record<string, unknown>;
+        persona = {
+          ...current,
+          ...(data.systemPrompt !== undefined ? { systemPrompt: data.systemPrompt } : {}),
+          ...(data.bannedWords !== undefined ? { bannedWords: data.bannedWords } : {}),
+        };
+      }
+
       return tx.agent.update({
         where: { id },
         data: {
           ...(data.name !== undefined ? { name: data.name } : {}),
-          ...(data.systemPrompt !== undefined
-            ? { persona: { systemPrompt: data.systemPrompt } }
-            : {}),
+          ...(persona !== undefined ? { persona: persona as object } : {}),
           ...(data.type !== undefined ? { type: data.type } : {}),
           ...(data.status !== undefined ? { status: data.status } : {}),
           ...(data.languages !== undefined ? { languages: data.languages } : {}),
           ...(data.turnTimeoutMs !== undefined ? { turnTimeoutMs: data.turnTimeoutMs } : {}),
+          ...(data.maxCallDurationSec !== undefined
+            ? { maxCallDurationSec: data.maxCallDurationSec }
+            : {}),
+          ...(data.maxSilenceSec !== undefined ? { maxSilenceSec: data.maxSilenceSec } : {}),
+          ...(data.endOnVoicemail !== undefined ? { endOnVoicemail: data.endOnVoicemail } : {}),
+          ...(data.bannedWordsAction !== undefined
+            ? { bannedWordsAction: data.bannedWordsAction }
+            : {}),
           ...(data.defaultVoiceId !== undefined ? { defaultVoiceId: data.defaultVoiceId } : {}),
           ...(data.memoryEnabled !== undefined ? { memoryEnabled: data.memoryEnabled } : {}),
         },
