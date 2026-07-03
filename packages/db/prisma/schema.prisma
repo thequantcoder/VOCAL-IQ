@@ -188,6 +188,8 @@ model Tenant {
   calls               Call[]
   campaigns           Campaign[]
   appointments        Appointment[]
+  forms               Form[]
+  formSubmissions     FormSubmission[]
   plans               Plan[]
   subscriptions       Subscription[]
   wallet              Wallet?
@@ -508,10 +510,11 @@ model Contact {
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
-  leads         Lead[]
-  calls         Call[]
-  appointments  Appointment[]
-  agentMemories AgentMemory[]
+  leads            Lead[]
+  calls            Call[]
+  appointments     Appointment[]
+  agentMemories    AgentMemory[]
+  formSubmissions  FormSubmission[]
 
   @@index([tenantId])
   @@index([tenantId, phone])
@@ -533,6 +536,41 @@ model Lead {
 
   @@index([tenantId])
   @@index([tenantId, status])
+}
+
+// Public lead-capture forms (Day 37). A form has typed fields + routing (webhook /
+// Google Sheet / trigger-a-call). Submissions are validated + sanitised, then turned into
+// a Contact + Lead and optionally pushed to a Sheet (gated port) / webhook.
+model Form {
+  id          String           @id @default(uuid()) @db.Uuid
+  tenantId    String           @db.Uuid
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  fields      Json             @default("[]") // FormField[] (validated by formConfigSchema)
+  routing     Json             @default("{}") // { webhookUrl?, sheetId?, triggerAgentId? }
+  active      Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  submissions FormSubmission[]
+
+  @@index([tenantId])
+}
+
+model FormSubmission {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  formId    String   @db.Uuid
+  form      Form     @relation(fields: [formId], references: [id], onDelete: Cascade)
+  contactId String?  @db.Uuid
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  values    Json     @default("{}") // sanitised cleaned values
+  synced    Boolean  @default(false) // pushed to Sheet/webhook
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, formId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
