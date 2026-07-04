@@ -1687,3 +1687,29 @@ K. Build/CI: ✅ — `pnpm build` exits 0; all CI gates (typecheck/lint/test) gr
 Polished onboarding + delightful, performant, reduced-motion-safe motion — DoD met (E2E reduced-motion contract written/runnable; authenticated completion-path e2e deferred as noted).
 
 **🎉 Phase 3 (Days 41–50) COMPLETE** — analytics · transcript search · QA scoring · WhatsApp/SMS messaging · multimodal agents · MCP/tool servers · marketplace + automations · public API+SDK+webhooks · SaaS ops toolkit · onboarding + motion. Tag `v0.5-phase3` after merge. Next: Phase 4 — white-label & reseller (Day 51: reseller hierarchy).
+
+## Day 51 — Reseller Hierarchy + Sub-Tenant Provisioning — 2026-07-04 — ✅ DONE — opens Phase 4
+Model: Opus (🧠 OPUS). Branch `day/51-reseller-hierarchy`. Prereq: Days 4-5 tenancy — done; no credential, **no migration** (builds entirely on the existing Tenant tree + RLS `is_in_subtree` + RESELLER_ADMIN role). Tagged `v0.5-phase3` before starting. Self-audit focus B (subtree isolation — critical) + C (RESELLER_ADMIN gating).
+
+Built (DONE):
+- **shared** `reseller.ts`: `subTenantInputSchema` (name, owner email, optional kebab slug, ACTIVE|TRIAL) + the pure **`descendantIds(tenants, rootId)`** subtree walk (inclusive, cycle-safe, edge-bounded so it can never escape a reseller's own subtree). 5 unit tests.
+- **api** `ResellerService`: **`createSubTenant`** (provision a CUSTOMER child + OWNER user/membership; owner reused by email; unique-slug), **`listSubTenants`** (direct children), **`getSubTenant`**, **`setStatus`** (suspend/reactivate the target + its whole subtree — cascade). Isolation design: every READ + MANAGE path runs under `withTenant(resellerId)` so RLS blocks sibling-reseller access; only tenant CREATION uses the admin client (an inherently privileged op — RLS `WITH CHECK` can't self-reference a not-yet-visible new row — with the parent HARD-SET to the caller's reseller after `assertReseller`). Routes `/reseller/*`, **all RESELLER_ADMIN-gated** (SUPER_ADMIN passes). Wired composition+main. 4 RLS-real integration tests.
+- **web** `/dashboard/reseller`: provision a customer (name + owner email), list sub-tenants with status, suspend/reactivate. A **reseller-only nav entry** (shown to RESELLER_ADMIN / SUPER_ADMIN).
+
+Verification: full monorepo **typecheck 12/12**, **lint 12/12**, **build exit 0** (`/dashboard/reseller` emitted). Tests: shared **278** (reseller 5 — schema, inclusive/cycle-safe/edge-bounded descendant walk that never reaches a sibling subtree), api **200** (reseller 4 — provisioning + OWNER membership, **a reseller can't see/read/suspend another reseller's sub-tenant** (RLS → NotFound; the rival's status stays untouched), can't suspend itself, and suspend/reactivate cascades to a grandchild).
+
+## Self-Audit — Day 51 (A–K)
+A. Correctness: ✅ — `descendantIds` pure + unit-tested (inclusive, cycle-safe); provisioning + cascade proven against real Postgres.
+B. Subtree isolation (focus — critical): ✅ — list/get/setStatus all run under `withTenant(resellerId)`, so RLS `is_in_subtree` scopes them to the reseller's subtree; a second reseller's customer is invisible (list omits it; get/suspend → NotFound) and provably untouched. The cascade set is computed ONLY from the RLS-visible subtree, so it can never span into a sibling reseller. Creation hard-sets `parentTenantId` to the caller's reseller.
+C. RESELLER_ADMIN gating (focus): ✅ — the whole `/reseller` router is `requireRoles(RESELLER_ADMIN)` (SUPER_ADMIN passes); `assertReseller` additionally verifies the caller owns a RESELLER/PLATFORM tenant before provisioning; a reseller cannot suspend itself.
+D. Cost: ✅ NA — tenancy operations, no provider calls.
+E. Errors/obs: ✅ — Zod-validated input; typed NotFound (outside subtree) / Forbidden (not a reseller) / Validation (self-target); unique-slug retry avoids a 500 on collision.
+F. Performance: ✅ — list is one indexed read; cascade is one subtree read + one `updateMany`; descendant walk is O(n) in-memory.
+G. Error handling: ✅ — api surfaces typed errors; web shows provision errors + empty/error/loading states; suspend/reactivate reflect immediately.
+H. UI/a11y: ✅ — labelled provision form (email-validated), status pills (suspended red / active green), suspend/reactivate actions, reseller-only nav, empty/error/loading states.
+I. Regression: ✅ — additive (new shared module + api module + web page + reseller nav + wirings); NO migration; existing typecheck/lint/tests green (shared 278, api 200). Scoped `biome --write` touched only Day-51 files.
+J. Quality/docs: ✅ — subtree walk pure + tested in shared; the admin-vs-RLS boundary + the WITH-CHECK-can't-self-reference rationale documented in code; explicit DTOs.
+K. Build/CI: ✅ — `pnpm build` exits 0; all gates green locally.
+
+Resellers provision/manage isolated sub-tenants; subtree isolation proven; tests pass — DoD CONFIRMED. Sibling-reseller isolation (the critical property), RESELLER_ADMIN gating, and suspend cascade CONFIRMED.
+Deferred (follow-up): the owner-invite/password-set email for a provisioned sub-tenant owner (the user + OWNER membership are created without a password today — an invite/reset flow lands with the notification-delivery wiring); per-sub-tenant usage/billing rollup to the reseller (Day 53 wallet/markup engine). Next: Day 52 (custom domains + theming).

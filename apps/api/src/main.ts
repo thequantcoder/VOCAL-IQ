@@ -38,6 +38,7 @@ import { opsRoutes } from './ops/ops.routes';
 import { v1Routes } from './public/v1.routes';
 import { qaRoutes } from './qa/qa.routes';
 import { ragRoutes } from './rag/rag.routes';
+import { resellerRoutes } from './reseller/reseller.routes';
 import { searchRoutes } from './search/search.routes';
 import { sipRoutes } from './sip/sip.routes';
 import { squadsRoutes } from './squads/squads.routes';
@@ -105,6 +106,7 @@ function bootstrap(): void {
   app.use('/api-keys', apiKeyRoutes(s.apiKeys, s.tenants));
   app.use('/webhooks', webhookRoutes(s.webhooks, s.tenants));
   app.use('/ops', opsRoutes(s.opsToolkit, s.tenants));
+  app.use('/reseller', resellerRoutes(s.reseller, s.tenants));
   // Public API v1 — API-key authenticated (not session), rate-limited + metered.
   app.use(
     '/v1',

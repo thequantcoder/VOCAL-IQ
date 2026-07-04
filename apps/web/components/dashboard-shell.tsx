@@ -4,6 +4,7 @@ import { cn } from '@vocaliq/ui';
 import {
   BarChart3,
   Bot,
+  Building2,
   CalendarCheck,
   ClipboardCheck,
   ClipboardList,
@@ -53,6 +54,11 @@ const NAV = [
   { href: '/dashboard/support', label: 'Support', icon: LifeBuoy, exact: false },
 ] as const;
 
+/** Reseller-operator (RESELLER_ADMIN) nav — provision + manage sub-tenants. */
+const RESELLER_NAV = [
+  { href: '/dashboard/reseller', label: 'Sub-tenants', icon: Building2, exact: false },
+] as const;
+
 /** Platform-operator (SUPER_ADMIN) nav — only shown to platform staff. */
 const SUPER_ADMIN_NAV = [
   { href: '/dashboard/admin/key-pool', label: 'Key pool', icon: KeyRound, exact: false },
@@ -67,7 +73,14 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { user } = useAuth();
   const isSuperAdmin = user?.memberships?.some((m) => m.role === 'SUPER_ADMIN') ?? false;
-  const nav = isSuperAdmin ? [...NAV, ...SUPER_ADMIN_NAV] : NAV;
+  const isReseller =
+    user?.memberships?.some((m) => m.role === 'RESELLER_ADMIN' || m.role === 'SUPER_ADMIN') ??
+    false;
+  const nav = [
+    ...NAV,
+    ...(isReseller ? RESELLER_NAV : []),
+    ...(isSuperAdmin ? SUPER_ADMIN_NAV : []),
+  ];
   const isActive = (href: string, exact: boolean) =>
     exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
 

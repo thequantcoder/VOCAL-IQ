@@ -30,6 +30,7 @@ import { buildSenders } from './messaging/senders';
 import { OpsService } from './ops/ops.service';
 import { QaService } from './qa/qa.service';
 import { RagService, openAiEmbedder, prismaUsageSink } from './rag/rag.service';
+import { ResellerService } from './reseller/reseller.service';
 import { RouterService } from './router/router.service';
 import { SearchService } from './search/search.service';
 import { SipService } from './sip/sip.service';
@@ -71,6 +72,7 @@ export function createServices() {
   const apiKeys = new ApiKeyService(db);
   const webhooks = new WebhookService(db);
   const opsToolkit = new OpsService(db, entitlements);
+  const reseller = new ResellerService(db);
   const embedder = openAiEmbedder(process.env.OPENAI_API_KEY ?? '');
   const rag = new RagService(db, embedder, prismaUsageSink(db));
   const search = new SearchService(db, embedder, prismaUsageSink(db));
@@ -130,6 +132,7 @@ export function createServices() {
     apiKeys,
     webhooks,
     opsToolkit,
+    reseller,
     rag,
     search,
     qa,
