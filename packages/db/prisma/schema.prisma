@@ -1006,7 +1006,8 @@ model Wallet {
   id           String   @id @default(uuid()) @db.Uuid
   tenantId     String   @unique @db.Uuid
   tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  balanceCents Int      @default(0)
+  balanceCents Int      @default(0) // prepaid credits
+  bonusCents   Int      @default(0) // bonus / perk credits (Day 49; drained first)
   autoRecharge Json     @default("{}")
   updatedAt    DateTime @updatedAt
 

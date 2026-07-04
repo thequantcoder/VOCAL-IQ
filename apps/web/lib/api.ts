@@ -1871,3 +1871,65 @@ export function useDeleteWebhook() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['webhooks'] }),
   });
 }
+
+// ── SaaS ops toolkit: support + credits (Day 49) ────────────────────────────────
+
+export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'WAITING' | 'RESOLVED' | 'CLOSED';
+
+export interface SupportTicket {
+  id: string;
+  subject: string;
+  body: string;
+  status: TicketStatus;
+  priority: string;
+  assignee: string | null;
+  createdAt: string;
+}
+
+export interface Wallet {
+  prepaidCents: number;
+  bonusCents: number;
+  totalCents: number;
+}
+
+export function useTickets() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['tickets'],
+    queryFn: () => apiFetch<SupportTicket[]>(getToken, '/ops/tickets'),
+  });
+}
+
+export function useCreateTicket() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { subject: string; body: string; priority?: string }) =>
+      apiFetch<SupportTicket>(getToken, '/ops/tickets', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tickets'] }),
+  });
+}
+
+export function useSetTicketStatus() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; status: TicketStatus }) =>
+      apiFetch<SupportTicket>(getToken, `/ops/tickets/${vars.id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: vars.status }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tickets'] }),
+  });
+}
+
+export function useWallet() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['wallet'],
+    queryFn: () => apiFetch<Wallet>(getToken, '/ops/credits'),
+  });
+}
