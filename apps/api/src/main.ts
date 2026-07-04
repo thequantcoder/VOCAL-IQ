@@ -47,6 +47,7 @@ import { tenantRoutes } from './tenancy/tenant.routes';
 import { testsRoutes } from './tests/tests.routes';
 import { voicesRoutes } from './voices/voices.routes';
 import { webhookRoutes } from './webhooks/webhook.routes';
+import { whitelabelResolveHandler, whitelabelRoutes } from './whitelabel/whitelabel.routes';
 import { widgetRoutes } from './widget/widget.routes';
 
 /** Validate env at boot (fail-fast), wire the Express app, and start the API. */
@@ -107,6 +108,9 @@ function bootstrap(): void {
   app.use('/webhooks', webhookRoutes(s.webhooks, s.tenants));
   app.use('/ops', opsRoutes(s.opsToolkit, s.tenants));
   app.use('/reseller', resellerRoutes(s.reseller, s.tenants));
+  app.use('/whitelabel', whitelabelRoutes(s.whitelabel, s.tenants));
+  // Public edge resolution: hostname → theme, unauthenticated (re-brands the sign-in page).
+  app.get('/public/whitelabel', whitelabelResolveHandler(s.whitelabel));
   // Public API v1 — API-key authenticated (not session), rate-limited + metered.
   app.use(
     '/v1',

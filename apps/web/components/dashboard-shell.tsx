@@ -1,5 +1,6 @@
 'use client';
 
+import { brandName, parseBranding } from '@vocaliq/shared';
 import { cn } from '@vocaliq/ui';
 import {
   BarChart3,
@@ -16,6 +17,7 @@ import {
   Megaphone,
   MessageSquare,
   Mic,
+  Palette,
   PhoneCall,
   Plug,
   Search,
@@ -28,7 +30,9 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { ThemeToggle } from '../app/theme-toggle';
+import { useBranding } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { BrandingApplier } from './branding-applier';
 import { ErrorBoundary } from './error-boundary';
 
 const NAV = [
@@ -54,9 +58,10 @@ const NAV = [
   { href: '/dashboard/support', label: 'Support', icon: LifeBuoy, exact: false },
 ] as const;
 
-/** Reseller-operator (RESELLER_ADMIN) nav — provision + manage sub-tenants. */
+/** Reseller-operator (RESELLER_ADMIN) nav — provision + manage sub-tenants, white-label. */
 const RESELLER_NAV = [
   { href: '/dashboard/reseller', label: 'Sub-tenants', icon: Building2, exact: false },
+  { href: '/dashboard/branding', label: 'White-label', icon: Palette, exact: false },
 ] as const;
 
 /** Platform-operator (SUPER_ADMIN) nav — only shown to platform staff. */
@@ -84,12 +89,21 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const isActive = (href: string, exact: boolean) =>
     exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
 
+  const branding = useBranding();
+  const label = brandName(parseBranding(branding.data ?? {}));
+
   return (
     <div className="min-h-screen bg-vq-bg-base text-vq-text-hi md:grid md:grid-cols-[220px_1fr]">
+      {/* Apply the tenant's white-label theme (Day 52) across the whole shell. */}
+      <BrandingApplier />
       <aside className="flex flex-col gap-6 border-vq-border border-b p-4 md:sticky md:top-0 md:h-screen md:border-r md:border-b-0">
         <Link href="/dashboard" className="flex items-center gap-2 px-2">
           <span className="inline-block h-6 w-1.5 rounded-vq-pill bg-vq-violet" aria-hidden />
-          <span className="font-display font-semibold text-vq-text-hi">VocalIQ</span>
+          {branding.data?.logoUrl ? (
+            <img src={branding.data.logoUrl} alt={label || 'Logo'} className="h-6 w-auto" />
+          ) : (
+            label && <span className="font-display font-semibold text-vq-text-hi">{label}</span>
+          )}
         </Link>
         <nav className="flex gap-1 md:flex-col" aria-label="Primary">
           {nav.map(({ href, label, icon: Icon, exact }) => {
