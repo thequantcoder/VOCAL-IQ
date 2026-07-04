@@ -25,6 +25,8 @@ const OUTSIDER_TENANT = '00000000-0000-0000-0000-0000055a0001';
 const OUTSIDER_USER = '00000000-0000-0000-0000-0000055a000a';
 
 beforeAll(async () => {
+  // The impersonation grant is a signed JWT — CI has no .env, so set a test secret (as jwt.test).
+  process.env.APP_JWT_SECRET ??= 'test-secret-at-least-16-chars-long';
   await db.admin.tenant.upsert({
     where: { id: OUTSIDER_TENANT },
     create: {
