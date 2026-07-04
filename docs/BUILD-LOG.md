@@ -1598,3 +1598,36 @@ K. Build/CI: ✅ — `pnpm build` exits 0; all gates green locally.
 
 Marketplace (Day-40 connector catalogue) + multi-step cross-channel automations, tests pass — DoD CONFIRMED. Best-effort chains + per-action audit + tenant isolation + SSRF-safe webhooks CONFIRMED.
 Deferred (follow-up): auto-calling `dispatch` from the post-call bundle on call-end / from lead-status changes (the `/dispatch` route + engine are ready; the live-loop hook is the same gated bundle as post-call intel/QA); adding Cal.com/Make to the connector catalogue (needs `IntegrationType` enum values — deferred to avoid a mid-day enum `ALTER`); a visual multi-branch automation canvas (today's ordered-actions model covers the DoD). Next: Day 48 (public API + SDKs).
+
+## Day 48 — Public API + SDK + Webhooks + Rate Limits/Metering — 2026-07-04 — ✅ DONE
+Model: Opus (🧠 OPUS). Branch `day/48-public-api-sdk`. Prereq: Days 13/15 metering — done; no new credential. Migration `20260704200000_day48_api_keys` (one tenant table + RLS; webhooks reuse the Day-04 `Webhook` model). Self-audit focus C (API-key auth + rate limit + HMAC) + D (metering) + B.
+
+Built (DONE):
+- **db/migration**: `ApiKey` (tenant-scoped: name, prefix hint, **sha256 `hashedKey`** unique, scopes, `rateLimitPerMin`, `requestCount`, lastUsedAt, revoked). RLS-protected (Day-04 shape).
+- **shared** `public-api.ts` (web-safe): `API_SCOPES` + `hasScope` (`*` wildcard), `WEBHOOK_EVENTS` catalogue + `isWebhookEvent`, and **`buildOpenApiSpec`** (valid OpenAPI 3.0.3 with paths + bearer security scheme). 3 unit tests.
+- **api** — the developer surface:
+  - **`ApiKeyService`**: create (plaintext `vq_live_…` shown ONCE; only the sha256 stored), list (masked), revoke, **`authenticate`** (owner-client lookup by hash, constant-time compare, revocation-checked → tenant+scopes), **`meter`** (requestCount++ / lastUsedAt).
+  - **`apiKeyAuth` middleware**: Bearer/`X-Api-Key` → authenticate → **per-key rate limit** (reuses the Day-16 fixed-window `RateLimiter`, one bucket per key sized to its `rateLimitPerMin`) → set `req.ctx` scoped to the key's tenant (RLS, same as a session) → meter. 401/403/429 via typed errors. `requireScope` deny-by-default per route.
+  - **Public `/v1`** (`whoami`, `agents`, `calls` GET/POST, `leads`) — reuses the SAME dashboard services (public surface can't diverge/exceed internal), scope-gated; **`/v1/openapi.json`** served (no key).
+  - **`WebhookService`**: register (SSRF-guarded url via Day-46 `checkPublicHttpUrl`; signing secret generated + returned once, stored server-side), list/remove, **`deliver`** (HMAC-SHA256 signed `X-VocalIQ-Signature` over `timestamp.body` → POST → **retry to MAX_ATTEMPTS → dead-letter (audited)**). HTTP + clock injected. `/webhooks` CRUD + `/events`.
+  - `/api-keys` + `/webhooks` dashboard routes (config writers). Wired composition+main. 9 RLS-real integration tests (api-key 4 + webhook 5).
+- **packages/sdk** `@vocaliq/sdk`: a dependency-free TS client (`VocalIQClient` — `whoami`, `agents.list`, `calls.list/create`, `leads.list`; injectable `fetch`; typed `VocalIQError`). 4 smoke tests.
+- **web** `/dashboard/developers`: create/scope/revoke API keys (plaintext shown once + copy), register/delete webhooks (event picker; signing secret shown once), and a link to the live OpenAPI spec + SDK note. Nav link.
+
+Verification: full monorepo **typecheck 12/12**, **lint 12/12**, **build exit 0** (SDK added to the graph; `/dashboard/developers` emitted). Tests: shared **262** (public-api 3), api **189** (api-key 4 — create-once/hash-only/authenticate/revoke/meter/child-can't-see-parent; webhook 5 — SSRF register, verifiable signature, retry-then-success, **dead-letter after 3 + audited**, secret-never-listed), sdk **4** (bearer attach, whoami, typed error).
+
+## Self-Audit — Day 48 (A–K)
+A. Correctness: ✅ — scope check + OpenAPI builder pure + tested; api-key auth/meter/revoke + webhook sign/retry/dead-letter proven against real Postgres with injected HTTP + clock; SDK smoke-tested with a fake fetch.
+B. Tenancy (focus): ✅ — key/webhook CRUD under `withTenant`; ApiKey RLS-protected; the public API sets `req.ctx` to the key's tenant so every `/v1` call is RLS-scoped exactly like a session; a child can't see/revoke a parent's key (proven).
+C. API-key auth + rate limit + HMAC (focus): ✅ — keys stored as **sha256 only** (plaintext shown once), authenticated by constant-time hash compare + revocation check; **per-key rate limit** → 429; scope gating deny-by-default → 403; webhook deliveries **HMAC-SHA256 signed** (timestamp-bound, replay-resistant); webhook URLs **SSRF-guarded**; secrets never returned after creation.
+D. Metering (focus): ✅ — every authenticated public-API request increments the key's `requestCount` + `lastUsedAt` (usage surfaced in the UI; billing ties to plan-driven `rateLimitPerMin`); no unmetered public path.
+E. Errors/obs: ✅ — typed Auth(401)/Forbidden(403)/RateLimit(429)/Validation errors via the safe envelope; dead-lettered webhooks written to AuditLog with event+attempts+status.
+F. Performance: ✅ — auth is one indexed unique lookup by hash; rate limit is in-memory O(1); `/v1` reuses existing indexed reads; webhook delivery is bounded (≤3 attempts).
+G. Error handling: ✅ — api surfaces typed errors; webhook delivery best-effort with retry→dead-letter; SDK throws a typed `VocalIQError`; web shows create/revoke/register errors + one-time-secret UX.
+H. UI/a11y: ✅ — scoped key creation with copy-once, revoke, webhook event picker, secret-shown-once notice, OpenAPI link; empty/error/loading states.
+I. Regression: ✅ — additive migration + new modules/routes/page + a new `@vocaliq/sdk` package + wirings; existing typecheck/lint/tests green (now 12 packages). Scoped `biome --write` touched only Day-48 files.
+J. Quality/docs: ✅ — scopes/events/OpenAPI shared so api+SDK+docs agree; server-only crypto (`api-key.service`, `webhook-sign`) kept out of web-safe shared; public API reuses internal services (no divergence); explicit DTOs; the plaintext-once + hash-only handling documented.
+K. Build/CI: ✅ — `pnpm build` exits 0 (SDK in the graph); all gates green locally.
+
+Documented public API + webhooks + TS SDK, rate-limited + metered, tests pass — DoD CONFIRMED. API-key auth (hash-only, constant-time), per-key rate limit + metering, HMAC-signed webhooks with retry/dead-letter, SSRF-safe, and tenant isolation CONFIRMED.
+Deferred (follow-up): firing webhook `deliver` from the post-call/lead events (the signer + delivery + dead-letter are ready; the emit hook rides the same gated post-call bundle); Redis-backed rate limiting + delivery queue for multi-node scale (in-memory limiter + inline retry today); generating non-TS SDK stubs from `/v1/openapi.json` (spec is served); KMS for the webhook secret + BYOK envelope (Day 57). Next: Day 49 (SaaS ops toolkit).

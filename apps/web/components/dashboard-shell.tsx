@@ -48,6 +48,7 @@ const NAV = [
   { href: '/dashboard/integrations', label: 'Integrations', icon: Plug, exact: false },
   { href: '/dashboard/mcp', label: 'Tool servers', icon: Plug, exact: false },
   { href: '/dashboard/automations', label: 'Automations', icon: Workflow, exact: false },
+  { href: '/dashboard/developers', label: 'Developers', icon: KeyRound, exact: false },
 ] as const;
 
 /** Platform-operator (SUPER_ADMIN) nav — only shown to platform staff. */
