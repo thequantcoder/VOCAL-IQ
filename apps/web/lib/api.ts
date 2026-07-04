@@ -1466,3 +1466,101 @@ export function useScoreCallNow(callId: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['qa', 'scores', callId] }),
   });
 }
+
+// ── Messaging (Day 44) ─────────────────────────────────────────────────────────
+
+export type MessageChannel = 'WHATSAPP' | 'SMS';
+
+export interface MessageTemplate {
+  id: string;
+  channel: MessageChannel;
+  name: string;
+  language: string;
+  category: string;
+  body: string;
+  variables: string[];
+  approvalStatus: string;
+  active: boolean;
+  updatedAt: string;
+}
+
+export interface MessageRow {
+  id: string;
+  channel: MessageChannel;
+  direction: string;
+  status: string;
+  toAddr: string;
+  body: string;
+  costUsd: number;
+  error: string | null;
+  createdAt: string;
+}
+
+export interface MessageTemplateInput {
+  channel: MessageChannel;
+  name: string;
+  language: string;
+  category: string;
+  body: string;
+  active: boolean;
+}
+
+export interface SendMessageInput {
+  channel: MessageChannel;
+  to: string;
+  templateId?: string;
+  body?: string;
+  variables?: Record<string, string>;
+}
+
+export function useMessageTemplates() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['messaging', 'templates'],
+    queryFn: () => apiFetch<MessageTemplate[]>(getToken, '/messaging/templates'),
+  });
+}
+
+export function useCreateMessageTemplate() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: MessageTemplateInput) =>
+      apiFetch<MessageTemplate>(getToken, '/messaging/templates', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['messaging'] }),
+  });
+}
+
+export function useDeleteMessageTemplate() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ deleted: true }>(getToken, `/messaging/templates/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['messaging'] }),
+  });
+}
+
+export function useMessages() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['messaging', 'messages'],
+    queryFn: () => apiFetch<MessageRow[]>(getToken, '/messaging/messages'),
+  });
+}
+
+export function useSendMessage() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: SendMessageInput) =>
+      apiFetch<MessageRow>(getToken, '/messaging/send', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['messaging', 'messages'] }),
+  });
+}

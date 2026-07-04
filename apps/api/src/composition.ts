@@ -19,6 +19,8 @@ import { IntegrationsService } from './integrations/integrations.service';
 import { KeyPoolService } from './keypool/keypool.service';
 import { LeadsService } from './leads/leads.service';
 import { MemoryService } from './memory/memory.service';
+import { MessagingService } from './messaging/messaging.service';
+import { buildSenders } from './messaging/senders';
 import { QaService } from './qa/qa.service';
 import { RagService, openAiEmbedder, prismaUsageSink } from './rag/rag.service';
 import { RouterService } from './router/router.service';
@@ -66,6 +68,8 @@ export function createServices() {
   const integrations = new IntegrationsService(db);
   const leads = new LeadsService(db);
   const memory = new MemoryService(db);
+  // Messaging senders are built only for channels whose credentials are set (gated).
+  const messaging = new MessagingService(db, buildSenders(process.env));
   const sip = new SipService(db, entitlements);
   const experiments = new ExperimentsService(db);
   const squads = new SquadsService(db);
@@ -112,6 +116,7 @@ export function createServices() {
     integrations,
     leads,
     memory,
+    messaging,
     sip,
     experiments,
     squads,

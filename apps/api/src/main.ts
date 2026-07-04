@@ -24,6 +24,11 @@ import { integrationsRoutes } from './integrations/integrations.routes';
 import { keyPoolRoutes } from './keypool/keypool.routes';
 import { leadsRoutes } from './leads/leads.routes';
 import { memoryRoutes } from './memory/memory.routes';
+import {
+  messagingRoutes,
+  twilioWebhookHandler,
+  whatsappWebhookHandler,
+} from './messaging/messaging.routes';
 import { initSentry, shutdownObservability } from './observability';
 import { qaRoutes } from './qa/qa.routes';
 import { ragRoutes } from './rag/rag.routes';
@@ -53,6 +58,21 @@ function bootstrap(): void {
     billingWebhookHandler(s.billingWebhook),
   );
 
+  // Messaging webhooks (Day 44): WhatsApp needs the RAW body (HMAC-SHA256 over it); Twilio
+  // needs URL-encoded params (signature is over URL + sorted params). Register before the
+  // JSON parser. Per-tenant path so inbound routes to the right tenant.
+  app.get('/public/messaging/whatsapp/:tenantId', whatsappWebhookHandler(s.messaging));
+  app.post(
+    '/public/messaging/whatsapp/:tenantId',
+    express.raw({ type: '*/*' }),
+    whatsappWebhookHandler(s.messaging),
+  );
+  app.post(
+    '/public/messaging/twilio/:tenantId',
+    express.urlencoded({ extended: false }),
+    twilioWebhookHandler(s.messaging),
+  );
+
   app.use(express.json({ limit: '5mb' }));
 
   // ── Routes (mounted at the same paths the Nest controllers used) ──────────────
@@ -72,6 +92,7 @@ function bootstrap(): void {
   app.use('/integrations', integrationsRoutes(s.integrations, s.tenants));
   app.use('/analytics', analyticsRoutes(s.analytics, s.tenants));
   app.use('/qa', qaRoutes(s.qa, s.tenants));
+  app.use('/messaging', messagingRoutes(s.messaging, s.tenants));
   app.use('/leads', leadsRoutes(s.leads, s.tenants));
   app.use('/memory', memoryRoutes(s.memory, s.tenants));
   app.use('/sip', sipRoutes(s.sip, s.tenants));
