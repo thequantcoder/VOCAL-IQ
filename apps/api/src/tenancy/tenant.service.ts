@@ -1,5 +1,5 @@
-import { ForbiddenError, type Role, TenantError } from '@vocaliq/shared';
-import { PrismaService } from '../db/prisma.service';
+import { ForbiddenError, NotFoundError, Role, TenantError } from '@vocaliq/shared';
+import type { PrismaService } from '../db/prisma.service';
 import type { TenantContext } from './tenant-context';
 
 /**
@@ -31,6 +31,29 @@ export class TenantService {
       throw new ForbiddenError('Not a member of the requested tenant');
     }
     return { userId: localUserId, tenantId: membership.tenantId, role: membership.role as Role };
+  }
+
+  /**
+   * Resolve the scope for a super-admin IMPERSONATION grant (Day 55). The actor MUST currently
+   * hold a SUPER_ADMIN membership (re-checked here on every request — a demoted admin's grant
+   * stops working immediately) and the target tenant must exist. The returned context is
+   * attributed to the ACTOR with the SUPER_ADMIN role, so downstream RBAC + audit see the real
+   * operator. This is the ONLY cross-tenant scope path outside a user's own memberships.
+   */
+  async resolveImpersonation(actorUserId: string, targetTenantId: string): Promise<TenantContext> {
+    const isSuperAdmin = await this.db.admin.membership.findFirst({
+      where: { userId: actorUserId, role: Role.SUPER_ADMIN, status: 'ACTIVE' },
+      select: { id: true },
+    });
+    if (!isSuperAdmin) {
+      throw new ForbiddenError('Impersonation requires an active super-admin');
+    }
+    const target = await this.db.admin.tenant.findUnique({
+      where: { id: targetTenantId },
+      select: { id: true },
+    });
+    if (!target) throw new NotFoundError('Tenant not found');
+    return { userId: actorUserId, tenantId: targetTenantId, role: Role.SUPER_ADMIN };
   }
 
   /** The tenants a user can switch between (for the tenant switcher UI). */

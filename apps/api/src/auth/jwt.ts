@@ -10,9 +10,16 @@ import jwt from 'jsonwebtoken';
 export interface JwtClaims {
   /** Local User.id (the JWT `sub`). */
   userId: string;
+  /**
+   * Impersonation target (from the signed `act` claim). Present ONLY on a super-admin
+   * impersonation grant — the token subject stays the ACTOR (the super-admin), so every action
+   * taken while impersonating is attributed to them, not the impersonated owner (self-audit C).
+   */
+  actAsTenantId?: string;
 }
 
 const DEFAULT_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
+const IMPERSONATION_TTL_SECONDS = 30 * 60; // 30 min — short-lived by design
 
 /** The signing secret — required in env; never hard-coded. Fail loudly if missing. */
 function secret(): string {
@@ -26,6 +33,23 @@ function secret(): string {
 /** Issue a signed session token for a local user. */
 export function signToken(userId: string, ttlSeconds = DEFAULT_TTL_SECONDS): string {
   return jwt.sign({ sub: userId }, secret(), { algorithm: 'HS256', expiresIn: ttlSeconds });
+}
+
+/**
+ * Issue a short-lived impersonation grant: the subject is the ACTOR (super-admin) and the `act`
+ * claim carries the target tenant. The API still verifies the actor is a SUPER_ADMIN when the
+ * token is used, so a forged/replayed grant can't widen scope; the mint itself is audited by the
+ * caller. Deliberately short TTL (30 min).
+ */
+export function signImpersonationToken(
+  actorUserId: string,
+  targetTenantId: string,
+  ttlSeconds = IMPERSONATION_TTL_SECONDS,
+): string {
+  return jwt.sign({ sub: actorUserId, act: targetTenantId }, secret(), {
+    algorithm: 'HS256',
+    expiresIn: ttlSeconds,
+  });
 }
 
 /**
@@ -43,5 +67,6 @@ export async function verifyJwtToken(token: string): Promise<JwtClaims> {
   if (typeof payload === 'string' || !payload.sub) {
     throw new AuthError('Malformed token payload');
   }
-  return { userId: payload.sub };
+  const act = typeof payload.act === 'string' ? payload.act : undefined;
+  return { userId: payload.sub, ...(act ? { actAsTenantId: act } : {}) };
 }

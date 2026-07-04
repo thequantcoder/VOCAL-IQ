@@ -12,6 +12,14 @@ export function tenantMiddleware(tenants: TenantService) {
   return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
     try {
       if (!req.auth) throw new TenantError('Authentication required before tenant resolution');
+      // A super-admin impersonation grant (Day 55): the signed `act` claim scopes the request to
+      // the target tenant. resolveImpersonation re-verifies the actor is still a SUPER_ADMIN, so a
+      // demoted operator's grant fails closed. Otherwise the normal membership path applies.
+      if (req.auth.actAsTenantId) {
+        req.ctx = await tenants.resolveImpersonation(req.auth.userId, req.auth.actAsTenantId);
+        next();
+        return;
+      }
       const requested = req.headers['x-tenant-id'] as string | undefined;
       req.ctx = await tenants.resolveContext(req.auth.userId, requested);
       next();

@@ -42,6 +42,7 @@ import { resellerRoutes } from './reseller/reseller.routes';
 import { searchRoutes } from './search/search.routes';
 import { sipRoutes } from './sip/sip.routes';
 import { squadsRoutes } from './squads/squads.routes';
+import { superAdminRoutes } from './superadmin/superadmin.routes';
 import { templatesRoutes } from './templates/templates.routes';
 import { tenantRoutes } from './tenancy/tenant.routes';
 import { testsRoutes } from './tests/tests.routes';
@@ -109,6 +110,7 @@ function bootstrap(): void {
   app.use('/webhooks', webhookRoutes(s.webhooks, s.tenants));
   app.use('/ops', opsRoutes(s.opsToolkit, s.tenants));
   app.use('/reseller', resellerRoutes(s.reseller, s.tenants));
+  app.use('/admin/superadmin', superAdminRoutes(s.superAdmin, s.tenants));
   app.use('/whitelabel', whitelabelRoutes(s.whitelabel, s.tenants));
   app.use('/wallet', walletRoutes(s.wallet, s.tenants));
   // Public edge resolution: hostname → theme, unauthenticated (re-brands the sign-in page).
