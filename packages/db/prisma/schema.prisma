@@ -157,6 +157,25 @@ enum FeatureFlagScope {
   TENANT
 }
 
+enum MessageChannel {
+  WHATSAPP
+  SMS
+}
+
+enum MessageDirection {
+  OUTBOUND
+  INBOUND
+}
+
+enum MessageStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  RECEIVED
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Core tenancy
 // ─────────────────────────────────────────────────────────────────────────────
@@ -215,6 +234,9 @@ model Tenant {
   testRuns            TestRun[]
   qaRubrics           QaRubric[]
   qaScores            QaScore[]
+  messageTemplates    MessageTemplate[]
+  messages            Message[]
+  messagingOptOuts    MessagingOptOut[]
 
   @@index([parentTenantId])
   @@index([type])
@@ -490,6 +512,69 @@ model QaScore {
   @@unique([callId, rubricId]) // one score per rubric per call (idempotent re-scoring)
   @@index([tenantId])
   @@index([tenantId, rubricId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Messaging (Day 44) — WhatsApp/SMS templates, messages, opt-outs
+// ─────────────────────────────────────────────────────────────────────────────
+
+model MessageTemplate {
+  id                 String         @id @default(uuid()) @db.Uuid
+  tenantId           String         @db.Uuid
+  tenant             Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  channel            MessageChannel
+  name               String
+  language           String         @default("en")
+  category           String         @default("utility")
+  body               String // may contain {{variables}}
+  variables          String[]       @default([]) // extracted {{var}} names (audit/UX)
+  approvalStatus     String         @default("APPROVED") // WhatsApp templates need Meta approval
+  providerTemplateId String?
+  active             Boolean        @default(true)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  messages           Message[]
+
+  @@unique([tenantId, channel, name, language])
+  @@index([tenantId])
+}
+
+model Message {
+  id                String           @id @default(uuid()) @db.Uuid
+  tenantId          String           @db.Uuid
+  tenant            Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  channel           MessageChannel
+  direction         MessageDirection
+  status            MessageStatus    @default(QUEUED)
+  toAddr            String
+  fromAddr          String?
+  body              String
+  templateId        String?          @db.Uuid
+  template          MessageTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  contactId         String?          @db.Uuid // soft link (app + RLS scoped; no FK)
+  callId            String?          @db.Uuid
+  campaignId        String?          @db.Uuid
+  providerMessageId String? // id from Twilio/Meta for status correlation
+  costUsd           Float            @default(0)
+  error             String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([providerMessageId])
+}
+
+model MessagingOptOut {
+  id        String         @id @default(uuid()) @db.Uuid
+  tenantId  String         @db.Uuid
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  channel   MessageChannel
+  phone     String
+  createdAt DateTime       @default(now())
+
+  @@unique([tenantId, channel, phone])
+  @@index([tenantId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

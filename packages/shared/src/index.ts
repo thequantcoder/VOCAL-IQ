@@ -22,6 +22,7 @@ export * from './integrations.js';
 export * from './key-pool.js';
 export * from './lead.js';
 export * from './memory.js';
+export * from './messaging.js';
 export * from './multilingual.js';
 export * from './persona.js';
 export * from './post-call.js';
