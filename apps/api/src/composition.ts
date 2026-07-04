@@ -40,6 +40,7 @@ import { TenantService } from './tenancy/tenant.service';
 import { TestsService, routerGrader } from './tests/tests.service';
 import { TranscriptionService } from './transcription/transcription.service';
 import { VoicesService, elevenLabsCloner } from './voices/voices.service';
+import { WalletService } from './wallet/wallet.service';
 import { WebhookService } from './webhooks/webhook.service';
 import { buildCloudflareClient } from './whitelabel/cloudflare';
 import { WhiteLabelService } from './whitelabel/whitelabel.service';
@@ -75,6 +76,7 @@ export function createServices() {
   const webhooks = new WebhookService(db);
   const opsToolkit = new OpsService(db, entitlements);
   const reseller = new ResellerService(db);
+  const wallet = new WalletService(db);
   // Custom-domain SSL via Cloudflare for SaaS is gated on env; branding works without it.
   const whitelabel = new WhiteLabelService(db, buildCloudflareClient(process.env));
   const embedder = openAiEmbedder(process.env.OPENAI_API_KEY ?? '');
@@ -138,6 +140,7 @@ export function createServices() {
     opsToolkit,
     reseller,
     whitelabel,
+    wallet,
     rag,
     search,
     qa,

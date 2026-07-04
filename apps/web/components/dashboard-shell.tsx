@@ -24,6 +24,7 @@ import {
   Server,
   Target,
   Users,
+  Wallet,
   Workflow,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -56,6 +57,7 @@ const NAV = [
   { href: '/dashboard/automations', label: 'Automations', icon: Workflow, exact: false },
   { href: '/dashboard/developers', label: 'Developers', icon: KeyRound, exact: false },
   { href: '/dashboard/support', label: 'Support', icon: LifeBuoy, exact: false },
+  { href: '/dashboard/wallet', label: 'Wallet', icon: Wallet, exact: false },
 ] as const;
 
 /** Reseller-operator (RESELLER_ADMIN) nav — provision + manage sub-tenants, white-label. */
