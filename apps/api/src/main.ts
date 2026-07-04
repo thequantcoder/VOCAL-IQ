@@ -46,6 +46,7 @@ import { templatesRoutes } from './templates/templates.routes';
 import { tenantRoutes } from './tenancy/tenant.routes';
 import { testsRoutes } from './tests/tests.routes';
 import { voicesRoutes } from './voices/voices.routes';
+import { walletRoutes } from './wallet/wallet.routes';
 import { webhookRoutes } from './webhooks/webhook.routes';
 import { whitelabelResolveHandler, whitelabelRoutes } from './whitelabel/whitelabel.routes';
 import { widgetRoutes } from './widget/widget.routes';
@@ -109,6 +110,7 @@ function bootstrap(): void {
   app.use('/ops', opsRoutes(s.opsToolkit, s.tenants));
   app.use('/reseller', resellerRoutes(s.reseller, s.tenants));
   app.use('/whitelabel', whitelabelRoutes(s.whitelabel, s.tenants));
+  app.use('/wallet', walletRoutes(s.wallet, s.tenants));
   // Public edge resolution: hostname → theme, unauthenticated (re-brands the sign-in page).
   app.get('/public/whitelabel', whitelabelResolveHandler(s.whitelabel));
   // Public API v1 — API-key authenticated (not session), rate-limited + metered.

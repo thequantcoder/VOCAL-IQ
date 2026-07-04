@@ -240,6 +240,7 @@ model Tenant {
   mcpServers          McpServer[]
   automations         Automation[]
   apiKeys             ApiKey[]
+  walletLedger        WalletLedger[]
 
   @@index([parentTenantId])
   @@index([type])
@@ -1006,12 +1007,33 @@ model Wallet {
   id           String   @id @default(uuid()) @db.Uuid
   tenantId     String   @unique @db.Uuid
   tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  balanceCents Int      @default(0) // prepaid credits
+  balanceCents Int      @default(0) // prepaid credits (cached; = sum of ledger entries)
   bonusCents   Int      @default(0) // bonus / perk credits (Day 49; drained first)
+  currency     String   @default("USD")
   autoRecharge Json     @default("{}")
   updatedAt    DateTime @updatedAt
 
   @@index([tenantId])
+}
+
+// Append-only wallet ledger (Day 53). Every top-up/charge/refund is an immutable entry; the
+// balance is the sum. `idempotencyKey` is unique per tenant so replaying a charge NEVER
+// double-debits (self-audit C). Integer minor units (cents) only — never floats.
+model WalletLedger {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @db.Uuid
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  amountCents    Int // positive = credit, negative = debit
+  currency       String   @default("USD")
+  reason         String
+  idempotencyKey String
+  callId         String?  @db.Uuid // soft link to the charged call
+  meta           Json     @default("{}") // pricing-chain snapshot for audit
+  createdAt      DateTime @default(now())
+
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId])
+  @@index([tenantId, createdAt])
 }
 
 // One record per metered provider call. Timescale hypertable (see RLS/extra SQL);

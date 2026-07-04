@@ -2078,3 +2078,49 @@ export function useRemoveDomain() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['domain'] }),
   });
 }
+
+// ── Wallet + margin engine (Day 53) ─────────────────────────────────────────────
+
+export interface WalletDetail {
+  balanceCents: number;
+  bonusCents: number;
+  currency: string;
+  ledgerSumCents: number;
+  reconciled: boolean;
+}
+
+export interface PeriodMargin {
+  revenueCents: number;
+  costCents: number;
+  marginCents: number;
+}
+
+export function useWalletDetail() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['wallet-detail'],
+    queryFn: () => apiFetch<WalletDetail>(getToken, '/wallet'),
+  });
+}
+
+export function useTopUp() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { amountCents: number; key: string }) =>
+      apiFetch<WalletDetail>(getToken, '/wallet/topup', {
+        method: 'POST',
+        body: JSON.stringify(vars),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['wallet-detail'] }),
+  });
+}
+
+export function useMarginReconcile(period: string) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['wallet', 'reconcile', period],
+    queryFn: () => apiFetch<PeriodMargin>(getToken, `/wallet/reconcile?period=${period}`),
+    enabled: /^\d{4}-\d{2}$/.test(period),
+  });
+}

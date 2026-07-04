@@ -46,4 +46,5 @@ export * from './squad.js';
 export * from './transcript-search.js';
 export * from './transcription.js';
 export * from './usage.js';
+export * from './wallet.js';
 export * from './voice.js';
