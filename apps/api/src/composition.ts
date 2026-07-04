@@ -1,5 +1,6 @@
 import { AgentsService } from './agents/agents.service';
 import { AnalyticsService } from './analytics/analytics.service';
+import { ApiKeyService } from './api-keys/api-key.service';
 import { AppointmentsService } from './appointments/appointments.service';
 import { AuthService } from './auth/auth.service';
 import { AutomationsService } from './automations/automations.service';
@@ -37,6 +38,7 @@ import { TenantService } from './tenancy/tenant.service';
 import { TestsService, routerGrader } from './tests/tests.service';
 import { TranscriptionService } from './transcription/transcription.service';
 import { VoicesService, elevenLabsCloner } from './voices/voices.service';
+import { WebhookService } from './webhooks/webhook.service';
 import { WidgetService } from './widget/widget.service';
 
 /**
@@ -65,6 +67,8 @@ export function createServices() {
   const cost = new CostService(db);
   const analytics = new AnalyticsService(db);
   const chat = new ChatService(db);
+  const apiKeys = new ApiKeyService(db);
+  const webhooks = new WebhookService(db);
   const embedder = openAiEmbedder(process.env.OPENAI_API_KEY ?? '');
   const rag = new RagService(db, embedder, prismaUsageSink(db));
   const search = new SearchService(db, embedder, prismaUsageSink(db));
@@ -121,6 +125,8 @@ export function createServices() {
     cost,
     analytics,
     chat,
+    apiKeys,
+    webhooks,
     rag,
     search,
     qa,

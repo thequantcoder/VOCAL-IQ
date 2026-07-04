@@ -1762,3 +1762,112 @@ export function useDeleteAutomation() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['automations'] }),
   });
 }
+
+// ── Developer platform: API keys + webhooks (Day 48) ────────────────────────────
+
+export const API_SCOPES = [
+  'agents:read',
+  'calls:read',
+  'calls:write',
+  'leads:read',
+  'campaigns:read',
+] as const;
+export type ApiScope = (typeof API_SCOPES)[number];
+
+export interface ApiKey {
+  id: string;
+  name: string;
+  prefix: string;
+  scopes: string[];
+  rateLimitPerMin: number;
+  requestCount: number;
+  lastUsedAt: string | null;
+  revoked: boolean;
+  createdAt: string;
+}
+
+export interface CreatedApiKey extends ApiKey {
+  key: string; // shown once
+}
+
+export interface Webhook {
+  id: string;
+  url: string;
+  events: string[];
+  active: boolean;
+  createdAt: string;
+}
+
+export interface CreatedWebhook extends Webhook {
+  secret: string; // shown once
+}
+
+export function useApiKeys() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['api-keys'],
+    queryFn: () => apiFetch<ApiKey[]>(getToken, '/api-keys'),
+  });
+}
+
+export function useCreateApiKey() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { name: string; scopes: ApiScope[]; rateLimitPerMin?: number }) =>
+      apiFetch<CreatedApiKey>(getToken, '/api-keys', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['api-keys'] }),
+  });
+}
+
+export function useRevokeApiKey() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<ApiKey>(getToken, `/api-keys/${id}/revoke`, { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['api-keys'] }),
+  });
+}
+
+export function useWebhooks() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['webhooks'],
+    queryFn: () => apiFetch<Webhook[]>(getToken, '/webhooks'),
+  });
+}
+
+export function useWebhookEvents() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['webhooks', 'events'],
+    queryFn: () => apiFetch<string[]>(getToken, '/webhooks/events'),
+  });
+}
+
+export function useCreateWebhook() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { url: string; events: string[] }) =>
+      apiFetch<CreatedWebhook>(getToken, '/webhooks', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['webhooks'] }),
+  });
+}
+
+export function useDeleteWebhook() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ deleted: true }>(getToken, `/webhooks/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['webhooks'] }),
+  });
+}

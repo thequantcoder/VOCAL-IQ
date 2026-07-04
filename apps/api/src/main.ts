@@ -8,6 +8,7 @@ loadDotenv({ path: resolve(process.cwd(), '../../.env') });
 
 import { agentsRoutes } from './agents/agents.routes';
 import { analyticsRoutes } from './analytics/analytics.routes';
+import { apiKeyRoutes } from './api-keys/api-key.routes';
 import { appointmentsRoutes } from './appointments/appointments.routes';
 import { authRoutes } from './auth/auth.routes';
 import { automationsRoutes } from './automations/automations.routes';
@@ -33,6 +34,7 @@ import {
   whatsappWebhookHandler,
 } from './messaging/messaging.routes';
 import { initSentry, shutdownObservability } from './observability';
+import { v1Routes } from './public/v1.routes';
 import { qaRoutes } from './qa/qa.routes';
 import { ragRoutes } from './rag/rag.routes';
 import { searchRoutes } from './search/search.routes';
@@ -42,6 +44,7 @@ import { templatesRoutes } from './templates/templates.routes';
 import { tenantRoutes } from './tenancy/tenant.routes';
 import { testsRoutes } from './tests/tests.routes';
 import { voicesRoutes } from './voices/voices.routes';
+import { webhookRoutes } from './webhooks/webhook.routes';
 import { widgetRoutes } from './widget/widget.routes';
 
 /** Validate env at boot (fail-fast), wire the Express app, and start the API. */
@@ -98,6 +101,19 @@ function bootstrap(): void {
   app.use('/qa', qaRoutes(s.qa, s.tenants));
   app.use('/mcp', mcpRoutes(s.mcp, s.tenants));
   app.use('/automations', automationsRoutes(s.automations, s.tenants));
+  app.use('/api-keys', apiKeyRoutes(s.apiKeys, s.tenants));
+  app.use('/webhooks', webhookRoutes(s.webhooks, s.tenants));
+  // Public API v1 — API-key authenticated (not session), rate-limited + metered.
+  app.use(
+    '/v1',
+    v1Routes({
+      keys: s.apiKeys,
+      agents: s.agents,
+      callsRead: s.callsRead,
+      outbound: s.outbound,
+      leads: s.leads,
+    }),
+  );
   app.use('/messaging', messagingRoutes(s.messaging, s.tenants));
   app.use('/leads', leadsRoutes(s.leads, s.tenants));
   app.use('/memory', memoryRoutes(s.memory, s.tenants));

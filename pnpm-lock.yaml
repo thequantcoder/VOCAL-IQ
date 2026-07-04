@@ -256,6 +256,24 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.20.0)(lightningcss@1.32.0)(terser@5.48.0)
 
+  packages/sdk:
+    devDependencies:
+      '@biomejs/biome':
+        specifier: ^1.9.4
+        version: 1.9.4
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.20.0
+      '@vocaliq/config':
+        specifier: workspace:*
+        version: link:../config
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.0)(lightningcss@1.32.0)(terser@5.48.0)
+
   packages/shared:
     dependencies:
       zod:

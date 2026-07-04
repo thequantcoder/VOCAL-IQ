@@ -239,6 +239,7 @@ model Tenant {
   messagingOptOuts    MessagingOptOut[]
   mcpServers          McpServer[]
   automations         Automation[]
+  apiKeys             ApiKey[]
 
   @@index([parentTenantId])
   @@index([type])
@@ -623,6 +624,27 @@ model Automation {
 
   @@index([tenantId])
   @@index([tenantId, event])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Public API keys (Day 48) — tenant-scoped, hashed, rate-limited + metered
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ApiKey {
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @db.Uuid
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name            String
+  prefix          String // display hint (e.g. "vq_live_ab12cd34"); NOT the secret
+  hashedKey       String    @unique // sha256(secret) — the plaintext is shown once, never stored
+  scopes          String[]  @default([]) // e.g. ["agents:read","calls:read"]
+  rateLimitPerMin Int       @default(60)
+  requestCount    Int       @default(0) // usage metering
+  lastUsedAt      DateTime?
+  revoked         Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+
+  @@index([tenantId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

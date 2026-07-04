@@ -16,6 +16,8 @@ declare global {
     interface Request {
       auth?: AuthClaims;
       ctx?: TenantContext;
+      /** Granted scopes when the request is authenticated by an API key (Day 48). */
+      apiScopes?: string[];
     }
   }
 }

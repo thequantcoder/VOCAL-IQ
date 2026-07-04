@@ -29,6 +29,7 @@ export * from './messaging.js';
 export * from './multilingual.js';
 export * from './persona.js';
 export * from './post-call.js';
+export * from './public-api.js';
 export * from './qa.js';
 export * from './query-keys.js';
 export * from './result.js';
