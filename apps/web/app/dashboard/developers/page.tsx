@@ -136,7 +136,10 @@ function CreateKey({ onDone }: { onDone: () => void }) {
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => navigator.clipboard?.writeText(create.data!.key)}
+                onClick={() => {
+                  const created = create.data;
+                  if (created) navigator.clipboard?.writeText(created.key);
+                }}
               >
                 <Copy size={14} />
               </Button>

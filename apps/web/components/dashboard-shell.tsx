@@ -107,7 +107,9 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           <ThemeToggle />
           <UserMenu />
         </header>
-        <main className="min-w-0 flex-1 px-6 py-8">
+        {/* `key={pathname}` remounts on navigation so the entrance replays as a page transition
+            (reduced-motion-safe — `.vq-reveal` is gated on no-preference). */}
+        <main key={pathname} className="vq-reveal min-w-0 flex-1 px-6 py-8">
           <ErrorBoundary>{children}</ErrorBoundary>
         </main>
       </div>

@@ -27,6 +27,7 @@ export * from './mcp.js';
 export * from './memory.js';
 export * from './messaging.js';
 export * from './multilingual.js';
+export * from './onboarding.js';
 export * from './ops.js';
 export * from './persona.js';
 export * from './post-call.js';

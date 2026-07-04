@@ -4,6 +4,7 @@ import { Button, Card, CardContent, CardHeader, CardTitle, Waveform } from '@voc
 import { ArrowRight, Bot, PhoneCall } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { OnboardingChecklist } from '../../components/onboarding-checklist';
 import { formatUsd } from '../../components/ui-bits';
 import { useAgents, useCalls } from '../../lib/api';
 
@@ -48,7 +49,9 @@ export default function OverviewPage() {
         </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-3">
+      <OnboardingChecklist />
+
+      <section className="vq-stagger grid gap-4 sm:grid-cols-3">
         <StatCard
           icon={<Bot size={18} />}
           label="Agents"
@@ -84,7 +87,7 @@ function StatCard({
 }) {
   return (
     <Link href={href} className="focus-visible:outline-none">
-      <Card className="transition-colors duration-[120ms] hover:border-vq-violet/50">
+      <Card className="vq-lift transition-colors duration-[120ms] hover:border-vq-violet/50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-vq-text-lo text-sm">
             {icon}
