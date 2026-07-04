@@ -2174,3 +2174,105 @@ export function useSetResellerMarkup() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['reseller'] }),
   });
 }
+
+// ── Super-admin console (Day 55) ────────────────────────────────────────────────
+
+export interface AdminTenantRow {
+  id: string;
+  name: string;
+  slug: string;
+  type: string;
+  status: string;
+  parentTenantId: string | null;
+  createdAt: string;
+}
+
+export interface PlatformOverview {
+  period: string;
+  grossRevenueCents: number;
+  providerCostCents: number;
+  totalMarginCents: number;
+  marginRate: number;
+  tenants: {
+    total: number;
+    resellers: number;
+    customers: number;
+    active: number;
+    suspended: number;
+    trial: number;
+  };
+}
+
+export interface ServiceHealth {
+  name: string;
+  status: 'ok' | 'degraded' | 'down';
+  detail: string;
+}
+
+export interface ImpersonationGrant {
+  token: string;
+  tenantId: string;
+  expiresInSeconds: number;
+}
+
+export function useAdminTenants(params: { query?: string; type?: string; status?: string }) {
+  const { getToken } = useAuth();
+  const qs = new URLSearchParams();
+  if (params.query) qs.set('query', params.query);
+  if (params.type) qs.set('type', params.type);
+  if (params.status) qs.set('status', params.status);
+  return useQuery({
+    queryKey: ['admin', 'tenants', params],
+    queryFn: () =>
+      apiFetch<{ items: AdminTenantRow[]; total: number; page: number; pageSize: number }>(
+        getToken,
+        `/admin/superadmin/tenants?${qs.toString()}`,
+      ),
+  });
+}
+
+export function useAdminOverview(period: string) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['admin', 'overview', period],
+    queryFn: () =>
+      apiFetch<PlatformOverview>(getToken, `/admin/superadmin/overview?period=${period}`),
+    enabled: /^\d{4}-\d{2}$/.test(period),
+  });
+}
+
+export function useAdminHealth() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['admin', 'health'],
+    queryFn: () =>
+      apiFetch<{ overall: string; services: ServiceHealth[] }>(
+        getToken,
+        '/admin/superadmin/health',
+      ),
+    refetchInterval: 30_000,
+  });
+}
+
+export function useSetAdminTenantStatus() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; action: 'suspend' | 'reactivate' }) =>
+      apiFetch<AdminTenantRow>(getToken, `/admin/superadmin/tenants/${vars.id}/${vars.action}`, {
+        method: 'POST',
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin'] }),
+  });
+}
+
+export function useImpersonate() {
+  const { getToken } = useAuth();
+  return useMutation({
+    mutationFn: (vars: { tenantId: string; reason: string }) =>
+      apiFetch<ImpersonationGrant>(getToken, '/admin/superadmin/impersonate', {
+        method: 'POST',
+        body: JSON.stringify(vars),
+      }),
+  });
+}

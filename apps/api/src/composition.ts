@@ -35,6 +35,7 @@ import { RouterService } from './router/router.service';
 import { SearchService } from './search/search.service';
 import { SipService } from './sip/sip.service';
 import { SquadsService } from './squads/squads.service';
+import { SuperAdminService } from './superadmin/superadmin.service';
 import { TemplatesService } from './templates/templates.service';
 import { TenantService } from './tenancy/tenant.service';
 import { TestsService, routerGrader } from './tests/tests.service';
@@ -77,6 +78,7 @@ export function createServices() {
   const opsToolkit = new OpsService(db, entitlements);
   const reseller = new ResellerService(db);
   const wallet = new WalletService(db);
+  const superAdmin = new SuperAdminService(db);
   // Custom-domain SSL via Cloudflare for SaaS is gated on env; branding works without it.
   const whitelabel = new WhiteLabelService(db, buildCloudflareClient(process.env));
   const embedder = openAiEmbedder(process.env.OPENAI_API_KEY ?? '');
@@ -141,6 +143,7 @@ export function createServices() {
     reseller,
     whitelabel,
     wallet,
+    superAdmin,
     rag,
     search,
     qa,

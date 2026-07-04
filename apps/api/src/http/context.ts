@@ -9,6 +9,8 @@ import type { TenantContext } from '../tenancy/tenant-context';
 /** Verified session claims (our own JWT; `userId` is the LOCAL User.id). */
 export interface AuthClaims {
   userId: string;
+  /** Set only on a super-admin impersonation grant — the tenant being acted upon (Day 55). */
+  actAsTenantId?: string;
 }
 
 declare global {

@@ -22,6 +22,7 @@ import {
   Plug,
   Search,
   Server,
+  Shield,
   Target,
   TrendingUp,
   Users,
@@ -70,6 +71,7 @@ const RESELLER_NAV = [
 
 /** Platform-operator (SUPER_ADMIN) nav — only shown to platform staff. */
 const SUPER_ADMIN_NAV = [
+  { href: '/dashboard/admin', label: 'Super-admin', icon: Shield, exact: true },
   { href: '/dashboard/admin/key-pool', label: 'Key pool', icon: KeyRound, exact: false },
 ] as const;
 
