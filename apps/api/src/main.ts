@@ -22,6 +22,7 @@ import { costRoutes } from './cost/cost.routes';
 import { experimentsRoutes } from './experiments/experiments.routes';
 import { flowsRoutes } from './flows/flows.routes';
 import { formsRoutes, publicFormsRoutes } from './forms/forms.routes';
+import { governanceRoutes } from './governance/governance.routes';
 import { healthRoutes } from './health.routes';
 import { errorMiddleware, notFoundMiddleware } from './http/error.middleware';
 import { integrationsRoutes } from './integrations/integrations.routes';
@@ -115,6 +116,7 @@ function bootstrap(): void {
   app.use('/admin/superadmin', superAdminRoutes(s.superAdmin, s.tenants));
   app.use('/admin/plans', planBuilderRoutes(s.planBuilder, s.tenants));
   app.use('/admin/vault', vaultRoutes(s.vault, s.routingDefaults, s.tenants));
+  app.use('/admin/governance', governanceRoutes(s.featureFlags, s.quota, s.auditLog, s.tenants));
   app.use('/whitelabel', whitelabelRoutes(s.whitelabel, s.tenants));
   app.use('/wallet', walletRoutes(s.wallet, s.tenants));
   // Public edge resolution: hostname → theme, unauthenticated (re-brands the sign-in page).

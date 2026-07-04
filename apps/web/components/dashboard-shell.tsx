@@ -9,6 +9,7 @@ import {
   CalendarCheck,
   ClipboardCheck,
   ClipboardList,
+  Flag,
   FlaskConical,
   KeyRound,
   Layers,
@@ -76,6 +77,7 @@ const SUPER_ADMIN_NAV = [
   { href: '/dashboard/admin', label: 'Super-admin', icon: Shield, exact: true },
   { href: '/dashboard/admin/vault', label: 'Key vault', icon: Shield, exact: false },
   { href: '/dashboard/admin/key-pool', label: 'Key pool', icon: KeyRound, exact: false },
+  { href: '/dashboard/admin/governance', label: 'Governance', icon: Flag, exact: false },
 ] as const;
 
 /**
