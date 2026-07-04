@@ -10,6 +10,7 @@ import {
   FlaskConical,
   KeyRound,
   LayoutDashboard,
+  LifeBuoy,
   LogOut,
   Megaphone,
   MessageSquare,
@@ -49,6 +50,7 @@ const NAV = [
   { href: '/dashboard/mcp', label: 'Tool servers', icon: Plug, exact: false },
   { href: '/dashboard/automations', label: 'Automations', icon: Workflow, exact: false },
   { href: '/dashboard/developers', label: 'Developers', icon: KeyRound, exact: false },
+  { href: '/dashboard/support', label: 'Support', icon: LifeBuoy, exact: false },
 ] as const;
 
 /** Platform-operator (SUPER_ADMIN) nav — only shown to platform staff. */

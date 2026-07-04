@@ -1631,3 +1631,30 @@ K. Build/CI: ✅ — `pnpm build` exits 0 (SDK in the graph); all gates green lo
 
 Documented public API + webhooks + TS SDK, rate-limited + metered, tests pass — DoD CONFIRMED. API-key auth (hash-only, constant-time), per-key rate limit + metering, HMAC-signed webhooks with retry/dead-letter, SSRF-safe, and tenant isolation CONFIRMED.
 Deferred (follow-up): firing webhook `deliver` from the post-call/lead events (the signer + delivery + dead-letter are ready; the emit hook rides the same gated post-call bundle); Redis-backed rate limiting + delivery queue for multi-node scale (in-memory limiter + inline retry today); generating non-TS SDK stubs from `/v1/openapi.json` (spec is served); KMS for the webhook secret + BYOK envelope (Day 57). Next: Day 49 (SaaS ops toolkit).
+
+## Day 49 — SaaS Ops Toolkit (tickets, credits, number pool/KYC, notifications, trials) — 2026-07-04 — ✅ DONE
+Model: Sonnet (⚡ SONNET). Branch `day/49-saas-ops-toolkit`. Prereq: Stripe (Day 15, gated) + number provisioning (Days 10-11) — present; no new credential. Migration `20260704220000_day49_ops_toolkit` (one additive column: `Wallet.bonusCents`; tickets/numbers/notifications reuse existing Day-04 models; trial limits live in `Tenant.settings`). Self-audit focus B + D (credits) + C (KYC).
+
+Built (DONE):
+- **db/migration**: `Wallet.bonusCents` (bonus/perk credits, distinct from prepaid `balanceCents`, drained first).
+- **shared** `ops.ts`: the pure core — **`drainCredits`** (bonus-first, never negative, reports shortfall) + `totalCredits`/`isLowBalance`; `trialLimitsSchema` + **`checkTrialLimit`** (expiry + per-resource cap); `TICKET_STATUSES`/`PRIORITIES` + **`canTransitionTicket`** (legal state machine, CLOSED terminal, RESOLVED reopenable); **`canAssignNumber`** (per-plan limit). 7 unit tests.
+- **api** `OpsService` (RLS): **tickets** (create/list/assign/setStatus with transition validation), **credits** (getWallet upsert, addCredits prepaid|bonus, `drain` bonus-first + auto low-balance notification), **number pool** (list owned+available, `assignNumber` gated by **KYC + plan `numberLimit`**, release, super-admin `setKyc`), **notifications** (list/markRead + super-admin `broadcast`), **trials** (get/set limits in tenant settings + `assertTrialAllows` — no-op unless the tenant is on TRIAL). Routes `/ops/*` (member reads; config-writer tenant mutations; SUPER_ADMIN for KYC + broadcast). Wired composition+main. 7 RLS-real integration tests.
+- **web** `/dashboard/support`: in-platform ticketing (create + priority + lifecycle transitions) + a credit-balance card (bonus/prepaid split, low-balance red). Nav link.
+
+Verification: full monorepo **typecheck 12/12**, **lint 12/12**, **build exit 0** (`/dashboard/support` emitted). Tests: shared **269** (ops 7 — bonus-first drain + shortfall, trial expiry/caps, ticket transitions incl. CLOSED-terminal, number limit), api **196** (ops 7 — ticket lifecycle + illegal transition + child-can't-see-parent, credit bonus-first + low-balance notification + no-negative shortfall, number KYC-gate then assign under plan limit + release, broadcast, trial get/set + enforcement).
+
+## Self-Audit — Day 49 (A–K)
+A. Correctness: ✅ — credit maths, trial checks, ticket transitions, number limits are pure + unit-tested; the service flows proven against real Postgres (drain persists new balances; KYC gate then assign; broadcast writes per tenant).
+B. Tenancy (focus): ✅ — tickets/credits/notifications/trials all run under `withTenant`; a child can't see a parent's ticket; the number `owned` list is explicitly tenant-filtered (the RLS-global pool is separated into `available`); broadcast is an explicit platform (owner-client) action.
+C. KYC (focus): ✅ — `assignNumber` REFUSES a number without a KYC badge (403), and enforces the plan's `numberLimit`; `setKyc` is SUPER_ADMIN-only (route-gated); numbers are validated against the tenant + the agent is RLS-checked before assignment.
+D. Credits (focus): ✅ — `drainCredits` spends bonus before prepaid, never drives a balance negative, and returns any uncovered shortfall so the caller can block/auto-recharge; dropping below the $5 threshold raises a low-balance notification; addCredits rejects non-positive amounts.
+E. Errors/obs: ✅ — Zod-validated inputs; typed NotFound/Validation/Forbidden; illegal ticket transitions rejected with a clear message; low-balance + broadcast surfaced as notifications.
+F. Performance: ✅ — indexed reads; wallet is a single upsert; drain is one transaction; broadcast is a `createMany`.
+G. Error handling: ✅ — api surfaces typed errors; web shows create/transition errors + empty/error/loading states; trial enforcement is a safe no-op off-trial.
+H. UI/a11y: ✅ — labelled ticket form + priority select, lifecycle transition buttons, wallet card (bonus/prepaid split, low-balance red), empty/error/loading states.
+I. Regression: ✅ — one additive column + new module/routes/page + wirings; existing typecheck/lint/tests green (shared 269, api 196). Scoped `biome --write` touched only Day-49 files.
+J. Quality/docs: ✅ — credit/trial/ticket logic pure + tested in shared; service reuses EntitlementsService for the number limit; explicit DTOs (a `NotificationRow` fixes a TS2742 Prisma-type leak); RLS-global-pool caveat documented in code.
+K. Build/CI: ✅ — `pnpm build` exits 0; all gates green locally.
+
+Tickets, credits, number pool/KYC, notifications, trials work, tests pass — DoD CONFIRMED. Bonus-first credit draining, KYC + plan-limit number gating, and tenant isolation CONFIRMED.
+Deferred (follow-up): auto-draining credits from the per-call cost path (the `drain` method + low-balance alert are ready; the call-end hook rides the gated post-call bundle); email/SMS/webhook notification delivery (in-app notifications land today; the channels reuse Day-44 messaging + Day-48 webhooks once wired); a super-admin number-pool + broadcast admin UI (API + roles ready; today's web covers the tenant-facing tickets + credits). Next: Day 50 (onboarding + motion polish — closes Phase 3).

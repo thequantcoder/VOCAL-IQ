@@ -27,6 +27,7 @@ import { httpMcpTransport } from './mcp/transport';
 import { MemoryService } from './memory/memory.service';
 import { MessagingService } from './messaging/messaging.service';
 import { buildSenders } from './messaging/senders';
+import { OpsService } from './ops/ops.service';
 import { QaService } from './qa/qa.service';
 import { RagService, openAiEmbedder, prismaUsageSink } from './rag/rag.service';
 import { RouterService } from './router/router.service';
@@ -69,6 +70,7 @@ export function createServices() {
   const chat = new ChatService(db);
   const apiKeys = new ApiKeyService(db);
   const webhooks = new WebhookService(db);
+  const opsToolkit = new OpsService(db, entitlements);
   const embedder = openAiEmbedder(process.env.OPENAI_API_KEY ?? '');
   const rag = new RagService(db, embedder, prismaUsageSink(db));
   const search = new SearchService(db, embedder, prismaUsageSink(db));
@@ -127,6 +129,7 @@ export function createServices() {
     chat,
     apiKeys,
     webhooks,
+    opsToolkit,
     rag,
     search,
     qa,
