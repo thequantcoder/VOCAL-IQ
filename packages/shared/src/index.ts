@@ -17,6 +17,7 @@ export * from './automation.js';
 export * from './banned-words.js';
 export * from './branding.js';
 export * from './campaign.js';
+export * from './compliance.js';
 export * from './custom-domain.js';
 export * from './chat-runtime.js';
 export * from './cost-protection.js';

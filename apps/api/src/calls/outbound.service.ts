@@ -7,9 +7,10 @@ import {
   RateLimitError,
   TERMINAL_CALL_STATUSES,
   ValidationError,
+  phoneKey,
 } from '@vocaliq/shared';
 import { z } from 'zod';
-import { PrismaService } from '../db/prisma.service';
+import type { PrismaService } from '../db/prisma.service';
 import type { Dialer } from './dialer';
 
 /** E.164: leading +, country digit 1-9, up to 15 total digits. */
@@ -101,6 +102,14 @@ export class OutboundService {
         select: { id: true },
       });
       if (dncHit) throw new ForbiddenError('Destination is on the do-not-call list');
+
+      // ── DNC suppression list (Day 60): global (platform) or per-tenant entries. RLS makes
+      // both visible under withTenant; the phone is normalized to a comparison key.
+      const suppressed = await tx.suppression.findFirst({
+        where: { phone: phoneKey(to) },
+        select: { id: true },
+      });
+      if (suppressed) throw new ForbiddenError('Destination is on the do-not-call list');
 
       // ── Concurrency cap: in-flight outbound calls for this tenant ──────────────
       const active = await tx.call.count({

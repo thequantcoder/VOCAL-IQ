@@ -15,6 +15,7 @@ import { PendingDialer } from './calls/dialer';
 import { OutboundService } from './calls/outbound.service';
 import { CampaignsService } from './campaigns/campaigns.service';
 import { ChatService } from './chat/chat.service';
+import { ComplianceService } from './compliance/compliance.service';
 import { CostService } from './cost/cost.service';
 import { buildEncryptor } from './crypto/envelope';
 import { PrismaService } from './db/prisma.service';
@@ -120,6 +121,7 @@ export function createServices() {
   const quota = new QuotaService(db, entitlements);
   const auditLog = new AuditService(db);
   const sso = new SsoService(db, buildSsoProvider(process.env));
+  const compliance = new ComplianceService(db);
   const tests = new TestsService(db, (tenantId) => routerGrader(routerSvc, tenantId));
   // QA scoring completer: route through RouterService so every eval meters cost (rule #4).
   const qa = new QaService(db, async ({ tenantId, system, user }) => {
@@ -187,6 +189,7 @@ export function createServices() {
     quota,
     auditLog,
     sso,
+    compliance,
     billingWebhook,
     processor,
     widget,

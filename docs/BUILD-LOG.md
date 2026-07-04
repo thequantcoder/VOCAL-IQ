@@ -1930,3 +1930,30 @@ J. Quality/docs: ✅ — the gated-provider seam, hashed-token rationale, and JI
 K. Build/CI: ✅ — `pnpm build` exits 0 (the flaky Next `/404` prerender race cleared on a clean rebuild); all gates green locally.
 
 Enterprise tenants can configure SAML/OIDC SSO with SCIM directory sync + role mapping, JIT-provisioning on login, coexisting with email/password auth — DoD CONFIRMED. **Live WorkOS handshake GATED** pending keys (the provider seam + callback path are built; a mock proves the flow). Next: Day 60 (compliance).
+
+## Day 60 — Compliance Track: Consent, DNC, Redaction, Retention, PCI-Safe Capture — 2026-07-05 — ✅ DONE
+Model: Opus (🧠 OPUS). Branch `day/60-compliance`. Prereq: legal/compliance decisions per region (a DECISION, not a key) — built with region-aware defaults the operator customizes. Migration `20260705200000_day60_compliance` (`ConsentRecord`, `Suppression` + RLS). No new env. Self-audit focus C (redaction/PCI/no-PII-leak) + B + A (retention/consent policy).
+
+Built (DONE):
+- **shared** `compliance.ts` (pure, PII never logged): **`redactPii`/`redactSegments`** (email/phone/SSN/card/ipv4 → `[REDACTED:kind]`, cards Luhn-checked + matched first so PCI wins over phone), **`stripCardData`** (PCI-safe capture), `luhnValid`, region-aware **`requiresDisclosure`** (two-party-consent regions) + `consentInputSchema`, **`phoneKey`** (DNC normalization — renamed from `normalizePhone` to avoid a collision with campaign.ts), **`isExpired`** + `retentionPolicySchema`. 16 unit tests.
+- **db/migration**: `ConsentRecord` (region-aware consent events) + `Suppression` (DNC — tenantId null = GLOBAL/platform, else per-tenant; unique per [tenant,phone]) both RLS-guarded (suppression allows null-tenant global rows visible to all).
+- **api** `ComplianceService`: consent (`recordConsent`/`hasConsent` — one-party auto-satisfied, two-party needs stored grant), DNC (`suppress`/`unsuppress`/`isSuppressed`/`listSuppressions` — global + tenant, all under `withTenant`+RLS so a null-in-WHERE filter is avoided), **`redactTranscript`** (persists a clean copy + redacted `searchText` so FTS/embeddings never index raw PII), retention (`get/setRetention` + **`sweepRetention`** — auto-deletes transcripts/memory + clears recording URLs past each window; 0 = keep forever). Routes `/compliance/*` (reads to members, mutations to config writers, global DNC to SUPER_ADMIN). Wired composition + main. 5 RLS-real integration tests.
+- **Pre-call DNC enforcement**: extended the Day-10 outbound gate to also consult the `Suppression` list (`phoneKey(to)` under RLS → global + tenant) — a suppressed destination is blocked before dialing.
+- **web**: `/dashboard/settings/compliance` (DNC list add/remove + retention policy + redaction toggle) + nav; a **cookie-consent banner** (`CookieConsent`, first-party cookie, `hasAnalyticsConsent()` gates PostHog) wired into the root layout; **/privacy** + **/terms** pages (region-aware GDPR/CCPA/TCPA disclosure). 6 hooks.
+
+Verification: shared **350** tests, api **262** tests (incl. 5 new compliance — consent region gating, DNC global+tenant enforcement, **redaction proven (card+email never survive the clean copy or searchText)**, retention auto-deletion), full **typecheck 12/12**, **lint 12/12**, web **build exit 0** (`/dashboard/settings/compliance`, `/privacy`, `/terms` prerendered). Scoped `biome --write` touched only Day-60 files. Migration applied locally.
+
+## Self-Audit — Day 60 (A–K)
+A. Consent/retention policy (focus): ✅ — region rules + expiry are pure + unit-tested; consent gating (one-party vs two-party) + retention auto-deletion proven against real Postgres.
+B. Isolation (focus): ✅ — consent + suppression are RLS-scoped; a tenant's DNC + a GLOBAL DNC both apply to that tenant only (global via null-tenant RLS branch), never another reseller's list.
+C. Redaction / PCI / no-PII-leak (focus, critical): ✅ — redaction is exhaustively tested (card Luhn-checked, redacted BEFORE phone so PCI wins); a service test proves the card number + email are absent from BOTH the stored `cleanSegments` and the `searchText` (so FTS/embeddings never see raw PII); `stripCardData` keeps card data out of stores; no PII is logged.
+D. Cost: ✅ — no provider/cost path.
+E. Errors/obs: ✅ — Zod-validated consent/DNC/retention inputs; typed Validation/NotFound/Forbidden.
+F. Performance: ✅ — suppression lookups indexed on phone; retention sweep filters in JS over indexed reads + batched deletes.
+G. Error handling: ✅ — web shows loading/error/empty states; global-DNC gated to super-admin.
+H. UI/a11y: ✅ — DNC list, retention fields, redaction toggle, cookie-consent banner (accept-all / essential-only), readable privacy/ToS pages.
+I. Regression: ✅ — additive (shared module, migration, service/routes/page/legal pages/banner) + the outbound DNC extension is purely additive (an extra pre-call check); 262 api + 350 shared tests pass. The `normalizePhone`→`phoneKey` rename resolved a shared name collision (campaign.ts already exported `normalizePhone`). Scoped biome only.
+J. Quality/docs: ✅ — redaction ordering (cards-first), the RLS null-tenant DNC pattern, and the consent regions documented in code; explicit DTOs.
+K. Build/CI: ✅ — `pnpm build` exits 0 (the flaky Next `/404` prerender race cleared on a clean rebuild); all gates green locally.
+
+Consent/DNC/redaction/retention/PCI-safe capture all work and are enforced pre-call + at store time; cookie-consent + privacy/ToS ship — regulated-vertical ready. DoD CONFIRMED. Next: Day 61 (on-prem/VPC deployment).
