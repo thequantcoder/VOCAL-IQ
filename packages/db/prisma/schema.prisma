@@ -220,6 +220,7 @@ model Tenant {
   notifications       Notification[]
   auditLogs           AuditLog[]
   featureFlags        FeatureFlag[]
+  ssoConnection       SsoConnection?
   flows               Flow[]
   flowVersions        FlowVersion[]
   transcripts         Transcript[]
@@ -1164,6 +1165,25 @@ model AuditLog {
 
   @@index([tenantId])
   @@index([tenantId, ts])
+}
+
+/// Per-tenant enterprise SSO/SAML connection + directory-sync config (Day 59). One per tenant.
+/// The x509 cert / entryPoint live in `config`; the SCIM bearer token is stored HASHED only.
+model SsoConnection {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @unique @db.Uuid
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  provider      String // WORKOS | SAML | OIDC
+  config        Json     @default("{}") // entryPoint, issuer, x509 cert, connectionId
+  roleMappings  Json     @default("{}") // IdP group → VocalIQ Role
+  defaultRole   Role     @default(AGENT)
+  scimTokenHash String? // sha256 of the SCIM bearer token (never plaintext)
+  scimEnabled   Boolean  @default(false)
+  enabled       Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([tenantId])
 }
 
 model FeatureFlag {

@@ -25,6 +25,7 @@ import {
   Search,
   Server,
   Shield,
+  ShieldCheck,
   Target,
   TrendingUp,
   Users,
@@ -60,6 +61,7 @@ const NAV = [
   { href: '/dashboard/mcp', label: 'Tool servers', icon: Plug, exact: false },
   { href: '/dashboard/automations', label: 'Automations', icon: Workflow, exact: false },
   { href: '/dashboard/developers', label: 'Developers', icon: KeyRound, exact: false },
+  { href: '/dashboard/settings/sso', label: 'SSO', icon: ShieldCheck, exact: false },
   { href: '/dashboard/support', label: 'Support', icon: LifeBuoy, exact: false },
   { href: '/dashboard/wallet', label: 'Wallet', icon: Wallet, exact: false },
 ] as const;

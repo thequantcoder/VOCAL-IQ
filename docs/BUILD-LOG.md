@@ -1902,3 +1902,31 @@ J. Quality/docs: ✅ — precedence + the immutability trade-off (why UPDATE-blo
 K. Build/CI: ✅ — `pnpm build` exits 0 (the flaky Next `/404 <Html>` prerender race cleared on a clean rebuild); all gates green locally.
 
 Flags/entitlements gate features by precedence; quotas enforce hard/soft with auto-suspend + notify; every privileged action is audited in a tamper-proof (append-only) log — DoD CONFIRMED. **Phase 4 (White-label & Reseller) is complete** — tag `v0.6-phase4`. Next: Phase 5 (Day 59, SSO/SAML → scale & enterprise → sellable v1.0 at Day 66).
+
+## Day 59 — Enterprise SSO/SAML + Directory Sync (SCIM) — 2026-07-04 — ✅ DONE (WorkOS gated) — opens Phase 5
+Model: Opus (🧠 OPUS). Branch `day/59-sso-saml`. Prereq: WorkOS (WORKOS_API_KEY) — **built + tested via an injected provider seam; the live WorkOS handshake is GATED** until keys are set. Migration `20260705180000_day59_sso_connection` (per-tenant `SsoConnection` + RLS). No new env required to build. Self-audit focus C (SAML validation, IdP config isolation) + B + A.
+
+🔑 ADMIN ACTION (deferred, non-blocking): to activate live SSO, set `WORKOS_API_KEY` / `WORKOS_CLIENT_ID` (or wire Clerk Enterprise). Until then config + SP metadata + SCIM directory sync work; only the interactive IdP redirect/callback is gated.
+
+Built (DONE):
+- **shared** `sso.ts` (pure): `ssoConnectionInputSchema` (SAML/OIDC/WorkOS config — URL entryPoint, issuer, optional x509), `roleMappingSchema`, **`mapScimRole`** (IdP groups → Role, highest-privilege wins), **`buildSpMetadata`** (tenant-scoped SP SAML XML), `scimUserSchema` + `scimEmail` (SCIM 2.0 parsing). 11 unit tests.
+- **db/migration**: `SsoConnection` (one per tenant — provider, config JSON, roleMappings, defaultRole, **`scimTokenHash`** [sha256, never plaintext], scimEnabled, enabled) + a `tenant_isolation` RLS policy so a tenant's IdP config is never visible cross-tenant (self-audit B/C).
+- **api** `SsoProvider` seam (`DisabledSsoProvider` fallback; WorkOS swaps in when keyed) + `SsoService`: `configure` (upsert, mints a SCIM bearer token ONCE + stores only its hash, audited), `getConnection` (masked), `metadata` (SP XML), `initiateLogin` (→ IdP URL), **`handleCallback`** (validate assertion → **JIT-provision** user + membership with the mapped role → issue a VocalIQ session token), SCIM **`scimProvision`/`scimDeprovision`** (bearer-auth per tenant via the token hash; create/update or soft-suspend membership). Coexists with self-hosted email/password auth. Routes `/admin/sso` (config), `/auth/sso/:tenantId/{metadata,login,callback}` (public), `/scim/v2/:tenantId/Users` (SCIM). Wired composition + main. 5 RLS-real integration tests (mock IdP).
+- **web** `/dashboard/settings/sso`: IdP config (provider/entryPoint/issuer), enable SSO + SCIM toggles, the one-time SCIM bearer-token reveal (shown once, stored hashed), and the SP-metadata pointer. Nav "SSO" entry. 2 hooks.
+
+Verification: shared **341** tests, api **257** tests (incl. 5 new SSO — SAML login JIT+role-mapping via a mock IdP, SCIM provision/deprovision + role mapping, bad-token rejection, per-tenant config isolation, SCIM token hashed-at-rest), full **typecheck 12/12**, **lint 12/12**, web **build exit 0** (`/dashboard/settings/sso` prerendered). Scoped `biome --write` touched only Day-59 files. Migration applied locally.
+
+## Self-Audit — Day 59 (A–K)
+A. Correctness: ✅ — role mapping / SCIM parsing / SP metadata are pure + unit-tested; the login→JIT and SCIM flows proven against real Postgres via a mock provider.
+B. Tenant isolation (focus): ✅ — `SsoConnection` is unique per tenant + RLS-guarded; a test proves two tenants read only their own config; SCIM + login are addressed per `:tenantId`.
+C. SAML validation + IdP config isolation + secrets (focus): ✅ — the SCIM bearer token is stored as a sha256 HASH only (proven: the stored value ≠ the plaintext), verified on every SCIM call; config isolation is DB-enforced; the live assertion validation is delegated to the provider seam (WorkOS) — gated, with a mock proving the JIT path.
+D. Cost: ✅ — no provider/cost path (auth infra).
+E. Errors/obs: ✅ — Zod-validated config + SCIM bodies; typed Auth/Validation/NotFound/Forbidden; disabled-provider throws a clear "SSO not configured".
+F. Performance: ✅ — connection lookups are unique-indexed; JIT is one small transaction (user upsert + membership upsert).
+G. Error handling: ✅ — bad SCIM token → AuthError (proven); disabled SSO → clear error; web surfaces config errors + the one-time token.
+H. UI/a11y: ✅ — labelled IdP form, enable/SCIM toggles, one-time token reveal with a copy hint, SP-metadata pointer.
+I. Regression: ✅ — additive (new shared module, migration, service/provider/routes/page/hooks); coexists with existing auth; 257 api + 341 shared tests pass. Scoped biome only.
+J. Quality/docs: ✅ — the gated-provider seam, hashed-token rationale, and JIT/role-mapping documented in code; explicit DTOs; the ADMIN ACTION for WorkOS logged.
+K. Build/CI: ✅ — `pnpm build` exits 0 (the flaky Next `/404` prerender race cleared on a clean rebuild); all gates green locally.
+
+Enterprise tenants can configure SAML/OIDC SSO with SCIM directory sync + role mapping, JIT-provisioning on login, coexisting with email/password auth — DoD CONFIRMED. **Live WorkOS handshake GATED** pending keys (the provider seam + callback path are built; a mock proves the flow). Next: Day 60 (compliance).
