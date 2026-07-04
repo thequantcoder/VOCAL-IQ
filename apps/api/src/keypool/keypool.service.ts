@@ -9,7 +9,8 @@ import {
   registerSuccess,
 } from '@vocaliq/shared';
 import { z } from 'zod';
-import { PrismaService } from '../db/prisma.service';
+import { type EnvelopeEncryptor, buildEncryptor } from '../crypto/envelope';
+import type { PrismaService } from '../db/prisma.service';
 
 /**
  * Platform API key-pool management + selection (Day 38, Blueprint §4.5). Managed mode can
@@ -44,17 +45,6 @@ export interface SelectedKey {
   apiKey: string;
 }
 
-function seal(apiKey: string): Uint8Array<ArrayBuffer> {
-  const encoded = new TextEncoder().encode(apiKey);
-  // Prisma Bytes = Uint8Array<ArrayBuffer>. Real envelope encryption lands with KMS (Day 57).
-  const out = new Uint8Array(new ArrayBuffer(encoded.byteLength));
-  out.set(encoded);
-  return out;
-}
-function open(bytes: Uint8Array): string {
-  return new TextDecoder().decode(bytes);
-}
-
 /** last-4 hint so the operator can identify a key without ever exposing it. */
 function last4(apiKey: string): string {
   return `••••${apiKey.slice(-4)}`;
@@ -83,7 +73,10 @@ function toEntry(row: PoolRow): KeyPoolEntry {
 }
 
 export class KeyPoolService {
-  constructor(private readonly db: PrismaService) {}
+  constructor(
+    private readonly db: PrismaService,
+    private readonly enc: EnvelopeEncryptor = buildEncryptor(),
+  ) {}
 
   /** List every key in the pool (masked) with its live ejection state. */
   async list(): Promise<KeyPoolDto[]> {
@@ -122,7 +115,7 @@ export class KeyPoolService {
     const row = (await this.db.admin.platformApiKeyPool.create({
       data: {
         provider: provider as Provider,
-        encryptedKey: seal(apiKey),
+        encryptedKey: this.enc.encrypt(apiKey),
         weight,
         label: label ?? last4(apiKey),
       },
@@ -190,7 +183,7 @@ export class KeyPoolService {
       where: { id: row.id },
       data: { lastUsedAt: new Date(now) },
     });
-    return { id: row.id, apiKey: open(row.encryptedKey) };
+    return { id: row.id, apiKey: this.enc.decrypt(row.encryptedKey) };
   }
 
   /** Record a call outcome for a pool key so failing keys are ejected + healthy ones reset. */

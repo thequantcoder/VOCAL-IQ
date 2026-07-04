@@ -47,6 +47,7 @@ import { superAdminRoutes } from './superadmin/superadmin.routes';
 import { templatesRoutes } from './templates/templates.routes';
 import { tenantRoutes } from './tenancy/tenant.routes';
 import { testsRoutes } from './tests/tests.routes';
+import { vaultRoutes } from './vault/vault.routes';
 import { voicesRoutes } from './voices/voices.routes';
 import { walletRoutes } from './wallet/wallet.routes';
 import { webhookRoutes } from './webhooks/webhook.routes';
@@ -113,6 +114,7 @@ function bootstrap(): void {
   app.use('/reseller', resellerRoutes(s.reseller, s.tenants));
   app.use('/admin/superadmin', superAdminRoutes(s.superAdmin, s.tenants));
   app.use('/admin/plans', planBuilderRoutes(s.planBuilder, s.tenants));
+  app.use('/admin/vault', vaultRoutes(s.vault, s.routingDefaults, s.tenants));
   app.use('/whitelabel', whitelabelRoutes(s.whitelabel, s.tenants));
   app.use('/wallet', walletRoutes(s.wallet, s.tenants));
   // Public edge resolution: hostname → theme, unauthenticated (re-brands the sign-in page).

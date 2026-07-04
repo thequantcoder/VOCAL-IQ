@@ -148,10 +148,16 @@ const TOOLS = [
     hint: 'No-code plan builder',
   },
   {
+    href: '/dashboard/admin/vault',
+    label: 'Key vault',
+    icon: KeyRound,
+    hint: 'Encrypted provider keys',
+  },
+  {
     href: '/dashboard/admin/key-pool',
     label: 'Key pool',
     icon: KeyRound,
-    hint: 'Shared provider keys',
+    hint: 'Load-balanced keys',
   },
 ] as const;
 
