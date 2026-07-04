@@ -2,6 +2,8 @@ import { AgentsService } from './agents/agents.service';
 import { AnalyticsService } from './analytics/analytics.service';
 import { AppointmentsService } from './appointments/appointments.service';
 import { AuthService } from './auth/auth.service';
+import { AutomationsService } from './automations/automations.service';
+import { buildActionExecutors } from './automations/executors';
 import { EntitlementsService } from './billing/entitlements.service';
 import { PlansService } from './billing/plans.service';
 import { PendingBillingProcessor } from './billing/processor';
@@ -75,6 +77,11 @@ export function createServices() {
   const mcp = new McpService(db, httpMcpTransport);
   // Messaging senders are built only for channels whose credentials are set (gated).
   const messaging = new MessagingService(db, buildSenders(process.env));
+  // Cross-channel automations reuse the messaging + integration subsystems as action executors.
+  const automations = new AutomationsService(
+    db,
+    buildActionExecutors({ db, messaging, integrations }),
+  );
   const sip = new SipService(db, entitlements);
   const experiments = new ExperimentsService(db);
   const squads = new SquadsService(db);
@@ -124,6 +131,7 @@ export function createServices() {
     memory,
     mcp,
     messaging,
+    automations,
     sip,
     experiments,
     squads,

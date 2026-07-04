@@ -10,6 +10,7 @@ import { agentsRoutes } from './agents/agents.routes';
 import { analyticsRoutes } from './analytics/analytics.routes';
 import { appointmentsRoutes } from './appointments/appointments.routes';
 import { authRoutes } from './auth/auth.routes';
+import { automationsRoutes } from './automations/automations.routes';
 import { billingRoutes, billingWebhookHandler } from './billing/billing.routes';
 import { callsRoutes } from './calls/calls.routes';
 import { campaignsRoutes } from './campaigns/campaigns.routes';
@@ -96,6 +97,7 @@ function bootstrap(): void {
   app.use('/analytics', analyticsRoutes(s.analytics, s.tenants));
   app.use('/qa', qaRoutes(s.qa, s.tenants));
   app.use('/mcp', mcpRoutes(s.mcp, s.tenants));
+  app.use('/automations', automationsRoutes(s.automations, s.tenants));
   app.use('/messaging', messagingRoutes(s.messaging, s.tenants));
   app.use('/leads', leadsRoutes(s.leads, s.tenants));
   app.use('/memory', memoryRoutes(s.memory, s.tenants));

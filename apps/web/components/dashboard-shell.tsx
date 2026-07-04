@@ -20,6 +20,7 @@ import {
   Server,
   Target,
   Users,
+  Workflow,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -46,6 +47,7 @@ const NAV = [
   { href: '/dashboard/appointments', label: 'Appointments', icon: CalendarCheck, exact: false },
   { href: '/dashboard/integrations', label: 'Integrations', icon: Plug, exact: false },
   { href: '/dashboard/mcp', label: 'Tool servers', icon: Plug, exact: false },
+  { href: '/dashboard/automations', label: 'Automations', icon: Workflow, exact: false },
 ] as const;
 
 /** Platform-operator (SUPER_ADMIN) nav — only shown to platform staff. */

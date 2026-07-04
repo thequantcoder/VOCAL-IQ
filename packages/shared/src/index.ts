@@ -11,6 +11,7 @@ export * from './experiment.js';
 export * from './agent-templates.js';
 export * from './analytics.js';
 export * from './appointment.js';
+export * from './automation.js';
 export * from './banned-words.js';
 export * from './campaign.js';
 export * from './chat-runtime.js';

@@ -1571,3 +1571,30 @@ K. Build/CI: ✅ — `pnpm build` exits 0; all gates green locally.
 
 MCP/tool servers connectable with trust context + timeouts, audited, tests pass — DoD CONFIRMED. SSRF + trust scoping + output vetting + tenant isolation CONFIRMED.
 Deferred (follow-up): exposing `toolsForAgent` into the live LLM loop as callable functions (the voice loop is the gated live bundle; the api + trust-filtered descriptors are ready); DNS-rebinding hardening + egress pinning at the transport layer (the hostname SSRF guard is defence-in-depth today); SSE transport body (HTTP JSON-RPC implemented). Next: Day 47 (marketplace + automations).
+
+## Day 47 — Integrations Marketplace + Cross-Channel Automations — 2026-07-04 — ✅ DONE
+Model: Sonnet (⚡ SONNET). Branch `day/47-marketplace-automations`. Prereq: Day 40 integration framework — done; no new credential. Migration `20260704180000_day47_automations` (one tenant table + RLS; action-run auditing reuses AuditLog). Self-audit focus C (creds) + B + A. Marketplace: the Day-40 `/dashboard/integrations` catalogue already browses/enables connectors (HubSpot live; Salesforce/Zendesk/Zapier framework-ready) — this day adds the **cross-channel automation engine** on top.
+
+Built (DONE):
+- **db/migration**: `Automation` (tenant-scoped: `event`, `filters` JSON, ordered `actions` JSON, active). RLS-protected (Day-04 shape).
+- **shared** `automation.ts`: `automationTriggerSchema` (event `call_ended`/`disposition_set`/`lead_status_changed` + disposition/leadStatus/agentId filters), `automationActionSchema` (discriminated union: `send_message`|`crm_sync`|`webhook`|`task`|`notify`), `automationInputSchema` (1–10 actions), **`matchesTrigger`** (event + ANDed filters, unset = wildcard), `actionLabel`. 7 unit tests.
+- **api** `automations/`: **`AutomationsService`** (RLS): CRUD + toggle, and **`dispatch(event)`** — match active automations (pure `matchesTrigger`) → run each action **in order, best-effort** (one failing action never stops the chain or another automation) → **audit every action** (AuditLog `automation.action` with status+detail). Executors are INJECTED; **`buildActionExecutors`** wires them onto existing safe subsystems: `send_message`→MessagingService (opt-out-checked + metered, Day 44), `crm_sync`→IntegrationsService.syncCall (Day 40), `webhook`→SSRF-guarded (`checkPublicHttpUrl`, Day 46) timeout-bounded POST, `task`/`notify`→Notification rows. Routes `/automations` CRUD + toggle + `/dispatch` (config writers). Wired composition+main. 4 RLS-real integration tests.
+- **web** `/dashboard/automations`: a trigger→actions builder (event + disposition filter; add action rows for each type) + a list showing the trigger chip → action pills with an active toggle + delete. Nav link.
+
+Verification: full monorepo **typecheck 11/11**, **lint 11/11**, **build exit 0** (`/dashboard/automations` emitted). Tests: shared **259** (automation 7 — schema, trigger match incl. filter AND + wildcard + event mismatch, action labels), api **180** (automations 4 — CRUD+RLS, **multi-step best-effort dispatch with a mid-chain error that doesn't stop later actions + every action audited**, non-matching filter no-op, **child tenant's dispatch never runs a parent's automation**).
+
+## Self-Audit — Day 47 (A–K)
+A. Correctness (focus): ✅ — `matchesTrigger` pure + unit-tested (event + ANDed filters); the dispatch chain (match → ordered best-effort actions → audit) proven against real Postgres with fake executors, including a mid-chain failure that still runs the following action.
+B. Tenancy (focus): ✅ — CRUD + the dispatch candidate query all run under `withTenant`; Automation is RLS-protected; a test proves a child can't list a parent's automation and a child's dispatch only ever runs its own automations.
+C. Creds (focus): ✅ — automations hold NO secrets; action executors reuse subsystems that already handle creds safely (messaging opt-out + sealed integration tokens); the `webhook` action is SSRF-guarded (reuses the Day-46 `checkPublicHttpUrl`) + timeout-bounded; no new secret surface.
+D. Cost: ✅ — a `send_message` action meters per-message cost via MessagingService (Day 44); no unmetered provider path added; webhook/task/notify are the tenant's own side-effects.
+E. Errors/obs: ✅ — Zod-validated trigger + actions (1–10, valid webhook URL); typed NotFound on toggle/delete; dispatch is best-effort per action with a typed outcome; every action writes an AuditLog row (status + detail) — full observability of what fired.
+F. Performance: ✅ — dispatch is one indexed read (`tenantId,event`) + in-memory match; actions are bounded (≤10); no N+1.
+G. Error handling: ✅ — a failing executor is caught → `error` outcome, chain continues; web shows create/toggle errors; empty/error/loading states.
+H. UI/a11y: ✅ — labelled event/filter selects + per-action inputs, action-type add buttons, trigger→action visual chain, active toggle, empty/error/loading states.
+I. Regression: ✅ — additive migration + new module/routes/page + relation + wirings; existing typecheck/lint/tests green (shared 259, api 180). Scoped `biome --write` touched only Day-47 files.
+J. Quality/docs: ✅ — trigger/match logic pure + tested in shared; executors injected + decoupled (each maps to an existing safe subsystem); explicit DTOs; best-effort + audit documented.
+K. Build/CI: ✅ — `pnpm build` exits 0; all gates green locally.
+
+Marketplace (Day-40 connector catalogue) + multi-step cross-channel automations, tests pass — DoD CONFIRMED. Best-effort chains + per-action audit + tenant isolation + SSRF-safe webhooks CONFIRMED.
+Deferred (follow-up): auto-calling `dispatch` from the post-call bundle on call-end / from lead-status changes (the `/dispatch` route + engine are ready; the live-loop hook is the same gated bundle as post-call intel/QA); adding Cal.com/Make to the connector catalogue (needs `IntegrationType` enum values — deferred to avoid a mid-day enum `ALTER`); a visual multi-branch automation canvas (today's ordered-actions model covers the DoD). Next: Day 48 (public API + SDKs).

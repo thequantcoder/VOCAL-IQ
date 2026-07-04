@@ -238,6 +238,7 @@ model Tenant {
   messages            Message[]
   messagingOptOuts    MessagingOptOut[]
   mcpServers          McpServer[]
+  automations         Automation[]
 
   @@index([parentTenantId])
   @@index([type])
@@ -602,6 +603,26 @@ model McpServer {
 
   @@index([tenantId])
   @@index([agentId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Cross-channel automations (Day 47) — trigger → multi-step actions
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Automation {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name      String
+  event     String // call_ended | disposition_set | lead_status_changed
+  filters   Json     @default("{}") // { disposition?, leadStatus?, agentId? }
+  actions   Json     @default("[]") // [{ type, config }] — send_message | crm_sync | webhook | task | notify
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, event])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

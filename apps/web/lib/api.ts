@@ -1686,3 +1686,79 @@ export function useDiscoverMcpTools() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['mcp'] }),
   });
 }
+
+// ── Automations (Day 47) ───────────────────────────────────────────────────────
+
+export type AutomationEventType = 'call_ended' | 'disposition_set' | 'lead_status_changed';
+export type ActionType = 'send_message' | 'crm_sync' | 'webhook' | 'task' | 'notify';
+
+export type AutomationAction =
+  | { type: 'send_message'; channel: 'WHATSAPP' | 'SMS'; templateId?: string; body?: string }
+  | { type: 'crm_sync' }
+  | { type: 'webhook'; url: string }
+  | { type: 'task'; title: string }
+  | { type: 'notify'; message: string };
+
+export interface Automation {
+  id: string;
+  name: string;
+  event: string;
+  filters: { disposition?: string; leadStatus?: string; agentId?: string };
+  actions: AutomationAction[];
+  active: boolean;
+  updatedAt: string;
+}
+
+export interface AutomationInput {
+  name: string;
+  trigger: {
+    event: AutomationEventType;
+    filters?: { disposition?: string; leadStatus?: string; agentId?: string };
+  };
+  actions: AutomationAction[];
+  active: boolean;
+}
+
+export function useAutomations() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['automations'],
+    queryFn: () => apiFetch<Automation[]>(getToken, '/automations'),
+  });
+}
+
+export function useCreateAutomation() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: AutomationInput) =>
+      apiFetch<Automation>(getToken, '/automations', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['automations'] }),
+  });
+}
+
+export function useSetAutomationActive() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; active: boolean }) =>
+      apiFetch<Automation>(getToken, `/automations/${vars.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ active: vars.active }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['automations'] }),
+  });
+}
+
+export function useDeleteAutomation() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ deleted: true }>(getToken, `/automations/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['automations'] }),
+  });
+}
