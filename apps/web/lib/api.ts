@@ -2124,3 +2124,53 @@ export function useMarginReconcile(period: string) {
     enabled: /^\d{4}-\d{2}$/.test(period),
   });
 }
+
+// ── Reseller portal dashboards + markup (Day 54) ────────────────────────────────
+
+export interface ResellerClientMargin {
+  childTenantId: string;
+  name?: string;
+  revenueCents: number;
+  costCents: number;
+  marginCents: number;
+}
+
+export interface ResellerOverview {
+  period: string;
+  totalRevenueCents: number;
+  totalCostCents: number;
+  totalMarginCents: number;
+  marginRate: number;
+  clientCount: number;
+  topClients: ResellerClientMargin[];
+}
+
+export function useResellerOverview(period: string) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['reseller', 'overview', period],
+    queryFn: () => apiFetch<ResellerOverview>(getToken, `/reseller/overview?period=${period}`),
+    enabled: /^\d{4}-\d{2}$/.test(period),
+  });
+}
+
+export function useResellerMarkup() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['reseller', 'markup'],
+    queryFn: () => apiFetch<{ markupBps: number }>(getToken, '/reseller/markup'),
+  });
+}
+
+export function useSetResellerMarkup() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (markupBps: number) =>
+      apiFetch<{ markupBps: number }>(getToken, '/reseller/markup', {
+        method: 'PUT',
+        body: JSON.stringify({ markupBps }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['reseller'] }),
+  });
+}

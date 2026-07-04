@@ -3,10 +3,12 @@ import {
   ForbiddenError,
   MembershipStatus,
   NotFoundError,
+  type ResellerOverview,
   Role,
   type SubTenantInput,
   TenantType,
   ValidationError,
+  aggregateResellerOverview,
   descendantIds,
 } from '@vocaliq/shared';
 import type { PrismaService } from '../db/prisma.service';
@@ -158,6 +160,62 @@ export class ResellerService {
       const res = await tx.tenant.updateMany({ where: { id: { in: ids } }, data: { status } });
       return { affected: res.count, status };
     });
+  }
+
+  // ── Portal dashboards + markup (Day 54) ────────────────────────────────────────
+
+  /**
+   * The reseller's portal overview for a period: revenue, cost, margin, and top clients — rolled
+   * up from `ResellerMargin` scoped to THIS reseller (RLS: a sibling reseller's rows are invisible,
+   * self-audit B). Client names are joined from the reseller's own subtree. Ties out to the
+   * money engine (self-audit D — the pure aggregation is shared + tested).
+   */
+  async overview(resellerId: string, period: string): Promise<ResellerOverview> {
+    return this.db.withTenant(resellerId, async (tx) => {
+      const margins = await tx.resellerMargin.findMany({
+        where: { resellerTenantId: resellerId, period },
+        select: { childTenantId: true, revenue: true, cost: true },
+      });
+      // Names for the clients that appear this period (RLS-scoped to the reseller's subtree).
+      const childIds = [...new Set(margins.map((m) => m.childTenantId))];
+      const children = childIds.length
+        ? await tx.tenant.findMany({
+            where: { id: { in: childIds } },
+            select: { id: true, name: true },
+          })
+        : [];
+      const nameOf = new Map(children.map((c) => [c.id, c.name]));
+
+      const rows = margins.map((m) => ({
+        childTenantId: m.childTenantId,
+        ...(nameOf.get(m.childTenantId) ? { name: nameOf.get(m.childTenantId) as string } : {}),
+        revenueCents: m.revenue,
+        costCents: m.cost,
+        marginCents: m.revenue - m.cost,
+      }));
+      return aggregateResellerOverview(period, rows);
+    });
+  }
+
+  /** The reseller's default retail markup (basis points) applied to its customers' usage. */
+  async getMarkupBps(resellerId: string): Promise<number> {
+    const t = await this.db.withTenant(resellerId, (tx) =>
+      tx.tenant.findFirst({ where: { id: resellerId }, select: { settings: true } }),
+    );
+    const bps = (t?.settings as { markupBps?: number } | null)?.markupBps;
+    return typeof bps === 'number' && bps >= 0 ? bps : 0;
+  }
+
+  async setMarkupBps(resellerId: string, markupBps: number): Promise<{ markupBps: number }> {
+    await this.assertReseller(resellerId);
+    const t = await this.db.withTenant(resellerId, (tx) =>
+      tx.tenant.findFirst({ where: { id: resellerId }, select: { settings: true } }),
+    );
+    const settings = { ...((t?.settings as object) ?? {}), markupBps };
+    await this.db.withTenant(resellerId, (tx) =>
+      tx.tenant.update({ where: { id: resellerId }, data: { settings: settings as object } }),
+    );
+    return { markupBps };
   }
 }
 

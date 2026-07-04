@@ -23,6 +23,7 @@ import {
   Search,
   Server,
   Target,
+  TrendingUp,
   Users,
   Wallet,
   Workflow,
@@ -62,7 +63,8 @@ const NAV = [
 
 /** Reseller-operator (RESELLER_ADMIN) nav — provision + manage sub-tenants, white-label. */
 const RESELLER_NAV = [
-  { href: '/dashboard/reseller', label: 'Sub-tenants', icon: Building2, exact: false },
+  { href: '/dashboard/reseller/dashboard', label: 'Revenue', icon: TrendingUp, exact: false },
+  { href: '/dashboard/reseller', label: 'Sub-tenants', icon: Building2, exact: true },
   { href: '/dashboard/branding', label: 'White-label', icon: Palette, exact: false },
 ] as const;
 

@@ -37,6 +37,7 @@ export * from './public-api.js';
 export * from './qa.js';
 export * from './query-keys.js';
 export * from './reseller.js';
+export * from './reseller-dashboard.js';
 export * from './result.js';
 export * from './scenario.js';
 export * from './schemas.js';
