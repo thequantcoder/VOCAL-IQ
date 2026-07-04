@@ -1518,3 +1518,29 @@ WhatsApp/SMS follow-ups + blended campaigns, opt-out + cost handled, tests pass 
 Deferred (gated on creds): live WhatsApp/Twilio send + real inbound/status webhooks (adapters + verified handlers are ready — set the keys to activate); auto-triggering `blendedFollowUp` from the campaign scheduler on a call's no-answer (same live-loop hook deferral); unified `UsageRecord` messaging capability. Next: Day 45 (multimodality).
 
 🔑 To go live later, set in root `.env`: WhatsApp — `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET`; Twilio SMS — `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_FROM`; plus `PUBLIC_API_URL` (webhook signature base). Then point Twilio/Meta webhooks at `/public/messaging/{twilio,whatsapp}/<tenantId>`.
+
+## Day 45 — Multimodality (one agent: voice + text + chat) — 2026-07-04 — ✅ DONE
+Model: Opus (🧠 OPUS). Branch `day/45-multimodality`. Prereq: Days 9 (live loop) + 16 (web widget) + 44 (messaging) — all done; no new credential, no migration. Self-audit focus A (consistency) + B + D.
+
+Built (DONE):
+- **shared** `chat-runtime.ts`: a channel-agnostic, **resumable, turn-based** runtime over a compiled flow (Day 22) — `ChatChannel` (VOICE/CHAT/WHATSAPP/SMS), serialisable `ChatState`, **`startChat`** (runs opening turns to the first user prompt), **`chatTurn`** (applies one user message at the awaiting Listen → captures + intent → advances → runs to the next prompt/end), **`renderForChannel`** (voice keeps SSML; text strips it + collapses whitespace), and channel-aware node behaviour (a TRANSFER/SQUAD_HANDOFF surfaces a hand-off line on text, stays silent on voice). Reuses the compiler's `nextNode`; deterministic + pure + step-capped. The flow logic (nodes, decisions, captures) is identical across channels — **consistency by construction**. 7 unit tests.
+- **api** `ChatService` (RLS): loads + compiles the agent's PUBLISHED flow, `start`/`turn` drive the shared runtime. **Stateless** — the client round-trips `ChatState` each turn (no server session store), no LLM on this path (no metered cost). Routes `/agents/:agentId/chat/{start,turn}` (Zod-validated, mergeParams). Wired composition+main. 4 RLS-real integration tests.
+- **web** `/dashboard/agents/[id]/chat`: a channel-selectable chat tester (Web chat / WhatsApp / SMS / raw Voice) that converses with the agent's published flow — bubbles, outcome, restart. "Chat" link added on the agents list. Same runtime the voice loop + WhatsApp inbound (Day 44) feed into.
+
+Verification: full monorepo **typecheck 11/11**, **lint 11/11**, **build exit 0** (`/dashboard/agents/[id]/chat` emitted). Tests: shared **240** (chat-runtime 7 — opening/awaiting, **same flow → same outcome+captures on voice/chat/whatsapp**, SSML kept-vs-stripped, else-branch routing, done no-op, transfer channel-awareness), api **168** (chat 4 — cross-channel consistency, rendering, requires-published-flow, **child can't chat with parent's agent**).
+
+## Self-Audit — Day 45 (A–K)
+A. Consistency (focus): ✅ — the SAME compiled flow drives every channel through the SAME `nextNode` traversal + captures; a test asserts voice/chat/whatsapp all reach outcome `booked` with identical captures, differing ONLY in rendering (SSML kept on voice, stripped on text). No channel-specific branching in the flow logic.
+B. Tenancy (focus): ✅ — flow load runs under `withTenant`; a child tenant chatting with a parent's agent gets NotFound (RLS), proven against real Postgres.
+C. Security: ✅ — chat endpoints are auth+tenant gated; the round-tripped `ChatState` is Zod-validated on `/turn` (activeNode/captured/flags typed) so a client can't inject arbitrary state shapes; no secrets touched.
+D. Cost (focus): ✅ — this runtime is pure flow traversal (no LLM), so the text/chat path adds no provider cost; `generated` Say nodes render as a stub here (the live LLM turn + its metering ride the voice/host loop, unchanged).
+E. Errors/obs: ✅ — typed NotFound (no agent) / Validation (no published flow, uncompilable flow, empty message, bad state); step cap guarantees termination on cyclic graphs.
+F. Performance: ✅ — stateless; each turn is one indexed flow-version read + an in-memory traversal (≤200 steps); no session store to scale.
+G. Error handling: ✅ — api surfaces typed errors; web shows the error + disables input when done/awaiting; restart re-seeds cleanly.
+H. UI/a11y: ✅ — labelled channel select + message input, keyboard-submittable form, disabled states, agent/user bubbles, outcome line.
+I. Regression: ✅ — additive (new shared module + api module + web page + wirings); no schema/migration; existing typecheck/lint/tests green (shared 240, api 168). Scoped `biome --write` touched only Day-45 files.
+J. Quality/docs: ✅ — runtime pure + web-safe in shared, documented as the single source of conversational truth; api stateless + RLS; explicit DTOs; the voice loop / WhatsApp inbound are noted as hosts of the same runtime.
+K. Build/CI: ✅ — `pnpm build` exits 0; all gates green locally.
+
+One agent definition serves voice + text + chat consistently, tests pass — DoD CONFIRMED. Cross-channel consistency + tenant isolation CONFIRMED.
+Deferred (gated / follow-up): wiring the Python voice loop + the Day-44 WhatsApp inbound to call this shared runtime for their turns (the runtime + api are ready; the voice loop is the gated live bundle); seeding cross-channel memory (AgentMemory, Day 34) into `startChat`'s `context` for a known contact (the hook exists — `context` param). Next: Day 46 (MCP + tool servers).

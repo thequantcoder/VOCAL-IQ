@@ -66,6 +66,11 @@ export default function AgentsPage() {
                       Guards
                     </Button>
                   </Link>
+                  <Link href={`/dashboard/agents/${agent.id}/chat`}>
+                    <Button variant="ghost" size="sm">
+                      Chat
+                    </Button>
+                  </Link>
                   <Link href={`/dashboard/agents/${agent.id}/builder`}>
                     <Button variant="secondary" size="sm">
                       Build

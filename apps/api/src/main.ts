@@ -13,6 +13,7 @@ import { authRoutes } from './auth/auth.routes';
 import { billingRoutes, billingWebhookHandler } from './billing/billing.routes';
 import { callsRoutes } from './calls/calls.routes';
 import { campaignsRoutes } from './campaigns/campaigns.routes';
+import { chatRoutes } from './chat/chat.routes';
 import { createServices } from './composition';
 import { costRoutes } from './cost/cost.routes';
 import { experimentsRoutes } from './experiments/experiments.routes';
@@ -82,6 +83,7 @@ function bootstrap(): void {
   app.use('/agents', agentsRoutes(s.agents, s.routerSvc, s.db, s.tenants));
   app.use('/agents/:agentId/flow', flowsRoutes(s.flows, s.tenants));
   app.use('/agents/:agentId/tests', testsRoutes(s.tests, s.tenants));
+  app.use('/agents/:agentId/chat', chatRoutes(s.chat, s.tenants));
   app.use('/appointments', appointmentsRoutes(s.appointments, s.tenants));
   app.use('/templates', templatesRoutes(s.templates, s.tenants));
   app.use('/calls', callsRoutes(s.outbound, s.callsRead, s.tenants));
