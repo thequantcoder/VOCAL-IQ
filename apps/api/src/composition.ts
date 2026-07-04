@@ -40,6 +40,8 @@ import { RouterService } from './router/router.service';
 import { SearchService } from './search/search.service';
 import { SipService } from './sip/sip.service';
 import { SquadsService } from './squads/squads.service';
+import { buildSsoProvider } from './sso/sso-provider';
+import { SsoService } from './sso/sso.service';
 import { SuperAdminService } from './superadmin/superadmin.service';
 import { TemplatesService } from './templates/templates.service';
 import { TenantService } from './tenancy/tenant.service';
@@ -117,6 +119,7 @@ export function createServices() {
   const featureFlags = new FeatureFlagsService(db, entitlements);
   const quota = new QuotaService(db, entitlements);
   const auditLog = new AuditService(db);
+  const sso = new SsoService(db, buildSsoProvider(process.env));
   const tests = new TestsService(db, (tenantId) => routerGrader(routerSvc, tenantId));
   // QA scoring completer: route through RouterService so every eval meters cost (rule #4).
   const qa = new QaService(db, async ({ tenantId, system, user }) => {
@@ -183,6 +186,7 @@ export function createServices() {
     featureFlags,
     quota,
     auditLog,
+    sso,
     billingWebhook,
     processor,
     widget,

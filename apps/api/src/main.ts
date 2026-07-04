@@ -44,6 +44,7 @@ import { resellerRoutes } from './reseller/reseller.routes';
 import { searchRoutes } from './search/search.routes';
 import { sipRoutes } from './sip/sip.routes';
 import { squadsRoutes } from './squads/squads.routes';
+import { scimRoutes, ssoAdminRoutes, ssoPublicRoutes } from './sso/sso.routes';
 import { superAdminRoutes } from './superadmin/superadmin.routes';
 import { templatesRoutes } from './templates/templates.routes';
 import { tenantRoutes } from './tenancy/tenant.routes';
@@ -114,6 +115,9 @@ function bootstrap(): void {
   app.use('/ops', opsRoutes(s.opsToolkit, s.tenants));
   app.use('/reseller', resellerRoutes(s.reseller, s.tenants));
   app.use('/admin/superadmin', superAdminRoutes(s.superAdmin, s.tenants));
+  app.use('/admin/sso', ssoAdminRoutes(s.sso, s.tenants));
+  app.use('/auth/sso', ssoPublicRoutes(s.sso));
+  app.use('/scim/v2', scimRoutes(s.sso));
   app.use('/admin/plans', planBuilderRoutes(s.planBuilder, s.tenants));
   app.use('/admin/vault', vaultRoutes(s.vault, s.routingDefaults, s.tenants));
   app.use('/admin/governance', governanceRoutes(s.featureFlags, s.quota, s.auditLog, s.tenants));

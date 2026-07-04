@@ -48,6 +48,7 @@ export * from './schemas.js';
 export * from './simulator.js';
 export * from './sip.js';
 export * from './squad.js';
+export * from './sso.js';
 export * from './superadmin.js';
 export * from './transcript-search.js';
 export * from './transcription.js';

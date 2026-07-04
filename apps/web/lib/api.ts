@@ -2536,3 +2536,50 @@ export function useAuditLog(action?: string) {
     queryFn: () => apiFetch<AuditRow[]>(getToken, `/admin/governance/audit${qs}`),
   });
 }
+
+// ── Enterprise SSO/SAML (Day 59) ────────────────────────────────────────────────
+
+export interface SsoConnection {
+  tenantId: string;
+  provider: string;
+  enabled: boolean;
+  scimEnabled: boolean;
+  defaultRole: string;
+  roleMappings: Record<string, string>;
+  entryPoint: string;
+  issuer: string;
+}
+
+export interface SsoConfigureBody {
+  config: {
+    provider: 'WORKOS' | 'SAML' | 'OIDC';
+    entryPoint: string;
+    issuer: string;
+    x509cert?: string;
+  };
+  roleMappings?: Record<string, string>;
+  defaultRole?: string;
+  scimEnabled?: boolean;
+  enabled?: boolean;
+}
+
+export function useSsoConnection() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['sso', 'connection'],
+    queryFn: () => apiFetch<SsoConnection | null>(getToken, '/admin/sso'),
+  });
+}
+
+export function useConfigureSso() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: SsoConfigureBody) =>
+      apiFetch<{ connection: SsoConnection; scimToken?: string }>(getToken, '/admin/sso', {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sso'] }),
+  });
+}
