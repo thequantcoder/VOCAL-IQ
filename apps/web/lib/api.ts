@@ -1564,3 +1564,53 @@ export function useSendMessage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['messaging', 'messages'] }),
   });
 }
+
+// ── Multimodal chat (Day 45) ───────────────────────────────────────────────────
+
+export type ChatChannel = 'VOICE' | 'CHAT' | 'WHATSAPP' | 'SMS';
+
+export interface ChatMessage {
+  role: 'agent' | 'user';
+  text: string;
+}
+
+export interface ChatState {
+  channel: ChatChannel;
+  activeNode: string;
+  captured: Record<string, string>;
+  lastIntent?: string;
+  turns: number;
+  awaitingInput: boolean;
+  done: boolean;
+  outcome?: string;
+}
+
+export interface ChatAdvance {
+  state: ChatState;
+  messages: ChatMessage[];
+  awaitingInput: boolean;
+  done: boolean;
+  outcome?: string;
+}
+
+export function useStartChat(agentId: string) {
+  const { getToken } = useAuth();
+  return useMutation({
+    mutationFn: (channel: ChatChannel) =>
+      apiFetch<ChatAdvance>(getToken, `/agents/${agentId}/chat/start`, {
+        method: 'POST',
+        body: JSON.stringify({ channel }),
+      }),
+  });
+}
+
+export function useChatTurn(agentId: string) {
+  const { getToken } = useAuth();
+  return useMutation({
+    mutationFn: (vars: { state: ChatState; message: string; intent?: string }) =>
+      apiFetch<ChatAdvance>(getToken, `/agents/${agentId}/chat/turn`, {
+        method: 'POST',
+        body: JSON.stringify(vars),
+      }),
+  });
+}

@@ -10,6 +10,7 @@ import { CallsReadService } from './calls/calls-read.service';
 import { PendingDialer } from './calls/dialer';
 import { OutboundService } from './calls/outbound.service';
 import { CampaignsService } from './campaigns/campaigns.service';
+import { ChatService } from './chat/chat.service';
 import { CostService } from './cost/cost.service';
 import { PrismaService } from './db/prisma.service';
 import { ExperimentsService } from './experiments/experiments.service';
@@ -59,6 +60,7 @@ export function createServices() {
 
   const cost = new CostService(db);
   const analytics = new AnalyticsService(db);
+  const chat = new ChatService(db);
   const embedder = openAiEmbedder(process.env.OPENAI_API_KEY ?? '');
   const rag = new RagService(db, embedder, prismaUsageSink(db));
   const search = new SearchService(db, embedder, prismaUsageSink(db));
@@ -108,6 +110,7 @@ export function createServices() {
     outbound,
     cost,
     analytics,
+    chat,
     rag,
     search,
     qa,

@@ -13,6 +13,7 @@ export * from './analytics.js';
 export * from './appointment.js';
 export * from './banned-words.js';
 export * from './campaign.js';
+export * from './chat-runtime.js';
 export * from './cost-protection.js';
 export * from './flow-compiler.js';
 export * from './flow-graph.js';
