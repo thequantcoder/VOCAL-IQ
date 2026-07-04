@@ -32,6 +32,7 @@ export * from './multilingual.js';
 export * from './onboarding.js';
 export * from './ops.js';
 export * from './persona.js';
+export * from './plan-builder.js';
 export * from './post-call.js';
 export * from './public-api.js';
 export * from './qa.js';

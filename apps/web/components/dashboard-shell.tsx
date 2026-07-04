@@ -11,6 +11,7 @@ import {
   ClipboardList,
   FlaskConical,
   KeyRound,
+  Layers,
   LayoutDashboard,
   LifeBuoy,
   LogOut,
@@ -66,6 +67,7 @@ const NAV = [
 const RESELLER_NAV = [
   { href: '/dashboard/reseller/dashboard', label: 'Revenue', icon: TrendingUp, exact: false },
   { href: '/dashboard/reseller', label: 'Sub-tenants', icon: Building2, exact: true },
+  { href: '/dashboard/admin/plans', label: 'Plans', icon: Layers, exact: false },
   { href: '/dashboard/branding', label: 'White-label', icon: Palette, exact: false },
 ] as const;
 

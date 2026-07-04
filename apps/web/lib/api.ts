@@ -2276,3 +2276,91 @@ export function useImpersonate() {
       }),
   });
 }
+
+// ── No-code plan & pricing builder (Day 56) ─────────────────────────────────────
+
+export interface PlanDto {
+  id: string;
+  tenantId: string | null;
+  name: string;
+  priceMonthly: number;
+  currency: string;
+  includedMinutes: number;
+  agentLimit: number;
+  numberLimit: number;
+  sipLimit: number;
+  overageRatePerMin: number;
+  features: Record<string, unknown>;
+  isResellerPlan: boolean;
+  version: number;
+  active: boolean;
+  supersededById: string | null;
+  stripeProductId: string | null;
+  stripePriceId: string | null;
+}
+
+export interface PlanInputBody {
+  name: string;
+  priceMonthly: number;
+  currency?: string;
+  includedMinutes: number;
+  agentLimit: number;
+  numberLimit: number;
+  sipLimit: number;
+  overageRatePerMin: number;
+  features?: Record<string, boolean | number | string>;
+  isResellerPlan?: boolean;
+}
+
+export function usePlans() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['admin', 'plans'],
+    queryFn: () => apiFetch<PlanDto[]>(getToken, '/admin/plans'),
+  });
+}
+
+export function useCreatePlan() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: PlanInputBody & { scope: 'global' | 'own' }) =>
+      apiFetch<PlanDto>(getToken, '/admin/plans', { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'plans'] }),
+  });
+}
+
+export function useUpdatePlan() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; body: PlanInputBody }) =>
+      apiFetch<PlanDto>(getToken, `/admin/plans/${vars.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(vars.body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'plans'] }),
+  });
+}
+
+export function useArchivePlan() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<PlanDto>(getToken, `/admin/plans/${id}/archive`, { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'plans'] }),
+  });
+}
+
+export function useSyncPlan() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ plan: PlanDto; synced: boolean }>(getToken, `/admin/plans/${id}/sync`, {
+        method: 'POST',
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'plans'] }),
+  });
+}

@@ -1,7 +1,7 @@
 'use client';
 
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@vocaliq/ui';
-import { Activity, Building2, KeyRound, Pause, Play, Shield, UserCog } from 'lucide-react';
+import { Activity, Building2, KeyRound, Layers, Pause, Play, Shield, UserCog } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { EmptyState, ErrorState, LoadingCard } from '../../../components/states';
@@ -141,6 +141,12 @@ function SystemHealthCard() {
 }
 
 const TOOLS = [
+  {
+    href: '/dashboard/admin/plans',
+    label: 'Plans & pricing',
+    icon: Layers,
+    hint: 'No-code plan builder',
+  },
   {
     href: '/dashboard/admin/key-pool',
     label: 'Key pool',
