@@ -1997,3 +1997,84 @@ export function useSetSubTenantStatus() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['reseller'] }),
   });
 }
+
+// ── White-label: branding + custom domains (Day 52) ─────────────────────────────
+
+export interface Branding {
+  name?: string;
+  logoUrl?: string;
+  faviconUrl?: string;
+  primaryColor?: string;
+  accentColor?: string;
+  hidePlatformName: boolean;
+}
+
+export interface DomainConfig {
+  hostname: string;
+  status: 'pending' | 'pending_validation' | 'active' | 'failed';
+  cnameTarget: string;
+  sslStatus?: string;
+  cloudflareId?: string;
+}
+
+export function useBranding() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['branding'],
+    queryFn: () => apiFetch<Branding>(getToken, '/whitelabel/branding'),
+  });
+}
+
+export function useSetBranding() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Partial<Branding>) =>
+      apiFetch<Branding>(getToken, '/whitelabel/branding', {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['branding'] }),
+  });
+}
+
+export function useDomain() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['domain'],
+    queryFn: () => apiFetch<DomainConfig | null>(getToken, '/whitelabel/domain'),
+  });
+}
+
+export function useProvisionDomain() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (hostname: string) =>
+      apiFetch<DomainConfig>(getToken, '/whitelabel/domain', {
+        method: 'POST',
+        body: JSON.stringify({ hostname }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['domain'] }),
+  });
+}
+
+export function useRefreshDomain() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<DomainConfig | null>(getToken, '/whitelabel/domain/refresh', { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['domain'] }),
+  });
+}
+
+export function useRemoveDomain() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<{ removed: true }>(getToken, '/whitelabel/domain', { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['domain'] }),
+  });
+}
