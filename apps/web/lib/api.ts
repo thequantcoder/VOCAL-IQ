@@ -2364,3 +2364,87 @@ export function useSyncPlan() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'plans'] }),
   });
 }
+
+// ── Provider key vault + routing defaults (Day 57) ──────────────────────────────
+
+export interface VaultKey {
+  id: string;
+  provider: string;
+  scope: 'platform' | 'tenant';
+  byok: boolean;
+  last4: string;
+  createdAt: string;
+}
+
+export interface CapabilityRoute {
+  primary: string;
+  fallbacks: string[];
+}
+export type RoutingDefaults = Partial<
+  Record<'llm' | 'tts' | 'stt' | 'telephony' | 'embedding', CapabilityRoute>
+>;
+
+export function useVaultKeys(scope: 'platform' | 'tenant') {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['vault', 'keys', scope],
+    queryFn: () => apiFetch<VaultKey[]>(getToken, `/admin/vault/keys?scope=${scope}`),
+  });
+}
+
+export function useAddVaultKey() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { provider: string; apiKey: string; scope: 'platform' | 'tenant' }) =>
+      apiFetch<VaultKey>(getToken, '/admin/vault/keys', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['vault'] }),
+  });
+}
+
+export function useRotateVaultKey() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; apiKey: string }) =>
+      apiFetch<VaultKey>(getToken, `/admin/vault/keys/${vars.id}/rotate`, {
+        method: 'POST',
+        body: JSON.stringify({ apiKey: vars.apiKey }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['vault'] }),
+  });
+}
+
+export function useRevokeVaultKey() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ id: string }>(getToken, `/admin/vault/keys/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['vault'] }),
+  });
+}
+
+export function useRoutingDefaults(scope: 'platform' | 'tenant') {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['vault', 'routing', scope],
+    queryFn: () => apiFetch<RoutingDefaults>(getToken, `/admin/vault/routing/${scope}`),
+  });
+}
+
+export function useSetRoutingDefaults(scope: 'platform' | 'tenant') {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: RoutingDefaults) =>
+      apiFetch<RoutingDefaults>(getToken, `/admin/vault/routing/${scope}`, {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['vault', 'routing', scope] }),
+  });
+}

@@ -1,6 +1,7 @@
 import type { KeyResolver, ResolvedKey } from '@vocaliq/provider-router';
 import { Provider, ProviderError } from '@vocaliq/shared';
-import { PrismaService } from '../db/prisma.service';
+import { type EnvelopeEncryptor, buildEncryptor } from '../crypto/envelope';
+import type { PrismaService } from '../db/prisma.service';
 import type { KeyPoolService } from '../keypool/keypool.service';
 
 /** Platform key env var per provider (managed mode, single-key fallback). */
@@ -18,10 +19,15 @@ const PLATFORM_ENV: Partial<Record<Provider, string>> = {
  * empty. The key is never logged. When the pool serves the key, its `id` rides along as
  * `poolKeyId` so the caller can report the call outcome for health tracking.
  *
- * NOTE: envelope decryption of BYOK credentials is DEFERRED to Day 57 (KMS). Until then
- * `encryptedKey` is read as raw bytes — fine for dev/skeleton, not production.
+ * BYOK credentials are envelope-encrypted at rest (Day 57); we decrypt in-memory only at the
+ * moment of use and never log the plaintext. The encryptor shares the vault's master key, so
+ * what the vault sealed, the resolver can open.
  */
-export function buildKeyResolver(db: PrismaService, keyPool?: KeyPoolService): KeyResolver {
+export function buildKeyResolver(
+  db: PrismaService,
+  keyPool?: KeyPoolService,
+  enc: EnvelopeEncryptor = buildEncryptor(),
+): KeyResolver {
   return async (tenantId, provider, preferByok): Promise<ResolvedKey> => {
     if (preferByok) {
       const cred = await db.admin.providerCredential.findFirst({
@@ -29,8 +35,7 @@ export function buildKeyResolver(db: PrismaService, keyPool?: KeyPoolService): K
         select: { encryptedKey: true },
       });
       if (cred) {
-        // TODO(Day 57): KMS envelope-decrypt cred.encryptedKey in-memory.
-        return { apiKey: Buffer.from(cred.encryptedKey).toString('utf8'), byok: true };
+        return { apiKey: enc.decrypt(cred.encryptedKey), byok: true };
       }
     }
 

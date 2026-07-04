@@ -40,6 +40,7 @@ export * from './query-keys.js';
 export * from './reseller.js';
 export * from './reseller-dashboard.js';
 export * from './result.js';
+export * from './routing-defaults.js';
 export * from './scenario.js';
 export * from './schemas.js';
 export * from './simulator.js';

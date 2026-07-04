@@ -16,6 +16,7 @@ import { OutboundService } from './calls/outbound.service';
 import { CampaignsService } from './campaigns/campaigns.service';
 import { ChatService } from './chat/chat.service';
 import { CostService } from './cost/cost.service';
+import { buildEncryptor } from './crypto/envelope';
 import { PrismaService } from './db/prisma.service';
 import { ExperimentsService } from './experiments/experiments.service';
 import { FlowsService } from './flows/flows.service';
@@ -41,6 +42,8 @@ import { TemplatesService } from './templates/templates.service';
 import { TenantService } from './tenancy/tenant.service';
 import { TestsService, routerGrader } from './tests/tests.service';
 import { TranscriptionService } from './transcription/transcription.service';
+import { RoutingDefaultsService } from './vault/routing-defaults.service';
+import { VaultService } from './vault/vault.service';
 import { VoicesService, elevenLabsCloner } from './voices/voices.service';
 import { WalletService } from './wallet/wallet.service';
 import { WebhookService } from './webhooks/webhook.service';
@@ -103,8 +106,11 @@ export function createServices() {
   const experiments = new ExperimentsService(db);
   const squads = new SquadsService(db);
   const voices = new VoicesService(db, elevenLabsCloner(process.env.ELEVENLABS_API_KEY ?? ''));
-  const keyPool = new KeyPoolService(db);
+  const encryptor = buildEncryptor(process.env);
+  const keyPool = new KeyPoolService(db, encryptor);
   const routerSvc = new RouterService(db, keyPool);
+  const vault = new VaultService(db, encryptor);
+  const routingDefaults = new RoutingDefaultsService(db);
   const tests = new TestsService(db, (tenantId) => routerGrader(routerSvc, tenantId));
   // QA scoring completer: route through RouterService so every eval meters cost (rule #4).
   const qa = new QaService(db, async ({ tenantId, system, user }) => {
@@ -166,6 +172,8 @@ export function createServices() {
     tests,
     plans,
     planBuilder,
+    vault,
+    routingDefaults,
     billingWebhook,
     processor,
     widget,
