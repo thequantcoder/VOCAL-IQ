@@ -1933,3 +1933,20 @@ export function useWallet() {
     queryFn: () => apiFetch<Wallet>(getToken, '/ops/credits'),
   });
 }
+
+export interface PhoneNumberRow {
+  id: string;
+  e164: string;
+  kycVerified: boolean;
+  source: string;
+  assignedAgentId: string | null;
+}
+
+export function useNumbers() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['numbers'],
+    queryFn: () =>
+      apiFetch<{ owned: PhoneNumberRow[]; available: PhoneNumberRow[] }>(getToken, '/ops/numbers'),
+  });
+}
