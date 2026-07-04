@@ -1950,3 +1950,50 @@ export function useNumbers() {
       apiFetch<{ owned: PhoneNumberRow[]; available: PhoneNumberRow[] }>(getToken, '/ops/numbers'),
   });
 }
+
+// ── Reseller: sub-tenant provisioning (Day 51) ──────────────────────────────────
+
+export interface SubTenant {
+  id: string;
+  name: string;
+  slug: string;
+  type: string;
+  status: string;
+  parentTenantId: string | null;
+  createdAt: string;
+}
+
+export function useSubTenants() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['reseller', 'sub-tenants'],
+    queryFn: () => apiFetch<SubTenant[]>(getToken, '/reseller/sub-tenants'),
+  });
+}
+
+export function useCreateSubTenant() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { name: string; ownerEmail: string; ownerName?: string; status?: string }) =>
+      apiFetch<SubTenant>(getToken, '/reseller/sub-tenants', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['reseller'] }),
+  });
+}
+
+export function useSetSubTenantStatus() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; action: 'suspend' | 'reactivate' }) =>
+      apiFetch<{ affected: number; status: string }>(
+        getToken,
+        `/reseller/sub-tenants/${vars.id}/${vars.action}`,
+        { method: 'POST' },
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['reseller'] }),
+  });
+}
