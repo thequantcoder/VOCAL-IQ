@@ -1544,3 +1544,30 @@ K. Build/CI: ✅ — `pnpm build` exits 0; all gates green locally.
 
 One agent definition serves voice + text + chat consistently, tests pass — DoD CONFIRMED. Cross-channel consistency + tenant isolation CONFIRMED.
 Deferred (gated / follow-up): wiring the Python voice loop + the Day-44 WhatsApp inbound to call this shared runtime for their turns (the runtime + api are ready; the voice loop is the gated live bundle); seeding cross-channel memory (AgentMemory, Day 34) into `startChat`'s `context` for a known contact (the hook exists — `context` param). Next: Day 46 (MCP + tool servers).
+
+## Day 46 — MCP & Tool-Server Support + Trust Context — 2026-07-04 — ✅ DONE
+Model: Opus (🧠 OPUS). Branch `day/46-mcp-tool-servers`. Prereq: Day 19 tools — done; no new credential. Migration `20260704160000_day46_mcp_servers` (one tenant table + RLS; tool-call audit reuses AuditLog). Self-audit focus C (trust scoping, sandbox, SSRF) + D + B.
+
+Built (DONE):
+- **db/migration**: `McpServer` (tenant + optional agent scope; url, transport, `trustContext` LOW/HIGH/UNKNOWN, `timeoutMs`, sealed `authHeaderCipher`, discovered `tools`, active). RLS-protected (Day-04 shape). Tenant/Agent reverse relations.
+- **shared** `mcp.ts` — the security-critical pure core: `TrustContext` + **`trustAllowsTool`**/`allowedTools` (HIGH = all; LOW/UNKNOWN = read-only, non-destructive ONLY — **fail-closed**), **`clampToolTimeout`** ([5s,120s], default 30s), **`checkPublicHttpUrl`** (SSRF guard: rejects non-http(s), embedded creds, localhost, private/loopback/link-local ranges, the 169.254.169.254 metadata IP, `.internal`/`.local`), **`vetToolOutput`** (LOW/UNKNOWN output delimited as untrusted DATA — prompt-injection defence — + truncated), `mcpServerInputSchema`. 12 unit tests.
+- **api** `mcp/`: injected JSON-RPC `McpTransport` (`tools/list`+`tools/call`, per-server timeout via AbortController, auth header never logged, maps MCP `readOnlyHint`/`destructiveHint` annotations). **`McpService`** (RLS): register (SSRF-guarded, auth header **sealed** + never returned — only `hasAuth`), list/remove, `discover` (persist tools + audit), **`callTool`** (trust-gate → 403 if denied, clamped timeout, `vetToolOutput`, **AuditLog** entry with trust+status+durationMs), `toolsForAgent` (trust-filtered descriptors for the LLM loop). Injected clock for deterministic duration tests. Routes `/mcp/servers*` + `/mcp/servers/:id/{discover,call}` (config writers). Wired composition+main. 8 RLS-real integration tests.
+- **web** `/dashboard/mcp`: register a server (URL + trust context + 5–120s timeout + optional auth header), discover tools, and a per-server tool list where **denied (non-read-only on untrusted) tools are struck through**. Trust icons (shield). Nav link.
+
+Verification: full monorepo **typecheck 11/11**, **lint 11/11**, **build exit 0** (`/dashboard/mcp` emitted). Tests: shared **252** (mcp 12 — trust gating, timeout clamp, SSRF block-list incl. metadata IP, output vetting), api **176** (mcp 8 — SSRF on register, sealed-auth-never-returned, discovery, **HIGH-can/LOW-can't call destructive**, untrusted-output vetting + duration, trust-filtered toolsForAgent, audit write, **child can't see/call parent's server**).
+
+## Self-Audit — Day 46 (A–K)
+A. Correctness: ✅ — trust/timeout/SSRF/vetting are pure + unit-tested; the service path (discover→gate→call→vet→audit) proven against real Postgres with an injected transport + clock.
+B. Tenancy (focus): ✅ — every server read/write under `withTenant`; McpServer RLS-protected; a child tenant can't list, discover, or call a parent's server (proven).
+C. Trust/SSRF/sandbox (focus): ✅ — **SSRF guard** blocks localhost/private/link-local/metadata/`.internal` + embedded creds + non-http on registration; **trust gating is fail-closed** (LOW/UNKNOWN expose only tools explicitly `readOnly` + never `destructive`); denied calls 403 + audited; **output vetting** delimits untrusted tool output as data (prompt-injection defence); the transport is timeout-bounded (AbortController); auth header sealed at rest + never returned/logged.
+D. Cost/limits (focus): ✅ — per-server response timeout clamped [5s,120s]; output truncated to 8k chars (bounds prompt growth); no unbounded external call.
+E. Errors/obs: ✅ — typed Validation (unsafe URL, inactive server, bad tool)/NotFound/Forbidden; every tool call (ok/denied/error) writes an AuditLog row with trust + status + durationMs.
+F. Performance: ✅ — discovery/call are single indexed reads + one bounded HTTP round-trip; `toolsForAgent` folds in memory.
+G. Error handling: ✅ — transport failures become a typed ValidationError (audited); web shows discover/register errors; denied tools struck through in the UI.
+H. UI/a11y: ✅ — labelled trust/timeout/auth inputs, shield trust icons, struck-through denied tools, empty/error/loading states.
+I. Regression: ✅ — additive migration + new module/routes/page + relations + wirings; existing typecheck/lint/tests green (shared 252, api 176). Scoped `biome --write` touched only Day-46 files.
+J. Quality/docs: ✅ — security logic pure + tested in shared; transport injected; auth-header sealing mirrors the Day-40 integration pattern (KMS = Day 57, flagged); explicit DTOs; doc comments explain fail-closed + SSRF + vetting.
+K. Build/CI: ✅ — `pnpm build` exits 0; all gates green locally.
+
+MCP/tool servers connectable with trust context + timeouts, audited, tests pass — DoD CONFIRMED. SSRF + trust scoping + output vetting + tenant isolation CONFIRMED.
+Deferred (follow-up): exposing `toolsForAgent` into the live LLM loop as callable functions (the voice loop is the gated live bundle; the api + trust-filtered descriptors are ready); DNS-rebinding hardening + egress pinning at the transport layer (the hostname SSRF guard is defence-in-depth today); SSE transport body (HTTP JSON-RPC implemented). Next: Day 47 (marketplace + automations).
