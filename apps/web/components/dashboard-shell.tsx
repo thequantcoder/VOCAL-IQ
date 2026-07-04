@@ -45,6 +45,7 @@ const NAV = [
   { href: '/dashboard/sip', label: 'SIP trunks', icon: Server, exact: false },
   { href: '/dashboard/appointments', label: 'Appointments', icon: CalendarCheck, exact: false },
   { href: '/dashboard/integrations', label: 'Integrations', icon: Plug, exact: false },
+  { href: '/dashboard/mcp', label: 'Tool servers', icon: Plug, exact: false },
 ] as const;
 
 /** Platform-operator (SUPER_ADMIN) nav — only shown to platform staff. */

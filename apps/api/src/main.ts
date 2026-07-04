@@ -24,6 +24,7 @@ import { errorMiddleware, notFoundMiddleware } from './http/error.middleware';
 import { integrationsRoutes } from './integrations/integrations.routes';
 import { keyPoolRoutes } from './keypool/keypool.routes';
 import { leadsRoutes } from './leads/leads.routes';
+import { mcpRoutes } from './mcp/mcp.routes';
 import { memoryRoutes } from './memory/memory.routes';
 import {
   messagingRoutes,
@@ -94,6 +95,7 @@ function bootstrap(): void {
   app.use('/integrations', integrationsRoutes(s.integrations, s.tenants));
   app.use('/analytics', analyticsRoutes(s.analytics, s.tenants));
   app.use('/qa', qaRoutes(s.qa, s.tenants));
+  app.use('/mcp', mcpRoutes(s.mcp, s.tenants));
   app.use('/messaging', messagingRoutes(s.messaging, s.tenants));
   app.use('/leads', leadsRoutes(s.leads, s.tenants));
   app.use('/memory', memoryRoutes(s.memory, s.tenants));

@@ -1614,3 +1614,75 @@ export function useChatTurn(agentId: string) {
       }),
   });
 }
+
+// ── MCP / tool servers (Day 46) ────────────────────────────────────────────────
+
+export type TrustContext = 'LOW' | 'HIGH' | 'UNKNOWN';
+
+export interface McpTool {
+  name: string;
+  description?: string;
+  readOnly?: boolean;
+  destructive?: boolean;
+}
+
+export interface McpServer {
+  id: string;
+  name: string;
+  url: string;
+  transport: string;
+  trustContext: TrustContext;
+  timeoutMs: number;
+  agentId: string | null;
+  active: boolean;
+  tools: McpTool[];
+  hasAuth: boolean;
+  updatedAt: string;
+}
+
+export interface McpServerInput {
+  name: string;
+  url: string;
+  transport?: 'http' | 'sse';
+  trustContext: TrustContext;
+  timeoutMs?: number;
+  authHeader?: string;
+}
+
+export function useMcpServers() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['mcp', 'servers'],
+    queryFn: () => apiFetch<McpServer[]>(getToken, '/mcp/servers'),
+  });
+}
+
+export function useRegisterMcpServer() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: McpServerInput) =>
+      apiFetch<McpServer>(getToken, '/mcp/servers', { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['mcp'] }),
+  });
+}
+
+export function useDeleteMcpServer() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ deleted: true }>(getToken, `/mcp/servers/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['mcp'] }),
+  });
+}
+
+export function useDiscoverMcpTools() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<McpTool[]>(getToken, `/mcp/servers/${id}/discover`, { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['mcp'] }),
+  });
+}

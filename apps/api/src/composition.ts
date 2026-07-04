@@ -19,6 +19,8 @@ import { FormsService } from './forms/forms.service';
 import { IntegrationsService } from './integrations/integrations.service';
 import { KeyPoolService } from './keypool/keypool.service';
 import { LeadsService } from './leads/leads.service';
+import { McpService } from './mcp/mcp.service';
+import { httpMcpTransport } from './mcp/transport';
 import { MemoryService } from './memory/memory.service';
 import { MessagingService } from './messaging/messaging.service';
 import { buildSenders } from './messaging/senders';
@@ -70,6 +72,7 @@ export function createServices() {
   const integrations = new IntegrationsService(db);
   const leads = new LeadsService(db);
   const memory = new MemoryService(db);
+  const mcp = new McpService(db, httpMcpTransport);
   // Messaging senders are built only for channels whose credentials are set (gated).
   const messaging = new MessagingService(db, buildSenders(process.env));
   const sip = new SipService(db, entitlements);
@@ -119,6 +122,7 @@ export function createServices() {
     integrations,
     leads,
     memory,
+    mcp,
     messaging,
     sip,
     experiments,
