@@ -13,6 +13,7 @@ import { appointmentsRoutes } from './appointments/appointments.routes';
 import { authRoutes } from './auth/auth.routes';
 import { automationsRoutes } from './automations/automations.routes';
 import { billingRoutes, billingWebhookHandler } from './billing/billing.routes';
+import { planBuilderRoutes } from './billing/plan-builder.routes';
 import { callsRoutes } from './calls/calls.routes';
 import { campaignsRoutes } from './campaigns/campaigns.routes';
 import { chatRoutes } from './chat/chat.routes';
@@ -111,6 +112,7 @@ function bootstrap(): void {
   app.use('/ops', opsRoutes(s.opsToolkit, s.tenants));
   app.use('/reseller', resellerRoutes(s.reseller, s.tenants));
   app.use('/admin/superadmin', superAdminRoutes(s.superAdmin, s.tenants));
+  app.use('/admin/plans', planBuilderRoutes(s.planBuilder, s.tenants));
   app.use('/whitelabel', whitelabelRoutes(s.whitelabel, s.tenants));
   app.use('/wallet', walletRoutes(s.wallet, s.tenants));
   // Public edge resolution: hostname → theme, unauthenticated (re-brands the sign-in page).

@@ -6,6 +6,7 @@ import { AuthService } from './auth/auth.service';
 import { AutomationsService } from './automations/automations.service';
 import { buildActionExecutors } from './automations/executors';
 import { EntitlementsService } from './billing/entitlements.service';
+import { PlanBuilderService } from './billing/plan-builder.service';
 import { PlansService } from './billing/plans.service';
 import { PendingBillingProcessor } from './billing/processor';
 import { BillingWebhookService } from './billing/webhook.service';
@@ -118,6 +119,7 @@ export function createServices() {
   const plans = new PlansService(db);
   const billingWebhook = new BillingWebhookService(db);
   const processor = new PendingBillingProcessor();
+  const planBuilder = new PlanBuilderService(db, processor);
 
   const widget = new WidgetService(db);
 
@@ -163,6 +165,7 @@ export function createServices() {
     routerSvc,
     tests,
     plans,
+    planBuilder,
     billingWebhook,
     processor,
     widget,

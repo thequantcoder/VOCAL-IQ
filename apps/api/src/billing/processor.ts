@@ -21,10 +21,29 @@ export interface UsagePush {
   periodEnd: Date;
 }
 
+/** A plan to mirror into the processor as a product + recurring price (Day 56). */
+export interface PlanSync {
+  planId: string;
+  name: string;
+  priceMonthly: number; // minor units
+  currency: string;
+  /** The processor's existing product id, if this plan was synced before (update vs create). */
+  stripeProductId?: string | null;
+}
+
+/** The external ids the processor assigns — persisted back onto the Plan for reuse. */
+export interface PlanSyncResult {
+  stripeProductId: string | null;
+  stripePriceId: string | null;
+  synced: boolean; // false when the processor is not configured (gated)
+}
+
 export interface BillingProcessor {
   readonly name: string;
   createCheckoutSession(req: CheckoutRequest): Promise<{ url: string }>;
   reportUsage(push: UsagePush): Promise<void>;
+  /** Mirror a plan to the processor's catalog. Gated processors return `{ synced: false }`. */
+  syncPlan(plan: PlanSync): Promise<PlanSyncResult>;
 }
 
 export const BILLING_PROCESSOR = Symbol('BILLING_PROCESSOR');
@@ -42,5 +61,12 @@ export class PendingBillingProcessor implements BillingProcessor {
 
   async reportUsage(): Promise<void> {
     // No-op: usage is aggregated locally (UsageReporterService); the push lands with Stripe.
+  }
+
+  async syncPlan(): Promise<PlanSyncResult> {
+    // Gated: the plan is fully persisted + usable locally now; the Stripe product/price is
+    // created when STRIPE_* keys are set (memory: stripe-live-test-pending). Never throws — a
+    // super-admin can build the whole catalog before Stripe is wired.
+    return { stripeProductId: null, stripePriceId: null, synced: false };
   }
 }

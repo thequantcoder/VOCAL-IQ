@@ -982,10 +982,19 @@ model Plan {
   features          Json           @default("{}")
   overageRatePerMin Int            @default(0) // minor units
   isResellerPlan    Boolean        @default(false)
+  // No-code plan builder (Day 56): Stripe linkage + versioning for grandfathering.
+  stripeProductId   String? // set on Stripe sync (gated until STRIPE_* keys)
+  stripePriceId     String?
+  version           Int            @default(1)
+  active            Boolean        @default(true) // archived/superseded plans are inactive
+  supersededById    String?        @db.Uuid // → the newer version that replaced this one
+  supersededBy      Plan?          @relation("PlanVersion", fields: [supersededById], references: [id], onDelete: SetNull)
+  supersedes        Plan[]         @relation("PlanVersion")
   createdAt         DateTime       @default(now())
   subscriptions     Subscription[]
 
   @@index([tenantId])
+  @@index([tenantId, active])
 }
 
 model Subscription {
