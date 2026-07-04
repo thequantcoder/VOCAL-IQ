@@ -2448,3 +2448,91 @@ export function useSetRoutingDefaults(scope: 'platform' | 'tenant') {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['vault', 'routing', scope] }),
   });
 }
+
+// ── Governance: feature flags, quota, audit log (Day 58) ────────────────────────
+
+export interface FlagDto {
+  scope: 'GLOBAL' | 'PLAN' | 'TENANT';
+  key: string;
+  value: boolean | number | string;
+}
+
+export interface QuotaResult {
+  state: 'ok' | 'warn' | 'over';
+  action: 'allow' | 'warn' | 'block' | 'suspend';
+  ratio: number;
+  used: number;
+  limit: number;
+}
+
+export interface AuditRow {
+  id: string;
+  tenantId: string;
+  actorUserId: string | null;
+  action: string;
+  target: string | null;
+  meta: unknown;
+  ts: string;
+}
+
+export function useGlobalFlags() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['governance', 'flags', 'global'],
+    queryFn: () => apiFetch<FlagDto[]>(getToken, '/admin/governance/flags/global'),
+  });
+}
+
+export function useTenantFlags() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['governance', 'flags', 'tenant'],
+    queryFn: () => apiFetch<FlagDto[]>(getToken, '/admin/governance/flags/tenant'),
+  });
+}
+
+export function useSetFlag() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      key: string;
+      value: boolean | number | string;
+      scope: 'GLOBAL' | 'TENANT';
+    }) =>
+      apiFetch<FlagDto>(getToken, '/admin/governance/flags', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['governance', 'flags'] }),
+  });
+}
+
+export function useRemoveFlag() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { scope: 'GLOBAL' | 'TENANT'; key: string }) =>
+      apiFetch<{ removed: true }>(getToken, `/admin/governance/flags/${vars.scope}/${vars.key}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['governance', 'flags'] }),
+  });
+}
+
+export function useQuota(resource: 'minutes' | 'agents' | 'numbers' | 'sip') {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['governance', 'quota', resource],
+    queryFn: () => apiFetch<QuotaResult>(getToken, `/admin/governance/quota/${resource}`),
+  });
+}
+
+export function useAuditLog(action?: string) {
+  const { getToken } = useAuth();
+  const qs = action ? `?action=${encodeURIComponent(action)}` : '';
+  return useQuery({
+    queryKey: ['governance', 'audit', action ?? 'all'],
+    queryFn: () => apiFetch<AuditRow[]>(getToken, `/admin/governance/audit${qs}`),
+  });
+}

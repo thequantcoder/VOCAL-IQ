@@ -21,6 +21,9 @@ import { PrismaService } from './db/prisma.service';
 import { ExperimentsService } from './experiments/experiments.service';
 import { FlowsService } from './flows/flows.service';
 import { FormsService } from './forms/forms.service';
+import { AuditService } from './governance/audit.service';
+import { FeatureFlagsService } from './governance/feature-flags.service';
+import { QuotaService } from './governance/quota.service';
 import { IntegrationsService } from './integrations/integrations.service';
 import { KeyPoolService } from './keypool/keypool.service';
 import { LeadsService } from './leads/leads.service';
@@ -111,6 +114,9 @@ export function createServices() {
   const routerSvc = new RouterService(db, keyPool);
   const vault = new VaultService(db, encryptor);
   const routingDefaults = new RoutingDefaultsService(db);
+  const featureFlags = new FeatureFlagsService(db, entitlements);
+  const quota = new QuotaService(db, entitlements);
+  const auditLog = new AuditService(db);
   const tests = new TestsService(db, (tenantId) => routerGrader(routerSvc, tenantId));
   // QA scoring completer: route through RouterService so every eval meters cost (rule #4).
   const qa = new QaService(db, async ({ tenantId, system, user }) => {
@@ -174,6 +180,9 @@ export function createServices() {
     planBuilder,
     vault,
     routingDefaults,
+    featureFlags,
+    quota,
+    auditLog,
     billingWebhook,
     processor,
     widget,

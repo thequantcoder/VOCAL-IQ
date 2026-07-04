@@ -1,7 +1,17 @@
 'use client';
 
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@vocaliq/ui';
-import { Activity, Building2, KeyRound, Layers, Pause, Play, Shield, UserCog } from 'lucide-react';
+import {
+  Activity,
+  Building2,
+  Flag,
+  KeyRound,
+  Layers,
+  Pause,
+  Play,
+  Shield,
+  UserCog,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { EmptyState, ErrorState, LoadingCard } from '../../../components/states';
@@ -158,6 +168,12 @@ const TOOLS = [
     label: 'Key pool',
     icon: KeyRound,
     hint: 'Load-balanced keys',
+  },
+  {
+    href: '/dashboard/admin/governance',
+    label: 'Governance',
+    icon: Flag,
+    hint: 'Flags, quotas, audit',
   },
 ] as const;
 

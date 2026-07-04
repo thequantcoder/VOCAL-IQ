@@ -1876,3 +1876,29 @@ K. Build/CI: ✅ — `pnpm build` exits 0; all gates green locally.
 
 Keys are stored envelope-encrypted, rotatable, revocable, and audited; reads are masked; routing defaults + fallbacks are manageable + validated; the load-balanced key pool now uses real encryption — DoD CONFIRMED. **A cloud KMS is an OPTIONAL swap** (the `MasterKeyProvider` seam + `KMS_KEY_ID` hook are ready); the local master key is production-grade for self-hosted installs.
 Deferred (gated / follow-up): a live cloud-KMS `MasterKeyProvider` (AWS/GCP) — the seam + env hook exist; the local key is the shipping default. A dedicated tenant-facing BYOK nav entry + a routing-defaults editor UI (the API + hooks are built; the vault page covers key management today). Next: Day 58 (feature flags, entitlements, quotas, audit log).
+
+## Day 58 — Feature Flags + Entitlements + Quota Enforcement + Audit Log — 2026-07-04 — ✅ DONE — closes Phase 4
+Model: Opus (🧠 OPUS). Branch `day/58-flags-entitlements-quotas-audit`. Prereq: Day 56 plans (merged). Migration `20260705160000_day58_audit_immutable` (AuditLog append-only trigger — blocks UPDATE). No new env. Self-audit focus C (audit completeness/immutability) + B + A (quota policy).
+
+Built (DONE):
+- **shared** `feature-flags.ts` (pure): flag resolution with strict precedence **TENANT > PLAN > GLOBAL** (`resolveFlag`/`resolveAllFlags`/`isFlagEnabled`), `flagInputSchema` (kebab keys, bool/number/string values). `quota.ts` (pure): `quotaPolicySchema` (hard/soft, `warnAt`, `onHardOverage: block|suspend`), `evaluateQuota(used, limit, config, previousUsed)` → state ok/warn/over + action allow/warn/block/suspend + threshold-crossing flags (notify once), `limit<=0` = unlimited. 14 unit tests.
+- **db/migration**: a `BEFORE UPDATE` trigger on `AuditLog` raises `restrict_violation` — a privileged-action record can never be altered (tamper-proof). DELETE deliberately allowed so retention windows + GDPR tenant-erasure cascade still work; the guarantee is no silent modification of actor/action/target/meta/timestamp.
+- **api** `FeatureFlagsService`: GLOBAL + TENANT flags in the `FeatureFlag` table, **PLAN flags sourced from the tenant's plan `features`** (no duplication — the plan builder owns them); `resolve`/`isEnabled` merge all three by precedence; `set`/`remove` audited (GLOBAL = SUPER_ADMIN-only, TENANT = own). `QuotaService`: usage vs plan entitlement (minutes this month / agents / numbers / sip) under the tenant's policy → applies the action (auto-**suspend** on a hard overage when configured, audited `quota.autosuspend`; notify once on a threshold crossing). `AuditService`: searchable/filterable reads (action/actor/tenant/date) — SUPER_ADMIN platform-wide, RESELLER_ADMIN confined to its subtree via RLS. Routes `/admin/governance/*` gated to admins. Wired composition + main. 6 RLS-real integration tests (incl. the immutability trigger).
+- **web** `/dashboard/admin/governance`: quota strip (used/limit + ok/warn/over per resource), feature-flag manager (set/remove GLOBAL+TENANT with precedence), and an append-only audit-log viewer (filter by action). Tool-hub + super-admin nav entry. 8 hooks.
+
+Verification: shared **334** tests, api **252** tests (incl. 6 new governance; the audit-immutability trigger proven — an UPDATE is rejected + the row stays intact), full **typecheck 12/12**, **lint 12/12**, web **build exit 0** (`/dashboard/admin/governance` prerendered). Scoped `biome --write` touched only Day-58 files. Migration applied to the local DB.
+
+## Self-Audit — Day 58 (A–K)
+A. Quota policy (focus): ✅ — `evaluateQuota` is pure + unit-tested across ok/warn/over × hard/soft × block/suspend, unlimited (limit<=0), and threshold-crossing (notify-once); the service applies the returned action (proven auto-suspend path + audit).
+B. Isolation: ✅ — TENANT flags + quota reads run under RLS/`withTenant`; audit search confines a reseller to its subtree (only SUPER_ADMIN spans tenants via the owner client); GLOBAL flag writes are SUPER_ADMIN-only (proven).
+C. Audit completeness + immutability (focus, critical): ✅ — a DB trigger makes `AuditLog` append-only (UPDATE rejected — proven, and the original row verified intact); every privileged action (flags, quota-suspend, and the existing superadmin/vault writers) records actor + action + target + meta; the log is searchable/filterable.
+D. Money/cost: ✅ — quota limits reuse the plan entitlements (integer minutes/counts); no new money path.
+E. Errors/obs: ✅ — Zod-validated flag/quota inputs; typed Forbidden/Validation; quota crossings raise notifications.
+F. Performance: ✅ — flag resolution is 2 indexed reads + plan features; quota usage is one indexed monthly aggregate or a count; audit search is indexed on ts with a capped take.
+G. Error handling: ✅ — web shows loading/error/empty states; invalid flag keys rejected; suspend is idempotent.
+H. UI/a11y: ✅ — quota strip with ok/warn/over colour, labelled flag form + precedence, append-only audit viewer with filter.
+I. Regression: ✅ — additive (new shared modules, services, routes, page, hooks) + one trigger-only migration; existing 252 api + 334 shared tests pass; the DELETE-allowed trigger choice keeps prior audit-cleanup + tenant-cascade paths working. Scoped biome only.
+J. Quality/docs: ✅ — precedence + the immutability trade-off (why UPDATE-blocked, DELETE-allowed) documented in code + migration; explicit DTOs; PLAN-flags-from-plan-features rationale noted.
+K. Build/CI: ✅ — `pnpm build` exits 0 (the flaky Next `/404 <Html>` prerender race cleared on a clean rebuild); all gates green locally.
+
+Flags/entitlements gate features by precedence; quotas enforce hard/soft with auto-suspend + notify; every privileged action is audited in a tamper-proof (append-only) log — DoD CONFIRMED. **Phase 4 (White-label & Reseller) is complete** — tag `v0.6-phase4`. Next: Phase 5 (Day 59, SSO/SAML → scale & enterprise → sellable v1.0 at Day 66).
