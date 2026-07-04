@@ -1767,3 +1767,28 @@ K. Build/CI: ✅ — `pnpm build` exits 0; all gates green locally.
 
 Cost→wholesale→retail→customer computed + reconciled; wallets work; margins accurate; the acceptance tests (pricing exact, idempotency, concurrency-no-overdraw, reconciliation ties out, negative guard, refund/currency, per-tenant isolation) all pass — DoD CONFIRMED. **Live Stripe rebilling/Connect payouts are GATED** pending the payout-model decision + keys.
 Deferred (gated / follow-up): calling `chargeCall` from the live per-minute cost path (the engine is ready; the call-loop hook rides the gated live-loop bundle, same as post-call); Stripe rebilling/Connect (reseller-charges-own-customers vs platform-charges-and-remits — needs the admin decision + keys, kept as two separate audited money flows); auto-recharge on low balance + a nightly reconciliation worker that alerts on cache↔ledger drift (the `reconciled` flag + `ledgerSumCents` are ready). Next: Day 54 (reseller portal dashboards).
+
+## Day 54 — Reseller Portal Dashboards + Markup Config — 2026-07-04 — ✅ DONE
+Model: Sonnet. Branch `day/54-reseller-portal`. Prereq: Day 51 hierarchy + Day 53 wallet/margin engine (both merged). No new migration, no new env. Self-audit focus B (reseller only ever sees its OWN subtree's numbers) + D (the roll-up ties out to the money engine).
+
+Built (DONE) — **integer cents everywhere; RLS-scoped**:
+- **shared** `reseller-dashboard.ts` (pure aggregation core): `markupConfigSchema` (bps 0–100000), `ClientMarginRow`/`ResellerOverview` types, **`aggregateResellerOverview(period, rows, topN=10)`** — sums revenue/cost/margin, computes `marginRate` (no divide-by-zero on an empty period), and ranks `topClients` by revenue (recomputing per-client margin = revenue − cost). 4 unit tests.
+- **api** `ResellerService`: **`overview(resellerId, period)`** — reads `ResellerMargin` under `withTenant` (RLS hides sibling resellers' rows), joins client names from the reseller's own subtree, feeds the pure aggregator; **`getMarkupBps`/`setMarkupBps`** — persist the reseller's default retail markup in `tenant.settings.markupBps` (assert-reseller guarded). Routes `GET /reseller/overview` (period YYYY-MM), `GET/PUT /reseller/markup` — all under the existing `RESELLER_ADMIN` gate. 2 RLS-real integration tests (reseller-scoped roll-up ties out + a rival reseller's fat margin never leaks in; markup round-trips).
+- **web** `/dashboard/reseller/dashboard`: revenue / provider-cost / margin / margin-rate metric cards + top-clients-by-revenue list + a **platform → you (reseller) → your customers** scope banner (DESIGN-SYSTEM §5e) + a period picker; a markup card (percent ↔ bps) to set the default retail markup. Nav: "Revenue" added to the reseller nav; "Sub-tenants" set `exact` so it doesn't stay highlighted on the new route. Hooks `useResellerOverview`/`useResellerMarkup`/`useSetResellerMarkup` in `lib/api.ts`.
+
+Verification: shared **299** tests, api **214** tests (incl. the new dashboard test), full **typecheck 12/12**, **lint 12/12** (CI `pnpm lint`), web **build exit 0** (`/dashboard/reseller/dashboard` prerendered). Scoped `biome --write` touched only Day-54 files.
+
+## Self-Audit — Day 54 (A–K)
+A. Correctness: ✅ — the aggregation is pure + unit-tested (sums, margin rate, top-N ranking, empty period); the service path proven against real Postgres.
+B. Tenant isolation (focus): ✅ — `overview`/markup reads run under `withTenant` (RLS on `ResellerMargin` + `Tenant`); a test seeds a rival reseller with a fat margin and proves it NEVER appears in R1's roll-up; markup is stored on the reseller's own tenant row.
+C. RBAC: ✅ — every route is `RESELLER_ADMIN`-gated (SUPER_ADMIN passes); `setMarkupBps` re-asserts the caller owns a reseller/platform tenant.
+D. Cost/money correctness (focus): ✅ — integer cents only, round at display; the overview reuses the SAME `ResellerMargin` rows the Day-53 engine writes, so the portal figures tie out to the wallet reconciliation to the penny; per-client margin recomputed as revenue − cost.
+E. Errors/obs: ✅ — Zod-validated period (YYYY-MM) + markup (0–100000 bps); typed ValidationError on bad input.
+F. Performance: ✅ — one indexed `findMany` per period + one name lookup; aggregation is O(n) in-memory; top-N caps the payload.
+G. Error handling: ✅ — web shows loading/error/empty states + retry; markup save surfaces typed errors; invalid period simply disables the query.
+H. UI/a11y: ✅ — labelled metric cards, scope banner making the platform→reseller→customer position explicit, labelled period + markup inputs, empty state for a no-usage period.
+I. Regression: ✅ — additive (new shared module, 3 service methods, 3 routes, 1 page, 3 hooks, 1 nav entry); no migration; existing tests green (shared 299, api 214). Scoped biome touched only Day-54 files.
+J. Quality/docs: ✅ — the aggregation core is pure + tested in shared; the RLS-scoping + tie-out reasoning documented in code; explicit DTO return types (no Prisma type leak).
+K. Build/CI: ✅ — `pnpm build` exits 0; typecheck/lint/test gates green locally.
+
+Resellers see their own revenue & margin + top clients, and set their default markup, all reseller-scoped with a clear scope indicator — DoD CONFIRMED. No admin action needed. Next: Day 55 (super-admin console).
