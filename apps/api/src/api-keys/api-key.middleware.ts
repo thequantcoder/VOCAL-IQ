@@ -29,8 +29,14 @@ export function apiKeyAuth(keys: ApiKeyService): RequestHandler {
       const bucket = perKeyLimiter(auth.keyId, auth.rateLimitPerMin);
       if (!bucket.hit(auth.keyId)) throw new RateLimitError('Rate limit exceeded');
 
-      // Scope the request to the key's tenant (RLS via the same ctx a session sets).
-      req.ctx = { userId: auth.keyId, tenantId: auth.tenantId, role: 'ADMIN' as Role };
+      // Scope the request to the key's tenant (RLS via the same ctx a session sets). API-key
+      // requests have no membership (they're a key, not a user) → membershipId is empty.
+      req.ctx = {
+        userId: auth.keyId,
+        tenantId: auth.tenantId,
+        role: 'ADMIN' as Role,
+        membershipId: '',
+      };
       req.apiScopes = auth.scopes;
 
       void keys.meter(auth.keyId); // fire-and-forget usage metering
