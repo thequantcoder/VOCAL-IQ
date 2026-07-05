@@ -6,6 +6,7 @@ import express from 'express';
 // Secrets live in the monorepo root .env (one source of truth). Load before any env read.
 loadDotenv({ path: resolve(process.cwd(), '../../.env') });
 
+import { abuseRoutes } from './abuse/abuse.routes';
 import { agentsRoutes } from './agents/agents.routes';
 import { analyticsRoutes } from './analytics/analytics.routes';
 import { apiKeyRoutes } from './api-keys/api-key.routes';
@@ -26,6 +27,7 @@ import { formsRoutes, publicFormsRoutes } from './forms/forms.routes';
 import { governanceRoutes } from './governance/governance.routes';
 import { healthRoutes } from './health.routes';
 import { errorMiddleware, notFoundMiddleware } from './http/error.middleware';
+import { corsMiddleware, parseCorsAllowlist, securityHeaders } from './http/security.middleware';
 import { integrationsRoutes } from './integrations/integrations.routes';
 import { keyPoolRoutes } from './keypool/keypool.routes';
 import { latencyRoutes } from './latency/latency.routes';
@@ -68,6 +70,11 @@ function bootstrap(): void {
 
   const app = express();
   app.disable('x-powered-by');
+
+  // Security hardening (Day 64): defensive headers + a CORS allow-list on every request, before
+  // any route or body parsing runs.
+  app.use(securityHeaders());
+  app.use(corsMiddleware(parseCorsAllowlist(process.env)));
 
   // Stripe webhook needs the RAW body for signature verification — register it BEFORE the
   // JSON body parser so `req.body` stays a Buffer.
@@ -128,6 +135,7 @@ function bootstrap(): void {
   app.use('/residency', residencyRoutes(s.residency, s.tenants));
   app.use('/scale', scaleRoutes(s.scale, s.tenants));
   app.use('/latency', latencyRoutes(s.latency, s.tenants));
+  app.use('/abuse', abuseRoutes(s.abuse, s.tenants));
   app.use('/admin/governance', governanceRoutes(s.featureFlags, s.quota, s.auditLog, s.tenants));
   app.use('/whitelabel', whitelabelRoutes(s.whitelabel, s.tenants));
   app.use('/wallet', walletRoutes(s.wallet, s.tenants));

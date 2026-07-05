@@ -10,6 +10,7 @@ export * from './errors.js';
 export * from './experiment.js';
 export * from './feature-flags.js';
 export * from './quota.js';
+export * from './abuse.js';
 export * from './agent-templates.js';
 export * from './analytics.js';
 export * from './appointment.js';

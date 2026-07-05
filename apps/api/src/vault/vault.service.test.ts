@@ -141,10 +141,28 @@ describe('RoutingDefaultsService (self-audit D)', () => {
   });
 
   it('resolves a tenant override over the platform default', async () => {
-    await routing.setPlatform(SUPER, { llm: { primary: Provider.OPENAI } });
-    await routing.setTenant(C1, { llm: { primary: Provider.ANTHROPIC } });
-    const chain = await routing.resolveChain(C1, Capability.LLM);
-    expect(chain[0]).toBe(Provider.ANTHROPIC);
+    // Use a DEDICATED tenant so a parallel test resetting a shared seed tenant's settings can't
+    // clobber this override mid-assertion (the override read is isolated to RT.settings).
+    const RT = '00000000-0000-0000-0000-0000057a0c01';
+    await db.admin.tenant.upsert({
+      where: { id: RT },
+      create: {
+        id: RT,
+        type: 'CUSTOMER',
+        name: 'RoutingT',
+        slug: `routingt-${Date.now()}`,
+        parentTenantId: PLATFORM,
+      },
+      update: {},
+    });
+    try {
+      await routing.setPlatform(SUPER, { llm: { primary: Provider.OPENAI } });
+      await routing.setTenant(RT, { llm: { primary: Provider.ANTHROPIC } });
+      const chain = await routing.resolveChain(RT, Capability.LLM);
+      expect(chain[0]).toBe(Provider.ANTHROPIC);
+    } finally {
+      await db.admin.tenant.delete({ where: { id: RT } });
+    }
   });
 
   it('forbids a non-super-admin from setting platform defaults', async () => {
