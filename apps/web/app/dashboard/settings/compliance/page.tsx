@@ -1,14 +1,17 @@
 'use client';
 
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@vocaliq/ui';
-import { PhoneOff, ScrollText, ShieldAlert } from 'lucide-react';
+import { Globe, PhoneOff, ScrollText, ShieldAlert } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { EmptyState, ErrorState, LoadingCard } from '../../../../components/states';
 import {
   type RetentionPolicy,
   useAddSuppression,
+  useRegions,
   useRemoveSuppression,
+  useResidency,
   useRetention,
+  useSetResidency,
   useSetRetention,
   useSuppressions,
 } from '../../../../lib/api';
@@ -31,9 +34,71 @@ export default function CompliancePage() {
           Do-not-call, retention/auto-deletion, and PII redaction for regulated verticals.
         </p>
       </div>
+      <Residency />
       <Dnc />
       <Retention />
     </div>
+  );
+}
+
+function Residency() {
+  const regions = useRegions();
+  const current = useResidency();
+  const save = useSetResidency();
+  const [region, setRegion] = useState('');
+  const [strict, setStrict] = useState(false);
+
+  useEffect(() => {
+    if (current.data) {
+      setRegion(current.data.region);
+      setStrict(current.data.strictEgress);
+    }
+  }, [current.data]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Globe size={16} /> Data residency
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        <p className="text-vq-text-lo text-sm">
+          Pin your data + processing to a region. Recordings, transcripts, and voice infra stay
+          in-region.
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={region}
+            onChange={(e) => setRegion(e.target.value)}
+            className={inputCls.replace('w-full', 'max-w-xs')}
+          >
+            {(regions.data?.regions ?? []).map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.label}
+              </option>
+            ))}
+          </select>
+          <label className="flex items-center gap-2 text-sm text-vq-text-lo">
+            <input type="checkbox" checked={strict} onChange={(e) => setStrict(e.target.checked)} />
+            Strict egress (no cross-jurisdiction processing)
+          </label>
+          <Button
+            size="sm"
+            disabled={save.isPending || !region}
+            onClick={() => save.mutate({ region, strictEgress: strict })}
+          >
+            {save.isPending ? 'Saving…' : 'Pin region'}
+          </Button>
+        </div>
+        {current.data && (
+          <p className="text-vq-text-lo text-xs">
+            Current: <span className="font-mono text-vq-text-hi">{current.data.region}</span> ·
+            storage <span className="font-mono">{current.data.storageHost}</span>
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

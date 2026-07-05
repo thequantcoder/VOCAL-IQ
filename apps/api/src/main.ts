@@ -42,6 +42,7 @@ import { v1Routes } from './public/v1.routes';
 import { qaRoutes } from './qa/qa.routes';
 import { ragRoutes } from './rag/rag.routes';
 import { resellerRoutes } from './reseller/reseller.routes';
+import { residencyRoutes } from './residency/residency.routes';
 import { searchRoutes } from './search/search.routes';
 import { sipRoutes } from './sip/sip.routes';
 import { squadsRoutes } from './squads/squads.routes';
@@ -122,6 +123,7 @@ function bootstrap(): void {
   app.use('/admin/plans', planBuilderRoutes(s.planBuilder, s.tenants));
   app.use('/admin/vault', vaultRoutes(s.vault, s.routingDefaults, s.tenants));
   app.use('/compliance', complianceRoutes(s.compliance, s.tenants));
+  app.use('/residency', residencyRoutes(s.residency, s.tenants));
   app.use('/admin/governance', governanceRoutes(s.featureFlags, s.quota, s.auditLog, s.tenants));
   app.use('/whitelabel', whitelabelRoutes(s.whitelabel, s.tenants));
   app.use('/wallet', walletRoutes(s.wallet, s.tenants));

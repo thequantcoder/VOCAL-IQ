@@ -1957,3 +1957,30 @@ J. Quality/docs: ✅ — redaction ordering (cards-first), the RLS null-tenant D
 K. Build/CI: ✅ — `pnpm build` exits 0 (the flaky Next `/404` prerender race cleared on a clean rebuild); all gates green locally.
 
 Consent/DNC/redaction/retention/PCI-safe capture all work and are enforced pre-call + at store time; cookie-consent + privacy/ToS ship — regulated-vertical ready. DoD CONFIRMED. Next: Day 61 (on-prem/VPC deployment).
+
+## Day 61 — On-Premise/VPC Deployment + Data Residency — 2026-07-05 — ✅ DONE
+Model: Opus (🧠 OPUS). Branch `day/61-onprem-vpc-residency`. Prereq: Terraform + target cloud + enterprise requirement (tooling/decisions, not keys) — the IaC modules + the residency-routing software are built; a live cloud apply is the operator's step. No migration, no new env required to build (`DATA_REGION` is an optional deploy pin). Self-audit focus C (isolation/egress) + B + K (IaC reproducibility).
+
+Built (DONE):
+- **shared** `residency.ts` (pure): `DATA_REGIONS` catalog (8 regions × jurisdiction + storage/voice host hints — adding one is config, not code), `platformRegion(env)` (reads `DATA_REGION`), `resolveRegion` (pinned → platform default → global default, never dead-ends), `regionEndpoints` (region → storage/voice hosts), `residencyConfigSchema` + `residencyPermits` (strict-egress jurisdiction match). 11 unit tests.
+- **api** `ResidencyService`: `getResidency`/`setResidency` (per-tenant region pin in tenant settings — admin-only, validated, **audited** `residency.set`), **`resolve(tenantId)`** (the routing hook → effective region + in-region storage/voice endpoints so a call's data stays in-region). Routes `/residency` (region catalog open to members; pin admin-only). Wired composition + main. 4 RLS-real integration tests.
+- **infra/terraform/single-tenant-vpc/** (IaC — self-audit K): `variables.tf` (tenant_slug, `data_region` [validated against the same region set], zero-egress default), `main.tf` (isolated VPC + private subnets + encrypted single-tenant Postgres 16 + Redis + private S3, all pinned to `data_region`; **egress OFF by default** — no NAT/IGW so tenant data can't leave the VPC), `outputs.tf` (endpoints + `zero_egress`/`data_region`). Reproducible per-tenant with `terraform apply -var tenant_slug=… -var data_region=…`.
+- **infra/ON-PREM-RUNBOOK.md**: end-to-end single-tenant VPC deploy (provision → pin region via `DATA_REGION` → migrate → deploy services → validate zero-egress + residency → teardown) with the data-residency guarantees (at rest, in processing, no shared data).
+- **web**: a "Data residency" card on `/dashboard/settings/compliance` — region picker (from the live catalog) + strict-egress toggle + the current pinned region/endpoints. 3 hooks.
+
+Verification: shared **357** tests, api **266** tests (incl. 4 new residency — default→platform region, pin routes endpoints in-region + audited, unknown-region + non-admin rejected), full **typecheck 12/12**, **lint 12/12**, web **build exit 0**. Scoped `biome --write` touched only Day-61 files.
+
+## Self-Audit — Day 61 (A–K)
+A. Correctness: ✅ — region catalog + resolution are pure + unit-tested (fallbacks, endpoints, strict-egress); the pin/resolve/audit path proven against real Postgres.
+B. Tenant isolation (focus): ✅ — residency is per-tenant (RLS `withTenant` settings); the VPC module gives each enterprise tenant a fully isolated stack with NO shared data plane (no cross-tenant path exists at all).
+C. Isolation / egress (focus, critical): ✅ — the VPC defaults to zero-egress (no NAT/IGW → tenant data cannot leave); DB + storage are single-region, encrypted, single-tenant; strict-egress residency refuses cross-jurisdiction processing (`residencyPermits`).
+D. Cost: ✅ — no provider/cost path (routing metadata only).
+E. Errors/obs: ✅ — Zod-validated region config; typed Validation; resolution never dead-ends (falls back to a valid region).
+F. Performance: ✅ — resolution is an in-memory map lookup + one settings read.
+G. Error handling: ✅ — unknown region rejected; web shows the current region + endpoints.
+H. UI/a11y: ✅ — labelled region picker + strict-egress toggle + current-state readout.
+I. Regression: ✅ — additive (shared module, service/routes/page/hooks, infra files); no migration; 266 api + 357 shared tests pass. Scoped biome only.
+J. Quality/docs: ✅ — the residency-routing hook, zero-egress rationale, and per-region isolation documented in code + the runbook; explicit DTOs.
+K. IaC reproducibility (focus): ✅ — Terraform ≥1.6 module is parameterized (tenant_slug + data_region), region-validated, tagged (`Residency`), and reproducible per tenant; the runbook makes a fresh-region deploy repeatable end-to-end.
+
+VPC/on-prem is deployable via Terraform with zero egress; per-tenant residency pinning routes storage/voice in-region and is validated — DoD CONFIRMED (IaC is provider-defined; a live cloud apply is the operator's step, as expected for infra). Next: Day 62 (scale infra — ClickHouse/Qdrant/K8s).

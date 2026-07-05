@@ -2654,3 +2654,50 @@ export function useSetRetention() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['compliance', 'retention'] }),
   });
 }
+
+// ── Data residency (Day 61) ─────────────────────────────────────────────────────
+
+export interface RegionInfo {
+  id: string;
+  label: string;
+  jurisdiction: string;
+  storageHost: string;
+  voiceHost: string;
+}
+
+export interface ResolvedResidency {
+  region: string;
+  strictEgress: boolean;
+  storageHost: string;
+  voiceHost: string;
+}
+
+export function useRegions() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['residency', 'regions'],
+    queryFn: () =>
+      apiFetch<{ regions: RegionInfo[]; platform: string }>(getToken, '/residency/regions'),
+  });
+}
+
+export function useResidency() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['residency', 'current'],
+    queryFn: () => apiFetch<ResolvedResidency>(getToken, '/residency'),
+  });
+}
+
+export function useSetResidency() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { region: string; strictEgress: boolean }) =>
+      apiFetch<{ region: string; strictEgress: boolean }>(getToken, '/residency', {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['residency'] }),
+  });
+}
