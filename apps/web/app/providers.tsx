@@ -5,6 +5,7 @@ import { ThemeProvider } from 'next-themes';
 import { type ReactNode, useEffect, useState } from 'react';
 import { initPostHog } from '../lib/analytics';
 import { AuthProvider } from '../lib/auth';
+import { I18nProvider } from '../lib/i18n/provider';
 
 /**
  * App-shell providers. Self-hosted auth context (JWT), dark-first theming (DESIGN-SYSTEM
@@ -26,7 +27,9 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <I18nProvider>{children}</I18nProvider>
+        </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
