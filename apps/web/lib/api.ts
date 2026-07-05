@@ -2583,3 +2583,74 @@ export function useConfigureSso() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sso'] }),
   });
 }
+
+// ── Compliance: DNC, retention, redaction (Day 60) ──────────────────────────────
+
+export interface Suppression {
+  phone: string;
+  reason: string | null;
+  global: boolean;
+}
+
+export interface RetentionPolicy {
+  recordingsDays: number;
+  transcriptsDays: number;
+  memoryDays: number;
+  redactTranscripts: boolean;
+}
+
+export function useSuppressions() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['compliance', 'dnc'],
+    queryFn: () => apiFetch<Suppression[]>(getToken, '/compliance/dnc'),
+  });
+}
+
+export function useAddSuppression() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { phone: string; reason?: string; global?: boolean }) =>
+      apiFetch<{ phone: string }>(getToken, '/compliance/dnc', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['compliance', 'dnc'] }),
+  });
+}
+
+export function useRemoveSuppression() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { phone: string; global?: boolean }) =>
+      apiFetch<{ removed: boolean }>(
+        getToken,
+        `/compliance/dnc/${encodeURIComponent(vars.phone)}${vars.global ? '?global=true' : ''}`,
+        { method: 'DELETE' },
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['compliance', 'dnc'] }),
+  });
+}
+
+export function useRetention() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['compliance', 'retention'],
+    queryFn: () => apiFetch<RetentionPolicy>(getToken, '/compliance/retention'),
+  });
+}
+
+export function useSetRetention() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: RetentionPolicy) =>
+      apiFetch<RetentionPolicy>(getToken, '/compliance/retention', {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['compliance', 'retention'] }),
+  });
+}

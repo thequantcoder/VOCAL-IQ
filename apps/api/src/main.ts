@@ -17,6 +17,7 @@ import { planBuilderRoutes } from './billing/plan-builder.routes';
 import { callsRoutes } from './calls/calls.routes';
 import { campaignsRoutes } from './campaigns/campaigns.routes';
 import { chatRoutes } from './chat/chat.routes';
+import { complianceRoutes } from './compliance/compliance.routes';
 import { createServices } from './composition';
 import { costRoutes } from './cost/cost.routes';
 import { experimentsRoutes } from './experiments/experiments.routes';
@@ -120,6 +121,7 @@ function bootstrap(): void {
   app.use('/scim/v2', scimRoutes(s.sso));
   app.use('/admin/plans', planBuilderRoutes(s.planBuilder, s.tenants));
   app.use('/admin/vault', vaultRoutes(s.vault, s.routingDefaults, s.tenants));
+  app.use('/compliance', complianceRoutes(s.compliance, s.tenants));
   app.use('/admin/governance', governanceRoutes(s.featureFlags, s.quota, s.auditLog, s.tenants));
   app.use('/whitelabel', whitelabelRoutes(s.whitelabel, s.tenants));
   app.use('/wallet', walletRoutes(s.wallet, s.tenants));

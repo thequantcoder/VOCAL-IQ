@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono, Space_Grotesk } from 'next/font/google';
 import type { ReactNode } from 'react';
 import './globals.css';
+import { CookieConsent } from '../components/cookie-consent';
 import { Providers } from './providers';
 
 /*
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         {/* Providers wraps the app with the self-hosted auth context (JWT), theming, and
             the data layer, so auth is available to every route. */}
         <Providers>{children}</Providers>
+        <CookieConsent />
       </body>
     </html>
   );

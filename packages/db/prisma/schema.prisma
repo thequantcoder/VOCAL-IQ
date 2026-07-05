@@ -221,6 +221,8 @@ model Tenant {
   auditLogs           AuditLog[]
   featureFlags        FeatureFlag[]
   ssoConnection       SsoConnection?
+  consentRecords      ConsentRecord[]
+  suppressions        Suppression[]
   flows               Flow[]
   flowVersions        FlowVersion[]
   transcripts         Transcript[]
@@ -1165,6 +1167,35 @@ model AuditLog {
 
   @@index([tenantId])
   @@index([tenantId, ts])
+}
+
+/// Recording-disclosure / consent capture (Day 60). One row per consent event, region-aware.
+model ConsentRecord {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @db.Uuid
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contactPhone String
+  region       String
+  channel      String   @default("voice")
+  granted      Boolean
+  basis        String?
+  ts           DateTime @default(now())
+
+  @@index([tenantId, contactPhone])
+}
+
+/// Do-Not-Call suppression (Day 60). tenantId null = a GLOBAL/platform suppression (applies to
+/// everyone); otherwise scoped to one tenant. Enforced pre-call (extends the Day-10 gate).
+model Suppression {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String?  @db.Uuid
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  phone     String // normalized comparison key
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@unique([tenantId, phone])
+  @@index([phone])
 }
 
 /// Per-tenant enterprise SSO/SAML connection + directory-sync config (Day 59). One per tenant.
