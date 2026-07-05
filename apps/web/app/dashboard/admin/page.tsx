@@ -9,6 +9,7 @@ import {
   Layers,
   Pause,
   Play,
+  Rocket,
   Server,
   Shield,
   UserCog,
@@ -24,6 +25,7 @@ import {
   useAdminOverview,
   useAdminTenants,
   useImpersonate,
+  useLaunchReadiness,
   useScaleStatus,
   useSetAdminTenantStatus,
 } from '../../../lib/api';
@@ -52,10 +54,53 @@ export default function SuperAdminPage() {
 
       <PlatformOverviewCards />
       <SystemHealthCard />
+      <ReadinessCard />
       <ScaleCard />
       <ToolHub />
       <TenantManager />
     </div>
+  );
+}
+
+function ReadinessCard() {
+  const readiness = useLaunchReadiness();
+  if (!readiness.data) return null;
+  const r = readiness.data;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between text-base">
+          <span className="flex items-center gap-2">
+            <Rocket size={16} /> Launch readiness
+          </span>
+          <span
+            className={`rounded-vq-pill border px-2 py-0.5 text-xs ${
+              r.go ? 'border-vq-success/40 text-vq-success' : 'border-vq-danger/40 text-vq-danger'
+            }`}
+          >
+            {r.go
+              ? 'GO'
+              : `NO-GO · ${r.blockersFailed} blocker${r.blockersFailed === 1 ? '' : 's'}`}
+          </span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-1">
+        <span className="text-vq-text-lo text-xs">
+          {r.passed}/{r.total} checks passing
+        </span>
+        {r.results
+          .filter((x) => !x.passed)
+          .map((x) => (
+            <div key={x.item.key} className="flex items-center gap-2 text-sm">
+              <span className={x.item.severity === 'blocker' ? 'text-vq-danger' : 'text-vq-warn'}>
+                ✗
+              </span>
+              <span className="text-vq-text-hi">{x.item.label}</span>
+              {x.detail && <span className="text-vq-text-lo text-xs">— {x.detail}</span>}
+            </div>
+          ))}
+      </CardContent>
+    </Card>
   );
 }
 

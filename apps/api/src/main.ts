@@ -31,6 +31,7 @@ import { corsMiddleware, parseCorsAllowlist, securityHeaders } from './http/secu
 import { integrationsRoutes } from './integrations/integrations.routes';
 import { keyPoolRoutes } from './keypool/keypool.routes';
 import { latencyRoutes } from './latency/latency.routes';
+import { launchRoutes, statusRoutes } from './launch/launch.routes';
 import { leadsRoutes } from './leads/leads.routes';
 import { mcpRoutes } from './mcp/mcp.routes';
 import { memoryRoutes } from './memory/memory.routes';
@@ -104,6 +105,8 @@ function bootstrap(): void {
 
   // ── Routes (mounted at the same paths the Nest controllers used) ──────────────
   app.use('/', healthRoutes());
+  app.use('/status', statusRoutes(s.launch));
+  app.use('/admin/launch', launchRoutes(s.launch, s.tenants));
   app.use('/auth', authRoutes(s.auth));
   app.use('/tenants', tenantRoutes(s.db, s.tenants));
   app.use('/agents', agentsRoutes(s.agents, s.routerSvc, s.db, s.tenants));

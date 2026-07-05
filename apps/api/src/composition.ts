@@ -29,6 +29,7 @@ import { QuotaService } from './governance/quota.service';
 import { IntegrationsService } from './integrations/integrations.service';
 import { KeyPoolService } from './keypool/keypool.service';
 import { LatencyService } from './latency/latency.service';
+import { LaunchService } from './launch/launch.service';
 import { LeadsService } from './leads/leads.service';
 import { McpService } from './mcp/mcp.service';
 import { httpMcpTransport } from './mcp/transport';
@@ -133,6 +134,7 @@ export function createServices() {
   const latency = new LatencyService(db);
   // S2S provider is gated on env (OpenAI Realtime / Gemini Live) — false in dev/CI → pipeline.
   const s2s = new S2SService(db, Boolean(process.env.S2S_PROVIDER_KEY));
+  const launch = new LaunchService(db, process.env);
   const tests = new TestsService(db, (tenantId) => routerGrader(routerSvc, tenantId));
   // QA scoring completer: route through RouterService so every eval meters cost (rule #4).
   const qa = new QaService(db, async ({ tenantId, system, user }) => {
@@ -205,6 +207,7 @@ export function createServices() {
     scale,
     latency,
     s2s,
+    launch,
     abuse,
     billingWebhook,
     processor,
