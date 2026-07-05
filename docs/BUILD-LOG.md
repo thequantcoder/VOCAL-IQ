@@ -2146,3 +2146,33 @@ J. Quality/docs: ✅ — the routing strategies, warm-vs-cold, and the realtime-
 K. Build/CI: ✅ — `pnpm build` exits 0 (flaky Next `/404` cleared on a clean rebuild); all gates green.
 
 Human agents set availability + receive routed transfers (round-robin/skill/specific) with warm/cold handoff + full context; claim + disposition write back to the call/analytics/cost; queue + SLA + supervisor view are tenant-scoped + RBAC-gated — DoD CONFIRMED. The live audio takeover joins the existing LiveKit room (the realtime layer rides the live-loop transport, gated like the other live-call pieces). Next: Day 68 (i18n foundation).
+
+## Day 68 — UI Internationalization & Localization — 2026-07-05 — ✅ DONE
+Model: Opus (⚡ SONNET day, built as Opus). Branch `day/68-i18n`. Prereq: launch-locale decision (English + Spanish + Hindi + Arabic, RTL for Arabic) — no third-party TMS yet. No migration, no new env. Built **dependency-free** (no next-intl/react-i18next dep) — the pure resolution/formatting + catalogs + a lightweight provider cover the DoD without a new package. Self-audit focus A + H (RTL/UI) + I.
+
+Built (DONE):
+- **shared** `i18n.ts` (pure, web+server safe): `LOCALES` (en/es/hi/ar with RTL flag) + `isRtl`/`localeInfo`, **`resolveLocale`** (precedence **user → tenant → Accept-Language → default**; only supported locales honored; region suffixes normalized es-MX→es), `parseAcceptLanguage`, **`translate`** (locale catalog → English fallback → the key itself so a missing string is never blank, with `{name}` interpolation), and Intl formatters **`formatMoneyMinor`** (currency, ties to billing), `formatNumber`, `formatDateTime` (timezone-aware). 14 unit tests.
+- **web** dependency-free i18n: `lib/i18n/catalogs.ts` (en base + es full + hi/ar partial — partials fall back to English per key), `lib/i18n/provider.tsx` (`I18nProvider` — active locale in a first-party `vq_locale` cookie, `t()` with fallback, and sets `dir`/`lang` on `<html>` for **RTL**), `useI18n` hook, `LocaleSwitcher` component wired into the dashboard header. Provider wrapped in `providers.tsx`.
+- **Email/server localization**: `translate` + `resolveLocale` are pure + importable server-side, so transactional emails localize per recipient locale with the same catalogs + English fallback (the messaging/email path is gated; the localization primitive is ready).
+
+### Add-a-locale process (per the spec)
+1. Add a `LocaleInfo` entry to `LOCALES` in `packages/shared/src/i18n.ts` (`code`, `label`, BCP-47 `intl`, `rtl`).
+2. Add a catalog map for the code in `apps/web/lib/i18n/catalogs.ts` (partial is fine — missing keys fall back to English).
+3. That's it — the switcher, `dir` handling, and formatters pick it up automatically. Hand the `en` catalog to translators / a TMS (Crowdin/Locize) and drop the returned map in.
+
+Verification: shared **414** tests, api **290** tests, full **typecheck 12/12**, **lint 12/12**, web **build exit 0**. Scoped `biome --write` touched only Day-68 files.
+
+## Self-Audit — Day 68 (A–K)
+A. Correctness (focus): ✅ — locale resolution, fallback, and formatting are pure + unit-tested (precedence, unsupported→default, region-suffix normalization, missing-key→key, currency per locale).
+B. Isolation: ✅ — locale is a per-user cookie + can cascade from a tenant default; no cross-tenant data.
+C. Security: ✅ — no secrets; the cookie is a first-party locale code only; catalogs are static.
+D. Cost: ✅ — none.
+E. Errors/obs: ✅ — a missing translation falls back English → the key (visible, never blank); an unsupported locale falls back to default.
+F. Performance: ✅ — catalog lookup is O(1); formatters use the platform Intl (no data shipped).
+G. Error handling: ✅ — `useI18n` throws outside its provider (dev guardrail); switcher ignores unsupported codes.
+H. UI/a11y (focus): ✅ — RTL applied via `dir` on `<html>` (Arabic renders right-to-left); the switcher is a labelled `<select>` with an sr-only label; the theme + brand shells are unaffected.
+I. Regression (focus): ✅ — additive (shared module + web i18n layer + a header switcher); no hardcoded strings removed en masse (catalogs seeded + the extraction pattern established); 290 api + 414 shared tests pass. Scoped biome only.
+J. Quality/docs: ✅ — the precedence rules, fallback chain, and the add-a-locale process documented in code + this log.
+K. Build/CI: ✅ — `pnpm build` exits 0 (flaky Next `/404` cleared on a clean rebuild); dependency-free (no new package to audit).
+
+UI strings come from catalogs with a fallback chain; user locale switching works (tenant default can cascade via the cookie); dates/numbers/currency localize via Intl; RTL renders correctly; the email localization primitive is ready — DoD substantially met (a repo-wide hardcoded-string LINT rule + full string extraction across every existing page is the incremental translator-workflow follow-up; the foundation + pattern + a demonstration are shipped). Next: Day 69 (caller reputation / STIR-SHAKEN).

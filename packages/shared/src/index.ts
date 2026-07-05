@@ -27,6 +27,7 @@ export * from './flow-compiler.js';
 export * from './flow-graph.js';
 export * from './flow-node-config.js';
 export * from './form.js';
+export * from './i18n.js';
 export * from './integrations.js';
 export * from './key-pool.js';
 export * from './latency.js';

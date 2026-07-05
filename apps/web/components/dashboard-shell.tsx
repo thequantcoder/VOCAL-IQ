@@ -43,6 +43,7 @@ import { useBranding } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { BrandingApplier } from './branding-applier';
 import { ErrorBoundary } from './error-boundary';
+import { LocaleSwitcher } from './locale-switcher';
 
 const NAV = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard, exact: true },
@@ -150,6 +151,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
 
       <div className="flex min-w-0 flex-col">
         <header className="flex items-center justify-end gap-3 border-vq-border border-b px-6 py-3">
+          <LocaleSwitcher />
           <ThemeToggle />
           <UserMenu />
         </header>
