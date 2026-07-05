@@ -46,6 +46,7 @@ import { qaRoutes } from './qa/qa.routes';
 import { ragRoutes } from './rag/rag.routes';
 import { resellerRoutes } from './reseller/reseller.routes';
 import { residencyRoutes } from './residency/residency.routes';
+import { s2sRoutes } from './s2s/s2s.routes';
 import { scaleRoutes } from './scale/scale.routes';
 import { searchRoutes } from './search/search.routes';
 import { sipRoutes } from './sip/sip.routes';
@@ -109,6 +110,7 @@ function bootstrap(): void {
   app.use('/agents/:agentId/flow', flowsRoutes(s.flows, s.tenants));
   app.use('/agents/:agentId/tests', testsRoutes(s.tests, s.tenants));
   app.use('/agents/:agentId/chat', chatRoutes(s.chat, s.tenants));
+  app.use('/agents/:agentId/s2s', s2sRoutes(s.s2s, s.tenants));
   app.use('/appointments', appointmentsRoutes(s.appointments, s.tenants));
   app.use('/templates', templatesRoutes(s.templates, s.tenants));
   app.use('/calls', callsRoutes(s.outbound, s.callsRead, s.tenants));
