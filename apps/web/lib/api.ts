@@ -2701,3 +2701,18 @@ export function useSetResidency() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['residency'] }),
   });
 }
+
+// ── Scale infra status (Day 62) ─────────────────────────────────────────────────
+
+export interface ScaleStatus {
+  backends: { analytics: string; vectors: string; multiRegionVoice: boolean };
+  regions: { id: string; mediaHost: string }[];
+}
+
+export function useScaleStatus() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['scale', 'status'],
+    queryFn: () => apiFetch<ScaleStatus>(getToken, '/scale/status'),
+  });
+}

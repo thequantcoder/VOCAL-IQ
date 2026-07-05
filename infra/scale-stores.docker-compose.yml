@@ -1,0 +1,19 @@
+# Day 62 — Scale-out data stores (ClickHouse for event analytics, Qdrant for large vector
+# workloads). Bring up alongside the base stack when volume justifies scale-out; the app auto-
+# detects them via CLICKHOUSE_URL / QDRANT_URL and routes through the AnalyticsSink / VectorStore
+# seams. Timescale + pgvector remain the operational defaults when these are absent.
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.3
+    ports: ["8123:8123", "9000:9000"]
+    ulimits: { nofile: { soft: 262144, hard: 262144 } }
+    volumes: ["clickhouse-data:/var/lib/clickhouse"]
+    environment:
+      CLICKHOUSE_DB: vocaliq_events
+  qdrant:
+    image: qdrant/qdrant:v1.9.0
+    ports: ["6333:6333", "6334:6334"]
+    volumes: ["qdrant-data:/qdrant/storage"]
+volumes:
+  clickhouse-data:
+  qdrant-data:

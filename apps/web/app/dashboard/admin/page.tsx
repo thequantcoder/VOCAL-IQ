@@ -9,6 +9,7 @@ import {
   Layers,
   Pause,
   Play,
+  Server,
   Shield,
   UserCog,
 } from 'lucide-react';
@@ -23,6 +24,7 @@ import {
   useAdminOverview,
   useAdminTenants,
   useImpersonate,
+  useScaleStatus,
   useSetAdminTenantStatus,
 } from '../../../lib/api';
 
@@ -50,8 +52,39 @@ export default function SuperAdminPage() {
 
       <PlatformOverviewCards />
       <SystemHealthCard />
+      <ScaleCard />
       <ToolHub />
       <TenantManager />
+    </div>
+  );
+}
+
+function ScaleCard() {
+  const scale = useScaleStatus();
+  if (!scale.data) return null;
+  const { backends, regions } = scale.data;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Server size={16} /> Scale-out
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+        <Kv label="Analytics" value={backends.analytics} />
+        <Kv label="Vectors" value={backends.vectors} />
+        <Kv label="Multi-region voice" value={backends.multiRegionVoice ? 'on' : 'off'} />
+        <Kv label="Voice regions" value={regions.map((r) => r.id).join(', ')} />
+      </CardContent>
+    </Card>
+  );
+}
+
+function Kv({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col">
+      <span className="text-vq-text-lo text-xs">{label}</span>
+      <span className="font-mono text-vq-text-hi text-sm">{value}</span>
     </div>
   );
 }
