@@ -6,4 +6,6 @@ export interface TenantContext {
   userId: string;
   tenantId: string;
   role: Role;
+  /** The membership row id for (userId, tenantId) — used by the Agent Desk (Day 67). */
+  membershipId: string;
 }

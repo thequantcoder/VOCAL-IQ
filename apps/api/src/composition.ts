@@ -20,6 +20,7 @@ import { ComplianceService } from './compliance/compliance.service';
 import { CostService } from './cost/cost.service';
 import { buildEncryptor } from './crypto/envelope';
 import { PrismaService } from './db/prisma.service';
+import { DeskService } from './desk/desk.service';
 import { ExperimentsService } from './experiments/experiments.service';
 import { FlowsService } from './flows/flows.service';
 import { FormsService } from './forms/forms.service';
@@ -135,6 +136,7 @@ export function createServices() {
   // S2S provider is gated on env (OpenAI Realtime / Gemini Live) — false in dev/CI → pipeline.
   const s2s = new S2SService(db, Boolean(process.env.S2S_PROVIDER_KEY));
   const launch = new LaunchService(db, process.env);
+  const desk = new DeskService(db);
   const tests = new TestsService(db, (tenantId) => routerGrader(routerSvc, tenantId));
   // QA scoring completer: route through RouterService so every eval meters cost (rule #4).
   const qa = new QaService(db, async ({ tenantId, system, user }) => {
@@ -208,6 +210,7 @@ export function createServices() {
     latency,
     s2s,
     launch,
+    desk,
     abuse,
     billingWebhook,
     processor,

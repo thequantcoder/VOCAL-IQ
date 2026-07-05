@@ -224,6 +224,8 @@ model Tenant {
   consentRecords      ConsentRecord[]
   suppressions        Suppression[]
   callLatencies       CallLatency[]
+  agentPresences      AgentPresence[]
+  transferRequests    TransferRequest[]
   flows               Flow[]
   flowVersions        FlowVersion[]
   transcripts         Transcript[]
@@ -1168,6 +1170,42 @@ model AuditLog {
 
   @@index([tenantId])
   @@index([tenantId, ts])
+}
+
+/// Agent Desk presence (Day 67) — a human agent's live availability + skills for transfer routing.
+model AgentPresence {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @db.Uuid
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  membershipId   String   @unique @db.Uuid
+  userId         String   @db.Uuid
+  status         String   @default("away") // available | away | busy
+  skills         String[] @default([])
+  activeCalls    Int      @default(0)
+  lastAssignedAt DateTime?
+  updatedAt      DateTime @updatedAt
+
+  @@index([tenantId, status])
+}
+
+/// A live call queued/routed to a human agent (Day 67). The Transfer node / escalation creates one.
+model TransferRequest {
+  id                   String    @id @default(uuid()) @db.Uuid
+  tenantId             String    @db.Uuid
+  tenant               Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  callId               String    @db.Uuid
+  handoffType          String    @default("cold") // warm | cold
+  strategy             String    @default("round_robin")
+  requiredSkill        String?
+  warmSummary          String?
+  status               String    @default("queued") // queued | ringing | active | completed | abandoned
+  assignedMembershipId String?   @db.Uuid
+  waitStartedAt        DateTime  @default(now())
+  answeredAt           DateTime?
+  endedAt              DateTime?
+
+  @@index([tenantId, status])
+  @@index([callId])
 }
 
 /// Per-turn voice-loop latency samples (Day 63) — powers the latency dashboard + SLO enforcement.

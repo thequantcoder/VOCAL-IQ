@@ -19,7 +19,7 @@ export class TenantService {
     const memberships = await this.db.admin.membership.findMany({
       where: { userId: localUserId, status: 'ACTIVE' },
       orderBy: { createdAt: 'asc' },
-      select: { tenantId: true, role: true },
+      select: { id: true, tenantId: true, role: true },
     });
     if (memberships.length === 0) {
       throw new TenantError('User has no active tenant membership');
@@ -30,7 +30,12 @@ export class TenantService {
     if (!membership) {
       throw new ForbiddenError('Not a member of the requested tenant');
     }
-    return { userId: localUserId, tenantId: membership.tenantId, role: membership.role as Role };
+    return {
+      userId: localUserId,
+      tenantId: membership.tenantId,
+      role: membership.role as Role,
+      membershipId: membership.id,
+    };
   }
 
   /**
@@ -53,7 +58,14 @@ export class TenantService {
       select: { id: true },
     });
     if (!target) throw new NotFoundError('Tenant not found');
-    return { userId: actorUserId, tenantId: targetTenantId, role: Role.SUPER_ADMIN };
+    // The impersonating super-admin has no membership in the target tenant; membershipId is empty
+    // (the Agent Desk isn't used while impersonating).
+    return {
+      userId: actorUserId,
+      tenantId: targetTenantId,
+      role: Role.SUPER_ADMIN,
+      membershipId: '',
+    };
   }
 
   /** The tenants a user can switch between (for the tenant switcher UI). */

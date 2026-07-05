@@ -2771,3 +2771,35 @@ export function useLaunchReadiness() {
     queryFn: () => apiFetch<ReadinessReport>(getToken, '/admin/launch/readiness'),
   });
 }
+
+// ── Agent Desk (Day 67) ─────────────────────────────────────────────────────────
+
+export interface DeskQueue {
+  items: { callId: string; waitSeconds: number; slaBreached: boolean; assigned: boolean }[];
+  waiting: number;
+  breached: number;
+  longestWaitSeconds: number;
+  supervisor: boolean;
+}
+
+export function useDeskQueue() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['desk', 'queue'],
+    queryFn: () => apiFetch<DeskQueue>(getToken, '/desk/queue'),
+    refetchInterval: 5000,
+  });
+}
+
+export function useSetPresence() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { status: 'available' | 'away' | 'busy'; skills?: string[] }) =>
+      apiFetch<{ status: string; skills: string[] }>(getToken, '/desk/presence', {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['desk'] }),
+  });
+}

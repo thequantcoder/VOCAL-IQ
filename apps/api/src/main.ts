@@ -21,6 +21,7 @@ import { chatRoutes } from './chat/chat.routes';
 import { complianceRoutes } from './compliance/compliance.routes';
 import { createServices } from './composition';
 import { costRoutes } from './cost/cost.routes';
+import { deskRoutes } from './desk/desk.routes';
 import { experimentsRoutes } from './experiments/experiments.routes';
 import { flowsRoutes } from './flows/flows.routes';
 import { formsRoutes, publicFormsRoutes } from './forms/forms.routes';
@@ -130,6 +131,7 @@ function bootstrap(): void {
   app.use('/webhooks', webhookRoutes(s.webhooks, s.tenants));
   app.use('/ops', opsRoutes(s.opsToolkit, s.tenants));
   app.use('/reseller', resellerRoutes(s.reseller, s.tenants));
+  app.use('/desk', deskRoutes(s.desk, s.tenants));
   app.use('/admin/superadmin', superAdminRoutes(s.superAdmin, s.tenants));
   app.use('/admin/sso', ssoAdminRoutes(s.sso, s.tenants));
   app.use('/auth/sso', ssoPublicRoutes(s.sso));

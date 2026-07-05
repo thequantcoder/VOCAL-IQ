@@ -2119,3 +2119,30 @@ J. Quality/docs: ✅ — complete runbooks, go-live checklist, load-test, and us
 K. DR/backups (focus): ✅ — `reliability.backups` is a BLOCKER gated on `BACKUPS_VERIFIED` set only after a real restore drill (per the data-deletion/DR runbook); rollback + key-rotation runbooks documented.
 
 Load-test script + chaos/failover paths (provider fallback via key-pool, region failover via residency, backpressure via HPAs) documented; runbooks + public status page + full docs done; the go-live gate is automated + fail-closed — **this completes a sellable v1.0**. DoD CONFIRMED. **Tag `v1.0` on merge to main.** Next: Phase 6 core-tier (Day 67, Agent Desk) + advanced tier.
+
+## Day 67 — Agent Desk (Human-Agent Surface for Transfers & Escalations) — 2026-07-05 — ✅ DONE
+Model: Opus (🧠 OPUS). Branch `day/67-agent-desk`. Prereq: Days 9/11/21/27 (live loop, inbound, transfer node, squads). Migration `20260706000000_day67_agent_desk` (`AgentPresence` + `TransferRequest` + RLS). No new env. Self-audit focus B (desk/queue isolation) + C (RBAC — only AGENT+ claim) + A.
+
+Built (DONE):
+- **shared** `agent-desk.ts` (pure): presence states + `presenceInputSchema`, `transferRequestSchema`, **`pickDeskAgent`** (routing — `round_robin` picks the least-recently-assigned available agent under capacity; `skill` requires the skill or refuses to misroute; `specific` targets one; skips away/busy/at-cap), **`buildWarmSummary`** (the spoken context the AI reads before a warm handoff), **`summarizeQueue`** (per-transfer wait seconds + SLA breach + longest wait). 12 unit tests.
+- **db/migration**: `AgentPresence` (per-membership status/skills/activeCalls/lastAssignedAt, unique per membership) + `TransferRequest` (the queued human handoff: callId, handoffType warm/cold, strategy, requiredSkill, warmSummary, status queued→ringing→active→completed/abandoned, assignedMembershipId, wait/answered/ended timestamps) — both RLS-scoped (a human agent only sees its own tenant's calls).
+- **api** `DeskService`: `setPresence`, `availableAgents`, **`requestTransfer`** (the Transfer node/escalation enqueues a handoff → routes to an available human via the pure picker, builds the warm summary, stamps ringing/queued), **`claim`** (agent takes the call → active + capacity++), **`noAnswer`** (release back to queue for re-route), **`disposition`** (wrap-up → closes the transfer, frees capacity, **writes disposition/status/duration back to the Call** so human-handled minutes feed analytics + cost), **`queue`** (SLA view — supervisors see all, agents see their own). Routes `/desk/*` gated to desk roles (AGENT+). Wired composition + main. 5 RLS-real integration tests (presence → warm route → claim → disposition-writeback → queue-when-away).
+- **Context plumbing**: added `membershipId` to `TenantContext` (populated in `resolveContext`; empty for API-key + impersonation paths) so the desk can identify the human agent's membership.
+- **web** `/dashboard/desk`: availability toggle (available/busy/away), a live transfer queue (5s poll) with wait times + SLA-breach highlighting + claim/answer, nav "Agent Desk" entry.
+
+Verification: shared **403** tests, api **290** tests (incl. 12 desk shared + 5 desk api; the `membershipId` context addition broke nothing — all prior suites green), full **typecheck 12/12**, **lint 12/12**, web **build exit 0** (`/dashboard/desk` prerendered). Scoped `biome --write` touched only Day-67 files. Migration applied locally.
+
+## Self-Audit — Day 67 (A–K)
+A. Correctness: ✅ — routing/presence/queue math is pure + exhaustively unit-tested (round-robin staleness, skill/specific, capacity, SLA); the full lifecycle proven against real Postgres.
+B. Isolation (focus): ✅ — `AgentPresence` + `TransferRequest` are RLS-scoped; the queue/claim/disposition all run under `withTenant`; agents see only their own tenant + (non-supervisors) their own assignments.
+C. RBAC (focus): ✅ — the desk routes require AGENT+ (viewers/billing can't claim live calls); supervisors (OWNER/ADMIN) get the full queue, agents get their own; claim rejects an already-active transfer.
+D. Cost: ✅ — disposition writes the human-handled call's duration/status back to the Call, so telephony minutes still meter downstream (no unmetered human path).
+E. Errors/obs: ✅ — Zod-validated presence/transfer/disposition; typed Validation/NotFound; queue surfaces SLA breaches.
+F. Performance: ✅ — routing is an in-memory pick over the available set; queue/presence reads are indexed on (tenantId, status).
+G. Error handling: ✅ — no available agent → the transfer queues (never dropped); no-answer requeues; web shows loading/error/empty states.
+H. UI/a11y: ✅ — availability pills, live queue with wait/SLA colour, claim/answer actions.
+I. Regression: ✅ — additive (shared module, migration, service/routes/page/hooks) + a backwards-safe `membershipId` context field (empty where there's no membership); 290 api + 403 shared tests pass. Scoped biome only.
+J. Quality/docs: ✅ — the routing strategies, warm-vs-cold, and the realtime-layer boundary documented in code; explicit DTOs.
+K. Build/CI: ✅ — `pnpm build` exits 0 (flaky Next `/404` cleared on a clean rebuild); all gates green.
+
+Human agents set availability + receive routed transfers (round-robin/skill/specific) with warm/cold handoff + full context; claim + disposition write back to the call/analytics/cost; queue + SLA + supervisor view are tenant-scoped + RBAC-gated — DoD CONFIRMED. The live audio takeover joins the existing LiveKit room (the realtime layer rides the live-loop transport, gated like the other live-call pieces). Next: Day 68 (i18n foundation).
