@@ -27,6 +27,7 @@ import { FeatureFlagsService } from './governance/feature-flags.service';
 import { QuotaService } from './governance/quota.service';
 import { IntegrationsService } from './integrations/integrations.service';
 import { KeyPoolService } from './keypool/keypool.service';
+import { LatencyService } from './latency/latency.service';
 import { LeadsService } from './leads/leads.service';
 import { McpService } from './mcp/mcp.service';
 import { httpMcpTransport } from './mcp/transport';
@@ -126,6 +127,7 @@ export function createServices() {
   const compliance = new ComplianceService(db);
   const residency = new ResidencyService(db, process.env);
   const scale = new ScaleService(process.env);
+  const latency = new LatencyService(db);
   const tests = new TestsService(db, (tenantId) => routerGrader(routerSvc, tenantId));
   // QA scoring completer: route through RouterService so every eval meters cost (rule #4).
   const qa = new QaService(db, async ({ tenantId, system, user }) => {
@@ -196,6 +198,7 @@ export function createServices() {
     compliance,
     residency,
     scale,
+    latency,
     billingWebhook,
     processor,
     widget,

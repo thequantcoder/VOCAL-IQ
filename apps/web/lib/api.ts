@@ -2716,3 +2716,29 @@ export function useScaleStatus() {
     queryFn: () => apiFetch<ScaleStatus>(getToken, '/scale/status'),
   });
 }
+
+// ── Voice-loop latency SLO dashboard (Day 63) ───────────────────────────────────
+
+export interface LatencyStat {
+  stage: string;
+  p50: number;
+  p95: number;
+  slo: number;
+  breached: boolean;
+}
+
+export interface LatencySummary {
+  window: string;
+  count: number;
+  breached: boolean;
+  stats: LatencyStat[];
+}
+
+export function useLatencySummary(hours = 24) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['latency', 'summary', hours],
+    queryFn: () => apiFetch<LatencySummary>(getToken, `/latency/summary?hours=${hours}`),
+    refetchInterval: 30_000,
+  });
+}

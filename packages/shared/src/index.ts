@@ -27,6 +27,7 @@ export * from './flow-node-config.js';
 export * from './form.js';
 export * from './integrations.js';
 export * from './key-pool.js';
+export * from './latency.js';
 export * from './lead.js';
 export * from './mcp.js';
 export * from './memory.js';
