@@ -28,6 +28,7 @@ import { healthRoutes } from './health.routes';
 import { errorMiddleware, notFoundMiddleware } from './http/error.middleware';
 import { integrationsRoutes } from './integrations/integrations.routes';
 import { keyPoolRoutes } from './keypool/keypool.routes';
+import { latencyRoutes } from './latency/latency.routes';
 import { leadsRoutes } from './leads/leads.routes';
 import { mcpRoutes } from './mcp/mcp.routes';
 import { memoryRoutes } from './memory/memory.routes';
@@ -126,6 +127,7 @@ function bootstrap(): void {
   app.use('/compliance', complianceRoutes(s.compliance, s.tenants));
   app.use('/residency', residencyRoutes(s.residency, s.tenants));
   app.use('/scale', scaleRoutes(s.scale, s.tenants));
+  app.use('/latency', latencyRoutes(s.latency, s.tenants));
   app.use('/admin/governance', governanceRoutes(s.featureFlags, s.quota, s.auditLog, s.tenants));
   app.use('/whitelabel', whitelabelRoutes(s.whitelabel, s.tenants));
   app.use('/wallet', walletRoutes(s.wallet, s.tenants));

@@ -2010,3 +2010,29 @@ J. Quality/docs: ✅ — the provider-style seam, parity contract, and per-metri
 K. IaC reproducibility (focus): ✅ — K8s manifests + HPAs + the scale-stores compose are declarative + reproducible; backends switch by env (`CLICKHOUSE_URL`/`QDRANT_URL`/`VOICE_REGIONS`), no code change.
 
 ClickHouse/Qdrant/K8s/multi-region voice are wired behind config-driven seams with proven parity + autoscaling manifests; nearest-region voice routing works — DoD CONFIRMED. **Live ClickHouse/Qdrant/K8s bring-up is the operator's step** (auto-detected via env; the seams + IaC are ready). Next: Day 63 (latency hardening).
+
+## Day 63 — Performance & Latency Hardening (Voice Loop) — 2026-07-05 — ✅ DONE
+Model: Opus (🧠 OPUS). Branch `day/63-latency-hardening`. Prereq: production-like load + Days 9/62 (infra ready). Migration `20260705220000_day63_call_latency` (`CallLatency` + RLS). No new env. Self-audit focus F (the whole day) + A + D (routing-by-latency cost trade-off).
+
+Built (DONE):
+- **shared** `latency.ts` (pure): the turn-stage model (STT→LLM TTFT→TTS TTFA→network), **`LATENCY_SLO`** (per-stage + sub-1s total p95 budget — the CI-guarded thresholds), `percentile` (nearest-rank p50/p95), **`summarizeLatency`** (per-stage/total p50/p95 + breach flags), **`ENDPOINTING_PRESETS`** (snappy/balanced/patient) + **`turnEnded`** (silence threshold shrinks after terminal punctuation → replies sooner without clipping), **`pickProviderByLatency`** (route to the fastest provider, with an explicit `costBias` latency↔cost trade-off). 16 unit tests **including a CI latency-regression guard** (the target profile must hold the end-to-end SLO — loosening a stage default past budget fails the build).
+- **db/migration**: `CallLatency` (per-turn stage timings + provider/region, RLS-scoped) indexed on `(tenantId, ts)` for percentile queries.
+- **api** `LatencyService`: `record` (voice service posts each turn's timings), `summary` (p50/p95 per stage vs SLO over a trailing window + breach flag), `providerLatencies` (measured per-provider p95 → feeds latency-based routing). Routes `/latency` (record + summary), session-authed + tenant-scoped. Wired composition + main. 3 RLS-real integration tests.
+- **web** `/dashboard/latency`: per-stage p50/p95 vs SLO bars (breach → red), overall within-SLO/breached badge, 24h window, 30s refetch. Nav "Latency" entry.
+
+Verification: shared **376** tests, api **272** tests (incl. 3 new latency — within-SLO no-breach, a slow-provider breach flagged + per-provider p95 exposed, invalid-sample rejected), full **typecheck 12/12**, **lint 12/12**, web **build exit 0** (`/dashboard/latency` prerendered). Scoped `biome --write` touched only Day-63 files. Migration applied locally.
+
+## Self-Audit — Day 63 (A–K)
+A. Correctness / parity (focus): ✅ — percentiles + SLO evaluation are pure + unit-tested; the record→summarize path proven against real Postgres; the regression guard pins the target profile to the SLO.
+B. Isolation: ✅ — `CallLatency` is RLS-scoped; summary/provider stats read only the tenant's own samples.
+C. Security: ✅ — no PII in latency samples (timings only); Zod-validated inputs.
+D. Routing-by-latency cost trade-off (focus): ✅ — `pickProviderByLatency` is an explicit, testable score (`p95 * (1 + costBias*(costWeight-1))`): pure-latency picks the fastest; a high cost bias shifts to a cheaper-slower provider (both proven), so routing never blindly chases latency at any cost.
+E. Errors/obs: ✅ — invalid samples rejected; the summary surfaces breaches for alerting; per-provider p95 exposed.
+F. Latency (focus — the whole day): ✅ — SLOs are codified (sub-1s turn p95), enforced (breach flags), regression-tested in CI, and actionable (endpointing presets cut dead air via punctuation-aware turn-ending; latency-based provider selection routes to the fastest); the dashboard makes p50/p95 visible per stage.
+G. Error handling: ✅ — web loading/error/empty states; clamped query window.
+H. UI/a11y: ✅ — labelled per-stage bars with p50/p95/SLO + colour-coded breach, overall badge.
+I. Regression: ✅ — additive (shared module, migration, service/routes/page/hook); existing 272 api + 376 shared tests pass; the CI regression guard newly protects the latency budget. Scoped biome only.
+J. Quality/docs: ✅ — the stage model, SLO rationale, endpointing tuning, and the cost-biased routing trade-off documented in code; explicit DTOs.
+K. Build/CI: ✅ — `pnpm build` exits 0 (flaky Next `/404` prerender race cleared on a clean rebuild); the latency regression test runs in the shared suite (CI).
+
+Measurable latency budgets are codified + enforced + regression-tested; endpointing + latency-based routing cut perceived latency; the dashboard surfaces p50/p95 per stage — DoD CONFIRMED (live TTFA-under-concurrency numbers come from a load test on real infra; the SLO framework + telemetry + routing are in place). Next: Day 64 (security hardening).

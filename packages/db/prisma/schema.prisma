@@ -223,6 +223,7 @@ model Tenant {
   ssoConnection       SsoConnection?
   consentRecords      ConsentRecord[]
   suppressions        Suppression[]
+  callLatencies       CallLatency[]
   flows               Flow[]
   flowVersions        FlowVersion[]
   transcripts         Transcript[]
@@ -1166,6 +1167,24 @@ model AuditLog {
   ts          DateTime @default(now())
 
   @@index([tenantId])
+  @@index([tenantId, ts])
+}
+
+/// Per-turn voice-loop latency samples (Day 63) — powers the latency dashboard + SLO enforcement.
+model CallLatency {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  callId    String?  @db.Uuid
+  sttMs     Int
+  llmTtftMs Int
+  ttsTtfaMs Int
+  networkMs Int
+  totalMs   Int
+  provider  String?
+  region    String?
+  ts        DateTime @default(now())
+
   @@index([tenantId, ts])
 }
 
