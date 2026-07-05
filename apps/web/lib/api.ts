@@ -2742,3 +2742,32 @@ export function useLatencySummary(hours = 24) {
     refetchInterval: 30_000,
   });
 }
+
+// ── Public status + launch readiness (Day 66) ───────────────────────────────────
+
+export interface PublicStatus {
+  status: 'operational' | 'degraded';
+  services: { name: string; ok: boolean }[];
+}
+
+export interface ReadinessResult {
+  item: { key: string; label: string; category: string; severity: 'blocker' | 'warning' };
+  passed: boolean;
+  detail?: string;
+}
+export interface ReadinessReport {
+  go: boolean;
+  blockersFailed: number;
+  warningsFailed: number;
+  passed: number;
+  total: number;
+  results: ReadinessResult[];
+}
+
+export function useLaunchReadiness() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['launch', 'readiness'],
+    queryFn: () => apiFetch<ReadinessReport>(getToken, '/admin/launch/readiness'),
+  });
+}
