@@ -39,6 +39,7 @@ import { RagService, openAiEmbedder, prismaUsageSink } from './rag/rag.service';
 import { ResellerService } from './reseller/reseller.service';
 import { ResidencyService } from './residency/residency.service';
 import { RouterService } from './router/router.service';
+import { ScaleService } from './scale/scale.service';
 import { SearchService } from './search/search.service';
 import { SipService } from './sip/sip.service';
 import { SquadsService } from './squads/squads.service';
@@ -124,6 +125,7 @@ export function createServices() {
   const sso = new SsoService(db, buildSsoProvider(process.env));
   const compliance = new ComplianceService(db);
   const residency = new ResidencyService(db, process.env);
+  const scale = new ScaleService(process.env);
   const tests = new TestsService(db, (tenantId) => routerGrader(routerSvc, tenantId));
   // QA scoring completer: route through RouterService so every eval meters cost (rule #4).
   const qa = new QaService(db, async ({ tenantId, system, user }) => {
@@ -193,6 +195,7 @@ export function createServices() {
     sso,
     compliance,
     residency,
+    scale,
     billingWebhook,
     processor,
     widget,

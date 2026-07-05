@@ -1,0 +1,41 @@
+# Day 62 — API Deployment + HPA (autoscaling on CPU). Stateless; scales horizontally.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vocaliq-api
+  labels: { app: vocaliq-api }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: vocaliq-api } }
+  template:
+    metadata: { labels: { app: vocaliq-api } }
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/vocaliq/api:latest
+          ports: [{ containerPort: 3001 }]
+          envFrom:
+            - secretRef: { name: vocaliq-secrets } # DATABASE_URL, APP_JWT_SECRET, VAULT_MASTER_KEY, CLICKHOUSE_URL, QDRANT_URL, VOICE_REGIONS…
+          readinessProbe: { httpGet: { path: /health, port: 3001 }, initialDelaySeconds: 5, periodSeconds: 10 }
+          livenessProbe: { httpGet: { path: /health, port: 3001 }, initialDelaySeconds: 15, periodSeconds: 20 }
+          resources:
+            requests: { cpu: "250m", memory: "512Mi" }
+            limits: { cpu: "1", memory: "1Gi" }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: vocaliq-api }
+spec:
+  selector: { app: vocaliq-api }
+  ports: [{ port: 80, targetPort: 3001 }]
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: vocaliq-api }
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: vocaliq-api }
+  minReplicas: 2
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource: { name: cpu, target: { type: Utilization, averageUtilization: 65 } }
