@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "VocalIQ",
+    "slug": "vocaliq",
+    "scheme": "vocaliq",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "plugins": ["expo-router", "expo-secure-store", "expo-notifications"],
+    "extra": {
+      "apiBaseUrl": "https://api.vocaliq.dev"
+    }
+  }
+}

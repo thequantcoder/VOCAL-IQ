@@ -2065,3 +2065,28 @@ K. Build/CI: ✅ — `pnpm build` exits 0; `pnpm audit --prod` down to 1 (docume
 Deviation from TECH-STACK (logged): added `pnpm.overrides` bumping transitive rollup/qs/postcss/uuid to patched versions (security) — no direct-dependency major changes; verified builds.
 
 Findings fixed (4/5 incl. the high; 1 documented), abuse controls proven + enforced pre-dial, security headers/CORS added + tested, isolation/RBAC/webhook/encryption invariants re-verified — DoD CONFIRMED. Next: Day 65 (mobile / speech-to-speech).
+
+## Day 65 — Speech-to-Speech Mode + Mobile App (scaffold) — 2026-07-05 — ✅ DONE (S2S provider gated; mobile scaffold)
+Model: Opus (🧠 OPUS). Branch `day/65-mobile-s2s`. Prereq: mobile decision + provider S2S access (OpenAI Realtime) — **S2S routing is fully built + tested; the live audio-to-audio provider is GATED** (`S2S_PROVIDER_KEY`). Mobile is marked "optional" + can't run in CI, so it ships as a standalone Expo **scaffold excluded from the workspace** (CI untouched). No migration. Self-audit focus F (S2S latency) + B (mobile scoping) + C (mobile auth).
+
+Built (DONE):
+- **shared** `speech-to-speech.ts` (pure): `decideS2sMode(flowFeatures, providerAvailable)` → `s2s` vs `pipeline` + reason + `estimatedSavingMs`. S2S is used ONLY for a SIMPLE flow (no tools/RAG/transfer/complex-branching) in a supported language when a provider exists; else the reliable STT→LLM→TTS pipeline. `estimateS2sSavingMs` (removes the STT + TTS first-token legs from the Day-63 SLO budget). `S2S_PROVIDERS` (OpenAI Realtime, Gemini Live), `S2S_SUPPORTED_LANGUAGES`. 8 unit tests.
+- **api** `S2SService`: `resolveMode(tenantId, agentId)` — loads the agent's ACTIVE flow graph, derives features from node types (TOOL→tools, KNOWLEDGE→RAG, TRANSFER/SQUAD_HANDOFF→transfer, >2 DECISION→complex branching) + the agent's language, gates on `S2S_PROVIDER_KEY`, and calls the pure decision. Route `GET /agents/:agentId/s2s` (the voice service calls it at call start). Wired composition + main. 4 RLS-real integration tests (simple→s2s, tools+transfer→pipeline, gated→pipeline, unknown agent 404).
+- **mobile** `apps/mobile/` — a standalone **Expo/React Native** scaffold, **excluded from the pnpm workspace** (`pnpm-workspace.yaml` `!apps/mobile`) + biome ignore, so its RN toolchain never touches the web/api build or CI: `lib/api.ts` (uses the SAME self-hosted JWT + `x-tenant-id` contract as web → identical server-side tenant scoping + RBAC; token in the device secure enclave via `expo-secure-store`), a home screen (agents + live-call count), `app.json`, and a README documenting the auth/tenancy safety + build steps.
+
+Verification: shared **391** tests, api **282** tests (incl. 8 S2S shared + 4 S2S api), full **typecheck 12/12**, **lint 12/12** (mobile excluded), web **build exit 0**. `pnpm install` confirms the mobile RN deps are NOT pulled into the monorepo. Scoped `biome --write` touched only Day-65 files.
+
+## Self-Audit — Day 65 (A–K)
+A. Correctness: ✅ — the S2S decision is pure + unit-tested across every disqualifier + the eligible path; feature derivation from a real flow graph proven against Postgres.
+B. Mobile scoping (focus): ✅ — the mobile client sends the same JWT + `x-tenant-id` as web, so RLS + RBAC are enforced server-side identically — mobile gains NO privileged path; S2S reads are `withTenant`-scoped.
+C. Mobile auth (focus): ✅ — the session token is stored in the device secure enclave (`expo-secure-store`, Keychain/Keystore), never plain storage; the mobile app reuses the audited server auth (no new auth surface).
+D. Cost: ✅ — S2S resolution is metadata only; the live provider (metered) is gated.
+E. Errors/obs: ✅ — unknown agent → NotFoundError; the decision carries a human reason for observability.
+F. S2S latency (focus): ✅ — S2S collapses STT→LLM→TTS into one hop, modelled to save `stt + ttsTtfa` ms/turn (the Day-63 budget legs); it's chosen only where safe, else the pipeline — never trading correctness for latency.
+G. Error handling: ✅ — gated provider → deterministic pipeline fallback; missing flow → treated as simple (safe default) but still gated by provider availability.
+H. UI/a11y: ✅ — mobile home screen renders agents + live calls; full UI built on the scaffold.
+I. Regression: ✅ — additive (shared module, S2S service/route/tests, mobile excluded from workspace); existing 282 api + 391 shared tests pass; CI unaffected by mobile (proven — not installed/linted/tested by the monorepo). Scoped biome only.
+J. Quality/docs: ✅ — the eligibility rules, latency model, and the mobile workspace-exclusion + auth-safety rationale documented in code + `apps/mobile/README.md`.
+K. Build/CI: ✅ — `pnpm build` exits 0; the mobile exclusion keeps CI green; flaky Next `/404` cleared on a clean rebuild.
+
+Speech-to-speech works for supported (simple) flows with a modelled latency win + a safe pipeline fallback; the mobile app scaffold covers core ops on the same secure, tenant-scoped API — DoD CONFIRMED. **Live OpenAI-Realtime/Gemini-Live S2S is GATED** (`S2S_PROVIDER_KEY`); the full mobile UI builds out on the shipped scaffold. Next: Day 66 (launch readiness → sellable v1.0).

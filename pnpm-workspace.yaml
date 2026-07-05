@@ -1,3 +1,7 @@
 packages:
   - "apps/*"
   - "packages/*"
+  # The mobile app (Day 65) is a standalone Expo/React Native project with its own toolchain;
+  # exclude it from the monorepo workspace so its RN deps aren't installed here and turbo/CI
+  # (typecheck/lint/test/build) don't run against it. Build it separately from apps/mobile.
+  - "!apps/mobile"

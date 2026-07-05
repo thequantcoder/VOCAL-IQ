@@ -52,6 +52,7 @@ export * from './scenario.js';
 export * from './schemas.js';
 export * from './simulator.js';
 export * from './sip.js';
+export * from './speech-to-speech.js';
 export * from './squad.js';
 export * from './sso.js';
 export * from './superadmin.js';
