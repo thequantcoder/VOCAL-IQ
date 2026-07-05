@@ -2036,3 +2036,32 @@ J. Quality/docs: ✅ — the stage model, SLO rationale, endpointing tuning, and
 K. Build/CI: ✅ — `pnpm build` exits 0 (flaky Next `/404` prerender race cleared on a clean rebuild); the latency regression test runs in the shared suite (CI).
 
 Measurable latency budgets are codified + enforced + regression-tested; endpointing + latency-based routing cut perceived latency; the dashboard surfaces p50/p95 per stage — DoD CONFIRMED (live TTFA-under-concurrency numbers come from a load test on real infra; the SLO framework + telemetry + routing are in place). Next: Day 64 (security hardening).
+
+## Day 64 — Security Hardening + Abuse Controls + Pen-Test Fixes — 2026-07-05 — ✅ DONE
+Model: Opus (🧠 OPUS). Branch `day/64-security-hardening`. Prereq: full app (optional external pen test — not run). No migration, no new required env (`CORS_ALLOWED_ORIGINS` optional). Self-audit focus C (entire day) + B (isolation re-proof) + I.
+
+Built / fixed (DONE):
+- **api security headers + CORS** (`http/security.middleware.ts`, dependency-free): every response gets HSTS, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, COOP/CORP `same-origin`, a strict JSON-API CSP (`default-src 'none'; frame-ancestors 'none'`), and a locked-down `Permissions-Policy`. CORS enforces an env allow-list (`CORS_ALLOWED_ORIGINS`) and NEVER reflects an arbitrary Origin; preflight → 204. Wired first in `main.ts`. 4 regression tests.
+- **shared** `abuse.ts` (pure anti-spam/robocall): `evaluateAbuse(signals, policy)` → risk score (0–100) + reasons + action (allow/throttle/block) from burst rate, hourly volume, few-destinations hammering, short-call (robocall) ratio, failure (number-sweeping) ratio, and new-unverified-account volume; hard velocity-cap breaches force a block. `abusePolicySchema`. 6 unit tests.
+- **api** `AbuseService`: gathers a tenant's recent outbound signals (one indexed aggregate — counts/ratios only, no PII) + KYC status (≥1 verified number) → `evaluateAbuse`. **Wired into the outbound gate** (optional injected `abuseGate`; a `block` verdict refuses the call pre-dial, additive + backward-compatible). Route `/abuse/assess`. 2 RLS-real integration tests (quiet for a clean tenant; fires on a short-call burst).
+- **Dependency audit + fixes**: `pnpm audit` found 5 transitive vulns (1 high + 4 moderate). Added `pnpm.overrides` forcing patched **rollup ≥3.30.0 (HIGH — path traversal)**, **qs ≥6.15.2**, **postcss ≥8.5.10**, **uuid ≥11.1.1** → **4/5 fixed, incl. the only high**. The last moderate (`@opentelemetry/core` via `@sentry/node`) is left un-overridden on purpose: forcing it ≥2.8.0 removes `getEnv`/`TracesSamplerValues` that Sentry's pinned build imports (breaks the web build) — accepted as a transitive, build-time-only, moderate observability dep pending a Sentry major bump.
+- **Invariants re-verified** (self-audit): security-header regression suite (headers present, CORS never reflects a bad origin); RLS/RBAC re-proven by the standing isolation + rbac suites (still green); webhook signature verification (Day 44) + envelope encryption (Day 57) + audit immutability (Day 58) unchanged + green; no secret/PII in the new code (abuse signals are counts/ratios).
+
+Verification: shared **382** tests, api **278** tests (incl. 6 new — abuse scoring, header/CORS regression, abuse-gate fires; existing outbound/isolation/rbac suites green), full **typecheck 12/12**, **lint 12/12**, web **build exit 0** (Sentry intact). `pnpm audit --prod`: **1 moderate** (down from 1 high + 4 moderate). Scoped `biome --write` touched only Day-64 files.
+
+## Self-Audit — Day 64 (A–K)
+A. Correctness: ✅ — abuse scoring is pure + unit-tested across allow/throttle/block; the signal-gathering proven against real Postgres.
+B. Isolation re-proof (focus): ✅ — abuse signals + assessment run under `withTenant`/admin scoping; the standing RLS isolation + RBAC suites remain green (re-verified), and the abuse gate reads only the tenant's own calls.
+C. Security (focus — entire day): ✅ — defensive headers + strict CSP + CORS allow-list added (dependency-free, tested); the HIGH-severity dep vuln + 3 moderates patched via overrides; anti-spam/robocall detection blocks bursts pre-dial; secrets stay encrypted (Day 57), webhooks signature-verified (Day 44), audit append-only (Day 58); no secret/PII in logs or the new code.
+D. Cost: ✅ — no provider/cost path (the abuse aggregate is one indexed query).
+E. Errors/obs: ✅ — Zod-validated policy; the outbound block surfaces a clear ForbiddenError with the reason; `/abuse/assess` exposes the live verdict for review.
+F. Performance: ✅ — abuse signals are a single indexed aggregate over the hour window; headers are O(1).
+G. Error handling: ✅ — blocked calls fail closed with an explanatory message; a clean tenant is unaffected.
+H. UI/a11y: ✅ — no new UI required (security is backend); `/abuse/assess` available for an ops surface.
+I. Regression (focus): ✅ — the abuse gate is an OPTIONAL injected param (existing `new OutboundService(db, dialer)` unchanged → outbound tests green); header/CORS added before routes without touching handlers; dep overrides verified to still build (Sentry intact) + 4/5 vulns fixed; 278 api + 382 shared tests pass.
+J. Quality/docs: ✅ — the header/CSP rationale, abuse heuristics, and the deliberate otel-override exception documented in code + this log.
+K. Build/CI: ✅ — `pnpm build` exits 0; `pnpm audit --prod` down to 1 (documented) moderate; all gates green.
+
+Deviation from TECH-STACK (logged): added `pnpm.overrides` bumping transitive rollup/qs/postcss/uuid to patched versions (security) — no direct-dependency major changes; verified builds.
+
+Findings fixed (4/5 incl. the high; 1 documented), abuse controls proven + enforced pre-dial, security headers/CORS added + tested, isolation/RBAC/webhook/encryption invariants re-verified — DoD CONFIRMED. Next: Day 65 (mobile / speech-to-speech).

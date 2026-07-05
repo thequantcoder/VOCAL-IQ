@@ -1,3 +1,4 @@
+import { AbuseService } from './abuse/abuse.service';
 import { AgentsService } from './agents/agents.service';
 import { AnalyticsService } from './analytics/analytics.service';
 import { ApiKeyService } from './api-keys/api-key.service';
@@ -81,7 +82,8 @@ export function createServices() {
 
   const callsRead = new CallsReadService(db);
   const transcription = new TranscriptionService(db);
-  const outbound = new OutboundService(db, new PendingDialer());
+  const abuse = new AbuseService(db);
+  const outbound = new OutboundService(db, new PendingDialer(), (tid) => abuse.assess(tid));
 
   const cost = new CostService(db);
   const analytics = new AnalyticsService(db);
@@ -199,6 +201,7 @@ export function createServices() {
     residency,
     scale,
     latency,
+    abuse,
     billingWebhook,
     processor,
     widget,

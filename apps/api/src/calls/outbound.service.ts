@@ -70,6 +70,10 @@ export class OutboundService {
   constructor(
     private readonly db: PrismaService,
     private readonly dialer: Dialer,
+    /** Optional abuse gate (Day 64): if it returns 'block', the call is refused pre-dial. */
+    private readonly abuseGate?: (
+      tenantId: string,
+    ) => Promise<{ action: string; reasons: string[] }>,
   ) {}
 
   /**
@@ -110,6 +114,16 @@ export class OutboundService {
         select: { id: true },
       });
       if (suppressed) throw new ForbiddenError('Destination is on the do-not-call list');
+
+      // ── Abuse gate (Day 64): block spam/robocall patterns before dialing ───────
+      if (this.abuseGate) {
+        const verdict = await this.abuseGate(tenantId);
+        if (verdict.action === 'block') {
+          throw new ForbiddenError(
+            `Calling blocked by abuse controls: ${verdict.reasons[0] ?? 'suspicious activity'}`,
+          );
+        }
+      }
 
       // ── Concurrency cap: in-flight outbound calls for this tenant ──────────────
       const active = await tx.call.count({
