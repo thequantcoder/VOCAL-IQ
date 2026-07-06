@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from app.calls import router as calls_router
 from app.calls.livekit_service import LiveKitRoomService
 from app.config import settings
+from app.loop.engine import LoopConfig
 from app.main import app
 
 client = TestClient(app)
@@ -32,6 +33,60 @@ def test_start_call_without_livekit_keys_rings_and_notes_pending(monkeypatch) ->
     assert body["tokens"] is None
     assert "LiveKit keys not configured" in body["note"]
     assert body["room"] == f"call-{body['call_id']}"
+
+
+def test_start_call_threads_emotion_policy_into_loop_config(monkeypatch) -> None:
+    # Day 77: an emotion policy on the start request activates modulation in the loop's LoopConfig.
+    _configure_livekit(monkeypatch)
+    for key in ("deepgram_api_key", "openai_api_key", "elevenlabs_api_key"):
+        monkeypatch.setattr(settings, key, "k")
+
+    captured: dict[str, LoopConfig] = {}
+
+    def fake_run_agent(*, config: LoopConfig, **_kw: object) -> object:
+        captured["config"] = config  # recorded synchronously at dispatch
+
+        async def _noop() -> None:
+            return None
+
+        return _noop()
+
+    monkeypatch.setattr(calls_router.livekit_agent, "run_agent", fake_run_agent)
+
+    res = client.post(
+        "/calls/start",
+        json={
+            "tenant_id": "t1",
+            "agent_id": "a1",
+            "channel": "WEB",
+            "emotion_policy": {"enabled": True, "expressiveness": "expressive"},
+        },
+    )
+    assert res.status_code == 200
+    cfg = captured["config"]
+    assert cfg.emotion_policy is not None
+    assert cfg.emotion_policy.enabled is True
+    assert cfg.emotion_policy.expressiveness == "expressive"
+
+
+def test_start_call_without_emotion_policy_leaves_voice_neutral(monkeypatch) -> None:
+    _configure_livekit(monkeypatch)
+    for key in ("deepgram_api_key", "openai_api_key", "elevenlabs_api_key"):
+        monkeypatch.setattr(settings, key, "k")
+    captured: dict[str, LoopConfig] = {}
+
+    def fake_run_agent(*, config: LoopConfig, **_kw: object) -> object:
+        captured["config"] = config
+
+        async def _noop() -> None:
+            return None
+
+        return _noop()
+
+    monkeypatch.setattr(calls_router.livekit_agent, "run_agent", fake_run_agent)
+    res = client.post("/calls/start", json={"tenant_id": "t1", "agent_id": "a1", "channel": "WEB"})
+    assert res.status_code == 200
+    assert captured["config"].emotion_policy is None  # neutral by default
 
 
 def test_start_call_with_livekit_keys_creates_room_and_mints_tokens(monkeypatch) -> None:

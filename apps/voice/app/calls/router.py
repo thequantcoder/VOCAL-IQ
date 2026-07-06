@@ -23,6 +23,7 @@ from app.calls.livekit_service import LiveKitRoomService, mint_access_token
 from app.calls.models import CallTokens, StartCallRequest, StartCallResponse
 from app.config import settings
 from app.loop import livekit_agent
+from app.loop.emotion import EmotionPolicy
 from app.loop.engine import LoopConfig
 
 router = APIRouter(prefix="/calls", tags=["calls"])
@@ -113,6 +114,10 @@ def _dispatch_agent(call_id: str, room: str, agent_token: str, req: StartCallReq
         agent_id=req.agent_id,
         system_prompt=_DEFAULT_SYSTEM_PROMPT,
         greeting=_DEFAULT_GREETING,
+        # Day 77: activate emotion-aware voice when the caller supplied the agent's policy.
+        emotion_policy=(
+            EmotionPolicy.from_dict(req.emotion_policy) if req.emotion_policy is not None else None
+        ),
     )
     task = asyncio.create_task(
         livekit_agent.run_agent(
