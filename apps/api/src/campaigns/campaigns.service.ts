@@ -2,14 +2,17 @@ import {
   CampaignContactStatus,
   CampaignStatus,
   type CampaignStatus as CampaignStatusT,
+  type DialerConfig,
   NotFoundError,
   ValidationError,
   callWindowSchema,
+  dialerConfigSchema,
   importContacts,
+  parseDialerConfig,
   retryPolicySchema,
 } from '@vocaliq/shared';
 import { z } from 'zod';
-import { PrismaService } from '../db/prisma.service';
+import type { PrismaService } from '../db/prisma.service';
 
 /** Explicit DTOs so the public API type never leaks Prisma's runtime types (TS2742). */
 export interface CampaignListItem {
@@ -29,6 +32,7 @@ export interface CampaignDetail {
   pacing: number;
   concurrency: number;
   retryPolicy: unknown;
+  dialerConfig: DialerConfig;
   createdAt: Date;
 }
 
@@ -51,6 +55,7 @@ export const createCampaignSchema = z.object({
   pacing: z.number().int().min(1).max(1000).default(10),
   concurrency: z.number().int().min(1).max(200).default(5),
   retryPolicy: retryPolicySchema.optional(),
+  dialerConfig: dialerConfigSchema.optional(),
 });
 
 export const importSchema = z.object({
@@ -115,6 +120,7 @@ export class CampaignsService {
           pacing: true,
           concurrency: true,
           retryPolicy: true,
+          dialerConfig: true,
           createdAt: true,
         },
       }),
@@ -129,6 +135,7 @@ export class CampaignsService {
       pacing: c.pacing,
       concurrency: c.concurrency,
       retryPolicy: c.retryPolicy,
+      dialerConfig: parseDialerConfig(c.dialerConfig),
       createdAt: c.createdAt,
     };
   }
@@ -153,10 +160,25 @@ export class CampaignsService {
           pacing: data.pacing,
           concurrency: data.concurrency,
           retryPolicy: data.retryPolicy ?? {},
+          dialerConfig: data.dialerConfig ?? {},
         },
         select: { id: true },
       });
       return created.id;
+    });
+    return this.get(tenantId, id);
+  }
+
+  /** Set a campaign's dialer mode/pacing config (Day 79). RLS-scoped; validated against the schema. */
+  async setDialerConfig(tenantId: string, id: string, input: unknown): Promise<CampaignDetail> {
+    const parsed = dialerConfigSchema.safeParse(input);
+    if (!parsed.success) {
+      throw new ValidationError(parsed.error.issues[0]?.message ?? 'Invalid dialer config');
+    }
+    await this.db.withTenant(tenantId, async (tx) => {
+      const c = await tx.campaign.findFirst({ where: { id }, select: { id: true } });
+      if (!c) throw new NotFoundError('Campaign not found');
+      await tx.campaign.update({ where: { id }, data: { dialerConfig: parsed.data } });
     });
     return this.get(tenantId, id);
   }

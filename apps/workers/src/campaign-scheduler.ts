@@ -2,10 +2,13 @@ import type { PrismaClient } from '@vocaliq/db';
 import {
   type CallWindow,
   CampaignContactStatus,
+  type DialStats,
   type DueContact,
   type RetryPolicy,
   callWindowSchema,
+  computeDialBudget,
   isWithinWindow,
+  parseDialerConfig,
   retryPolicySchema,
   selectDueContacts,
 } from '@vocaliq/shared';
@@ -29,6 +32,7 @@ export interface SchedulerCampaign {
   concurrency: number;
   pacing: number; // max new calls per tick
   retryPolicy: unknown;
+  dialerConfig: unknown; // Day 79: raw dialerConfig → parsed to a DialerConfig
 }
 
 export interface SchedulerDeps {
@@ -38,6 +42,10 @@ export interface SchedulerDeps {
   findDueContacts(campaignId: string): Promise<DueContact[]>;
   /** How many of this campaign's calls are currently in flight (non-terminal). */
   countInFlight(campaignId: string): Promise<number>;
+  /** Free HUMAN agents for a tenant right now (Agent Desk, Day 67) — for blended power/predictive. */
+  countFreeAgents(tenantId: string): Promise<number>;
+  /** Recent answer + abandon rate for a campaign (drives predictive pacing + the abandon cap). */
+  getDialStats(campaignId: string): Promise<DialStats>;
   /** Launch one call (production: enqueue on the metered outbound path). */
   dial(campaign: SchedulerCampaign, contactId: string): Promise<void>;
   log(message: string): void;
@@ -60,22 +68,37 @@ export async function runCampaignTick(deps: SchedulerDeps, now: Date): Promise<T
     campaignsInWindow++;
 
     try {
+      const config = parseDialerConfig(campaign.dialerConfig);
       const [due, inFlight] = await Promise.all([
         deps.findDueContacts(campaign.id),
         deps.countInFlight(campaign.id),
       ]);
+      // Free capacity: free HUMAN agents for a blended team; the AI concurrency for a pure-AI campaign.
+      const freeAgents = config.blended
+        ? await deps.countFreeAgents(campaign.tenantId)
+        : campaign.concurrency;
+      const stats = await deps.getDialStats(campaign.id);
+      // Mode-aware per-tick budget (progressive/power/predictive), abandon-cap-throttled (self-audit C).
+      const budget = computeDialBudget(
+        { freeAgents, inFlight, concurrency: campaign.concurrency, pacePerTick: campaign.pacing },
+        stats,
+        config,
+      );
+      // selectDueContacts still enforces the hard concurrency cap — the budget only ever lowers it.
       const picked = selectDueContacts(due, {
         now,
         inFlight,
         concurrency: campaign.concurrency,
-        pacePerTick: campaign.pacing,
+        pacePerTick: budget,
       });
       for (const contactId of picked) {
         await deps.dial(campaign, contactId);
         dialed++;
       }
       if (picked.length > 0) {
-        deps.log(`[campaign ${campaign.id}] dialed ${picked.length} (inFlight=${inFlight})`);
+        deps.log(
+          `[campaign ${campaign.id}] ${config.mode} dialed ${picked.length} (free=${freeAgents} inFlight=${inFlight})`,
+        );
       }
     } catch (err) {
       // Isolate one campaign's failure so the rest of the tick still runs.
@@ -112,6 +135,7 @@ export function createDbSchedulerDeps(
           concurrency: true,
           pacing: true,
           retryPolicy: true,
+          dialerConfig: true,
         },
       });
       return rows.map((r) => ({
@@ -121,6 +145,7 @@ export function createDbSchedulerDeps(
         concurrency: r.concurrency,
         pacing: r.pacing,
         retryPolicy: r.retryPolicy,
+        dialerConfig: r.dialerConfig,
       }));
     },
     findDueContacts: async (campaignId) => {
@@ -137,6 +162,22 @@ export function createDbSchedulerDeps(
       admin.campaignContact.count({
         where: { campaignId, status: CampaignContactStatus.CALLING },
       }),
+    countFreeAgents: (tenantId) =>
+      admin.agentPresence.count({
+        where: { tenantId, status: 'available', activeCalls: { lt: 1 } },
+      }),
+    getDialStats: async (campaignId) => {
+      // Answer rate from recent contact dispositions. There is no live abandon feed yet (an abandon =
+      // a predictive connect with no free agent, which needs the gated live-dial path), so
+      // `abandonFeedLive` is false — and `computeDialBudget` therefore keeps predictive at SAFE 1:1
+      // pacing (it never over-dials blind). It over-dials only once live dialing reports abandons.
+      const [answered, attempted] = await Promise.all([
+        admin.campaignContact.count({ where: { campaignId, lastDisposition: 'COMPLETED' } }),
+        admin.campaignContact.count({ where: { campaignId, lastDisposition: { not: null } } }),
+      ]);
+      const answerRatePercent = attempted > 0 ? (answered / attempted) * 100 : 30;
+      return { answerRatePercent, abandonRatePercent: 0, abandonFeedLive: false };
+    },
     dial: async (_campaign, contactId) => {
       await admin.campaignContact.update({
         where: { id: contactId },

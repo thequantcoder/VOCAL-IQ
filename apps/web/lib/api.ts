@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { EmotionPolicy } from '@vocaliq/shared';
+import type { DialerConfig, EmotionPolicy } from '@vocaliq/shared';
 import { messageFromError } from './api-error';
 import { useAuth } from './auth';
 
@@ -500,6 +500,7 @@ export interface CampaignDetail {
   pacing: number;
   concurrency: number;
   retryPolicy: unknown;
+  dialerConfig: DialerConfig;
   createdAt: string;
 }
 
@@ -520,6 +521,28 @@ export function useCampaigns() {
   return useQuery({
     queryKey: ['campaigns'],
     queryFn: () => apiFetch<CampaignListItem[]>(getToken, '/campaigns'),
+  });
+}
+
+export function useCampaign(id: string) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['campaigns', id],
+    queryFn: () => apiFetch<CampaignDetail>(getToken, `/campaigns/${id}`),
+    enabled: Boolean(id),
+  });
+}
+
+export function useSetCampaignDialer() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; config: DialerConfig }) =>
+      apiFetch<CampaignDetail>(getToken, `/campaigns/${vars.id}/dialer`, {
+        method: 'PUT',
+        body: JSON.stringify(vars.config),
+      }),
+    onSuccess: (_d, vars) => qc.invalidateQueries({ queryKey: ['campaigns', vars.id] }),
   });
 }
 
