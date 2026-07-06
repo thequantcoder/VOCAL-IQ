@@ -55,6 +55,7 @@ import { residencyRoutes } from './residency/residency.routes';
 import { s2sRoutes } from './s2s/s2s.routes';
 import { scaleRoutes } from './scale/scale.routes';
 import { searchRoutes } from './search/search.routes';
+import { sentimentRoutes } from './sentiment/sentiment.routes';
 import { sipRoutes } from './sip/sip.routes';
 import { squadsRoutes } from './squads/squads.routes';
 import { scimRoutes, ssoAdminRoutes, ssoPublicRoutes } from './sso/sso.routes';
@@ -136,6 +137,7 @@ function bootstrap(): void {
   app.use('/ops', opsRoutes(s.opsToolkit, s.tenants));
   app.use('/reseller', resellerRoutes(s.reseller, s.tenants));
   app.use('/desk', deskRoutes(s.desk, s.tenants));
+  app.use('/sentiment', sentimentRoutes(s.sentiment, s.tenants));
   app.use('/disclosure', disclosureRoutes(s.disclosure, s.tenants));
   app.use('/email', emailRoutes(s.email, s.tenants));
   app.get('/u/:token', unsubscribeHandler(s.email));

@@ -3,6 +3,7 @@
 import { brandName, parseBranding } from '@vocaliq/shared';
 import { cn } from '@vocaliq/ui';
 import {
+  Activity,
   BarChart3,
   Bot,
   Building2,
@@ -50,6 +51,7 @@ const NAV = [
   { href: '/dashboard/agents', label: 'Agents', icon: Bot, exact: false },
   { href: '/dashboard/calls', label: 'Calls', icon: PhoneCall, exact: false },
   { href: '/dashboard/desk', label: 'Agent Desk', icon: Headphones, exact: false },
+  { href: '/dashboard/sentiment', label: 'Live sentiment', icon: Activity, exact: false },
   { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3, exact: false },
   { href: '/dashboard/latency', label: 'Latency', icon: Gauge, exact: false },
   { href: '/dashboard/search', label: 'Search', icon: Search, exact: false },
