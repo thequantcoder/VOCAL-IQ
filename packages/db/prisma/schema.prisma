@@ -949,6 +949,7 @@ model Campaign {
   concurrency  Int      @default(1)
   retryPolicy  Json     @default("{}")
   channelMix   Json     @default("{}")
+  dialerConfig Json     @default("{}") // Day 79: dialer mode (progressive/power/predictive) + pacing
   createdAt    DateTime @default(now())
 
   contacts CampaignContact[]

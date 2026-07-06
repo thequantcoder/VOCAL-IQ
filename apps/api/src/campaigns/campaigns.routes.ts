@@ -7,7 +7,7 @@ import { requireRoles } from '../http/roles.middleware';
 import { tenantMiddleware } from '../http/tenant.middleware';
 import { CONFIG_WRITERS } from '../tenancy/roles';
 import type { TenantService } from '../tenancy/tenant.service';
-import { CampaignsService } from './campaigns.service';
+import type { CampaignsService } from './campaigns.service';
 
 const statusSchema = z.object({ status: z.string().min(1) });
 
@@ -64,6 +64,17 @@ export function campaignsRoutes(campaigns: CampaignsService, tenants: TenantServ
       if (!parsed.success) throw new ValidationError('Invalid status');
       res.json(
         await campaigns.setStatus(req.ctx!.tenantId, req.params.id as string, parsed.data.status),
+      );
+    }),
+  );
+
+  /** Set the campaign's dialer mode/pacing config (Day 79 — config writers only). */
+  r.put(
+    '/:id/dialer',
+    requireRoles(...CONFIG_WRITERS),
+    ah(async (req, res) => {
+      res.json(
+        await campaigns.setDialerConfig(req.ctx!.tenantId, req.params.id as string, req.body),
       );
     }),
   );

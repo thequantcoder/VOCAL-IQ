@@ -1,18 +1,33 @@
 'use client';
 
+import type { DialerConfig, DialerMode } from '@vocaliq/shared';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@vocaliq/ui';
-import { Megaphone, Pause, Play, Plus, Upload } from 'lucide-react';
+import { Gauge, Megaphone, Pause, Play, Plus, Upload } from 'lucide-react';
 import { useState } from 'react';
 import { EmptyState, ErrorState, LoadingCard } from '../../../components/states';
 import {
   type CampaignListItem,
   useAgents,
+  useCampaign,
   useCampaignMonitor,
   useCampaigns,
   useCreateCampaign,
   useImportContacts,
+  useSetCampaignDialer,
   useSetCampaignStatus,
 } from '../../../lib/api';
+
+const SELECT_CLS =
+  'rounded-vq border border-vq-border bg-transparent px-2 py-2 text-sm text-vq-text-hi';
+const DIALER_MODES: { value: DialerMode; label: string; hint: string }[] = [
+  { value: 'progressive', label: 'Progressive (1:1)', hint: 'One call per free agent' },
+  { value: 'power', label: 'Power (N:1)', hint: 'Several calls per free agent' },
+  {
+    value: 'predictive',
+    label: 'Predictive',
+    hint: 'Over-dials to fill agents — only while abandonment is monitored',
+  },
+];
 
 /** Campaign manager (Day 28): create, import contacts, run/pause, and monitor live. */
 export default function CampaignsPage() {
@@ -61,6 +76,7 @@ function CampaignRow({ campaign }: { campaign: CampaignListItem }) {
   const monitor = useCampaignMonitor(campaign.id);
   const setStatus = useSetCampaignStatus();
   const [importing, setImporting] = useState(false);
+  const [dialing, setDialing] = useState(false);
   const running = campaign.status === 'RUNNING';
 
   return (
@@ -76,6 +92,9 @@ function CampaignRow({ campaign }: { campaign: CampaignListItem }) {
           <div className="flex gap-2">
             <Button size="sm" variant="secondary" onClick={() => setImporting((v) => !v)}>
               <Upload size={14} /> Import
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => setDialing((v) => !v)}>
+              <Gauge size={14} /> Dialer
             </Button>
             {running ? (
               <Button
@@ -110,8 +129,101 @@ function CampaignRow({ campaign }: { campaign: CampaignListItem }) {
         )}
 
         {importing && <ImportPanel campaignId={campaign.id} onDone={() => setImporting(false)} />}
+        {dialing && <DialerPanel campaignId={campaign.id} onDone={() => setDialing(false)} />}
       </CardContent>
     </Card>
+  );
+}
+
+function DialerPanel({ campaignId, onDone }: { campaignId: string; onDone: () => void }) {
+  const detail = useCampaign(campaignId);
+  const save = useSetCampaignDialer();
+  const [cfg, setCfg] = useState<DialerConfig | null>(null);
+  const config = cfg ?? detail.data?.dialerConfig ?? null;
+
+  if (detail.isLoading || !config) {
+    return (
+      <div className="border-vq-border border-t pt-3 text-vq-text-lo text-xs">Loading dialer…</div>
+    );
+  }
+  const set = <K extends keyof DialerConfig>(key: K, value: DialerConfig[K]) =>
+    setCfg({ ...config, [key]: value });
+
+  return (
+    <div className="flex flex-col gap-3 border-vq-border border-t pt-3">
+      <div className="flex flex-col gap-1">
+        <span className="text-vq-text-lo text-xs">Dialer mode</span>
+        <select
+          aria-label="Dialer mode"
+          className={SELECT_CLS}
+          value={config.mode}
+          onChange={(e) => set('mode', e.target.value as DialerMode)}
+        >
+          {DIALER_MODES.map((m) => (
+            <option key={m.value} value={m.value}>
+              {m.label} — {m.hint}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <label className="flex items-center gap-2 text-sm text-vq-text-lo">
+        <input
+          type="checkbox"
+          checked={config.blended}
+          onChange={(e) => set('blended', e.target.checked)}
+        />
+        Blended team — pace to live human-agent availability (otherwise pure-AI, paced to
+        concurrency)
+      </label>
+
+      {config.mode === 'power' && (
+        <label htmlFor="linesPerAgent" className="flex flex-col gap-1 text-vq-text-lo text-xs">
+          Lines per agent (N:1)
+          <Input
+            id="linesPerAgent"
+            type="number"
+            min={1}
+            max={5}
+            value={config.linesPerAgent}
+            onChange={(e) => set('linesPerAgent', Number(e.target.value))}
+          />
+        </label>
+      )}
+
+      {config.mode === 'predictive' && (
+        <label htmlFor="maxAbandon" className="flex flex-col gap-1 text-vq-text-lo text-xs">
+          Max abandon rate % (legal cap)
+          <Input
+            id="maxAbandon"
+            type="number"
+            min={0}
+            max={100}
+            step={0.5}
+            value={config.maxAbandonRatePercent}
+            onChange={(e) => set('maxAbandonRatePercent', Number(e.target.value))}
+          />
+          <span className="text-[10px] text-vq-warn">
+            Predictive stays at safe 1:1 pacing until live dialing monitors abandonment — it never
+            over-dials without enforcing this cap.
+          </span>
+        </label>
+      )}
+
+      {save.isError && <p className="text-vq-danger text-xs">{(save.error as Error).message}</p>}
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          disabled={save.isPending}
+          onClick={() => save.mutate({ id: campaignId, config }, { onSuccess: onDone })}
+        >
+          {save.isPending ? 'Saving…' : 'Save dialer'}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onDone}>
+          Close
+        </Button>
+      </div>
+    </div>
   );
 }
 
