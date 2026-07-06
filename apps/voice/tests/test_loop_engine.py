@@ -240,6 +240,84 @@ async def test_no_modulation_keeps_neutral_voice_by_default() -> None:
     assert all(s is None for s in tts.settings)
 
 
+async def test_card_number_spoken_by_caller_never_enters_transcript_or_events() -> None:
+    # Day 78 (CRITICAL, self-audit C): a caller who reads out a card number must NOT have it land in
+    # the persisted transcript, the emitted events, or the LLM context — anywhere.
+    clock = ManualClock()
+    card = "4242 4242 4242 4242"
+    stt = FakeSTT([(3, f"my card is {card}", True)])
+    col = Collectors()
+    loop = ConversationLoop(
+        stt=stt,
+        llm=FakeLLM("Thanks."),
+        tts=FakeTTS(),
+        audio_out=BufferSink(),
+        config=_config(),
+        emit=col.emit,
+        meter=col.meter,
+        persist=col.persist,
+        clock=clock,
+    )
+    await loop.run(feed(_utterance_frames(), clock))
+
+    # No raw PAN anywhere it could be stored/observed.
+    persisted = " ".join(text for _role, text in col.transcript)
+    assert "4242" not in persisted
+    assert any("[REDACTED:card]" in text for role, text in col.transcript if role == "user")
+    for _type, data in col.events:
+        assert "4242" not in str(data)
+
+
+async def test_take_payment_delegates_to_pci_and_suppresses_transcript() -> None:
+    from loop_fakes import FakePci
+
+    clock = ManualClock()
+    pci = FakePci()
+    col = Collectors()
+    loop = ConversationLoop(
+        stt=FakeSTT([]),
+        llm=FakeLLM(),
+        tts=FakeTTS(),
+        audio_out=BufferSink(),
+        config=_config(),
+        emit=col.emit,
+        meter=col.meter,
+        persist=col.persist,
+        pci=pci,
+        clock=clock,
+    )
+    result = await loop.take_payment(amount_cents=1999, currency="USD", description="Deposit")
+
+    assert result.status == "succeeded"
+    assert result.last4 == "4242"
+    assert "4242 4242" not in str(result)  # only last4, never a PAN
+    assert pci.calls == [(1999, "USD", "Deposit")]
+    types = col.event_types()
+    assert "secure.capture.start" in types
+    assert "secure.capture.end" in types
+    # The start/end events carry the amount + status only — never card data.
+    for t, data in col.events:
+        if t.startswith("secure.capture"):
+            assert "card" not in str(data).lower() or "4242" not in str(data)
+
+
+async def test_take_payment_without_provider_raises() -> None:
+    from app.loop.pci import PciCaptureError
+
+    loop = ConversationLoop(
+        stt=FakeSTT([]),
+        llm=FakeLLM(),
+        tts=FakeTTS(),
+        audio_out=BufferSink(),
+        config=_config(),
+        clock=ManualClock(),
+    )
+    import pytest
+
+    with pytest.raises(PciCaptureError):
+        await loop.take_payment(amount_cents=1000)
+
+
 async def test_greeting_is_spoken_before_listening() -> None:
     stt = FakeSTT([])
     tts = FakeTTS()

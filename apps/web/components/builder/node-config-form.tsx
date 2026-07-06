@@ -485,6 +485,95 @@ export function NodeConfigForm({
     return <KnowledgeForm config={config} set={set} />;
   }
 
+  if (nodeType === 'PAYMENT') {
+    const amountSource = str(config.amountSource) || 'fixed';
+    return (
+      <div className="flex flex-col gap-3">
+        <Labeled label="Amount source">
+          <select
+            className={field}
+            value={amountSource}
+            onChange={(e) => set({ amountSource: e.target.value })}
+          >
+            <option value="fixed">Fixed amount</option>
+            <option value="variable">From a captured variable</option>
+          </select>
+        </Labeled>
+        {amountSource === 'fixed' ? (
+          <Labeled label="Amount (minor units, e.g. cents)">
+            <input
+              type="number"
+              min={1}
+              className={field}
+              value={str(config.amountCents)}
+              onChange={(e) => set({ amountCents: Number(e.target.value) })}
+              placeholder="1999 = $19.99"
+            />
+          </Labeled>
+        ) : (
+          <Labeled label="Amount variable">
+            <input
+              className={field}
+              value={str(config.amountVariable)}
+              onChange={(e) => set({ amountVariable: e.target.value })}
+              placeholder="captured variable holding the amount"
+            />
+          </Labeled>
+        )}
+        <Labeled label="Currency">
+          <input
+            className={field}
+            value={str(config.currency) || 'USD'}
+            onChange={(e) => set({ currency: e.target.value.toUpperCase() })}
+            placeholder="USD"
+            maxLength={3}
+          />
+        </Labeled>
+        <Labeled label="Description">
+          <input
+            className={field}
+            value={str(config.description)}
+            onChange={(e) => set({ description: e.target.value })}
+            placeholder="What the payment is for"
+          />
+        </Labeled>
+        <label className="flex items-center gap-2 text-sm text-vq-text-lo">
+          <input
+            type="checkbox"
+            checked={config.confirmBeforeCharge !== false}
+            onChange={(e) => set({ confirmBeforeCharge: e.target.checked })}
+          />
+          Read back the amount and confirm before charging
+        </label>
+        <Labeled label="Receipt">
+          <select
+            className={field}
+            value={str(config.receiptChannel) || 'none'}
+            onChange={(e) => set({ receiptChannel: e.target.value })}
+          >
+            <option value="none">No receipt</option>
+            <option value="email">Email</option>
+            <option value="sms">SMS</option>
+          </select>
+        </Labeled>
+        {str(config.receiptChannel) && str(config.receiptChannel) !== 'none' && (
+          <Labeled label="Receipt to">
+            <input
+              className={field}
+              value={str(config.receiptTo)}
+              onChange={(e) => set({ receiptTo: e.target.value })}
+              placeholder="email/phone or {{variable}}"
+            />
+          </Labeled>
+        )}
+        <p className="text-vq-text-lo text-xs">
+          Card details are captured by a PCI-compliant provider — they never touch VocalIQ, the
+          transcript, or the recording.
+        </p>
+      </div>
+    );
+  }
+
   return <p className="text-vq-text-lo text-xs">Configuration for this node arrives soon.</p>;
 }
 

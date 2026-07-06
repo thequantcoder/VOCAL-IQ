@@ -37,6 +37,7 @@ const PALETTE = [
   'COLLECT_CONFIRM',
   'TRANSFER',
   'SUBFLOW',
+  'PAYMENT',
   'END',
 ] as const;
 

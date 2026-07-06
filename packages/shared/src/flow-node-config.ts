@@ -162,6 +162,32 @@ export const subflowConfigSchema = z.object({
 export type SubflowConfig = z.infer<typeof subflowConfigSchema>;
 
 /**
+ * Payment node (Day 78 — PCI-safe pay-by-voice). Takes a card payment mid-call. The card details
+ * are captured by a PCI-compliant provider (never by VocalIQ), so the amount/currency/description
+ * here are all this node ever holds — no card fields exist. `amountSource` is either a fixed amount
+ * (minor units) or a captured variable (a major-unit number the caller/flow provided).
+ */
+export const paymentConfigSchema = z
+  .object({
+    amountSource: z.enum(['fixed', 'variable']).default('fixed'),
+    amountCents: z.number().int().nonnegative().max(100_000_00).default(0),
+    amountVariable: z.string().max(60).default(''), // captured variable holding the amount
+    currency: z
+      .string()
+      .length(3)
+      .regex(/^[A-Za-z]{3}$/)
+      .default('USD'),
+    description: z.string().max(200).default(''),
+    confirmBeforeCharge: z.boolean().default(true),
+    receiptChannel: z.enum(['none', 'email', 'sms']).default('none'),
+    receiptTo: z.string().max(160).default(''), // literal or {{variable}}
+  })
+  .refine((c) => (c.amountSource === 'fixed' ? c.amountCents > 0 : c.amountVariable.length > 0), {
+    message: 'Fixed needs an amount; variable needs a variable name',
+  });
+export type PaymentConfig = z.infer<typeof paymentConfigSchema>;
+
+/**
  * Runtime helper: the spoken confirmation for the captured fields (Collect&Confirm). Only
  * fields that were actually captured are read back.
  */
@@ -227,6 +253,7 @@ const CONFIG_SCHEMAS = {
   [FlowNodeType.TRANSFER]: transferConfigSchema,
   [FlowNodeType.SUBFLOW]: subflowConfigSchema,
   [FlowNodeType.SQUAD_HANDOFF]: squadHandoffConfigSchema,
+  [FlowNodeType.PAYMENT]: paymentConfigSchema,
 } as const;
 
 /** The config schema for a node type, or null if the type has no config schema yet. */

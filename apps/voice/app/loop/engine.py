@@ -37,6 +37,7 @@ from app.loop.emotion import (
 )
 from app.loop.endpointer import Endpointer
 from app.loop.metrics import TurnMetrics, new_turn
+from app.loop.pci import DisabledPciCapture, PciCapture, PciCaptureResult, strip_card_data
 from app.providers.contracts import ExpressiveSettings, LLMProvider, STTProvider, TTSProvider
 from app.providers.pricing import llm_cost_usd, stt_cost_usd, tts_cost_usd
 
@@ -100,6 +101,7 @@ class ConversationLoop:
         emit: EventCallback = _noop_event,
         meter: MeterCallback = _noop_meter,
         persist: TranscriptCallback = _noop_transcript,
+        pci: PciCapture | None = None,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self._stt = stt
@@ -110,6 +112,7 @@ class ConversationLoop:
         self._emit = emit
         self._meter = meter
         self._persist = persist
+        self._pci = pci or DisabledPciCapture()
         self._clock = clock
 
         from app.loop.vad import VoiceActivityDetector
@@ -130,6 +133,10 @@ class ConversationLoop:
         self._emotion = config.emotion_policy or DEFAULT_POLICY
         self._tts_settings: ExpressiveSettings | None = None
 
+        # PCI-safe pay-by-voice (Day 78). During secure capture, caller transcript is suppressed;
+        # at all times any spoken card number is scrubbed before it can be persisted/emitted.
+        self._secure = False
+
     # ── public API ────────────────────────────────────────────────────────────
 
     async def run(self, audio_in: AsyncIterator[bytes]) -> None:
@@ -146,6 +153,28 @@ class ConversationLoop:
             await self._cancel_turn()
             with contextlib.suppress(asyncio.CancelledError):
                 await stt_task
+
+    async def take_payment(
+        self, *, amount_cents: int, currency: str = "USD", description: str = ""
+    ) -> PciCaptureResult:
+        """Take a card payment (Day 78). Enters secure capture: the caller's card is captured by the
+        PCI provider (VocalIQ never sees the PAN) while the loop suppresses the caller transcript for
+        the window. Emits `secure.capture.start/end` (amount only — no card data). Returns the
+        provider result (token + last4 + status); raises PciCaptureError when no provider is set."""
+        self._secure = True
+        await self._emit(
+            "secure.capture.start", {"amount_cents": amount_cents, "currency": currency}
+        )
+        status = "failed"
+        try:
+            result = await self._pci.capture_and_charge(
+                amount_cents=amount_cents, currency=currency, description=description
+            )
+            status = result.status
+            return result
+        finally:
+            self._secure = False
+            await self._emit("secure.capture.end", {"status": status})
 
     # ── frame path (VAD, barge-in, endpointing) ────────────────────────────────
 
@@ -188,9 +217,13 @@ class ConversationLoop:
             frames(), model=self._cfg.stt_model, interim_results=True
         ):
             self._endpointer.on_transcript(event.transcript, is_final=event.is_final)
+            # During secure capture, don't stream the caller's transcript at all (they may be reading
+            # out a card). Otherwise scrub any spoken card number before it leaves the loop (Day 78).
+            if self._secure:
+                continue
             await self._emit(
                 "transcript.partial",
-                {"text": event.transcript, "is_final": event.is_final, "role": "user"},
+                {"text": strip_card_data(event.transcript), "is_final": event.is_final, "role": "user"},
             )
 
     # ── agent turn ──────────────────────────────────────────────────────────────
@@ -210,10 +243,13 @@ class ConversationLoop:
     async def _run_turn(self, utterance: str, stt_seconds: float) -> None:
         metrics = new_turn(self._clock)
         await self._meter_stt(stt_seconds)
-        await self._emit("user.turn", {"text": utterance})
-        await self._persist("user", utterance)
-        self._context.add_user(utterance)
-        await self._tune_voice(utterance)
+        # PCI (Day 78): a spoken card number must never reach a transcript store, event, log, or the
+        # LLM context. Scrub it here, once, so every downstream sink sees only the redacted text.
+        safe = strip_card_data(utterance)
+        await self._emit("user.turn", {"text": safe})
+        await self._persist("user", safe)
+        self._context.add_user(safe)
+        await self._tune_voice(safe)
 
         await self._emit("agent.speaking", {"state": True})
         reply = await self._respond(metrics)

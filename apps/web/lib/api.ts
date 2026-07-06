@@ -3288,3 +3288,42 @@ export function useSaveEmotionPolicy(agentId: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['emotion-policy', agentId] }),
   });
 }
+
+// ── Pay-by-voice payments (Day 78) ───────────────────────────────────────────────
+export interface Payment {
+  id: string;
+  callId: string | null;
+  agentId: string | null;
+  amountCents: number;
+  currency: string;
+  refundedCents: number;
+  status: string;
+  provider: string;
+  providerRef: string | null;
+  last4: string | null;
+  description: string | null;
+  receiptChannel: string;
+  receiptTo: string | null;
+  receiptSentAt: string | null;
+  createdAt: string;
+}
+
+export function usePayments() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['payments'],
+    queryFn: () => apiFetch<Payment[]>(getToken, '/payments'),
+  });
+}
+export function useRefundPayment() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, amountCents }: { id: string; amountCents?: number }) =>
+      apiFetch<Payment>(getToken, `/payments/${id}/refund`, {
+        method: 'POST',
+        body: JSON.stringify(amountCents ? { amountCents } : {}),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['payments'] }),
+  });
+}

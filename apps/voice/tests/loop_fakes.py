@@ -12,6 +12,7 @@ import asyncio
 from collections.abc import AsyncIterator
 
 from app.loop.engine import UsageEvent
+from app.loop.pci import PciCaptureResult
 from app.providers.contracts import (
     CompletionResult,
     ExpressiveSettings,
@@ -127,6 +128,24 @@ class FakeTTS:
         if self._delay:
             await asyncio.sleep(self._delay)
         yield b"\x01\x02"
+
+
+class FakePci:
+    """A configured PCI capture provider for tests — returns a token + last4, never a PAN."""
+
+    enabled = True
+
+    def __init__(self, *, status: str = "succeeded") -> None:
+        self.calls: list[tuple[int, str, str]] = []
+        self._status = status
+
+    async def capture_and_charge(
+        self, *, amount_cents: int, currency: str, description: str = ""
+    ) -> PciCaptureResult:
+        self.calls.append((amount_cents, currency, description))
+        return PciCaptureResult(
+            charge_id="ch_test_123", token="tok_test_abc", last4="4242", status=self._status
+        )
 
 
 class BufferSink:
