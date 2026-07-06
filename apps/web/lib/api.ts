@@ -3045,3 +3045,90 @@ export function useSentimentEvents(callId?: string) {
     refetchInterval: 5000, // live supervisor feed
   });
 }
+
+// ── AI coaching / whisper copilot for human agents (Day 74) ─────────────────────
+
+export type CoachSuggestionKind =
+  | 'response'
+  | 'kb_answer'
+  | 'objection'
+  | 'next_action'
+  | 'compliance';
+export interface CoachSuggestion {
+  kind: CoachSuggestionKind;
+  audience: 'agent';
+  channel: 'whisper';
+  title: string;
+  body: string;
+  confidence: number;
+  source?: string;
+}
+export interface CoachTurn {
+  role: 'caller' | 'agent';
+  text: string;
+}
+export interface CoachNote {
+  id: string;
+  callId: string;
+  disposition: string;
+  notes: string;
+  confirmed: boolean;
+  confirmedBy: string | null;
+  confirmedAt: string | null;
+  createdAt: string;
+}
+
+/** Live copilot suggestions for an in-progress call — agent-only, never spoken to the caller. */
+export function useCoachSuggest() {
+  const { getToken } = useAuth();
+  return useMutation({
+    mutationFn: (vars: {
+      callId: string;
+      agentId?: string;
+      turns: CoachTurn[];
+      sentiment?: number;
+      hasQuote?: boolean;
+    }) =>
+      apiFetch<{ suggestions: CoachSuggestion[] }>(getToken, '/coach/suggest', {
+        method: 'POST',
+        body: JSON.stringify(vars),
+      }),
+  });
+}
+export function useCoachPostCall() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: {
+      callId: string;
+      durationSec: number;
+      turns: CoachTurn[];
+      resolved?: boolean;
+    }) =>
+      apiFetch<CoachNote>(getToken, '/coach/post-call', {
+        method: 'POST',
+        body: JSON.stringify(vars),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['coach', 'notes'] }),
+  });
+}
+export function useCoachConfirmNote() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; disposition?: string; notes?: string }) =>
+      apiFetch<CoachNote>(getToken, `/coach/notes/${vars.id}/confirm`, {
+        method: 'POST',
+        body: JSON.stringify({ disposition: vars.disposition, notes: vars.notes }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['coach', 'notes'] }),
+  });
+}
+export function useCoachNotes(callId?: string) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['coach', 'notes', callId ?? null],
+    queryFn: () =>
+      apiFetch<CoachNote[]>(getToken, `/coach/notes${callId ? `?callId=${callId}` : ''}`),
+  });
+}

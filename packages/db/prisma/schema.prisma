@@ -230,6 +230,7 @@ model Tenant {
   abuseCases          AbuseCase[]
   sentimentRules      SentimentRule[]
   sentimentEvents     SentimentEvent[]
+  coachNotes          CoachNote[]
   flows               Flow[]
   flowVersions        FlowVersion[]
   transcripts         Transcript[]
@@ -1228,6 +1229,23 @@ model SentimentEvent {
 
   @@index([tenantId, callId])
   @@index([callId, ruleId, ts])
+}
+
+/// A post-call AI copilot draft (Day 74) — auto-notes + a disposition the HUMAN confirms/edits.
+/// The AI never finalizes: `confirmed` flips only on an explicit human action.
+model CoachNote {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @db.Uuid
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  callId      String    @db.Uuid
+  disposition String
+  notes       String
+  confirmed   Boolean   @default(false)
+  confirmedBy String?   @db.Uuid // the membership that confirmed
+  confirmedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([tenantId, callId])
 }
 
 /// A fraud/abuse case (Day 70) — the auditable record of an automated enforcement + its review.

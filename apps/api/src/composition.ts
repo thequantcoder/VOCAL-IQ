@@ -16,6 +16,7 @@ import { PendingDialer } from './calls/dialer';
 import { OutboundService } from './calls/outbound.service';
 import { CampaignsService } from './campaigns/campaigns.service';
 import { ChatService } from './chat/chat.service';
+import { CoachService } from './coach/coach.service';
 import { ComplianceService } from './compliance/compliance.service';
 import { CostService } from './cost/cost.service';
 import { buildEncryptor } from './crypto/envelope';
@@ -160,6 +161,16 @@ export function createServices() {
     return { text: result.text, model: result.model };
   });
 
+  // Agent-desk copilot: grounds on RAG + a metered RouterService completion (rule #4). Agent-only.
+  const coach = new CoachService(db, rag, async ({ tenantId, system, user }) => {
+    const result = await routerSvc.complete({
+      tenantId,
+      system,
+      messages: [{ role: 'user', content: user }],
+    });
+    return { text: result.text, model: result.model };
+  });
+
   const plans = new PlansService(db);
   const billingWebhook = new BillingWebhookService(db);
   const processor = new PendingBillingProcessor();
@@ -224,6 +235,7 @@ export function createServices() {
     launch,
     desk,
     sentiment,
+    coach,
     disclosure,
     email,
     reputation,

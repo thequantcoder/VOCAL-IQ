@@ -3,6 +3,7 @@
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@vocaliq/ui';
 import { Headphones, PhoneIncoming } from 'lucide-react';
 import { useState } from 'react';
+import { CoachPanel } from '../../../components/coach-panel';
 import { EmptyState, ErrorState, LoadingCard } from '../../../components/states';
 import { useDeskQueue, useSetPresence } from '../../../lib/api';
 
@@ -108,6 +109,19 @@ export default function DeskPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Whisper copilot for the call this agent is on (the assigned one, else the first waiting). */}
+      {(() => {
+        const active = queue.data?.items.find((it) => it.assigned) ?? queue.data?.items[0];
+        return active ? (
+          <CoachPanel callId={active.callId} />
+        ) : (
+          <EmptyState
+            title="Copilot stands by"
+            hint="When you take a call, live AI suggestions and KB answers appear here — visible only to you."
+          />
+        );
+      })()}
     </div>
   );
 }
