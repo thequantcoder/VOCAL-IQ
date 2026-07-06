@@ -3610,3 +3610,119 @@ export function usePurchaseListing() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['marketplace'] }),
   });
 }
+
+// ── Developer app / integration marketplace (Day 84) ──────────────────────────
+
+export interface DeveloperApp {
+  id: string;
+  developerTenantId?: string;
+  name: string;
+  description: string;
+  homepageUrl: string | null;
+  webhookUrl?: string | null;
+  clientId: string;
+  requestedScopes: string[];
+  events: string[];
+  priceCents: number;
+  revShareBps: number;
+  status: string;
+  installCount: number;
+  createdAt: string;
+}
+export interface AppInstall {
+  id: string;
+  appId: string;
+  grantedScopes: string[];
+  apiKeyId: string | null;
+  pricePaidCents: number;
+  developerCents: number;
+  platformCents: number;
+  status: string;
+  consentedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+  app?: { name: string; status: string };
+}
+export interface RegisterAppResult {
+  app: DeveloperApp;
+  clientSecret: string;
+}
+export interface InstallAppResult {
+  install: AppInstall;
+  apiKey: { id: string; prefix: string; key: string; scopes: string[] } | null;
+}
+
+export function useAppBrowse() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['apps', 'browse'],
+    queryFn: () => apiFetch<DeveloperApp[]>(getToken, '/apps/browse'),
+  });
+}
+export function useMyApps() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['apps', 'mine'],
+    queryFn: () => apiFetch<DeveloperApp[]>(getToken, '/apps/mine'),
+  });
+}
+export function useMyInstalls() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['apps', 'installs'],
+    queryFn: () => apiFetch<AppInstall[]>(getToken, '/apps/installs'),
+  });
+}
+export function useRegisterApp() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      name: string;
+      description?: string;
+      homepageUrl?: string;
+      webhookUrl?: string;
+      requestedScopes: string[];
+      events?: string[];
+      priceCents: number;
+    }) =>
+      apiFetch<RegisterAppResult>(getToken, '/apps', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['apps', 'mine'] }),
+  });
+}
+export function useSubmitApp() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; status?: 'pending' | 'draft' }) =>
+      apiFetch<DeveloperApp>(getToken, `/apps/${vars.id}/submit`, {
+        method: 'POST',
+        body: JSON.stringify({ status: vars.status ?? 'pending' }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['apps', 'mine'] }),
+  });
+}
+export function useInstallApp() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; grantScopes: string[] }) =>
+      apiFetch<InstallAppResult>(getToken, `/apps/${vars.id}/install`, {
+        method: 'POST',
+        body: JSON.stringify({ grantScopes: vars.grantScopes }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['apps'] }),
+  });
+}
+export function useUninstallApp() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<AppInstall>(getToken, `/apps/${id}/uninstall`, { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['apps'] }),
+  });
+}
