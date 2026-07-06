@@ -2336,3 +2336,32 @@ J. Quality/docs: ✅ — the whisper guarantee, the KbRetriever seam, and the me
 K. Build/CI: ✅ — `pnpm build` exits 0; migration applies on PG 16; all gates green locally before push.
 
 Human agents now have a private real-time copilot on the Agent Desk: suggested replies + KB answers + objection handling + next-best-action while the call is live, and an AI-drafted wrap-up note they confirm — with a guarantee, encoded in the types and enforced at runtime, that none of it is ever spoken to the caller. DoD CONFIRMED. Next: Day 75.
+
+## Day 75 — Conversation Intelligence (Objections, Buying Signals, Competitor Mentions) — 2026-07-06 — ✅ DONE — 🟣 PHASE 6
+Model: Opus (🧠 OPUS day). Branch `day/75-conversation-intelligence`. Prereq: Day 31 (post-call) + Day 41 (analytics) + Day 43 (QA) — all present. **No new env.** Migration `20260706120000_day75_conversation_intel` (two tables + RLS). Self-audit focus **A (extraction quality) + D (LLM cost) + B**.
+
+Key decision (self-audit D): extraction is **deterministic** — it mines the transcript the post-call worker already produced (pattern/keyword detectors), so conversation intelligence adds **ZERO extra LLM spend**. Competitor detection is driven by the tenant's own watchlist.
+
+Built (DONE):
+- **shared** `conversation-intel.ts` (pure): `extractSignals(text, competitors)` → objections (reuses the Day-74 copilot detector), buying signals (ready-to-buy/pricing/demo/timeline/procurement), competitor mentions (watchlist-driven, each its own trend line), feature requests, churn risk — each with the matched quote; `aggregateSignals` (→ (type,label) counts, sorted) and `evaluateSignalAlerts` (labelled-line or type-summed threshold breaches). **8 unit tests** (extraction accuracy, watchlist gating, aggregation, alerting).
+- **db/migration**: `CallSignal` (per-call mined signals — indexed `([tenantId,type,createdAt])`,`([tenantId,label])`,`([tenantId,callId])` for trend/filter) + `ConversationIntelConfig` (per-tenant competitor watchlist + alert rules, unique on tenantId). Both RLS `tenant_isolation`.
+- **workers** `conversation-intel.ts`: `runConversationIntel(deps, callId)` — fetch transcript + the tenant's competitors → deterministic extract → save `CallSignal` rows (idempotent: replaces). **NO LLM call.** Registered as the `conversation-intel` queue in `index.ts` (enqueued on call-end alongside post-call intel + QA). **3 orchestration tests** (extraction, empty-skip, not-found) with injected deps.
+- **api** `IntelService`: `getConfig`/`setConfig` (Zod-validated watchlist + rules), `extractForCall` (on-demand, idempotent — the API path mirroring the worker), `trends` (windowed `groupBy` → aggregate), `checkAlerts` (evaluate rules → fire a `conversation_intel_alert` `Notification` per breach), `listSignals` (searchable/filterable). Routes `/intel/*` (trends+signals read-only; config/extract/check-alerts config-writer). Wired composition + main. **6 RLS-real integration tests** (config roundtrip + validation, all 5 signal types mined, idempotency, trend aggregation, alert→notification, tenant isolation).
+- **web** `/dashboard/intel` "Conversation intelligence": trend cards per signal type (top labels as bars), a competitor watchlist editor (add/remove chips → persists), a "Check alerts" action, and a filterable Signal Explorer (raw signals + quotes + call ref). Nav entry added.
+
+Verification: shared **479** tests, workers **22** tests, api **324** tests (incl. 8 shared + 3 worker + 6 api new), full **typecheck 12/12**, **lint 12/12** (warnings only — `req.ctx!`), web **build exit 0**. Scoped `biome --write` only on Day-75 files. Migration applied locally.
+
+## Self-Audit — Day 75 (A–K)
+A. Extraction quality (focus): ✅ — `extractSignals` is pure + unit-tested across all five signal types, competitor watchlist gating, and neutral-transcript → nothing; the api + worker tests confirm end-to-end mining from a real/mocked transcript.
+B. Isolation (focus): ✅ — config/extract/trends/checkAlerts/listSignals all `withTenant` (RLS); the test proves a second tenant sees no config, trends, or signals; both new tables carry `tenant_isolation`.
+C. Security: ✅ — trends/signals read-only for members; watchlist/rules + extract + alert-check are config-writer; Zod-validated config (rule shape, competitor caps); no secret path.
+D. Cost/LLM (focus): ✅ — **zero added LLM spend** — extraction is deterministic over the existing transcript; no provider call anywhere in the intel path (the strongest possible answer for the cost focus). The one metered LLM per call (post-call intel, Day 31) is unchanged.
+E. Errors/obs: ✅ — empty/missing transcript → a clean skip (worker returns empty/not_found; service returns no signals); typed Validation; the worker logs per-call signal counts.
+F. Performance: ✅ — extraction is O(text); trends use an indexed `groupBy` over `([tenantId,type,createdAt])`; signal list is indexed + capped (≤500); idempotent re-extract is a scoped delete+createMany.
+G. Error handling: ✅ — idempotency prevents duplicate signals on re-run; alert check no-ops when no rules; malformed rules rejected at the boundary.
+H. UI/a11y: ✅ — labelled inputs + selects (aria-label), Enter-to-add, keyboard-native chip removal, design tokens + dark mode, loading/empty/error states; bars are text-labelled with counts.
+I. Regression: ✅ — purely additive (new shared module, two tables, new service/routes, a new worker + queue, a new page + hooks + nav, composition/main wiring); 324 api + 479 shared + 22 worker green; scoped biome only; no existing signature changed.
+J. Quality/docs: ✅ — the zero-LLM-cost design, the watchlist-driven competitor detection, and idempotency documented in code; explicit DTOs; no dead code.
+K. Build/CI: ✅ — `pnpm build` exits 0; migration applies on PG 16 (TEXT[]/JSONB defaults); all gates green locally before push.
+
+Every call is now mined for market intelligence — top objections, rising competitor mentions, buying signals, feature requests, and churn risk — trended across the tenant, alertable at thresholds, and searchable, with zero added LLM cost. DoD CONFIRMED. Next: Day 76.

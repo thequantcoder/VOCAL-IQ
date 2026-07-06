@@ -3132,3 +3132,84 @@ export function useCoachNotes(callId?: string) {
       apiFetch<CoachNote[]>(getToken, `/coach/notes${callId ? `?callId=${callId}` : ''}`),
   });
 }
+
+// ── Conversation intelligence (Day 75) ──────────────────────────────────────────
+
+export type SignalType =
+  | 'objection'
+  | 'buying_signal'
+  | 'competitor'
+  | 'feature_request'
+  | 'churn_risk';
+export interface SignalAlertRule {
+  type: SignalType;
+  label?: string;
+  threshold: number;
+}
+export interface IntelConfig {
+  competitors: string[];
+  alertRules: SignalAlertRule[];
+}
+export interface SignalAggregate {
+  type: SignalType;
+  label: string;
+  count: number;
+}
+export interface CallSignal {
+  id: string;
+  callId: string;
+  type: SignalType;
+  label: string;
+  quote: string | null;
+  createdAt: string;
+}
+
+export function useIntelConfig() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['intel', 'config'],
+    queryFn: () => apiFetch<IntelConfig>(getToken, '/intel/config'),
+  });
+}
+export function useSetIntelConfig() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: IntelConfig) =>
+      apiFetch<IntelConfig>(getToken, '/intel/config', {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['intel'] }),
+  });
+}
+export function useIntelTrends(sinceDays = 30) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['intel', 'trends', sinceDays],
+    queryFn: () => apiFetch<SignalAggregate[]>(getToken, `/intel/trends?sinceDays=${sinceDays}`),
+  });
+}
+export function useIntelSignals(filter: { type?: string; label?: string; callId?: string } = {}) {
+  const { getToken } = useAuth();
+  const qs = new URLSearchParams(
+    Object.entries(filter).filter(([, v]) => v) as [string, string][],
+  ).toString();
+  return useQuery({
+    queryKey: ['intel', 'signals', filter],
+    queryFn: () => apiFetch<CallSignal[]>(getToken, `/intel/signals${qs ? `?${qs}` : ''}`),
+  });
+}
+export function useCheckIntelAlerts() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<{ fired: { type: SignalType; label: string; count: number; threshold: number }[] }>(
+        getToken,
+        '/intel/check-alerts',
+        { method: 'POST', body: JSON.stringify({}) },
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['intel'] }),
+  });
+}

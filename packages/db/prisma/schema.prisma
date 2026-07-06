@@ -231,6 +231,8 @@ model Tenant {
   sentimentRules      SentimentRule[]
   sentimentEvents     SentimentEvent[]
   coachNotes          CoachNote[]
+  callSignals         CallSignal[]
+  intelConfig         ConversationIntelConfig?
   flows               Flow[]
   flowVersions        FlowVersion[]
   transcripts         Transcript[]
@@ -1246,6 +1248,33 @@ model CoachNote {
   createdAt   DateTime  @default(now())
 
   @@index([tenantId, callId])
+}
+
+/// A business signal mined from a call transcript (Day 75) — objection/buying/competitor/etc.
+model CallSignal {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  callId    String   @db.Uuid
+  type      String // objection | buying_signal | competitor | feature_request | churn_risk
+  label     String // normalized label (objection tag, competitor name, buying-signal kind, …)
+  quote     String?
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, type, createdAt])
+  @@index([tenantId, callId])
+  @@index([tenantId, label])
+}
+
+/// Per-tenant conversation-intelligence config (Day 75): competitor watchlist + alert thresholds.
+model ConversationIntelConfig {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @unique @db.Uuid
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  competitors String[] @default([])
+  alertRules  Json     @default("[]") // [{ type, label?, threshold }]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 /// A fraud/abuse case (Day 70) — the auditable record of an automated enforcement + its review.

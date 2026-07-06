@@ -32,6 +32,7 @@ import { AuditService } from './governance/audit.service';
 import { FeatureFlagsService } from './governance/feature-flags.service';
 import { QuotaService } from './governance/quota.service';
 import { IntegrationsService } from './integrations/integrations.service';
+import { IntelService } from './intel/intel.service';
 import { KeyPoolService } from './keypool/keypool.service';
 import { LatencyService } from './latency/latency.service';
 import { LaunchService } from './launch/launch.service';
@@ -145,6 +146,7 @@ export function createServices() {
   const desk = new DeskService(db);
   // Sentiment-triggered live actions reuse the Agent Desk for real-human escalation (Day 73).
   const sentiment = new SentimentService(db, desk);
+  const intel = new IntelService(db);
   const disclosure = new DisclosureService(db);
   const email = new EmailService(db, buildEmailSender(process.env));
   // Live spam-label lookup is gated on a reputation API key; a null-returning stub in dev/CI.
@@ -236,6 +238,7 @@ export function createServices() {
     desk,
     sentiment,
     coach,
+    intel,
     disclosure,
     email,
     reputation,
