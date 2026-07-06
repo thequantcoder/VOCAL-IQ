@@ -62,6 +62,7 @@ const NAV = [
   { href: '/dashboard/forms', label: 'Forms', icon: ClipboardList, exact: false },
   { href: '/dashboard/experiments', label: 'Experiments', icon: FlaskConical, exact: false },
   { href: '/dashboard/sip', label: 'SIP trunks', icon: Server, exact: false },
+  { href: '/dashboard/reputation', label: 'Number health', icon: ShieldCheck, exact: false },
   { href: '/dashboard/appointments', label: 'Appointments', icon: CalendarCheck, exact: false },
   { href: '/dashboard/integrations', label: 'Integrations', icon: Plug, exact: false },
   { href: '/dashboard/mcp', label: 'Tool servers', icon: Plug, exact: false },

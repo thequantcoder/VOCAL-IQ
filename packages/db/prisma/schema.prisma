@@ -802,6 +802,13 @@ model PhoneNumber {
   assignedAgent   Agent?            @relation(fields: [assignedAgentId], references: [id], onDelete: SetNull)
   kycVerified     Boolean           @default(false)
   source          PhoneNumberSource @default(POOL)
+  // Caller reputation + branded caller ID (Day 69).
+  reputationScore     Int?      // 0–100 health score (null = never checked)
+  spamLabel           String?   // clean | at_risk | flagged
+  reputationCheckedAt DateTime?
+  restedUntil         DateTime? // don't dial from this number until then (auto-remediation)
+  warmupStartedAt     DateTime? // when volume ramp began (new-number warm-up)
+  brandedCallerId     Json?     // CNAM / Rich Call Data { displayName, logoUrl, callReason }
   createdAt       DateTime          @default(now())
 
   @@index([tenantId])
@@ -842,6 +849,7 @@ model Call {
   endedAt       DateTime?
   durationSec   Int?
   recordingUrl  String?
+  attestation   String? // STIR/SHAKEN attestation level for this call (A|B|C|none) — Day 69
   disposition   String?
   sentiment     Float?
   costBreakdown Json          @default("{}") // {stt, llm, tts, telephony, total}
