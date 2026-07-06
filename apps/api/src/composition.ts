@@ -7,6 +7,7 @@ import { AuthService } from './auth/auth.service';
 import { AutomationsService } from './automations/automations.service';
 import { buildActionExecutors } from './automations/executors';
 import { EntitlementsService } from './billing/entitlements.service';
+import { OutcomeBillingService } from './billing/outcome-billing.service';
 import { PlanBuilderService } from './billing/plan-builder.service';
 import { PlansService } from './billing/plans.service';
 import { PendingBillingProcessor } from './billing/processor';
@@ -121,6 +122,7 @@ export function createServices() {
   const campaigns = new CampaignsService(db);
   const callbacks = new CallbacksService(db);
   const revenue = new RevenueService(db);
+  const outcomeBilling = new OutcomeBillingService(db, wallet);
   const forms = new FormsService(db);
   const integrations = new IntegrationsService(db);
   const leads = new LeadsService(db);
@@ -261,6 +263,7 @@ export function createServices() {
     payments,
     callbacks,
     revenue,
+    outcomeBilling,
     disclosure,
     email,
     reputation,

@@ -14,6 +14,7 @@ import { appointmentsRoutes } from './appointments/appointments.routes';
 import { authRoutes } from './auth/auth.routes';
 import { automationsRoutes } from './automations/automations.routes';
 import { billingRoutes, billingWebhookHandler } from './billing/billing.routes';
+import { outcomeBillingRoutes } from './billing/outcome-billing.routes';
 import { planBuilderRoutes } from './billing/plan-builder.routes';
 import { callbacksRoutes } from './callbacks/callbacks.routes';
 import { callsRoutes } from './calls/calls.routes';
@@ -150,6 +151,7 @@ function bootstrap(): void {
   app.use('/payments', paymentsRoutes(s.payments, s.tenants));
   app.use('/callbacks', callbacksRoutes(s.callbacks, s.tenants));
   app.use('/revenue', revenueRoutes(s.revenue, s.tenants));
+  app.use('/outcomes', outcomeBillingRoutes(s.outcomeBilling, s.tenants));
   app.use('/disclosure', disclosureRoutes(s.disclosure, s.tenants));
   app.use('/email', emailRoutes(s.email, s.tenants));
   app.get('/u/:token', unsubscribeHandler(s.email));
