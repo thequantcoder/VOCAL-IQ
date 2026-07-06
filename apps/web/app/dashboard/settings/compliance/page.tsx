@@ -1,16 +1,20 @@
 'use client';
 
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@vocaliq/ui';
-import { Globe, PhoneOff, ScrollText, ShieldAlert } from 'lucide-react';
+import { Globe, Megaphone, PhoneOff, ScrollText, ShieldAlert } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { EmptyState, ErrorState, LoadingCard } from '../../../../components/states';
 import {
+  type DisclosureConfig,
   type RetentionPolicy,
   useAddSuppression,
+  useDisclosureConfig,
+  useDisclosureTemplates,
   useRegions,
   useRemoveSuppression,
   useResidency,
   useRetention,
+  useSetDisclosureConfig,
   useSetResidency,
   useSetRetention,
   useSuppressions,
@@ -34,10 +38,70 @@ export default function CompliancePage() {
           Do-not-call, retention/auto-deletion, and PII redaction for regulated verticals.
         </p>
       </div>
+      <AiDisclosure />
       <Residency />
       <Dnc />
       <Retention />
     </div>
+  );
+}
+
+function AiDisclosure() {
+  const config = useDisclosureConfig();
+  const templates = useDisclosureTemplates();
+  const save = useSetDisclosureConfig();
+  const [form, setForm] = useState<DisclosureConfig>({ region: 'DEFAULT', humanKeyword: 'human' });
+
+  useEffect(() => {
+    if (config.data) setForm(config.data);
+  }, [config.data]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Megaphone size={16} /> AI disclosure &amp; calling rules
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        <p className="text-vq-text-lo text-sm">
+          Region-aware "you're speaking with an AI" disclosure + a mandatory "press 1 for a human"
+          opt-out and calling-hour/frequency rules — enforced platform-wide.
+        </p>
+        <label className="flex flex-col gap-1 text-vq-text-lo text-xs">
+          Compliance template
+          <select
+            value={form.region}
+            onChange={(e) => setForm((f) => ({ ...f, region: e.target.value }))}
+            className={inputCls}
+          >
+            {(templates.data ?? []).map((t) => (
+              <option key={t.key} value={t.key}>
+                {t.key} — {t.disclosureRequired ? 'disclose' : 'no disclosure'} ·{' '}
+                {t.callingHours.start}:00–
+                {t.callingHours.end}:00 · {t.maxAttemptsPerDay}/day
+              </option>
+            ))}
+          </select>
+        </label>
+        <Input
+          placeholder="Custom disclosure line (optional)"
+          value={form.customText ?? ''}
+          onChange={(e) => setForm((f) => ({ ...f, customText: e.target.value || undefined }))}
+        />
+        <div className="flex items-center gap-2">
+          <span className="text-vq-text-lo text-xs">Human keyword</span>
+          <Input
+            value={form.humanKeyword}
+            onChange={(e) => setForm((f) => ({ ...f, humanKeyword: e.target.value }))}
+            className="max-w-[8rem]"
+          />
+          <Button size="sm" disabled={save.isPending} onClick={() => save.mutate(form)}>
+            {save.isPending ? 'Saving…' : 'Save'}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

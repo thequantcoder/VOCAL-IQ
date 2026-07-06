@@ -2878,3 +2878,46 @@ export function useResolveCase() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['fraud'] }),
   });
 }
+
+// ── AI disclosure (Day 71) ──────────────────────────────────────────────────────
+
+export interface DisclosureConfig {
+  region: string;
+  customText?: string;
+  humanKeyword: string;
+}
+export interface ComplianceTemplate {
+  key: string;
+  region: string;
+  disclosureRequired: boolean;
+  humanOptOutRequired: boolean;
+  callingHours: { start: number; end: number };
+  maxAttemptsPerDay: number;
+}
+
+export function useDisclosureConfig() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['disclosure', 'config'],
+    queryFn: () => apiFetch<DisclosureConfig>(getToken, '/disclosure/config'),
+  });
+}
+export function useDisclosureTemplates() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['disclosure', 'templates'],
+    queryFn: () => apiFetch<ComplianceTemplate[]>(getToken, '/disclosure/templates'),
+  });
+}
+export function useSetDisclosureConfig() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: DisclosureConfig) =>
+      apiFetch<DisclosureConfig>(getToken, '/disclosure/config', {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['disclosure'] }),
+  });
+}
