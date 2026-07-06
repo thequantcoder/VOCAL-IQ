@@ -2513,3 +2513,35 @@ J. Quality/docs: ✅ — the timezone-aware due logic, the TCPA-safe default win
 K. Build/CI: ✅ — `pnpm build` exits 0; migration applies on PG 16 (new table + RLS + indexes); all gates green locally before push.
 
 Callers now book their own callback and VocalIQ rings them back exactly when they asked — in their timezone and only within legal calling hours, retrying misses — captured live by an agent (Callback node) or scheduled from the dashboard. DoD CONFIRMED (live dial gated). Next: Day 81.
+
+## Day 81 — Revenue Attribution Dashboard — 2026-07-06 — ✅ DONE — 🟣 PHASE 6
+Model: Opus (🧠 OPUS day). Branch `day/81-revenue-attribution`. Prereq: Day 29 (leads) + Day 40 (CRM) + Day 41 (analytics) — present. **No new env.** Migration `20260706190000_day81_revenue` (one `RevenueEvent` table + RLS). Self-audit focus **A (attribution + ROI math) + D + B.**
+
+Context: neither Lead nor Call stores a revenue value; closed revenue is tracked separately (pay-by-voice `Payment` Day 78, CRM won-deals Day 40, manual). Day 81 introduces a first-class `RevenueEvent` that captures the attribution dimensions at record time, and a dashboard that joins revenue against the metered call cost for ROI.
+
+Built (DONE):
+- **shared** `revenue.ts` (pure — the DoD heart): `revenueEventSchema` (integer-cent amount, source manual/payment/crm, optional agent/campaign/call/lead/script/voice), **`roi`** (profit = revenue−cost; ROI% = profit/cost; margin% = profit/revenue; **divide-by-zero → null, never NaN/Infinity**), **`attributeRoi`** (join revenue+cost per key, null keys folded to an **`unattributed`** bucket so no cent is dropped, cost-only keys surface as pure loss, sorted by revenue desc), `totalRoi`, `usdToCents` (float-USD cost → cents), and **`funnel`** (leads→calls→deals step + overall conversion). **11 unit tests** (ROI edges, loss, divide-by-zero, unattributed fold, funnel).
+- **db/migration**: `RevenueEvent` (tenant-scoped; amountCents/currency/source/occurredAt + agent/campaign/call/lead/flowVersion/voice ids) with `tenant_isolation` RLS + indexes on `(tenant,occurredAt)`/`(tenant,agent)`/`(tenant,campaign)`.
+- **api** `RevenueService`: `record` (validates; auto-resolves agentId + best-effort campaignId from the call when a callId is given — RLS-scoped), `list`, and **`dashboard(from,to)`** → portfolio ROI, **per-agent ROI** (revenue events ⋈ metered cost via `UsageRecord JOIN Call GROUP BY agentId`), per-campaign revenue, revenue by source, and the leads→calls→deals funnel — revenue summed from raw events so deal counts are exact. Routes `/revenue/*` (reads any-member; record config-writer). **4 RLS-real tests** incl. ROI aggregation, empty-dashboard null-ROI, and the **CRITICAL cross-tenant isolation** (T2 sees zero of T's revenue AND cost).
+- **web** `/dashboard/revenue`: portfolio stat cards (revenue/cost/profit/ROI/deals), a leads→calls→deals funnel (zero-dep div bars, matching the self-hosted no-Recharts constraint), per-agent ROI table, per-campaign revenue, by-source breakdown, and a record-revenue form. Nav entry added.
+
+Scope note: `byCampaign` shows revenue attribution only — `Call` has no direct `campaignId` (campaign↔call is indirect via `CampaignContact`), so per-campaign COST isn't cleanly attributable; agent + portfolio ROI are exact. Documented. Live CRM won-deal + Payment→RevenueEvent auto-import ride the existing gated integration seams; manual + call-attributed recording works now.
+
+Review fixes (before merge): an adversarial review caught three real correctness issues, all fixed + tested — (1) the cost SQL used an **INNER JOIN** to Call, dropping null-callId usage from the per-agent rollup (so `sum(byAgent) ≠ total`) → changed to **LEFT JOIN** (null-callId cost folds to `unattributed`, every cent accounted for); (2) totals cost rounded differently than per-agent (sum-then-round vs round-then-sum) → totals now **derived from the per-agent rows via `totalRoi`** so they always equal their sum; (3) revenue events were **silently truncated at 20k** → added a `truncated` flag surfaced as a dashboard banner (no silent cap). A cost cross-check test asserts `totals.costCents === sum(byAgent.costCents)`.
+
+Verification: shared **556** tests, api **353** tests, workers 33, full **typecheck 12/12**, **lint 12/12** (warnings only — `req.ctx!`), **build 8/8**. Migration applied locally on PG 16.
+
+## Self-Audit — Day 81 (A–K)
+A. Attribution/ROI math (focus): ✅ — `roi`/`attributeRoi`/`funnel` are pure + exhaustively unit-tested: profit/ROI%/margin% exact, **divide-by-zero returns null** (no NaN/Infinity in the dashboard), null attribution keys (revenue AND cost, via the LEFT JOIN) fold to `unattributed` so no money is dropped, cost-only keys show as loss. Portfolio totals are derived from the per-agent rows (`totalRoi`) so `totals === sum(byAgent)` exactly (cross-check tested — a review finding, fixed). Revenue is summed from raw events → deal counts are exact; an over-cap window is flagged (`truncated`), never silently dropped.
+B. Isolation (focus): ✅ — `RevenueEvent` is RLS `tenant_isolation`; `record/list/dashboard` are `withTenant`; the raw cost `$queryRaw` (UsageRecord ⋈ Call) carries no explicit tenantId and relies on those tables' existing tenant RLS — the dedicated test proves T2 sees zero of T's revenue AND cost.
+C. Consent: n/a — revenue figures are the tenant's own business data.
+D. Cost/money (focus): ✅ — integer minor units throughout; float-USD cost converted once via `usdToCents`; ROI counts the actual metered provider cost; no float money stored.
+E. Errors/obs: ✅ — Zod-validated input; typed Validation; an empty window yields a well-formed zero/null dashboard, never a crash.
+F. Performance: ✅ — cost is a single indexed `UsageRecord ⋈ Call` group-by (the analytics pattern); revenue events (rare) are fetched bounded (20k cap) + aggregated in pure code; funnel is two counts.
+G. Error handling: ✅ — best-effort call→agent/campaign resolution never blocks recording; the dashboard degrades to zeros on no data.
+H. UI/a11y: ✅ — labelled inputs, stat cards, a div-bar funnel (no chart dep), ROI tables with profit-signed colouring, loading/error states, design tokens + dark mode.
+I. Regression: ✅ — additive: new pure module, one new table, new service/routes/page/hooks/nav, composition/main wiring. Existing suites green (556 shared + 353 api + 33 workers).
+J. Quality/docs: ✅ — the ROI contract, the unattributed-bucket guarantee, and the campaign-cost limitation are documented in code; the dashboard mirrors the analytics aggregation + RLS patterns.
+K. Build/CI: ✅ — `pnpm build` exits 0; migration applies on PG 16 (new table + RLS + indexes); all gates green locally before push.
+
+Operators can now see the metric buyers actually care about: which agents/campaigns/sources drive real revenue, and the ROI of every call — closed revenue attributed and joined against metered cost, with exact (divide-by-zero-safe) math, strictly per tenant. DoD CONFIRMED. Next: Day 82.

@@ -56,6 +56,7 @@ export * from './public-api.js';
 export * from './qa.js';
 export * from './query-keys.js';
 export * from './reseller.js';
+export * from './revenue.js';
 export * from './reseller-dashboard.js';
 export * from './reputation.js';
 export * from './residency.js';
