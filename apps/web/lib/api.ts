@@ -2838,3 +2838,43 @@ export function useRefreshReputation() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['reputation'] }),
   });
 }
+
+// ── Fraud / abuse cases (Day 70) ────────────────────────────────────────────────
+
+export interface AbuseCase {
+  id: string;
+  tenantId: string;
+  score: number;
+  action: string;
+  status: string;
+  reasons: string[];
+  notes: string | null;
+  createdAt: string;
+  resolvedAt: string | null;
+}
+
+export function useAbuseCases(status?: string) {
+  const { getToken } = useAuth();
+  const qs = status ? `?status=${status}` : '';
+  return useQuery({
+    queryKey: ['fraud', 'cases', status ?? 'all'],
+    queryFn: () => apiFetch<AbuseCase[]>(getToken, `/fraud/cases${qs}`),
+  });
+}
+
+export function useResolveCase() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: {
+      id: string;
+      resolution: 'resume' | 'dismiss' | 'keep_suspended';
+      notes?: string;
+    }) =>
+      apiFetch<{ id: string; status: string }>(getToken, `/fraud/cases/${vars.id}/resolve`, {
+        method: 'POST',
+        body: JSON.stringify({ resolution: vars.resolution, notes: vars.notes }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['fraud'] }),
+  });
+}

@@ -24,6 +24,7 @@ import { DeskService } from './desk/desk.service';
 import { ExperimentsService } from './experiments/experiments.service';
 import { FlowsService } from './flows/flows.service';
 import { FormsService } from './forms/forms.service';
+import { FraudService } from './fraud/fraud.service';
 import { AuditService } from './governance/audit.service';
 import { FeatureFlagsService } from './governance/feature-flags.service';
 import { QuotaService } from './governance/quota.service';
@@ -140,6 +141,7 @@ export function createServices() {
   const desk = new DeskService(db);
   // Live spam-label lookup is gated on a reputation API key; a null-returning stub in dev/CI.
   const reputation = new ReputationService(db);
+  const fraud = new FraudService(db);
   const tests = new TestsService(db, (tenantId) => routerGrader(routerSvc, tenantId));
   // QA scoring completer: route through RouterService so every eval meters cost (rule #4).
   const qa = new QaService(db, async ({ tenantId, system, user }) => {
@@ -215,6 +217,7 @@ export function createServices() {
     launch,
     desk,
     reputation,
+    fraud,
     abuse,
     billingWebhook,
     processor,
