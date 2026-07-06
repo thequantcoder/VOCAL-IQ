@@ -4,6 +4,7 @@
  * Result helpers, tenant-scoped query keys, constants, and cost-attribution types.
  */
 export * from './constants.js';
+export * from './email-campaign.js';
 export * from './enums.js';
 export * from './env.js';
 export * from './errors.js';

@@ -9,7 +9,7 @@ import { z } from 'zod';
  * the api, so nothing here needs live credentials — self-audit A + C.
  */
 
-export type MessageChannel = 'WHATSAPP' | 'SMS';
+export type MessageChannel = 'WHATSAPP' | 'SMS' | 'EMAIL';
 export type MessageDirection = 'OUTBOUND' | 'INBOUND';
 export type MessageStatus = 'QUEUED' | 'SENT' | 'DELIVERED' | 'READ' | 'FAILED' | 'RECEIVED';
 
