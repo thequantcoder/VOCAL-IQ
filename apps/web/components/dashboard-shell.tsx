@@ -35,6 +35,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   Smile,
+  Store,
   Target,
   TrendingUp,
   Users,
@@ -86,6 +87,7 @@ const NAV = [
   { href: '/dashboard/support', label: 'Support', icon: LifeBuoy, exact: false },
   { href: '/dashboard/wallet', label: 'Wallet', icon: Wallet, exact: false },
   { href: '/dashboard/outcomes', label: 'Outcome billing', icon: Target, exact: false },
+  { href: '/dashboard/marketplace', label: 'Marketplace', icon: Store, exact: false },
 ] as const;
 
 /** Reseller-operator (RESELLER_ADMIN) nav — provision + manage sub-tenants, white-label. */

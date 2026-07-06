@@ -3512,3 +3512,101 @@ export function useDisputeOutcome() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['outcomes'] }),
   });
 }
+
+// ── Agent-template marketplace (Day 83) ───────────────────────────────────────────
+export interface MarketplaceListing {
+  id: string;
+  creatorTenantId: string;
+  title: string;
+  description: string;
+  priceCents: number;
+  revShareBps: number;
+  status: string;
+  ratingSum: number;
+  ratingCount: number;
+  purchaseCount: number;
+  createdAt: string;
+}
+export interface MarketplacePurchase {
+  id: string;
+  listingId: string;
+  pricePaidCents: number;
+  creatorCents: number;
+  platformCents: number;
+  clonedAgentId: string | null;
+  createdAt: string;
+}
+export interface Payouts {
+  earnedCents: number;
+  sales: number;
+}
+
+export function useMarketplaceBrowse() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['marketplace', 'browse'],
+    queryFn: () => apiFetch<MarketplaceListing[]>(getToken, '/marketplace/browse'),
+  });
+}
+export function useMyListings() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['marketplace', 'mine'],
+    queryFn: () => apiFetch<MarketplaceListing[]>(getToken, '/marketplace/mine'),
+  });
+}
+export function useMyPurchases() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['marketplace', 'purchases'],
+    queryFn: () => apiFetch<MarketplacePurchase[]>(getToken, '/marketplace/purchases'),
+  });
+}
+export function usePayouts() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['marketplace', 'payouts'],
+    queryFn: () => apiFetch<Payouts>(getToken, '/marketplace/payouts'),
+  });
+}
+export function usePublishListing() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      sourceAgentId: string;
+      title: string;
+      description?: string;
+      priceCents: number;
+    }) =>
+      apiFetch<MarketplaceListing>(getToken, '/marketplace', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['marketplace', 'mine'] }),
+  });
+}
+export function useSubmitListing() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<MarketplaceListing>(getToken, `/marketplace/${id}/submit`, {
+        method: 'POST',
+        body: JSON.stringify({ status: 'pending' }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['marketplace', 'mine'] }),
+  });
+}
+export function usePurchaseListing() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<MarketplacePurchase>(getToken, `/marketplace/${id}/purchase`, {
+        method: 'POST',
+        body: JSON.stringify({}),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['marketplace'] }),
+  });
+}

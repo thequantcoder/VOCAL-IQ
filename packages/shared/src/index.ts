@@ -42,6 +42,7 @@ export * from './key-pool.js';
 export * from './latency.js';
 export * from './launch-readiness.js';
 export * from './lead.js';
+export * from './marketplace.js';
 export * from './mcp.js';
 export * from './memory.js';
 export * from './messaging.js';
