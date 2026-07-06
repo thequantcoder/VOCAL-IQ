@@ -42,6 +42,7 @@ import { httpMcpTransport } from './mcp/transport';
 import { MemoryService } from './memory/memory.service';
 import { MessagingService } from './messaging/messaging.service';
 import { buildSenders } from './messaging/senders';
+import { CustomModelsService, buildFineTuneProvider } from './models/custom-models.service';
 import { OpsService } from './ops/ops.service';
 import { QaService } from './qa/qa.service';
 import { RagService, openAiEmbedder, prismaUsageSink } from './rag/rag.service';
@@ -147,6 +148,8 @@ export function createServices() {
   // Sentiment-triggered live actions reuse the Agent Desk for real-human escalation (Day 73).
   const sentiment = new SentimentService(db, desk);
   const intel = new IntelService(db);
+  // Custom fine-tuned models: provider fine-tuning is gated; system-prompt customization always works.
+  const customModels = new CustomModelsService(db, buildFineTuneProvider(process.env));
   const disclosure = new DisclosureService(db);
   const email = new EmailService(db, buildEmailSender(process.env));
   // Live spam-label lookup is gated on a reputation API key; a null-returning stub in dev/CI.
@@ -239,6 +242,7 @@ export function createServices() {
     sentiment,
     coach,
     intel,
+    customModels,
     disclosure,
     email,
     reputation,

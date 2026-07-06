@@ -3213,3 +3213,55 @@ export function useCheckIntelAlerts() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['intel'] }),
   });
 }
+
+// ── Custom fine-tuned models per tenant (Day 76) ─────────────────────────────────
+
+export type CustomModelProvider = 'OPENAI' | 'ANTHROPIC' | 'GEMINI' | 'GROK' | 'OPENROUTER';
+export type CustomModelStatus = 'draft' | 'training' | 'ready' | 'failed';
+export interface CustomModel {
+  id: string;
+  name: string;
+  provider: CustomModelProvider;
+  baseModel: string;
+  fineTuneId: string | null;
+  systemPrompt: string | null;
+  status: CustomModelStatus;
+  consentBy: string;
+  consentAt: string;
+  active: boolean;
+  createdAt: string;
+}
+export interface NewCustomModel {
+  name: string;
+  provider: CustomModelProvider;
+  baseModel: string;
+  systemPrompt?: string;
+  requestFineTune?: boolean;
+  consent: { consentGiven: true; consentedBy: string; consentText: string };
+}
+
+export function useCustomModels() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['models'],
+    queryFn: () => apiFetch<CustomModel[]>(getToken, '/models'),
+  });
+}
+export function useCreateCustomModel() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: NewCustomModel) =>
+      apiFetch<CustomModel>(getToken, '/models', { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['models'] }),
+  });
+}
+export function useDeleteCustomModel() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ removed: boolean }>(getToken, `/models/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['models'] }),
+  });
+}
