@@ -233,6 +233,7 @@ model Tenant {
   coachNotes          CoachNote[]
   callSignals         CallSignal[]
   intelConfig         ConversationIntelConfig?
+  customModels        CustomModel[]
   flows               Flow[]
   flowVersions        FlowVersion[]
   transcripts         Transcript[]
@@ -336,6 +337,7 @@ model Agent {
   persona            Json        @default("{}")
   defaultVoiceId     String?     @db.Uuid
   fallbackVoiceId    String?     @db.Uuid
+  customModelId      String?     @db.Uuid // Day 76: a per-tenant custom/fine-tuned LLM profile
   languages          String[]    @default([])
   llmPolicy          Json        @default("{}")
   turnTimeoutMs      Int         @default(1500)
@@ -1275,6 +1277,28 @@ model ConversationIntelConfig {
   alertRules  Json     @default("[]") // [{ type, label?, threshold }]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+/// A per-tenant custom/fine-tuned LLM profile (Day 76): a base model + brand system-prompt and an
+/// OPTIONAL provider fine-tune id. Strictly tenant-scoped (RLS) + consent-recorded — never shared.
+model CustomModel {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @db.Uuid
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name         String
+  provider     Provider
+  baseModel    String
+  fineTuneId   String? // the provider's fine-tune model id once trained (gated)
+  systemPrompt String? // brand tone / domain instructions
+  status       String   @default("ready") // draft | training | ready | failed
+  consentBy    String // who authorised (mandatory — consent gate)
+  consentText  String // what was agreed (mandatory)
+  consentAt    DateTime @default(now())
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId, active])
 }
 
 /// A fraud/abuse case (Day 70) — the auditable record of an automated enforcement + its review.

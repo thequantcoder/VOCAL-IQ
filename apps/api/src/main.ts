@@ -46,6 +46,7 @@ import {
   twilioWebhookHandler,
   whatsappWebhookHandler,
 } from './messaging/messaging.routes';
+import { customModelsRoutes } from './models/custom-models.routes';
 import { initSentry, shutdownObservability } from './observability';
 import { opsRoutes } from './ops/ops.routes';
 import { v1Routes } from './public/v1.routes';
@@ -142,6 +143,7 @@ function bootstrap(): void {
   app.use('/sentiment', sentimentRoutes(s.sentiment, s.tenants));
   app.use('/coach', coachRoutes(s.coach, s.tenants));
   app.use('/intel', intelRoutes(s.intel, s.tenants));
+  app.use('/models', customModelsRoutes(s.customModels, s.tenants));
   app.use('/disclosure', disclosureRoutes(s.disclosure, s.tenants));
   app.use('/email', emailRoutes(s.email, s.tenants));
   app.get('/u/:token', unsubscribeHandler(s.email));
