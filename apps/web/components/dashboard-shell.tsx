@@ -5,6 +5,7 @@ import { cn } from '@vocaliq/ui';
 import {
   Activity,
   BarChart3,
+  Blocks,
   Bot,
   BrainCircuit,
   Building2,
@@ -88,6 +89,7 @@ const NAV = [
   { href: '/dashboard/wallet', label: 'Wallet', icon: Wallet, exact: false },
   { href: '/dashboard/outcomes', label: 'Outcome billing', icon: Target, exact: false },
   { href: '/dashboard/marketplace', label: 'Marketplace', icon: Store, exact: false },
+  { href: '/dashboard/apps', label: 'Apps', icon: Blocks, exact: false },
 ] as const;
 
 /** Reseller-operator (RESELLER_ADMIN) nav — provision + manage sub-tenants, white-label. */

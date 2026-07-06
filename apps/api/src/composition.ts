@@ -24,6 +24,7 @@ import { CostService } from './cost/cost.service';
 import { buildEncryptor } from './crypto/envelope';
 import { PrismaService } from './db/prisma.service';
 import { DeskService } from './desk/desk.service';
+import { DeveloperAppsService } from './developer-apps/developer-apps.service';
 import { DisclosureService } from './disclosure/disclosure.service';
 import { EmailService, buildEmailSender } from './email/email.service';
 import { ExperimentsService } from './experiments/experiments.service';
@@ -125,6 +126,7 @@ export function createServices() {
   const revenue = new RevenueService(db);
   const outcomeBilling = new OutcomeBillingService(db, wallet);
   const marketplace = new MarketplaceService(db, wallet, agents, flows);
+  const developerApps = new DeveloperAppsService(db, apiKeys, wallet);
   const forms = new FormsService(db);
   const integrations = new IntegrationsService(db);
   const leads = new LeadsService(db);
@@ -267,6 +269,7 @@ export function createServices() {
     revenue,
     outcomeBilling,
     marketplace,
+    developerApps,
     disclosure,
     email,
     reputation,

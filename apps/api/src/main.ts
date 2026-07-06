@@ -25,6 +25,7 @@ import { complianceRoutes } from './compliance/compliance.routes';
 import { createServices } from './composition';
 import { costRoutes } from './cost/cost.routes';
 import { deskRoutes } from './desk/desk.routes';
+import { developerAppsRoutes } from './developer-apps/developer-apps.routes';
 import { disclosureRoutes } from './disclosure/disclosure.routes';
 import { emailRoutes, unsubscribeHandler } from './email/email.routes';
 import { experimentsRoutes } from './experiments/experiments.routes';
@@ -154,6 +155,7 @@ function bootstrap(): void {
   app.use('/revenue', revenueRoutes(s.revenue, s.tenants));
   app.use('/outcomes', outcomeBillingRoutes(s.outcomeBilling, s.tenants));
   app.use('/marketplace', marketplaceRoutes(s.marketplace, s.tenants));
+  app.use('/apps', developerAppsRoutes(s.developerApps, s.tenants));
   app.use('/disclosure', disclosureRoutes(s.disclosure, s.tenants));
   app.use('/email', emailRoutes(s.email, s.tenants));
   app.get('/u/:token', unsubscribeHandler(s.email));

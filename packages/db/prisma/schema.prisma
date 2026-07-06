@@ -242,6 +242,8 @@ model Tenant {
   marketplaceListings  MarketplaceListing[]  @relation("MarketplaceCreator")
   marketplacePurchases MarketplacePurchase[] @relation("MarketplaceBuyer")
   marketplaceReviews   MarketplaceReview[]   @relation("MarketplaceReviewer")
+  developerApps        DeveloperApp[]        @relation("AppDeveloper")
+  appInstalls          AppInstall[]          @relation("AppInstaller")
   flows               Flow[]
   flowVersions        FlowVersion[]
   transcripts         Transcript[]
@@ -1486,6 +1488,61 @@ model MarketplaceReview {
 
   @@unique([buyerTenantId, listingId])
   @@index([listingId])
+}
+
+/// A developer app (Day 84) — a third-party integration published by a developer tenant. Declares the
+/// API scopes it needs + webhook events it subscribes to; the platform reviews + security-scans it;
+/// approved apps are browsable cross-tenant. Client credentials identify the app (secret hashed at
+/// rest). Approved apps are read via the admin client filtered to status='approved'.
+model DeveloperApp {
+  id                String   @id @default(uuid()) @db.Uuid
+  developerTenantId String   @db.Uuid
+  developer         Tenant   @relation("AppDeveloper", fields: [developerTenantId], references: [id], onDelete: Cascade)
+  name              String
+  description       String   @default("")
+  homepageUrl       String?
+  webhookUrl        String? // where the app receives subscribed events (SSRF-validated); internal, never public
+  clientId          String   @unique // public OAuth-style client id (vqapp_...)
+  hashedSecret      String   @unique // sha256 of the client secret (shown once at register/rotate)
+  requestedScopes   String[] // the API scopes the app asks for (Day-48 catalogue; no wildcard)
+  events            String[] @default([]) // subscribed webhook events
+  priceCents        Int      @default(0) // one-time install fee (0 = free)
+  revShareBps       Int      @default(7000) // the developer's share (70% by default)
+  status            String   @default("draft") // draft | pending | approved | rejected | suspended
+  scanFindings      Json     @default("[]") // the security-scan report at the last submit
+  installCount      Int      @default(0)
+  reviewedAt        DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  installs AppInstall[]
+
+  @@index([status])
+  @@index([developerTenantId, status])
+}
+
+/// An app install (Day 84) — a tenant installed a developer app, consenting to a subset of its scopes.
+/// Installation mints a tenant-scoped API key (apiKeyId) limited to the granted scopes; uninstall
+/// revokes it. Unique per (installer, app) so a tenant installs once; the paid split is snapshotted.
+model AppInstall {
+  id                String   @id @default(uuid()) @db.Uuid
+  installerTenantId String   @db.Uuid
+  installer         Tenant   @relation("AppInstaller", fields: [installerTenantId], references: [id], onDelete: Cascade)
+  appId             String   @db.Uuid
+  app               DeveloperApp @relation(fields: [appId], references: [id], onDelete: Cascade)
+  grantedScopes     String[] // the scopes the tenant consented to (⊆ the app's requestedScopes)
+  apiKeyId          String?  @db.Uuid // the scoped key minted for the app (null until install completes)
+  pricePaidCents    Int      @default(0)
+  developerCents    Int      @default(0)
+  platformCents     Int      @default(0)
+  status            String   @default("pending") // pending | active | revoked
+  consentedAt       DateTime?
+  revokedAt         DateTime?
+  createdAt         DateTime @default(now())
+
+  @@unique([installerTenantId, appId])
+  @@index([installerTenantId])
+  @@index([appId])
 }
 
 /// A fraud/abuse case (Day 70) — the auditable record of an automated enforcement + its review.
