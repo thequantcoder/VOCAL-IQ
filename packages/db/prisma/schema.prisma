@@ -235,6 +235,7 @@ model Tenant {
   intelConfig         ConversationIntelConfig?
   customModels        CustomModel[]
   payments            Payment[]
+  callbacks           Callback[]
   flows               Flow[]
   flowVersions        FlowVersion[]
   transcripts         Transcript[]
@@ -1333,6 +1334,30 @@ model Payment {
   @@unique([tenantId, idempotencyKey])
   @@index([tenantId, status])
   @@index([tenantId, callId])
+}
+
+/// A caller-requested callback (Day 80) — auto-dialed at the requested time, within legal calling
+/// hours evaluated in the caller's timezone. Tenant-scoped via RLS.
+model Callback {
+  id            String    @id @default(uuid()) @db.Uuid
+  tenantId      String    @db.Uuid
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agentId       String?   @db.Uuid
+  contactId     String?   @db.Uuid
+  callId        String? // the call the request came from (free text — inbound may have none)
+  phone         String
+  requestedAt   DateTime // UTC instant the caller wants to be called
+  timezone      String    @default("UTC") // caller IANA tz — decides the local calling window
+  note          String?
+  status        String    @default("scheduled") // scheduled|dialing|completed|failed|cancelled|missed
+  attempts      Int       @default(0)
+  nextAttemptAt DateTime? // set when a prior attempt missed
+  lastCallId    String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([tenantId, status])
+  @@index([status, requestedAt]) // scheduler sweep for due callbacks across tenants
 }
 
 /// A fraud/abuse case (Day 70) — the auditable record of an automated enforcement + its review.

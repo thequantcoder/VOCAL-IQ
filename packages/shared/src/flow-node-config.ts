@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { callbackNodeConfigSchema } from './callback.js';
 import { FlowNodeType } from './enums.js';
 import type { FlowNode } from './flow-graph.js';
 
@@ -254,6 +255,7 @@ const CONFIG_SCHEMAS = {
   [FlowNodeType.SUBFLOW]: subflowConfigSchema,
   [FlowNodeType.SQUAD_HANDOFF]: squadHandoffConfigSchema,
   [FlowNodeType.PAYMENT]: paymentConfigSchema,
+  [FlowNodeType.CALLBACK]: callbackNodeConfigSchema,
 } as const;
 
 /** The config schema for a node type, or null if the type has no config schema yet. */

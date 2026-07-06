@@ -2,6 +2,7 @@ import { createPrismaClient } from '@vocaliq/db';
 import { parseEnv } from '@vocaliq/shared';
 import { Queue, Worker } from 'bullmq';
 import IORedis from 'ioredis';
+import { createDbCallbackDialerDeps, runCallbackDialerTick } from './callback-dialer';
 import { createDbSchedulerDeps, runCampaignTick } from './campaign-scheduler';
 import { createDbConvoIntelDeps, runConversationIntel } from './conversation-intel';
 import { createDbMemoryDeps, runMemoryExtraction } from './memory-extraction';
@@ -18,6 +19,7 @@ import { createDbFindUnmetered, runReconciliation } from './reconciliation';
 
 const RECONCILE_QUEUE = 'cost-reconciliation';
 const CAMPAIGN_QUEUE = 'campaign-scheduler';
+const CALLBACK_QUEUE = 'callback-dialer';
 const POST_CALL_QUEUE = 'post-call-intel';
 
 /**
@@ -166,6 +168,32 @@ function registerCampaignScheduler(
   };
 }
 
+/** Register the callback dialer tick (repeatable job + worker) — every 15s. */
+function registerCallbackDialer(
+  redisUrl: string,
+  databaseUrl: string | undefined,
+): () => Promise<void> {
+  const connection = new IORedis(redisUrl, { maxRetriesPerRequest: null });
+  const admin = createPrismaClient(databaseUrl);
+  const deps = createDbCallbackDialerDeps(admin, (msg) => console.log(`[callbacks] ${msg}`));
+
+  const queue = new Queue(CALLBACK_QUEUE, { connection });
+  void queue.add('tick', {}, { repeat: { every: 15_000 }, jobId: 'callback-dialer:tick' });
+
+  const worker = new Worker(CALLBACK_QUEUE, async () => runCallbackDialerTick(deps, new Date()), {
+    connection,
+  });
+  worker.on('failed', (job, err) => console.error(`[callbacks] job ${job?.id} failed:`, err));
+
+  console.log('[workers] callback-dialer queue + worker registered (15s tick).');
+  return async () => {
+    await worker.close();
+    await queue.close();
+    await connection.quit();
+    await admin.$disconnect();
+  };
+}
+
 /** Register the daily cost-reconciliation sweep (repeatable job + worker). */
 function registerReconciliation(
   redisUrl: string,
@@ -221,6 +249,7 @@ async function main(): Promise<void> {
   }
   registerReconciliation(env.REDIS_URL, env.DATABASE_URL);
   registerCampaignScheduler(env.REDIS_URL, env.DATABASE_URL);
+  registerCallbackDialer(env.REDIS_URL, env.DATABASE_URL);
   registerPostCallIntel(env.REDIS_URL, env.DATABASE_URL);
   registerConversationIntel(env.REDIS_URL, env.DATABASE_URL);
   registerMemoryExtraction(env.REDIS_URL, env.DATABASE_URL);

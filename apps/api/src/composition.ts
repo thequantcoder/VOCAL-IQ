@@ -11,6 +11,7 @@ import { PlanBuilderService } from './billing/plan-builder.service';
 import { PlansService } from './billing/plans.service';
 import { PendingBillingProcessor } from './billing/processor';
 import { BillingWebhookService } from './billing/webhook.service';
+import { CallbacksService } from './callbacks/callbacks.service';
 import { CallsReadService } from './calls/calls-read.service';
 import { PendingDialer } from './calls/dialer';
 import { OutboundService } from './calls/outbound.service';
@@ -117,6 +118,7 @@ export function createServices() {
   const search = new SearchService(db, embedder, prismaUsageSink(db));
 
   const campaigns = new CampaignsService(db);
+  const callbacks = new CallbacksService(db);
   const forms = new FormsService(db);
   const integrations = new IntegrationsService(db);
   const leads = new LeadsService(db);
@@ -255,6 +257,7 @@ export function createServices() {
     intel,
     customModels,
     payments,
+    callbacks,
     disclosure,
     email,
     reputation,
