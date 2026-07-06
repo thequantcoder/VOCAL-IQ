@@ -18,6 +18,7 @@ import { planBuilderRoutes } from './billing/plan-builder.routes';
 import { callsRoutes } from './calls/calls.routes';
 import { campaignsRoutes } from './campaigns/campaigns.routes';
 import { chatRoutes } from './chat/chat.routes';
+import { coachRoutes } from './coach/coach.routes';
 import { complianceRoutes } from './compliance/compliance.routes';
 import { createServices } from './composition';
 import { costRoutes } from './cost/cost.routes';
@@ -138,6 +139,7 @@ function bootstrap(): void {
   app.use('/reseller', resellerRoutes(s.reseller, s.tenants));
   app.use('/desk', deskRoutes(s.desk, s.tenants));
   app.use('/sentiment', sentimentRoutes(s.sentiment, s.tenants));
+  app.use('/coach', coachRoutes(s.coach, s.tenants));
   app.use('/disclosure', disclosureRoutes(s.disclosure, s.tenants));
   app.use('/email', emailRoutes(s.email, s.tenants));
   app.get('/u/:token', unsubscribeHandler(s.email));
