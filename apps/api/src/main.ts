@@ -34,6 +34,7 @@ import { healthRoutes } from './health.routes';
 import { errorMiddleware, notFoundMiddleware } from './http/error.middleware';
 import { corsMiddleware, parseCorsAllowlist, securityHeaders } from './http/security.middleware';
 import { integrationsRoutes } from './integrations/integrations.routes';
+import { intelRoutes } from './intel/intel.routes';
 import { keyPoolRoutes } from './keypool/keypool.routes';
 import { latencyRoutes } from './latency/latency.routes';
 import { launchRoutes, statusRoutes } from './launch/launch.routes';
@@ -140,6 +141,7 @@ function bootstrap(): void {
   app.use('/desk', deskRoutes(s.desk, s.tenants));
   app.use('/sentiment', sentimentRoutes(s.sentiment, s.tenants));
   app.use('/coach', coachRoutes(s.coach, s.tenants));
+  app.use('/intel', intelRoutes(s.intel, s.tenants));
   app.use('/disclosure', disclosureRoutes(s.disclosure, s.tenants));
   app.use('/email', emailRoutes(s.email, s.tenants));
   app.get('/u/:token', unsubscribeHandler(s.email));

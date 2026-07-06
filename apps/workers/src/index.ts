@@ -3,6 +3,7 @@ import { parseEnv } from '@vocaliq/shared';
 import { Queue, Worker } from 'bullmq';
 import IORedis from 'ioredis';
 import { createDbSchedulerDeps, runCampaignTick } from './campaign-scheduler';
+import { createDbConvoIntelDeps, runConversationIntel } from './conversation-intel';
 import { createDbMemoryDeps, runMemoryExtraction } from './memory-extraction';
 import { createDbPostCallDeps, runPostCallIntel } from './post-call-intel';
 import { createDbQaDeps, runQaScoring } from './qa-scoring';
@@ -41,6 +42,37 @@ function registerPostCallIntel(
   worker.on('failed', (job, err) => console.error(`[post-call] job ${job?.id} failed:`, err));
 
   console.log('[workers] post-call-intel queue + worker registered.');
+  return async () => {
+    await worker.close();
+    await connection.quit();
+    await admin.$disconnect();
+  };
+}
+
+const CONVO_INTEL_QUEUE = 'conversation-intel';
+
+/**
+ * Conversation-intelligence worker (Day 75). Consumes `{ callId }` jobs (the post-call bundle
+ * enqueues one on call-end alongside intel + QA) and mines the transcript for business signals
+ * deterministically — no LLM call, so it adds zero per-call spend. Signals feed the trend
+ * dashboards + alerts. Idempotent (re-running replaces the call's signals).
+ */
+function registerConversationIntel(
+  redisUrl: string,
+  databaseUrl: string | undefined,
+): () => Promise<void> {
+  const connection = new IORedis(redisUrl, { maxRetriesPerRequest: null });
+  const admin = createPrismaClient(databaseUrl);
+  const deps = createDbConvoIntelDeps(admin, (msg) => console.log(`[convo-intel] ${msg}`));
+
+  const worker = new Worker<{ callId: string }>(
+    CONVO_INTEL_QUEUE,
+    async (job) => runConversationIntel(deps, job.data.callId),
+    { connection },
+  );
+  worker.on('failed', (job, err) => console.error(`[convo-intel] job ${job?.id} failed:`, err));
+
+  console.log('[workers] conversation-intel queue + worker registered.');
   return async () => {
     await worker.close();
     await connection.quit();
@@ -190,6 +222,7 @@ async function main(): Promise<void> {
   registerReconciliation(env.REDIS_URL, env.DATABASE_URL);
   registerCampaignScheduler(env.REDIS_URL, env.DATABASE_URL);
   registerPostCallIntel(env.REDIS_URL, env.DATABASE_URL);
+  registerConversationIntel(env.REDIS_URL, env.DATABASE_URL);
   registerMemoryExtraction(env.REDIS_URL, env.DATABASE_URL);
   registerQaScoring(env.REDIS_URL, env.DATABASE_URL);
 }
