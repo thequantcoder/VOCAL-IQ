@@ -4,8 +4,10 @@ calls through these (live adapters land with the call loop, Days 8–9)."""
 
 from app.providers.adapters import DeepgramSTT, ElevenLabsTTS, OpenAILLM
 from app.providers.contracts import (
+    NEUTRAL_SETTINGS,
     CompletionResult,
     DialResult,
+    ExpressiveSettings,
     LLMMessage,
     LLMProvider,
     STTEvent,
@@ -23,10 +25,12 @@ from app.providers.pricing import (
 )
 
 __all__ = [
+    "NEUTRAL_SETTINGS",
     "CompletionResult",
     "DeepgramSTT",
     "DialResult",
     "ElevenLabsTTS",
+    "ExpressiveSettings",
     "LLMMessage",
     "OpenAILLM",
     "LLMProvider",

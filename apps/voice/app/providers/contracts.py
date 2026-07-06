@@ -43,6 +43,23 @@ class DialResult:
     status: str
 
 
+@dataclass(frozen=True, slots=True)
+class ExpressiveSettings:
+    """Provider-agnostic expressive TTS controls (Day 77). Adapters map these onto their own knobs
+    (ElevenLabs → voice_settings). `NEUTRAL` is the professional default; the emotion modulator
+    (app.loop.emotion) produces coloured variants from the caller's mood. Mirrors the TS
+    `ExpressiveSettings` in @vocaliq/shared so voice + api agree exactly."""
+
+    stability: float = 0.5
+    similarity_boost: float = 0.75
+    style: float = 0.0
+    speed: float = 1.0
+    use_speaker_boost: bool = False
+
+
+NEUTRAL_SETTINGS = ExpressiveSettings()
+
+
 @runtime_checkable
 class LLMProvider(Protocol):
     provider: str
@@ -66,7 +83,12 @@ class TTSProvider(Protocol):
     default_model: str
 
     def synthesize_stream(
-        self, text: str, *, voice_id: str | None = None, model: str | None = None
+        self,
+        text: str,
+        *,
+        voice_id: str | None = None,
+        model: str | None = None,
+        settings: ExpressiveSettings | None = None,
     ) -> AsyncIterator[bytes]: ...
 
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { EmotionPolicy } from '@vocaliq/shared';
 import { messageFromError } from './api-error';
 import { useAuth } from './auth';
 
@@ -3263,5 +3264,27 @@ export function useDeleteCustomModel() {
     mutationFn: (id: string) =>
       apiFetch<{ removed: boolean }>(getToken, `/models/${id}`, { method: 'DELETE' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['models'] }),
+  });
+}
+
+// ── Emotion-aware voice policy (Day 77) ──────────────────────────────────────────
+export function useEmotionPolicy(agentId: string) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['emotion-policy', agentId],
+    queryFn: () => apiFetch<EmotionPolicy>(getToken, `/agents/${agentId}/emotion-policy`),
+    enabled: Boolean(agentId),
+  });
+}
+export function useSaveEmotionPolicy(agentId: string) {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: EmotionPolicy) =>
+      apiFetch<EmotionPolicy>(getToken, `/agents/${agentId}/emotion-policy`, {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['emotion-policy', agentId] }),
   });
 }

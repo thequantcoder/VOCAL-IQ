@@ -62,6 +62,23 @@ export function agentsRoutes(
     }),
   );
 
+  /** Read an agent's emotion-aware voice policy (Day 77 — any member, RLS-scoped). */
+  r.get(
+    '/:id/emotion-policy',
+    ah(async (req, res) => {
+      res.json(await agents.getEmotionPolicy(req.ctx!.tenantId, req.params.id as string));
+    }),
+  );
+
+  /** Set an agent's emotion-aware voice policy (config writers only). */
+  r.put(
+    '/:id/emotion-policy',
+    requireRoles(...CONFIG_WRITERS),
+    ah(async (req, res) => {
+      res.json(await agents.setEmotionPolicy(req.ctx!.tenantId, req.params.id as string, req.body));
+    }),
+  );
+
   /**
    * Run a one-off completion through the provider router for an agent in the
    * caller's tenant. Config-writer roles only (BUILDER+); records cost.

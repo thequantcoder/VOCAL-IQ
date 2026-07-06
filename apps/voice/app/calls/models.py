@@ -16,6 +16,10 @@ class StartCallRequest(BaseModel):
     channel: CallChannel = "WEB"
     # Arbitrary per-call context (lead fields, dynamic vars) — passed to the agent.
     lead_context: dict[str, object] = Field(default_factory=dict)
+    # Day 77: the agent's emotion-aware voice policy (Agent.emotionPolicy JSON). The caller fetches it
+    # (GET /agents/{id}/emotion-policy) and includes it so modulation activates with no DB round-trip
+    # in the voice app (self-audit F). Absent/None ⇒ neutral voice.
+    emotion_policy: dict[str, object] | None = None
 
 
 class CallTokens(BaseModel):

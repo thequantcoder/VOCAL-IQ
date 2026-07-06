@@ -28,9 +28,16 @@ from typing import Protocol
 
 from app.loop.chunker import SentenceChunker
 from app.loop.context import ConversationContext, approx_tokens
+from app.loop.emotion import (
+    DEFAULT_POLICY,
+    EmotionPolicy,
+    classify_tone,
+    estimate_sentiment,
+    resolve_expressive_settings,
+)
 from app.loop.endpointer import Endpointer
 from app.loop.metrics import TurnMetrics, new_turn
-from app.providers.contracts import LLMProvider, STTProvider, TTSProvider
+from app.providers.contracts import ExpressiveSettings, LLMProvider, STTProvider, TTSProvider
 from app.providers.pricing import llm_cost_usd, stt_cost_usd, tts_cost_usd
 
 
@@ -68,6 +75,7 @@ class LoopConfig:
     language: str | None = None
     byok: bool = False
     greeting: str | None = None
+    emotion_policy: EmotionPolicy | None = None  # Day 77: emotion-aware voice modulation (None = neutral)
     turn_timeout_ms: float = 700.0
     frame_ms: float = 20.0
     vad_threshold: float = 500.0
@@ -116,6 +124,11 @@ class ConversationLoop:
         self._turn_task: asyncio.Task[None] | None = None
         self._utterance_audio_ms = 0.0
         self.turns: list[TurnMetrics] = []  # exposed for latency assertions/inspection
+
+        # Emotion-aware voice modulation (Day 77). `_tts_settings` is the expressive settings for the
+        # NEXT spoken line; None ⇒ neutral. It's refreshed from the caller's mood each turn.
+        self._emotion = config.emotion_policy or DEFAULT_POLICY
+        self._tts_settings: ExpressiveSettings | None = None
 
     # ── public API ────────────────────────────────────────────────────────────
 
@@ -200,6 +213,7 @@ class ConversationLoop:
         await self._emit("user.turn", {"text": utterance})
         await self._persist("user", utterance)
         self._context.add_user(utterance)
+        await self._tune_voice(utterance)
 
         await self._emit("agent.speaking", {"state": True})
         reply = await self._respond(metrics)
@@ -236,10 +250,33 @@ class ConversationLoop:
             await self._meter_llm(produced)
         return " ".join(spoken)
 
+    async def _tune_voice(self, utterance: str) -> None:
+        """Emotion-aware modulation (Day 77): estimate the caller's mood from their turn and set the
+        expressive settings for the agent's next line. Pure + local — no network, no model call, so
+        it adds no latency (self-audit F). A no-op (voice stays neutral) unless the agent opted in."""
+        if not self._emotion.enabled:
+            return
+        signal = estimate_sentiment(utterance)
+        tone = classify_tone(signal, self._emotion)
+        settings = resolve_expressive_settings(tone, self._emotion)
+        self._tts_settings = settings
+        await self._emit(
+            "emotion.modulation",
+            {
+                "tone": tone,
+                "stability": round(settings.stability, 3),
+                "style": round(settings.style, 3),
+                "speed": round(settings.speed, 3),
+            },
+        )
+
     async def _speak_chunk(self, text: str, metrics: TurnMetrics) -> None:
         try:
             async for audio in self._tts.synthesize_stream(
-                text, voice_id=self._cfg.voice_id, model=self._cfg.tts_model
+                text,
+                voice_id=self._cfg.voice_id,
+                model=self._cfg.tts_model,
+                settings=self._tts_settings,
             ):
                 if self._interrupt.is_set():
                     return

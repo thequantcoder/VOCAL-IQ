@@ -8,6 +8,7 @@ export * from './constants.js';
 export * from './conversation-intel.js';
 export * from './custom-models.js';
 export * from './email-campaign.js';
+export * from './emotion-voice.js';
 export * from './enums.js';
 export * from './env.js';
 export * from './errors.js';

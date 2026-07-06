@@ -186,6 +186,60 @@ async def test_latency_under_target_in_harness() -> None:
     assert m.turnaround_ms is not None and m.turnaround_ms < TURNAROUND_TARGET_MS
 
 
+async def test_emotion_modulation_adapts_tts_to_an_angry_caller() -> None:
+    # Day 77: with an emotion policy enabled, an angry utterance de-escalates the agent's voice.
+    from app.loop.emotion import EmotionPolicy
+
+    clock = ManualClock()
+    stt = FakeSTT([(3, "this is absolutely ridiculous and unacceptable", True)])
+    tts = FakeTTS()
+    col = Collectors()
+    loop = ConversationLoop(
+        stt=stt,
+        llm=FakeLLM("I'm sorry about that."),
+        tts=tts,
+        audio_out=BufferSink(),
+        config=_config(emotion_policy=EmotionPolicy(enabled=True)),
+        emit=col.emit,
+        meter=col.meter,
+        persist=col.persist,
+        clock=clock,
+    )
+    await loop.run(feed(_utterance_frames(), clock))
+
+    # A modulation event fired, and the TTS call received calm (reassuring) settings — not neutral.
+    assert "emotion.modulation" in col.event_types()
+    used = [s for s in tts.settings if s is not None]
+    assert used, "expressive settings should have been passed to TTS"
+    calm = used[-1]
+    assert calm.speed <= 1.0  # never sped up for an upset caller
+    assert calm.style <= 0.2
+    assert calm.stability >= 0.7
+
+
+async def test_no_modulation_keeps_neutral_voice_by_default() -> None:
+    # Default policy is disabled → TTS is always called with neutral (None) settings, no event.
+    clock = ManualClock()
+    stt = FakeSTT([(3, "this is ridiculous and unacceptable", True)])
+    tts = FakeTTS()
+    col = Collectors()
+    loop = ConversationLoop(
+        stt=stt,
+        llm=FakeLLM("Understood."),
+        tts=tts,
+        audio_out=BufferSink(),
+        config=_config(),
+        emit=col.emit,
+        meter=col.meter,
+        persist=col.persist,
+        clock=clock,
+    )
+    await loop.run(feed(_utterance_frames(), clock))
+
+    assert "emotion.modulation" not in col.event_types()
+    assert all(s is None for s in tts.settings)
+
+
 async def test_greeting_is_spoken_before_listening() -> None:
     stt = FakeSTT([])
     tts = FakeTTS()
