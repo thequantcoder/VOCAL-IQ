@@ -49,6 +49,7 @@ import {
 import { customModelsRoutes } from './models/custom-models.routes';
 import { initSentry, shutdownObservability } from './observability';
 import { opsRoutes } from './ops/ops.routes';
+import { paymentsRoutes } from './payments/payments.routes';
 import { v1Routes } from './public/v1.routes';
 import { qaRoutes } from './qa/qa.routes';
 import { ragRoutes } from './rag/rag.routes';
@@ -144,6 +145,7 @@ function bootstrap(): void {
   app.use('/coach', coachRoutes(s.coach, s.tenants));
   app.use('/intel', intelRoutes(s.intel, s.tenants));
   app.use('/models', customModelsRoutes(s.customModels, s.tenants));
+  app.use('/payments', paymentsRoutes(s.payments, s.tenants));
   app.use('/disclosure', disclosureRoutes(s.disclosure, s.tenants));
   app.use('/email', emailRoutes(s.email, s.tenants));
   app.get('/u/:token', unsubscribeHandler(s.email));

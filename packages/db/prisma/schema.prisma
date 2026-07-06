@@ -234,6 +234,7 @@ model Tenant {
   callSignals         CallSignal[]
   intelConfig         ConversationIntelConfig?
   customModels        CustomModel[]
+  payments            Payment[]
   flows               Flow[]
   flowVersions        FlowVersion[]
   transcripts         Transcript[]
@@ -1300,6 +1301,37 @@ model CustomModel {
   updatedAt    DateTime @updatedAt
 
   @@index([tenantId, active])
+}
+
+/// A pay-by-voice payment (Day 78) — a customer of the tenant paying the tenant over a call.
+/// PCI out-of-scope: the card is captured by a PCI provider, so this row NEVER holds a PAN/CVV —
+/// only an opaque provider ref/token + `last4`. Integer minor units (cents), never floats.
+model Payment {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @db.Uuid
+  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  callId         String?   @db.Uuid
+  agentId        String?   @db.Uuid
+  amountCents    Int
+  currency       String    @default("USD")
+  refundedCents  Int       @default(0)
+  status         String    @default("pending") // pending|authorized|succeeded|failed|refunded|partially_refunded
+  provider       String    @default("PCI") // capture provider name
+  providerRef    String? // opaque charge id (safe to store)
+  token          String? // provider payment-method token (safe; NEVER a card number)
+  last4          String? // ONLY card-derived value we may keep
+  description    String?
+  receiptChannel String    @default("none")
+  receiptTo      String?
+  receiptSentAt  DateTime?
+  idempotencyKey String? // makes a retry safe — the same key never charges twice
+  lastRefundKey  String? // idempotency for the most recent refund (safe retry of a partial refund)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, status])
+  @@index([tenantId, callId])
 }
 
 /// A fraud/abuse case (Day 70) — the auditable record of an automated enforcement + its review.

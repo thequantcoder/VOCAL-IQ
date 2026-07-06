@@ -99,6 +99,7 @@ export const FlowNodeType = {
   COLLECT_CONFIRM: 'COLLECT_CONFIRM',
   SUBFLOW: 'SUBFLOW',
   SQUAD_HANDOFF: 'SQUAD_HANDOFF',
+  PAYMENT: 'PAYMENT',
   END: 'END',
 } as const;
 export type FlowNodeType = (typeof FlowNodeType)[keyof typeof FlowNodeType];

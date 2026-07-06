@@ -44,6 +44,11 @@ import { MessagingService } from './messaging/messaging.service';
 import { buildSenders } from './messaging/senders';
 import { CustomModelsService, buildFineTuneProvider } from './models/custom-models.service';
 import { OpsService } from './ops/ops.service';
+import {
+  PaymentsService,
+  buildPciCaptureProvider,
+  buildReceiptSender,
+} from './payments/payments.service';
 import { QaService } from './qa/qa.service';
 import { RagService, openAiEmbedder, prismaUsageSink } from './rag/rag.service';
 import { ReputationService } from './reputation/reputation.service';
@@ -150,6 +155,12 @@ export function createServices() {
   const intel = new IntelService(db);
   // Custom fine-tuned models: provider fine-tuning is gated; system-prompt customization always works.
   const customModels = new CustomModelsService(db, buildFineTuneProvider(process.env));
+  // Pay-by-voice: PCI capture + receipt sending are gated seams (out-of-scope PCI model).
+  const payments = new PaymentsService(
+    db,
+    buildPciCaptureProvider(process.env),
+    buildReceiptSender(process.env),
+  );
   const disclosure = new DisclosureService(db);
   const email = new EmailService(db, buildEmailSender(process.env));
   // Live spam-label lookup is gated on a reputation API key; a null-returning stub in dev/CI.
@@ -243,6 +254,7 @@ export function createServices() {
     coach,
     intel,
     customModels,
+    payments,
     disclosure,
     email,
     reputation,
