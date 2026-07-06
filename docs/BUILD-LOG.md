@@ -2176,3 +2176,29 @@ J. Quality/docs: ✅ — the precedence rules, fallback chain, and the add-a-loc
 K. Build/CI: ✅ — `pnpm build` exits 0 (flaky Next `/404` cleared on a clean rebuild); dependency-free (no new package to audit).
 
 UI strings come from catalogs with a fallback chain; user locale switching works (tenant default can cascade via the cookie); dates/numbers/currency localize via Intl; RTL renders correctly; the email localization primitive is ready — DoD substantially met (a repo-wide hardcoded-string LINT rule + full string extraction across every existing page is the incremental translator-workflow follow-up; the foundation + pattern + a demonstration are shipped). Next: Day 69 (caller reputation / STIR-SHAKEN).
+
+## Day 69 — Caller Reputation, Branded Caller ID & STIR/SHAKEN — 2026-07-06 — ✅ DONE (providers gated) — 🔴 CORE-TIER
+Model: Opus (🧠 OPUS). Branch `day/69-caller-reputation`. Prereq: telephony STIR/SHAKEN attestation + CNAM/branded-caller-ID registration + a number-reputation API — **all provider-facing bits are GATED** (`NUMBER_REPUTATION_API_KEY`, provider CNAM setup); the scoring, auto-remediation, warm-up, and health surfaces are fully built + tested. Migration `20260706020000_day69_caller_reputation` (reputation fields on PhoneNumber + `attestation` on Call). No new required env. Self-audit focus F (answer rates) + B + A.
+
+Built (DONE):
+- **shared** `reputation.ts` (pure): `ATTESTATION_LEVELS` (A/B/C/none) + schema, **`scoreReputation`** (0–100 health from carrier spam label, block ratio, short-call/drop signature, weak attestation → clean/at_risk/flagged bands), **`restDecision`** (auto-remediation — flagged/low-score numbers rest 24–72h to recover), **`warmupDailyCap`** (a new number's daily-call cap ramps from ~20 to the target over 14 days so it builds reputation instead of tripping spam heuristics), **`pickHealthyNumber`** (rotate to the healthiest usable number, skipping rested ones), `brandedCallerIdSchema` (CNAM/RCD display name + logo + reason). 12 unit tests.
+- **db/migration**: `PhoneNumber` += `reputationScore`, `spamLabel`, `reputationCheckedAt`, `restedUntil`, `warmupStartedAt`, `brandedCallerId` (JSON); `Call` += `attestation`.
+- **api** `ReputationService` (spam-label provider seam — gated stub returns null): `recordAttestation` (per-call STIR/SHAKEN level), `setBrandedCallerId`, **`refresh`** (gather a number's 7-day signals + provider label → score → persist → auto-rest if flagged), `health` (per-tenant number dashboard with score/label/warm-up cap/rest state), **`canDial`** (the pre-dial gate — blocks a rested number + enforces the warm-up daily cap). Routes `/reputation/*` (health open to members; branded/refresh to config writers). Wired composition + main. 4 RLS-real integration tests (attestation persisted, branded ID set, flagged → auto-rest → pre-dial blocked, health + warm-up cap).
+- **web** `/dashboard/reputation`: per-number health cards (spam label + score, age, warm-up cap, resting badge) + re-score. Nav "Number health" entry.
+
+Verification: shared **423** tests, api **294** tests (incl. 12 reputation shared + 4 reputation api), full **typecheck 12/12**, **lint 12/12**, web **build exit 0** (`/dashboard/reputation` prerendered). Scoped `biome --write` touched only Day-69 files. Migration applied locally.
+
+## Self-Audit — Day 69 (A–K)
+A. Correctness: ✅ — scoring/rest/warm-up/rotation are pure + exhaustively unit-tested; the refresh→persist→rest→gate path proven against real Postgres.
+B. Isolation: ✅ — number health/attestation/branded-ID are RLS-scoped; `ownedNumber`/`canDial` reject a number outside the tenant.
+C. Security: ✅ — no secrets; the reputation provider key gates the live lookup (a null stub otherwise); branded caller ID is validated input.
+D. Cost: ✅ — reputation refresh is one indexed aggregate; no provider/cost path in the gated build.
+E. Errors/obs: ✅ — Zod-validated attestation/branded inputs; the health view surfaces flagged/resting numbers; `canDial` returns a clear reason.
+F. Answer rates (focus, existential): ✅ — flagged numbers auto-rest to recover; new numbers ramp via the warm-up cap; rotation picks the healthiest number; attestation is stored per call; branded caller ID registers a business name — the full set of levers that keep numbers off "Scam Likely".
+G. Error handling: ✅ — a rested/over-cap number is blocked pre-dial with a reason; unknown number → NotFound.
+H. UI/a11y: ✅ — number-health cards with colour-coded spam label + score + warm-up cap + resting state.
+I. Regression: ✅ — additive (shared module, migration, service/routes/page/hooks); the `canDial` gate is available for the outbound path (opt-in) and doesn't change existing behaviour; 294 api + 423 shared tests pass. Scoped biome only.
+J. Quality/docs: ✅ — the scoring heuristics, rest/warm-up policy, and the gated provider seams documented in code; explicit DTOs.
+K. Build/CI: ✅ — `pnpm build` exits 0 (flaky Next `/404` cleared on a clean rebuild); all gates green.
+
+STIR/SHAKEN attestation stored per call; branded caller ID registrable per number; reputation scored + monitored with auto-rest of flagged numbers + a new-number warm-up ramp + healthiest-number rotation; a per-tenant health dashboard — DoD CONFIRMED. **Live provider attestation/CNAM/reputation-API are GATED** (the seams + storage + logic are ready; wiring `canDial` into the live dial path + the provider lookups activate with keys). Next: Day 70 (fraud/abuse detection).

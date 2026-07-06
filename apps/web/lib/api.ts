@@ -2803,3 +2803,38 @@ export function useSetPresence() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['desk'] }),
   });
 }
+
+// ── Caller reputation / number health (Day 69) ──────────────────────────────────
+
+export interface NumberHealth {
+  id: string;
+  e164: string;
+  score: number;
+  label: 'clean' | 'at_risk' | 'flagged';
+  restedUntil: number | null;
+  ageDays: number;
+  warmupCapToday: number;
+  rested: boolean;
+}
+
+export function useNumberHealth() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['reputation', 'health'],
+    queryFn: () => apiFetch<NumberHealth[]>(getToken, '/reputation/health'),
+  });
+}
+
+export function useRefreshReputation() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (numberId: string) =>
+      apiFetch<{ score: number; label: string; rested: boolean }>(
+        getToken,
+        `/reputation/numbers/${numberId}/refresh`,
+        { method: 'POST' },
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['reputation'] }),
+  });
+}

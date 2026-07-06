@@ -46,6 +46,7 @@ import { opsRoutes } from './ops/ops.routes';
 import { v1Routes } from './public/v1.routes';
 import { qaRoutes } from './qa/qa.routes';
 import { ragRoutes } from './rag/rag.routes';
+import { reputationRoutes } from './reputation/reputation.routes';
 import { resellerRoutes } from './reseller/reseller.routes';
 import { residencyRoutes } from './residency/residency.routes';
 import { s2sRoutes } from './s2s/s2s.routes';
@@ -132,6 +133,7 @@ function bootstrap(): void {
   app.use('/ops', opsRoutes(s.opsToolkit, s.tenants));
   app.use('/reseller', resellerRoutes(s.reseller, s.tenants));
   app.use('/desk', deskRoutes(s.desk, s.tenants));
+  app.use('/reputation', reputationRoutes(s.reputation, s.tenants));
   app.use('/admin/superadmin', superAdminRoutes(s.superAdmin, s.tenants));
   app.use('/admin/sso', ssoAdminRoutes(s.sso, s.tenants));
   app.use('/auth/sso', ssoPublicRoutes(s.sso));

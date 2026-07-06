@@ -40,6 +40,7 @@ import { buildSenders } from './messaging/senders';
 import { OpsService } from './ops/ops.service';
 import { QaService } from './qa/qa.service';
 import { RagService, openAiEmbedder, prismaUsageSink } from './rag/rag.service';
+import { ReputationService } from './reputation/reputation.service';
 import { ResellerService } from './reseller/reseller.service';
 import { ResidencyService } from './residency/residency.service';
 import { RouterService } from './router/router.service';
@@ -137,6 +138,8 @@ export function createServices() {
   const s2s = new S2SService(db, Boolean(process.env.S2S_PROVIDER_KEY));
   const launch = new LaunchService(db, process.env);
   const desk = new DeskService(db);
+  // Live spam-label lookup is gated on a reputation API key; a null-returning stub in dev/CI.
+  const reputation = new ReputationService(db);
   const tests = new TestsService(db, (tenantId) => routerGrader(routerSvc, tenantId));
   // QA scoring completer: route through RouterService so every eval meters cost (rule #4).
   const qa = new QaService(db, async ({ tenantId, system, user }) => {
@@ -211,6 +214,7 @@ export function createServices() {
     s2s,
     launch,
     desk,
+    reputation,
     abuse,
     billingWebhook,
     processor,
