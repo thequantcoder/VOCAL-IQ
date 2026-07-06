@@ -574,6 +574,43 @@ export function NodeConfigForm({
     );
   }
 
+  if (nodeType === 'CALLBACK') {
+    return (
+      <div className="flex flex-col gap-3">
+        <Labeled label="Offer prompt">
+          <textarea
+            className={field}
+            rows={2}
+            value={str(config.offerPrompt)}
+            onChange={(e) => set({ offerPrompt: e.target.value })}
+            placeholder="Would you like us to call you back at a better time?"
+          />
+        </Labeled>
+        <Labeled label="Capture variable (the preferred time)">
+          <input
+            className={field}
+            value={str(config.captureVariable) || 'callback_time'}
+            onChange={(e) => set({ captureVariable: e.target.value })}
+            placeholder="callback_time"
+          />
+        </Labeled>
+        <Labeled label="Default lead time (minutes, if no time is given)">
+          <input
+            type="number"
+            min={0}
+            className={field}
+            value={str(config.defaultLeadMinutes) || '60'}
+            onChange={(e) => set({ defaultLeadMinutes: Number(e.target.value) })}
+          />
+        </Labeled>
+        <p className="text-vq-text-lo text-xs">
+          The system auto-dials at the requested time, in the caller's timezone and only within
+          legal calling hours.
+        </p>
+      </div>
+    );
+  }
+
   return <p className="text-vq-text-lo text-xs">Configuration for this node arrives soon.</p>;
 }
 

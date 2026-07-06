@@ -3350,3 +3350,51 @@ export function useRefundPayment() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['payments'] }),
   });
 }
+
+// ── Caller-requested callbacks (Day 80) ──────────────────────────────────────────
+export interface Callback {
+  id: string;
+  agentId: string | null;
+  contactId: string | null;
+  callId: string | null;
+  phone: string;
+  requestedAt: string;
+  timezone: string;
+  note: string | null;
+  status: string;
+  attempts: number;
+  nextAttemptAt: string | null;
+  createdAt: string;
+}
+export interface NewCallback {
+  phone: string;
+  requestedAt: string;
+  timezone?: string;
+  note?: string;
+}
+
+export function useCallbacks() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['callbacks'],
+    queryFn: () => apiFetch<Callback[]>(getToken, '/callbacks'),
+  });
+}
+export function useCreateCallback() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: NewCallback) =>
+      apiFetch<Callback>(getToken, '/callbacks', { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['callbacks'] }),
+  });
+}
+export function useCancelCallback() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<Callback>(getToken, `/callbacks/${id}/cancel`, { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['callbacks'] }),
+  });
+}

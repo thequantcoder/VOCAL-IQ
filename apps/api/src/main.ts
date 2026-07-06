@@ -15,6 +15,7 @@ import { authRoutes } from './auth/auth.routes';
 import { automationsRoutes } from './automations/automations.routes';
 import { billingRoutes, billingWebhookHandler } from './billing/billing.routes';
 import { planBuilderRoutes } from './billing/plan-builder.routes';
+import { callbacksRoutes } from './callbacks/callbacks.routes';
 import { callsRoutes } from './calls/calls.routes';
 import { campaignsRoutes } from './campaigns/campaigns.routes';
 import { chatRoutes } from './chat/chat.routes';
@@ -146,6 +147,7 @@ function bootstrap(): void {
   app.use('/intel', intelRoutes(s.intel, s.tenants));
   app.use('/models', customModelsRoutes(s.customModels, s.tenants));
   app.use('/payments', paymentsRoutes(s.payments, s.tenants));
+  app.use('/callbacks', callbacksRoutes(s.callbacks, s.tenants));
   app.use('/disclosure', disclosureRoutes(s.disclosure, s.tenants));
   app.use('/email', emailRoutes(s.email, s.tenants));
   app.get('/u/:token', unsubscribeHandler(s.email));

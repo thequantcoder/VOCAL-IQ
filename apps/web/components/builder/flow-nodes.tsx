@@ -29,6 +29,7 @@ export const NODE_META: Record<string, { label: string; accent: string }> = {
   SUBFLOW: { label: 'Sub-flow', accent: 'text-vq-violet border-vq-violet/50' },
   SQUAD_HANDOFF: { label: 'Squad', accent: 'text-vq-violet border-vq-violet/50' },
   PAYMENT: { label: 'Payment', accent: 'text-vq-success border-vq-success/50' },
+  CALLBACK: { label: 'Callback', accent: 'text-vq-cyan border-vq-cyan/50' },
   END: { label: 'End', accent: 'text-vq-danger border-vq-danger/50' },
 };
 

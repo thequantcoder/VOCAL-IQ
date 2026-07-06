@@ -38,6 +38,7 @@ const PALETTE = [
   'TRANSFER',
   'SUBFLOW',
   'PAYMENT',
+  'CALLBACK',
   'END',
 ] as const;
 
