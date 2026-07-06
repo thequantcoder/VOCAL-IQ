@@ -228,6 +228,8 @@ model Tenant {
   agentPresences      AgentPresence[]
   transferRequests    TransferRequest[]
   abuseCases          AbuseCase[]
+  sentimentRules      SentimentRule[]
+  sentimentEvents     SentimentEvent[]
   flows               Flow[]
   flowVersions        FlowVersion[]
   transcripts         Transcript[]
@@ -1189,6 +1191,43 @@ model AuditLog {
 
   @@index([tenantId])
   @@index([tenantId, ts])
+}
+
+/// A sentiment-triggered live-action rule (Day 73) — per-tenant, optionally per-agent.
+model SentimentRule {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @db.Uuid
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agentId     String?  @db.Uuid // null = applies to all the tenant's agents
+  metric      String // sentimentScore | anger | frustration | buyingIntent
+  operator    String // gt | lt
+  threshold   Float
+  action      String // escalate | alert_supervisor | tone_shift | tag | pause
+  cooldownSec Int      @default(30)
+  tag         String?
+  toneHint    String?
+  note        String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId, active])
+  @@index([tenantId, agentId])
+}
+
+/// A fired sentiment action (Day 73) — the live trace + the DB-backed cooldown source per call.
+model SentimentEvent {
+  id       String   @id @default(uuid()) @db.Uuid
+  tenantId String   @db.Uuid
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  callId   String   @db.Uuid
+  ruleId   String   @db.Uuid
+  action   String
+  metric   String
+  value    Float
+  ts       DateTime @default(now())
+
+  @@index([tenantId, callId])
+  @@index([callId, ruleId, ts])
 }
 
 /// A fraud/abuse case (Day 70) — the auditable record of an automated enforcement + its review.

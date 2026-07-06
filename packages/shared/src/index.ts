@@ -56,6 +56,7 @@ export * from './result.js';
 export * from './routing-defaults.js';
 export * from './scale.js';
 export * from './scenario.js';
+export * from './sentiment-rules.js';
 export * from './schemas.js';
 export * from './simulator.js';
 export * from './sip.js';

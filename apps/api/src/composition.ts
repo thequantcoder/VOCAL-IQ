@@ -50,6 +50,7 @@ import { RouterService } from './router/router.service';
 import { S2SService } from './s2s/s2s.service';
 import { ScaleService } from './scale/scale.service';
 import { SearchService } from './search/search.service';
+import { SentimentService } from './sentiment/sentiment.service';
 import { SipService } from './sip/sip.service';
 import { SquadsService } from './squads/squads.service';
 import { buildSsoProvider } from './sso/sso-provider';
@@ -141,6 +142,8 @@ export function createServices() {
   const s2s = new S2SService(db, Boolean(process.env.S2S_PROVIDER_KEY));
   const launch = new LaunchService(db, process.env);
   const desk = new DeskService(db);
+  // Sentiment-triggered live actions reuse the Agent Desk for real-human escalation (Day 73).
+  const sentiment = new SentimentService(db, desk);
   const disclosure = new DisclosureService(db);
   const email = new EmailService(db, buildEmailSender(process.env));
   // Live spam-label lookup is gated on a reputation API key; a null-returning stub in dev/CI.
@@ -220,6 +223,7 @@ export function createServices() {
     s2s,
     launch,
     desk,
+    sentiment,
     disclosure,
     email,
     reputation,

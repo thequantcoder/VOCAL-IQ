@@ -2965,3 +2965,83 @@ export function useSendEmail() {
       }),
   });
 }
+
+// ── Sentiment-triggered live actions (Day 73) ───────────────────────────────────
+
+export type SentimentMetric = 'sentimentScore' | 'anger' | 'frustration' | 'buyingIntent';
+export type SentimentAction = 'escalate' | 'alert_supervisor' | 'tone_shift' | 'tag' | 'pause';
+
+export interface SentimentRule {
+  id: string;
+  agentId: string | null;
+  metric: SentimentMetric;
+  operator: 'gt' | 'lt';
+  threshold: number;
+  action: SentimentAction;
+  cooldownSec: number;
+  tag: string | null;
+  toneHint: string | null;
+  note: string | null;
+  active: boolean;
+}
+export interface SentimentEvent {
+  id: string;
+  callId: string;
+  action: SentimentAction;
+  metric: SentimentMetric;
+  value: number;
+  ts: string;
+}
+export interface NewSentimentRule {
+  metric: SentimentMetric;
+  operator: 'gt' | 'lt';
+  threshold: number;
+  action: SentimentAction;
+  cooldownSec?: number;
+  tag?: string;
+  toneHint?: string;
+  note?: string;
+  agentId?: string;
+}
+
+export function useSentimentRules(agentId?: string) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['sentiment', 'rules', agentId ?? null],
+    queryFn: () =>
+      apiFetch<SentimentRule[]>(
+        getToken,
+        `/sentiment/rules${agentId ? `?agentId=${agentId}` : ''}`,
+      ),
+  });
+}
+export function useCreateSentimentRule() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: NewSentimentRule) =>
+      apiFetch<SentimentRule>(getToken, '/sentiment/rules', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sentiment', 'rules'] }),
+  });
+}
+export function useDeleteSentimentRule() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ removed: boolean }>(getToken, `/sentiment/rules/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sentiment', 'rules'] }),
+  });
+}
+export function useSentimentEvents(callId?: string) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['sentiment', 'events', callId ?? null],
+    queryFn: () =>
+      apiFetch<SentimentEvent[]>(getToken, `/sentiment/events${callId ? `?callId=${callId}` : ''}`),
+    refetchInterval: 5000, // live supervisor feed
+  });
+}
