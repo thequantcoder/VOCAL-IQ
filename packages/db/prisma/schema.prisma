@@ -340,6 +340,7 @@ model Agent {
   customModelId      String?     @db.Uuid // Day 76: a per-tenant custom/fine-tuned LLM profile
   languages          String[]    @default([])
   llmPolicy          Json        @default("{}")
+  emotionPolicy      Json        @default("{}") // Day 77: per-agent emotion-aware voice modulation
   turnTimeoutMs      Int         @default(1500)
   maxCallDurationSec Int         @default(600) // hard call-length cap (Day 38)
   maxSilenceSec      Int         @default(15) // dead-air auto-hangup (0 disables)

@@ -83,6 +83,29 @@ async def test_elevenlabs_streams_pcm_chunks(monkeypatch: pytest.MonkeyPatch) ->
     assert fake.captured["params"] == {"output_format": "pcm_16000"}  # type: ignore[index]
 
 
+async def test_elevenlabs_maps_expressive_settings_to_voice_settings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Day 77: expressive controls only appear in the body when they leave neutral.
+    from app.providers.contracts import ExpressiveSettings
+
+    fake = _FakeAsyncClient(200, [b"\x01"])
+    monkeypatch.setattr("app.providers.adapters.elevenlabs.httpx.AsyncClient", lambda **_: fake)
+    settings = ExpressiveSettings(
+        stability=0.38, similarity_boost=0.75, style=0.45, speed=1.05, use_speaker_boost=True
+    )
+
+    _ = [c async for c in ElevenLabsTTS("k").synthesize_stream("hi", settings=settings)]
+
+    assert fake.captured["json"]["voice_settings"] == {  # type: ignore[index]
+        "stability": 0.38,
+        "similarity_boost": 0.75,
+        "style": 0.45,
+        "speed": 1.05,
+        "use_speaker_boost": True,
+    }
+
+
 async def test_elevenlabs_raises_on_non_200(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = _FakeAsyncClient(401, [])
     monkeypatch.setattr("app.providers.adapters.elevenlabs.httpx.AsyncClient", lambda **_: fake)

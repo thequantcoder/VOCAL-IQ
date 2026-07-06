@@ -12,7 +12,13 @@ import asyncio
 from collections.abc import AsyncIterator
 
 from app.loop.engine import UsageEvent
-from app.providers.contracts import CompletionResult, LLMMessage, STTEvent, TokenUsage
+from app.providers.contracts import (
+    CompletionResult,
+    ExpressiveSettings,
+    LLMMessage,
+    STTEvent,
+    TokenUsage,
+)
 
 # 20ms PCM16 mono @16kHz = 320 samples = 640 bytes.
 FRAME_SAMPLES = 320
@@ -105,12 +111,19 @@ class FakeTTS:
 
     def __init__(self, *, chunk_delay: float = 0.0) -> None:
         self.spoken: list[str] = []
+        self.settings: list[ExpressiveSettings | None] = []  # Day 77: expressive settings per synthesis
         self._delay = chunk_delay
 
     async def synthesize_stream(
-        self, text: str, *, voice_id: str | None = None, model: str | None = None
+        self,
+        text: str,
+        *,
+        voice_id: str | None = None,
+        model: str | None = None,
+        settings: ExpressiveSettings | None = None,
     ) -> AsyncIterator[bytes]:
         self.spoken.append(text)
+        self.settings.append(settings)
         if self._delay:
             await asyncio.sleep(self._delay)
         yield b"\x01\x02"

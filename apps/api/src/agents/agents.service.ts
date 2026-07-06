@@ -4,12 +4,15 @@ import {
   AgentType,
   type AgentType as AgentTypeT,
   BANNED_WORDS_ACTIONS,
+  type EmotionPolicy,
   NotFoundError,
   ValidationError,
+  emotionPolicySchema,
+  parseEmotionPolicy,
 } from '@vocaliq/shared';
 import { z } from 'zod';
-import { EntitlementsService } from '../billing/entitlements.service';
-import { PrismaService } from '../db/prisma.service';
+import type { EntitlementsService } from '../billing/entitlements.service';
+import type { PrismaService } from '../db/prisma.service';
 
 /** Explicit DTOs so the public API type never leaks Prisma's runtime types (TS2742). */
 export interface AgentListItem {
@@ -216,6 +219,38 @@ export class AgentsService {
         },
         select: AGENT_SELECT,
       });
+    });
+  }
+
+  /**
+   * Emotion-aware voice modulation policy (Day 77). The policy is stored as JSON on the agent row
+   * (like `llmPolicy`) and read RLS-scoped, so it can never be read or written for another tenant's
+   * agent (golden rule #1 / self-audit B). A missing/empty blob resolves to the disabled default —
+   * an existing agent keeps its neutral voice until someone opts in.
+   */
+  async getEmotionPolicy(tenantId: string, agentId: string): Promise<EmotionPolicy> {
+    const agent = await this.db.withTenant(tenantId, (tx) =>
+      tx.agent.findFirst({ where: { id: agentId }, select: { emotionPolicy: true } }),
+    );
+    if (!agent) throw new NotFoundError('Agent not found');
+    return parseEmotionPolicy(agent.emotionPolicy);
+  }
+
+  /** Validate + persist an agent's emotion policy. Returns the normalised (defaulted) policy. */
+  async setEmotionPolicy(
+    tenantId: string,
+    agentId: string,
+    input: unknown,
+  ): Promise<EmotionPolicy> {
+    const parsed = emotionPolicySchema.safeParse(input);
+    if (!parsed.success) {
+      throw new ValidationError(parsed.error.issues[0]?.message ?? 'Invalid emotion policy');
+    }
+    return this.db.withTenant(tenantId, async (tx) => {
+      const agent = await tx.agent.findFirst({ where: { id: agentId }, select: { id: true } });
+      if (!agent) throw new NotFoundError('Agent not found');
+      await tx.agent.update({ where: { id: agentId }, data: { emotionPolicy: parsed.data } });
+      return parsed.data;
     });
   }
 }
