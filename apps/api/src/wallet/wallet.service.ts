@@ -191,40 +191,80 @@ export class WalletService {
     return { chain, result };
   }
 
-  private async accrueMargin(
+  /**
+   * Charge one billed OUTCOME (Day 82) — value-based, not per-minute. There is no platform cost, so
+   * the outcome price IS the wholesale and retail = wholesale + reseller markup. Idempotent by the
+   * outcome `key` (a replay never double-bills), and accrues the reseller margin only on a real
+   * charge. Mirrors `chargeCall` so all wallet money movement flows through one audited place.
+   */
+  async chargeOutcome(
+    tenantId: string,
+    input: {
+      key: string;
+      wholesaleCents: number;
+      markupBps: number;
+      resellerTenantId?: string;
+      period?: string;
+      reason?: string;
+      graceCents?: number;
+      meta?: Record<string, unknown>;
+    },
+  ): Promise<{ chain: ReturnType<typeof computePricingChain>; result: DebitResult }> {
+    const chain = computePricingChain({
+      platformCostCents: 0,
+      wholesaleCents: input.wholesaleCents,
+      retailMarkupBps: input.markupBps,
+    });
+    const result = await this.debit(tenantId, {
+      amountCents: chain.retailCents,
+      key: input.key,
+      reason: input.reason ?? 'outcome_revenue',
+      ...(input.graceCents !== undefined ? { graceCents: input.graceCents } : {}),
+      meta: (input.meta ?? (chain as unknown)) as Record<string, unknown>,
+    });
+    if (!result.replayed && input.resellerTenantId && input.period) {
+      await this.accrueMargin(
+        input.resellerTenantId,
+        tenantId,
+        input.period,
+        chain.retailCents,
+        chain.wholesaleCents,
+      );
+    }
+    return { chain, result };
+  }
+
+  /**
+   * Accrue (or, with negative deltas, REVERSE) a reseller's period margin. ResellerMargin rows span
+   * two tenants (reseller + child); the owner client writes this platform accounting ledger, keyed by
+   * (reseller, child, period). An UPSERT keyed by the compound unique makes it race-safe (no
+   * concurrent-create duplicate). Public so a disputed outcome can reverse the exact margin it accrued.
+   */
+  async accrueMargin(
     resellerTenantId: string,
     childTenantId: string,
     period: string,
     revenueCents: number,
     costCents: number,
   ): Promise<void> {
-    // ResellerMargin rows span two tenants (reseller + child); the owner client writes the ledger
-    // of record (a platform accounting artefact), keyed by (reseller, child, period).
-    const existing = await this.db.admin.resellerMargin.findFirst({
-      where: { resellerTenantId, childTenantId, period },
-      select: { id: true },
+    await this.db.admin.resellerMargin.upsert({
+      where: {
+        resellerTenantId_childTenantId_period: { resellerTenantId, childTenantId, period },
+      },
+      create: {
+        resellerTenantId,
+        childTenantId,
+        period,
+        revenue: revenueCents,
+        cost: costCents,
+        margin: revenueCents - costCents,
+      },
+      update: {
+        revenue: { increment: revenueCents },
+        cost: { increment: costCents },
+        margin: { increment: revenueCents - costCents },
+      },
     });
-    if (existing) {
-      await this.db.admin.resellerMargin.update({
-        where: { id: existing.id },
-        data: {
-          revenue: { increment: revenueCents },
-          cost: { increment: costCents },
-          margin: { increment: revenueCents - costCents },
-        },
-      });
-    } else {
-      await this.db.admin.resellerMargin.create({
-        data: {
-          resellerTenantId,
-          childTenantId,
-          period,
-          revenue: revenueCents,
-          cost: costCents,
-          margin: revenueCents - costCents,
-        },
-      });
-    }
   }
 
   /** Reconcile a reseller's period: sum ResellerMargin rows → revenue/cost/margin (ties to the penny). */

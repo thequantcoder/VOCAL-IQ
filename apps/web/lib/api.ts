@@ -3452,3 +3452,63 @@ export function useRecordRevenue() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['revenue'] }),
   });
 }
+
+// ── Outcome-based billing (Day 82) ────────────────────────────────────────────────
+export type OutcomeType = 'qualified_lead' | 'booking' | 'payment';
+export interface OutcomePrice {
+  type: OutcomeType;
+  priceCents: number;
+  markupBps: number;
+  active: boolean;
+}
+export interface BillableOutcome {
+  id: string;
+  type: OutcomeType;
+  refId: string;
+  status: string;
+  priceCents: number;
+  retailCents: number;
+  resellerTenantId: string | null;
+  resellerMarginCents: number;
+  note: string | null;
+  occurredAt: string;
+}
+
+export function useOutcomePrices() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['outcome-prices'],
+    queryFn: () => apiFetch<OutcomePrice[]>(getToken, '/outcomes/prices'),
+  });
+}
+export function useSetOutcomePrice() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: OutcomePrice) =>
+      apiFetch<OutcomePrice>(getToken, '/outcomes/prices', {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['outcome-prices'] }),
+  });
+}
+export function useOutcomes() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['outcomes'],
+    queryFn: () => apiFetch<BillableOutcome[]>(getToken, '/outcomes'),
+  });
+}
+export function useDisputeOutcome() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<BillableOutcome>(getToken, `/outcomes/${id}/dispute`, {
+        method: 'POST',
+        body: JSON.stringify({}),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['outcomes'] }),
+  });
+}

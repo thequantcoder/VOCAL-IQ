@@ -85,6 +85,7 @@ const NAV = [
   { href: '/dashboard/settings/compliance', label: 'Compliance', icon: ShieldAlert, exact: false },
   { href: '/dashboard/support', label: 'Support', icon: LifeBuoy, exact: false },
   { href: '/dashboard/wallet', label: 'Wallet', icon: Wallet, exact: false },
+  { href: '/dashboard/outcomes', label: 'Outcome billing', icon: Target, exact: false },
 ] as const;
 
 /** Reseller-operator (RESELLER_ADMIN) nav — provision + manage sub-tenants, white-label. */

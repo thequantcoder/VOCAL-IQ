@@ -47,6 +47,7 @@ export * from './memory.js';
 export * from './messaging.js';
 export * from './multilingual.js';
 export * from './onboarding.js';
+export * from './outcome-billing.js';
 export * from './ops.js';
 export * from './payment.js';
 export * from './persona.js';

@@ -237,6 +237,8 @@ model Tenant {
   payments            Payment[]
   callbacks           Callback[]
   revenueEvents       RevenueEvent[]
+  outcomePrices       OutcomePrice[]
+  billableOutcomes    BillableOutcome[]
   flows               Flow[]
   flowVersions        FlowVersion[]
   transcripts         Transcript[]
@@ -1128,6 +1130,7 @@ model ResellerMargin {
   margin           Int      @default(0)
   createdAt        DateTime @default(now())
 
+  @@unique([resellerTenantId, childTenantId, period])
   @@index([resellerTenantId])
   @@index([childTenantId])
 }
@@ -1383,6 +1386,45 @@ model RevenueEvent {
   @@index([tenantId, occurredAt])
   @@index([tenantId, agentId])
   @@index([tenantId, campaignId])
+}
+
+/// Per-tenant price for a billable outcome type (Day 82). `markupBps` is the reseller markup.
+model OutcomePrice {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @db.Uuid
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  type       String // qualified_lead | booking | payment
+  priceCents Int      @default(0)
+  markupBps  Int      @default(0)
+  active     Boolean  @default(true)
+  updatedAt  DateTime @updatedAt
+
+  @@unique([tenantId, type])
+  @@index([tenantId])
+}
+
+/// A billed business outcome (Day 82) — the auditable record of one verified outcome charged to the
+/// tenant. The unique (tenantId, type, refId) means an outcome is billed AT MOST ONCE (anti-gaming).
+model BillableOutcome {
+  id                 String   @id @default(uuid()) @db.Uuid
+  tenantId           String   @db.Uuid
+  tenant             Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  type               String // qualified_lead | booking | payment
+  refId              String // the lead/appointment/payment id the outcome refers to
+  status             String   @default("billed") // billed | disputed | refunded
+  priceCents         Int // wholesale price at billing time
+  retailCents        Int // what the customer was charged (wholesale + reseller markup)
+  resellerTenantId   String?  @db.Uuid
+  resellerMarginCents Int     @default(0)
+  period             String? // reseller-margin accrual period (YYYY-MM) — for exact dispute reversal
+  note               String?
+  occurredAt         DateTime @default(now())
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([tenantId, type, refId])
+  @@index([tenantId, status])
+  @@index([tenantId, occurredAt])
 }
 
 /// A fraud/abuse case (Day 70) — the auditable record of an automated enforcement + its review.
