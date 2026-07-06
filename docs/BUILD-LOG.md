@@ -2202,3 +2202,29 @@ J. Quality/docs: ✅ — the scoring heuristics, rest/warm-up policy, and the ga
 K. Build/CI: ✅ — `pnpm build` exits 0 (flaky Next `/404` cleared on a clean rebuild); all gates green.
 
 STIR/SHAKEN attestation stored per call; branded caller ID registrable per number; reputation scored + monitored with auto-rest of flagged numbers + a new-number warm-up ramp + healthiest-number rotation; a per-tenant health dashboard — DoD CONFIRMED. **Live provider attestation/CNAM/reputation-API are GATED** (the seams + storage + logic are ready; wiring `canDial` into the live dial path + the provider lookups activate with keys). Next: Day 70 (fraud/abuse detection).
+
+## Day 70 — Real-Time Fraud & Abuse Detection — 2026-07-06 — ✅ DONE — 🔴 CORE-TIER
+Model: Opus (🧠 OPUS). Branch `day/70-fraud-abuse`. Prereq: Days 10-11/13/28 (calling/cost/campaigns) — no new credentials (internal signals). Builds on Day 64's abuse scoring. Migration `20260706040000_day70_abuse_case` (`AbuseCase` + RLS). No new env. Self-audit focus C (audit + enforcement) + B + A.
+
+Built (DONE):
+- **shared** `fraud.ts` (pure): `FraudSignals` (extends Day-64 abuse with DNC-hit ratio, banned-content hits, country spread), `fraudPolicySchema` (suspend/pause/throttle score bands + KYC volume threshold), **`decideFraudResponse`** (escalation ladder on top of `evaluateAbuse` — DNC violations/banned content/multi-country spread add risk → throttle → pause_campaigns → suspend_tenant, a suspend always requires human review), **`kycGate`** (a new unverified tenant scaling past the threshold must KYC first). 11 unit tests.
+- **db/migration**: `AbuseCase` (the auditable enforcement + review record — tenantId, score, action, status open→reviewing→resolved/dismissed, reasons, resolvedBy/At, notes) + RLS.
+- **api** `FraudService`: **`evaluateAndEnforce`** (gather live signals → decide → apply the automated response [suspend tenant / pause running campaigns] → open an `AbuseCase` → **audit** `fraud.enforce` → notify the super-admin), **`resolveCase`** (SUPER_ADMIN review-to-resume: `resume`/`dismiss` un-suspend + resolve, else keep suspended — audited `fraud.review`), `assertCanScale` (KYC gate), `listCases` (super-admin spans all; others RLS-scoped to their own). Routes `/fraud/*` (cases/scale-check/evaluate for admins; resolve is SUPER_ADMIN). Wired composition + main. 5 RLS-real integration tests.
+- **web** `/dashboard/admin/fraud`: open-case review board (tenant, action, score, reasons) with **Resume / Dismiss / Keep-suspended** — the human review-to-resume gate. Super-admin tool-hub entry.
+
+Verification: shared **432** tests, api **299** tests (incl. 11 fraud shared + 5 fraud api — auto-suspend on a high-fraud override + audit + super-admin notify, review-to-resume restores the tenant, non-super-admin review forbidden, KYC gate), full **typecheck 12/12**, **lint 12/12**, web **build exit 0** (`/dashboard/admin/fraud` prerendered). Scoped `biome --write` touched only Day-70 files. Migration applied locally.
+
+## Self-Audit — Day 70 (A–K)
+A. Correctness: ✅ — the escalation ladder + KYC gate are pure + unit-tested (allow/throttle/pause/suspend, DNC/content/geo tells, review-required); the enforce→suspend→review→resume lifecycle proven against real Postgres.
+B. Isolation: ✅ — cases are RLS-scoped (a reseller/admin sees only its own; SUPER_ADMIN spans via the owner client); enforcement targets the assessed tenant only.
+C. Audit + enforcement (focus): ✅ — every automated enforcement writes an `AbuseCase` + a `fraud.enforce` audit row + a super-admin notification; a suspend is REVIEW-GATED (a human must resume, audited `fraud.review`) so no tenant is silently taken down or silently restored.
+D. Cost: ✅ — signals are one indexed aggregate; no provider/cost path.
+E. Errors/obs: ✅ — Zod-validated policy/resolution; the review board surfaces the reasons; notifications alert the operator.
+F. Performance: ✅ — assessment is a single indexed query; cases indexed on (tenantId, status).
+G. Error handling: ✅ — a clean tenant is a no-op (no case); non-super-admin review → Forbidden; unknown case → NotFound.
+H. UI/a11y: ✅ — case cards with action/score/reasons + the three review actions.
+I. Regression: ✅ — additive (shared module, migration, service/routes/page/hooks) reusing the Day-64 abuse + Day-55 suspend machinery; 299 api + 432 shared tests pass. Scoped biome only.
+J. Quality/docs: ✅ — the escalation ladder, review-to-resume, and KYC gate documented in code; explicit DTOs.
+K. Build/CI: ✅ — `pnpm build` exits 0 (flaky Next `/404` cleared on a clean rebuild); all gates green.
+
+Real-time anomaly detection → automated response (throttle/pause/suspend) with an auditable case + super-admin notify + review-to-resume; a KYC gate for high-volume scaling; a review dashboard — DoD CONFIRMED. Next: Day 71 (AI disclosure / regulatory compliance).

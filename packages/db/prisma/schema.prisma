@@ -226,6 +226,7 @@ model Tenant {
   callLatencies       CallLatency[]
   agentPresences      AgentPresence[]
   transferRequests    TransferRequest[]
+  abuseCases          AbuseCase[]
   flows               Flow[]
   flowVersions        FlowVersion[]
   transcripts         Transcript[]
@@ -1178,6 +1179,24 @@ model AuditLog {
 
   @@index([tenantId])
   @@index([tenantId, ts])
+}
+
+/// A fraud/abuse case (Day 70) — the auditable record of an automated enforcement + its review.
+model AbuseCase {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @db.Uuid
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  score      Int
+  action     String // throttle | pause_campaigns | suspend_tenant
+  status     String   @default("open") // open | reviewing | resolved | dismissed
+  reasons    String[] @default([])
+  notes      String?
+  resolvedBy String?  @db.Uuid
+  resolvedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId, status])
+  @@index([status])
 }
 
 /// Agent Desk presence (Day 67) — a human agent's live availability + skills for transfer routing.

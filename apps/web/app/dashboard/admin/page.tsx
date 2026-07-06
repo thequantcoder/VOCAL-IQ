@@ -12,6 +12,7 @@ import {
   Rocket,
   Server,
   Shield,
+  ShieldAlert,
   UserCog,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -252,6 +253,12 @@ const TOOLS = [
     label: 'Governance',
     icon: Flag,
     hint: 'Flags, quotas, audit',
+  },
+  {
+    href: '/dashboard/admin/fraud',
+    label: 'Fraud & abuse',
+    icon: ShieldAlert,
+    hint: 'Auto-flagged tenants',
   },
 ] as const;
 

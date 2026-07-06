@@ -25,6 +25,7 @@ import { deskRoutes } from './desk/desk.routes';
 import { experimentsRoutes } from './experiments/experiments.routes';
 import { flowsRoutes } from './flows/flows.routes';
 import { formsRoutes, publicFormsRoutes } from './forms/forms.routes';
+import { fraudRoutes } from './fraud/fraud.routes';
 import { governanceRoutes } from './governance/governance.routes';
 import { healthRoutes } from './health.routes';
 import { errorMiddleware, notFoundMiddleware } from './http/error.middleware';
@@ -134,6 +135,7 @@ function bootstrap(): void {
   app.use('/reseller', resellerRoutes(s.reseller, s.tenants));
   app.use('/desk', deskRoutes(s.desk, s.tenants));
   app.use('/reputation', reputationRoutes(s.reputation, s.tenants));
+  app.use('/fraud', fraudRoutes(s.fraud, s.tenants));
   app.use('/admin/superadmin', superAdminRoutes(s.superAdmin, s.tenants));
   app.use('/admin/sso', ssoAdminRoutes(s.sso, s.tenants));
   app.use('/auth/sso', ssoPublicRoutes(s.sso));
