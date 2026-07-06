@@ -58,6 +58,7 @@ const NAV = [
   { href: '/dashboard/desk', label: 'Agent Desk', icon: Headphones, exact: false },
   { href: '/dashboard/sentiment', label: 'Live sentiment', icon: Activity, exact: false },
   { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3, exact: false },
+  { href: '/dashboard/revenue', label: 'Revenue', icon: TrendingUp, exact: false },
   { href: '/dashboard/intel', label: 'Conversation intel', icon: Lightbulb, exact: false },
   { href: '/dashboard/latency', label: 'Latency', icon: Gauge, exact: false },
   { href: '/dashboard/search', label: 'Search', icon: Search, exact: false },

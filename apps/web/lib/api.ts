@@ -3398,3 +3398,57 @@ export function useCancelCallback() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['callbacks'] }),
   });
 }
+
+// ── Revenue attribution (Day 81) ──────────────────────────────────────────────────
+export interface Roi {
+  revenueCents: number;
+  costCents: number;
+  profitCents: number;
+  roiPercent: number | null;
+  marginPercent: number | null;
+}
+export interface AttributionRow extends Roi {
+  key: string;
+  deals: number;
+}
+export interface FunnelStep {
+  stage: string;
+  count: number;
+  stepPercent: number | null;
+  overallPercent: number | null;
+}
+export interface RevenueDashboard {
+  from: string;
+  to: string;
+  totals: Roi & { deals: number };
+  byAgent: AttributionRow[];
+  byCampaign: AttributionRow[];
+  bySource: { source: string; revenueCents: number; deals: number }[];
+  funnel: FunnelStep[];
+  truncated: boolean;
+}
+export interface NewRevenue {
+  amountCents: number;
+  source?: 'manual' | 'payment' | 'crm';
+  agentId?: string;
+  campaignId?: string;
+  callId?: string;
+  note?: string;
+}
+
+export function useRevenueDashboard() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['revenue', 'dashboard'],
+    queryFn: () => apiFetch<RevenueDashboard>(getToken, '/revenue/dashboard'),
+  });
+}
+export function useRecordRevenue() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: NewRevenue) =>
+      apiFetch<unknown>(getToken, '/revenue', { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['revenue'] }),
+  });
+}

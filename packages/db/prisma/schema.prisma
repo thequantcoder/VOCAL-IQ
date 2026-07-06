@@ -236,6 +236,7 @@ model Tenant {
   customModels        CustomModel[]
   payments            Payment[]
   callbacks           Callback[]
+  revenueEvents       RevenueEvent[]
   flows               Flow[]
   flowVersions        FlowVersion[]
   transcripts         Transcript[]
@@ -1358,6 +1359,30 @@ model Callback {
 
   @@index([tenantId, status])
   @@index([status, requestedAt]) // scheduler sweep for due callbacks across tenants
+}
+
+/// A closed-revenue event (Day 81) — a won deal / booking / payment attributed to the dimensions that
+/// drove it (agent/campaign/script/voice + the originating call/lead). ROI is revenue vs metered cost.
+model RevenueEvent {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @db.Uuid
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  amountCents   Int
+  currency      String   @default("USD")
+  source        String   @default("manual") // manual | payment | crm
+  occurredAt    DateTime @default(now())
+  callId        String?  @db.Uuid
+  leadId        String?  @db.Uuid
+  agentId       String?  @db.Uuid
+  campaignId    String?  @db.Uuid
+  flowVersionId String?  @db.Uuid
+  voiceId       String?  @db.Uuid
+  note          String?
+  createdAt     DateTime @default(now())
+
+  @@index([tenantId, occurredAt])
+  @@index([tenantId, agentId])
+  @@index([tenantId, campaignId])
 }
 
 /// A fraud/abuse case (Day 70) — the auditable record of an automated enforcement + its review.

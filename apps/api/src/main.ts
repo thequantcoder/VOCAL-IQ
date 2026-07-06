@@ -57,6 +57,7 @@ import { ragRoutes } from './rag/rag.routes';
 import { reputationRoutes } from './reputation/reputation.routes';
 import { resellerRoutes } from './reseller/reseller.routes';
 import { residencyRoutes } from './residency/residency.routes';
+import { revenueRoutes } from './revenue/revenue.routes';
 import { s2sRoutes } from './s2s/s2s.routes';
 import { scaleRoutes } from './scale/scale.routes';
 import { searchRoutes } from './search/search.routes';
@@ -148,6 +149,7 @@ function bootstrap(): void {
   app.use('/models', customModelsRoutes(s.customModels, s.tenants));
   app.use('/payments', paymentsRoutes(s.payments, s.tenants));
   app.use('/callbacks', callbacksRoutes(s.callbacks, s.tenants));
+  app.use('/revenue', revenueRoutes(s.revenue, s.tenants));
   app.use('/disclosure', disclosureRoutes(s.disclosure, s.tenants));
   app.use('/email', emailRoutes(s.email, s.tenants));
   app.get('/u/:token', unsubscribeHandler(s.email));

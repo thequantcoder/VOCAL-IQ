@@ -55,6 +55,7 @@ import { RagService, openAiEmbedder, prismaUsageSink } from './rag/rag.service';
 import { ReputationService } from './reputation/reputation.service';
 import { ResellerService } from './reseller/reseller.service';
 import { ResidencyService } from './residency/residency.service';
+import { RevenueService } from './revenue/revenue.service';
 import { RouterService } from './router/router.service';
 import { S2SService } from './s2s/s2s.service';
 import { ScaleService } from './scale/scale.service';
@@ -119,6 +120,7 @@ export function createServices() {
 
   const campaigns = new CampaignsService(db);
   const callbacks = new CallbacksService(db);
+  const revenue = new RevenueService(db);
   const forms = new FormsService(db);
   const integrations = new IntegrationsService(db);
   const leads = new LeadsService(db);
@@ -258,6 +260,7 @@ export function createServices() {
     customModels,
     payments,
     callbacks,
+    revenue,
     disclosure,
     email,
     reputation,
