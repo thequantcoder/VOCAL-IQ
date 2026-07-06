@@ -2254,3 +2254,29 @@ J. Quality/docs: ✅ — the region rulebook, the mandatory-opt-out logic, and t
 K. Build/CI: ✅ — `pnpm build` exits 0 (flaky Next `/404` cleared on a clean rebuild); all gates green.
 
 Region-aware AI disclosure spoken at call start with a mandatory human opt-out; calling-hour + frequency rules enforceable pre-dial; a per-call disclosure/opt-out record; a pre-built compliance template library — DoD CONFIRMED. **This completes the 🔴 core-tier (Days 67–71).** Next: Day 72 (email campaigns) → then Phase 6 advanced tier (Days 73–94) + Day 95 landing page.
+
+## Day 72 — Email as a Campaign Channel + Capture-Email-Mid-Call (with Consent) — 2026-07-06 — ✅ DONE (Resend gated)
+Model: Opus (⚡ SONNET day). Branch `day/72-email-campaigns`. Prereq: Resend + a marketing sending domain (SPF/DKIM/DMARC) — **the send is GATED** behind a Resend seam (`RESEND_API_KEY` + `MARKETING_EMAIL_FROM`); consent capture, gating, unsubscribe, and blended-sequence logic are fully built + tested. Migration `20260706080000_day72_email_consent` (Contact email-consent fields + `EMAIL` message channel). No new required env. Self-audit focus C (consent — never email without lawful basis) + A + B.
+
+Built (DONE):
+- **shared** `email-campaign.ts` (pure): **`canEmail`** (the hard gate — needs a deliverable address + affirmative consent + no unsubscribe; unsubscribe reported first), `captureEmailSchema` (email + source + consent text), `emailTemplateSchema` + **`renderEmail`** (reuses the lead `{{var}}` renderer for subject + body), `withUnsubscribeFooter` (mandatory CAN-SPAM/GDPR footer), and **`nextSequenceStep`** (blended call → SMS/WhatsApp → email sequencing that SKIPS an email step when there's no consent). 15 unit tests.
+- **db/migration**: `Contact` += `emailConsent`/`emailConsentSource`/`emailConsentAt`/`unsubscribedAt` (the lawful-basis record); `MessageChannel` += `EMAIL` (email sends recorded on the existing `Message` model with `costUsd`).
+- **api** `EmailService` (gated `EmailSender` seam — `DisabledEmailSender` until Resend keys, a real Resend adapter swaps in): **`captureConsent`** (capture email + explicit consent mid-call → stores on the Contact, clears any prior unsubscribe), **`send`** (HARD consent-gated — a non-consented/unsubscribed contact is REFUSED, never emailed; renders the template, appends the unsubscribe footer, dispatches via the gated sender, records a metered `Message`), **`unsubscribe`** (HMAC-signed one-click token → sets `unsubscribedAt` forever + revokes consent), `unsubscribeUrl`. Routes `/email/*` (config-writer) + a PUBLIC `GET /u/:token` one-click unsubscribe. Wired composition + main. 7 RLS-real integration tests.
+- **web**: `useCaptureEmailConsent` + `useSendEmail` hooks exposed for the lead/agent flow (the capture typically fires from the on-call Collect&Confirm step; the full campaign-builder email-step UI is the follow-up).
+
+Verification: shared **453** tests, api **307** tests (incl. 15 email shared + 7 email api — the consent gate refuses non-consented sends [nothing recorded], capture→consent, gated send FAILS-but-records+meters, unsubscribe honoured forever + refuses, forged-token rejected), full **typecheck 12/12**, **lint 12/12**, web **build exit 0**. Scoped `biome --write` touched only Day-72 files. Migration applied locally.
+
+## Self-Audit — Day 72 (A–K)
+A. Correctness: ✅ — the consent gate, template rendering, footer, and blended-sequence stepping are pure + exhaustively unit-tested; capture/send/unsubscribe proven against real Postgres.
+B. Isolation: ✅ — capture + send are RLS-scoped (`withTenant`); unsubscribe uses the owner client (the link is followed unauthenticated) but is HMAC-token-gated to one contact.
+C. Consent (focus, the point): ✅ — NO contact is emailed without a lawful basis — `canEmail` blocks no-address / no-consent / unsubscribed, and `send` returns `skipped` (records + sends nothing) for those; consent is captured explicitly with its source + timestamp; every email carries an unsubscribe link honoured forever; a fresh opt-in clears a prior unsubscribe.
+D. Cost/metering: ✅ — each successful send records a `Message` with `costUsd` (rule #4) on the same cost path as SMS/WhatsApp.
+E. Errors/obs: ✅ — Zod-validated capture/template; typed Validation/NotFound/Forbidden; a gated send FAILS with a clear "not configured" error (recorded, not silent).
+F. Performance: ✅ — one indexed contact read per send; token is an O(1) HMAC.
+G. Error handling: ✅ — no-consent/unsubscribed → a clean `skipped` (a sequence just moves on); a forged unsubscribe token → Forbidden.
+H. UI/a11y: ✅ — the public unsubscribe page returns a plain confirmation; capture/send hooks exposed for the frontend.
+I. Regression: ✅ — additive (shared module, migration, service/routes/hooks); the `EMAIL` channel + Contact columns are additive; 307 api + 453 shared tests pass. Scoped biome only. (Cleaned stray macOS `* 2.*` dups.)
+J. Quality/docs: ✅ — the consent-first design, the gated Resend seam, and the unsubscribe token documented in code; explicit DTOs.
+K. Build/CI: ✅ — `pnpm build` exits 0; the enum-add migration runs on PG 16 (ADD VALUE in-transaction OK); all gates green.
+
+Email is a first-class, consent-gated outbound channel: capture-email-mid-call with explicit consent, blended call→SMS→email sequences that skip non-consented contacts, metered sends, and an unsubscribe honoured forever — DoD CONFIRMED. **Live Resend sending is GATED** (the seam + the whole consent/gating/unsubscribe pipeline are ready). Next: Phase 6 advanced tier — Day 73.

@@ -23,6 +23,7 @@ import { createServices } from './composition';
 import { costRoutes } from './cost/cost.routes';
 import { deskRoutes } from './desk/desk.routes';
 import { disclosureRoutes } from './disclosure/disclosure.routes';
+import { emailRoutes, unsubscribeHandler } from './email/email.routes';
 import { experimentsRoutes } from './experiments/experiments.routes';
 import { flowsRoutes } from './flows/flows.routes';
 import { formsRoutes, publicFormsRoutes } from './forms/forms.routes';
@@ -136,6 +137,8 @@ function bootstrap(): void {
   app.use('/reseller', resellerRoutes(s.reseller, s.tenants));
   app.use('/desk', deskRoutes(s.desk, s.tenants));
   app.use('/disclosure', disclosureRoutes(s.disclosure, s.tenants));
+  app.use('/email', emailRoutes(s.email, s.tenants));
+  app.get('/u/:token', unsubscribeHandler(s.email));
   app.use('/reputation', reputationRoutes(s.reputation, s.tenants));
   app.use('/fraud', fraudRoutes(s.fraud, s.tenants));
   app.use('/admin/superadmin', superAdminRoutes(s.superAdmin, s.tenants));

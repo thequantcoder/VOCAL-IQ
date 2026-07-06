@@ -2921,3 +2921,47 @@ export function useSetDisclosureConfig() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['disclosure'] }),
   });
 }
+
+// ── Email as a campaign channel (Day 72) ────────────────────────────────────────
+
+export function useCaptureEmailConsent() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: {
+      contactId: string;
+      email: string;
+      source?: string;
+      consentText?: string;
+    }) =>
+      apiFetch<{ email: string; consent: boolean }>(
+        getToken,
+        `/email/contacts/${vars.contactId}/consent`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            email: vars.email,
+            source: vars.source,
+            consentText: vars.consentText,
+          }),
+        },
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['leads'] }),
+  });
+}
+
+export function useSendEmail() {
+  const { getToken } = useAuth();
+  return useMutation({
+    mutationFn: (vars: {
+      contactId: string;
+      template: { subject: string; body: string; language?: string };
+      vars?: Record<string, unknown>;
+      campaignId?: string;
+    }) =>
+      apiFetch<{ status: string; skippedReason?: string }>(getToken, '/email/send', {
+        method: 'POST',
+        body: JSON.stringify(vars),
+      }),
+  });
+}

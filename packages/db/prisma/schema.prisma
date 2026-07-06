@@ -160,6 +160,7 @@ enum FeatureFlagScope {
 enum MessageChannel {
   WHATSAPP
   SMS
+  EMAIL
 }
 
 enum MessageDirection {
@@ -722,6 +723,11 @@ model Contact {
   source    String?
   dnc       Boolean  @default(false)
   kycStatus String?
+  // Email consent (Day 72) — the lawful basis to email; never email without it.
+  emailConsent       Boolean   @default(false)
+  emailConsentSource String? // imported | captured_on_call | web_form
+  emailConsentAt     DateTime?
+  unsubscribedAt     DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
