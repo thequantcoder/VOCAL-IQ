@@ -239,6 +239,9 @@ model Tenant {
   revenueEvents       RevenueEvent[]
   outcomePrices       OutcomePrice[]
   billableOutcomes    BillableOutcome[]
+  marketplaceListings  MarketplaceListing[]  @relation("MarketplaceCreator")
+  marketplacePurchases MarketplacePurchase[] @relation("MarketplaceBuyer")
+  marketplaceReviews   MarketplaceReview[]   @relation("MarketplaceReviewer")
   flows               Flow[]
   flowVersions        FlowVersion[]
   transcripts         Transcript[]
@@ -1425,6 +1428,64 @@ model BillableOutcome {
   @@unique([tenantId, type, refId])
   @@index([tenantId, status])
   @@index([tenantId, occurredAt])
+}
+
+/// A marketplace listing (Day 83) — a creator's published agent snapshot, sold + cloned to buyers.
+/// A creator's own listings are RLS-scoped; APPROVED listings are browsable across tenants (via the
+/// admin client, filtered to status='approved') — the only cross-tenant-visible marketplace data.
+model MarketplaceListing {
+  id              String    @id @default(uuid()) @db.Uuid
+  creatorTenantId String    @db.Uuid
+  creator         Tenant    @relation("MarketplaceCreator", fields: [creatorTenantId], references: [id], onDelete: Cascade)
+  sourceAgentId   String?   @db.Uuid
+  title           String
+  description     String    @default("")
+  priceCents      Int       @default(0)
+  revShareBps     Int       @default(7000) // the creator's share (70% by default)
+  status          String    @default("draft") // draft | pending | approved | rejected | delisted
+  snapshot        Json      @default("{}") // {name, systemPrompt, graph, type, languages} captured at publish
+  version         Int       @default(1)
+  ratingSum       Int       @default(0)
+  ratingCount     Int       @default(0)
+  purchaseCount   Int       @default(0)
+  reviewedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status])
+  @@index([creatorTenantId, status])
+}
+
+/// A marketplace purchase (Day 83) — a buyer acquired + cloned a listing. Unique per (buyer, listing)
+/// so a buyer pays once; the price split (creator/platform) is snapshotted for audit.
+model MarketplacePurchase {
+  id             String   @id @default(uuid()) @db.Uuid
+  buyerTenantId  String   @db.Uuid
+  buyer          Tenant   @relation("MarketplaceBuyer", fields: [buyerTenantId], references: [id], onDelete: Cascade)
+  listingId      String   @db.Uuid
+  pricePaidCents Int
+  creatorCents   Int
+  platformCents  Int
+  clonedAgentId  String?  @db.Uuid
+  createdAt      DateTime @default(now())
+
+  @@unique([buyerTenantId, listingId])
+  @@index([buyerTenantId])
+  @@index([listingId])
+}
+
+/// A marketplace review (Day 83) — one rating/comment per buyer per listing.
+model MarketplaceReview {
+  id            String   @id @default(uuid()) @db.Uuid
+  buyerTenantId String   @db.Uuid
+  buyer         Tenant   @relation("MarketplaceReviewer", fields: [buyerTenantId], references: [id], onDelete: Cascade)
+  listingId     String   @db.Uuid
+  rating        Int
+  comment       String?
+  createdAt     DateTime @default(now())
+
+  @@unique([buyerTenantId, listingId])
+  @@index([listingId])
 }
 
 /// A fraud/abuse case (Day 70) — the auditable record of an automated enforcement + its review.

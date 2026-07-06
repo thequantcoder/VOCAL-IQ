@@ -41,6 +41,7 @@ import { keyPoolRoutes } from './keypool/keypool.routes';
 import { latencyRoutes } from './latency/latency.routes';
 import { launchRoutes, statusRoutes } from './launch/launch.routes';
 import { leadsRoutes } from './leads/leads.routes';
+import { marketplaceRoutes } from './marketplace/marketplace.routes';
 import { mcpRoutes } from './mcp/mcp.routes';
 import { memoryRoutes } from './memory/memory.routes';
 import {
@@ -152,6 +153,7 @@ function bootstrap(): void {
   app.use('/callbacks', callbacksRoutes(s.callbacks, s.tenants));
   app.use('/revenue', revenueRoutes(s.revenue, s.tenants));
   app.use('/outcomes', outcomeBillingRoutes(s.outcomeBilling, s.tenants));
+  app.use('/marketplace', marketplaceRoutes(s.marketplace, s.tenants));
   app.use('/disclosure', disclosureRoutes(s.disclosure, s.tenants));
   app.use('/email', emailRoutes(s.email, s.tenants));
   app.get('/u/:token', unsubscribeHandler(s.email));

@@ -39,6 +39,7 @@ import { KeyPoolService } from './keypool/keypool.service';
 import { LatencyService } from './latency/latency.service';
 import { LaunchService } from './launch/launch.service';
 import { LeadsService } from './leads/leads.service';
+import { MarketplaceService } from './marketplace/marketplace.service';
 import { McpService } from './mcp/mcp.service';
 import { httpMcpTransport } from './mcp/transport';
 import { MemoryService } from './memory/memory.service';
@@ -123,6 +124,7 @@ export function createServices() {
   const callbacks = new CallbacksService(db);
   const revenue = new RevenueService(db);
   const outcomeBilling = new OutcomeBillingService(db, wallet);
+  const marketplace = new MarketplaceService(db, wallet, agents, flows);
   const forms = new FormsService(db);
   const integrations = new IntegrationsService(db);
   const leads = new LeadsService(db);
@@ -264,6 +266,7 @@ export function createServices() {
     callbacks,
     revenue,
     outcomeBilling,
+    marketplace,
     disclosure,
     email,
     reputation,
