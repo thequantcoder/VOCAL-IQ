@@ -2228,3 +2228,29 @@ J. Quality/docs: ✅ — the escalation ladder, review-to-resume, and KYC gate d
 K. Build/CI: ✅ — `pnpm build` exits 0 (flaky Next `/404` cleared on a clean rebuild); all gates green.
 
 Real-time anomaly detection → automated response (throttle/pause/suspend) with an auditable case + super-admin notify + review-to-resume; a KYC gate for high-volume scaling; a review dashboard — DoD CONFIRMED. Next: Day 71 (AI disclosure / regulatory compliance).
+
+## Day 71 — AI Disclosure & 'Press 1 for Human' Compliance Toolkit — 2026-07-06 — ✅ DONE — 🔴 CORE-TIER (completes core tier)
+Model: Opus (🧠 OPUS). Branch `day/71-ai-disclosure`. Prereq: Day 9/60 + confirm target regions (a decision). Migration `20260706060000_day71_ai_disclosure` (disclosure-log fields on Call). No new env. Self-audit focus C (disclosure/consent record) + A (region rules) + B.
+
+Built (DONE):
+- **shared** `ai-disclosure.ts` (pure): `RegionRule` + **`COMPLIANCE_TEMPLATES`** (US-TCPA / US-CA / EU-GDPR / GB / DEFAULT — disclosure-required, mandatory-human-opt-out, calling hours, daily frequency cap), `rulesForRegion`, **`buildDisclosure`** (the spoken "you're speaking with an AI assistant" line + the mandatory "press 1 or say human" opt-out where required; null when not required + no custom text), `isWithinCallingHours` / `frequencyAllowed`, and **`callingAllowed`** (the single outbound gate — inside the window AND under the frequency cap, with a blocking reason). 13 unit tests.
+- **db/migration**: `Call` += `disclosureText`, `disclosedAt`, `humanOptOutAt` — the defensible per-call disclosure/opt-out record.
+- **api** `DisclosureService`: `templates` (the pre-built rule-set library), `get/setConfig` (per-tenant disclosure config in settings), **`buildForCall`** (the voice service speaks this at call start), **`logDisclosure`** (records what was disclosed + when), **`recordHumanOptOut`** (a caller's "reach a human" → the voice service transfers to the Agent Desk), **`checkCalling`** (region calling-hours + per-contact daily-frequency gate for outbound). Routes `/disclosure/*` (config/templates readable; set is config-writer; log/opt-out recorded by the voice service). Wired composition + main. 4 RLS-real integration tests.
+- **web**: an "AI disclosure & calling rules" card on `/dashboard/settings/compliance` — pick a compliance template (with its hours/frequency shown), a custom disclosure line, and the human keyword.
+
+Verification: shared **441** tests, api **303** tests (incl. 13 disclosure shared + 4 disclosure api — TCPA template → AI disclosure + human opt-out, template library, per-call log + opt-out record, the calling gate), full **typecheck 12/12**, **lint 12/12**, web **build exit 0**. Scoped `biome --write` touched only Day-71 files. Migration applied locally. (Cleaned stray macOS `* 2.*` duplicates.)
+
+## Self-Audit — Day 71 (A–K)
+A. Region rules (focus): ✅ — the rulebook (disclosure/opt-out/hours/frequency per region) + the disclosure-text builder + the calling gate are pure + exhaustively unit-tested; the config/build/log path proven against real Postgres.
+B. Isolation: ✅ — disclosure config + per-call logs are RLS-scoped (`withTenant`); a call's opt-out/log only touches that tenant's rows.
+C. Disclosure/consent record (focus): ✅ — every disclosure is logged (`disclosureText` + `disclosedAt`) and every human opt-out is timestamped (`humanOptOutAt`) — a defensible per-call record; the human opt-out is MANDATORY where the region requires it (baked into `buildDisclosure`, can't be omitted).
+D. Cost: ✅ — no provider/cost path (metadata + rules only).
+E. Errors/obs: ✅ — Zod-validated config; typed Validation/NotFound; the calling gate returns a clear blocking reason.
+F. Performance: ✅ — rule lookup is O(1); the frequency check is one indexed count.
+G. Error handling: ✅ — a region with no rule falls back to DEFAULT (never crashes); unknown call → NotFound.
+H. UI/a11y: ✅ — template picker (with hours/frequency shown), custom disclosure line, human-keyword input.
+I. Regression: ✅ — additive (shared module, migration, service/routes/web card); `checkCalling` is available for the outbound path (opt-in, doesn't change existing behaviour); 303 api + 441 shared tests pass. Scoped biome only.
+J. Quality/docs: ✅ — the region rulebook, the mandatory-opt-out logic, and the calling gate documented in code; explicit DTOs; the server-hour limitation for per-contact TZ noted as a follow-up.
+K. Build/CI: ✅ — `pnpm build` exits 0 (flaky Next `/404` cleared on a clean rebuild); all gates green.
+
+Region-aware AI disclosure spoken at call start with a mandatory human opt-out; calling-hour + frequency rules enforceable pre-dial; a per-call disclosure/opt-out record; a pre-built compliance template library — DoD CONFIRMED. **This completes the 🔴 core-tier (Days 67–71).** Next: Day 72 (email campaigns) → then Phase 6 advanced tier (Days 73–94) + Day 95 landing page.

@@ -851,6 +851,10 @@ model Call {
   durationSec   Int?
   recordingUrl  String?
   attestation   String? // STIR/SHAKEN attestation level for this call (A|B|C|none) — Day 69
+  // AI disclosure compliance (Day 71) — the defensible record of what was disclosed + opt-out.
+  disclosureText String?
+  disclosedAt    DateTime?
+  humanOptOutAt  DateTime?
   disposition   String?
   sentiment     Float?
   costBreakdown Json          @default("{}") // {stt, llm, tts, telephony, total}

@@ -21,6 +21,7 @@ import { CostService } from './cost/cost.service';
 import { buildEncryptor } from './crypto/envelope';
 import { PrismaService } from './db/prisma.service';
 import { DeskService } from './desk/desk.service';
+import { DisclosureService } from './disclosure/disclosure.service';
 import { ExperimentsService } from './experiments/experiments.service';
 import { FlowsService } from './flows/flows.service';
 import { FormsService } from './forms/forms.service';
@@ -139,6 +140,7 @@ export function createServices() {
   const s2s = new S2SService(db, Boolean(process.env.S2S_PROVIDER_KEY));
   const launch = new LaunchService(db, process.env);
   const desk = new DeskService(db);
+  const disclosure = new DisclosureService(db);
   // Live spam-label lookup is gated on a reputation API key; a null-returning stub in dev/CI.
   const reputation = new ReputationService(db);
   const fraud = new FraudService(db);
@@ -216,6 +218,7 @@ export function createServices() {
     s2s,
     launch,
     desk,
+    disclosure,
     reputation,
     fraud,
     abuse,
