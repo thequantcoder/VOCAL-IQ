@@ -3848,3 +3848,90 @@ export function useTriggerWorkflow(id: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['workflow-runs', id] }),
   });
 }
+
+// ── Analytics benchmarking (Day 86) ───────────────────────────────────────────
+
+export interface BenchmarkSettings {
+  optIn: boolean;
+  industry: string;
+}
+export type BenchmarkMetrics = Partial<Record<string, number | null>>;
+export interface AgentBenchmarkRow {
+  agentId: string;
+  name: string;
+  calls: number;
+  metrics: BenchmarkMetrics;
+}
+export interface BenchmarkRecommendation {
+  metric: string;
+  label: string;
+  message: string;
+  gap: number;
+  severity: 'info' | 'warn';
+}
+export interface InternalBenchmark {
+  from: string;
+  to: string;
+  agents: AgentBenchmarkRow[];
+  best: Record<string, string>;
+  tenantOverall: BenchmarkMetrics;
+  recommendations: BenchmarkRecommendation[];
+}
+export interface CohortSummary {
+  count: number;
+  mean: number;
+  median: number;
+  p25: number;
+  p75: number;
+  min: number;
+  max: number;
+}
+export interface PeerMetric {
+  key: string;
+  self: number | null;
+  percentile: number;
+  peer: CohortSummary;
+}
+export type PeerBenchmark =
+  | { available: false; reason: 'opt_in_required' | 'insufficient_cohort'; cohortSize: number }
+  | {
+      available: true;
+      industry: string;
+      cohortSize: number;
+      metrics: PeerMetric[];
+      recommendations: BenchmarkRecommendation[];
+    };
+
+export function useBenchmarkSettings() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['benchmark', 'settings'],
+    queryFn: () => apiFetch<BenchmarkSettings>(getToken, '/benchmarking/settings'),
+  });
+}
+export function useUpdateBenchmarkSettings() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: BenchmarkSettings) =>
+      apiFetch<BenchmarkSettings>(getToken, '/benchmarking/settings', {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['benchmark'] }),
+  });
+}
+export function useInternalBenchmark() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['benchmark', 'internal'],
+    queryFn: () => apiFetch<InternalBenchmark>(getToken, '/benchmarking/internal'),
+  });
+}
+export function usePeerBenchmark() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['benchmark', 'peers'],
+    queryFn: () => apiFetch<PeerBenchmark>(getToken, '/benchmarking/peers'),
+  });
+}

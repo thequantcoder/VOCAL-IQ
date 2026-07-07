@@ -6,6 +6,7 @@ import { AppointmentsService } from './appointments/appointments.service';
 import { AuthService } from './auth/auth.service';
 import { AutomationsService } from './automations/automations.service';
 import { buildActionExecutors } from './automations/executors';
+import { BenchmarkingService } from './benchmarking/benchmarking.service';
 import { EntitlementsService } from './billing/entitlements.service';
 import { OutcomeBillingService } from './billing/outcome-billing.service';
 import { PlanBuilderService } from './billing/plan-builder.service';
@@ -131,6 +132,7 @@ export function createServices() {
   const developerApps = new DeveloperAppsService(db, apiKeys, wallet);
   // Workflow runs are executed by the apps/workers BullMQ engine; the live enqueue wires at deploy.
   const workflows = new WorkflowsService(db, new PendingWorkflowQueue());
+  const benchmarking = new BenchmarkingService(db);
   const forms = new FormsService(db);
   const integrations = new IntegrationsService(db);
   const leads = new LeadsService(db);
@@ -275,6 +277,7 @@ export function createServices() {
     marketplace,
     developerApps,
     workflows,
+    benchmarking,
     disclosure,
     email,
     reputation,
