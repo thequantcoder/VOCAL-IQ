@@ -81,6 +81,8 @@ import { WebhookService } from './webhooks/webhook.service';
 import { buildCloudflareClient } from './whitelabel/cloudflare';
 import { WhiteLabelService } from './whitelabel/whitelabel.service';
 import { WidgetService } from './widget/widget.service';
+import { PendingWorkflowQueue } from './workflows/workflow-queue';
+import { WorkflowsService } from './workflows/workflows.service';
 
 /**
  * Composition root — the plain-Node replacement for Nest's DI container. Instantiate every
@@ -127,6 +129,8 @@ export function createServices() {
   const outcomeBilling = new OutcomeBillingService(db, wallet);
   const marketplace = new MarketplaceService(db, wallet, agents, flows);
   const developerApps = new DeveloperAppsService(db, apiKeys, wallet);
+  // Workflow runs are executed by the apps/workers BullMQ engine; the live enqueue wires at deploy.
+  const workflows = new WorkflowsService(db, new PendingWorkflowQueue());
   const forms = new FormsService(db);
   const integrations = new IntegrationsService(db);
   const leads = new LeadsService(db);
@@ -270,6 +274,7 @@ export function createServices() {
     outcomeBilling,
     marketplace,
     developerApps,
+    workflows,
     disclosure,
     email,
     reputation,

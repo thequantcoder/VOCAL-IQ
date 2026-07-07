@@ -41,6 +41,7 @@ import {
   TrendingUp,
   Users,
   Wallet,
+  Waypoints,
   Workflow,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -82,6 +83,7 @@ const NAV = [
   { href: '/dashboard/integrations', label: 'Integrations', icon: Plug, exact: false },
   { href: '/dashboard/mcp', label: 'Tool servers', icon: Plug, exact: false },
   { href: '/dashboard/automations', label: 'Automations', icon: Workflow, exact: false },
+  { href: '/dashboard/workflows', label: 'Workflows', icon: Waypoints, exact: false },
   { href: '/dashboard/developers', label: 'Developers', icon: KeyRound, exact: false },
   { href: '/dashboard/settings/sso', label: 'SSO', icon: ShieldCheck, exact: false },
   { href: '/dashboard/settings/compliance', label: 'Compliance', icon: ShieldAlert, exact: false },

@@ -67,6 +67,26 @@ describe('checkPublicHttpUrl (SSRF guard — self-audit C)', () => {
     expect(checkPublicHttpUrl('https://user:pass@example.com').ok).toBe(false);
     expect(checkPublicHttpUrl('not a url').ok).toBe(false);
   });
+  it('blocks IPv6 private/link-local/mapped literals', () => {
+    for (const u of [
+      'http://[fd00::1]/x', // ULA fc00::/7
+      'http://[fe80::1]/x', // link-local fe80::/10
+      'http://[::ffff:127.0.0.1]/x', // IPv4-mapped loopback
+      'http://[::ffff:169.254.169.254]/x', // IPv4-mapped metadata
+    ]) {
+      expect(checkPublicHttpUrl(u).ok, u).toBe(false);
+    }
+  });
+  it('blocks ambiguous numeric hosts (bare integer / hex / short-form)', () => {
+    for (const u of [
+      'http://2130706433/x',
+      'http://0x7f000001/x',
+      'http://127.1/x',
+      'http://10.0/x',
+    ]) {
+      expect(checkPublicHttpUrl(u).ok, u).toBe(false);
+    }
+  });
 });
 
 describe('vetToolOutput (prompt-injection defence)', () => {

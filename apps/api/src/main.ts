@@ -78,6 +78,7 @@ import { walletRoutes } from './wallet/wallet.routes';
 import { webhookRoutes } from './webhooks/webhook.routes';
 import { whitelabelResolveHandler, whitelabelRoutes } from './whitelabel/whitelabel.routes';
 import { widgetRoutes } from './widget/widget.routes';
+import { workflowsRoutes } from './workflows/workflows.routes';
 
 /** Validate env at boot (fail-fast), wire the Express app, and start the API. */
 function bootstrap(): void {
@@ -156,6 +157,7 @@ function bootstrap(): void {
   app.use('/outcomes', outcomeBillingRoutes(s.outcomeBilling, s.tenants));
   app.use('/marketplace', marketplaceRoutes(s.marketplace, s.tenants));
   app.use('/apps', developerAppsRoutes(s.developerApps, s.tenants));
+  app.use('/workflows', workflowsRoutes(s.workflows, s.tenants));
   app.use('/disclosure', disclosureRoutes(s.disclosure, s.tenants));
   app.use('/email', emailRoutes(s.email, s.tenants));
   app.get('/u/:token', unsubscribeHandler(s.email));

@@ -3726,3 +3726,125 @@ export function useUninstallApp() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['apps'] }),
   });
 }
+
+// ── Visual workflow automation (Day 85) ───────────────────────────────────────
+
+export interface WorkflowSummary {
+  id: string;
+  name: string;
+  status: string;
+  triggerEvent: string | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface WorkflowDetail extends WorkflowSummary {
+  graph: unknown;
+}
+export interface WorkflowRun {
+  id: string;
+  workflowId: string;
+  status: string;
+  currentNodeId: string | null;
+  stepCount: number;
+  error: string | null;
+  startedAt: string;
+  finishedAt: string | null;
+}
+export interface WorkflowRunStep {
+  id: string;
+  nodeId: string;
+  nodeType: string;
+  status: string;
+  detail: string | null;
+  attempt: number;
+  createdAt: string;
+}
+
+export function useWorkflows() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['workflows'],
+    queryFn: () => apiFetch<WorkflowSummary[]>(getToken, '/workflows'),
+  });
+}
+export function useWorkflow(id: string) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['workflow', id],
+    queryFn: () => apiFetch<WorkflowDetail>(getToken, `/workflows/${id}`),
+    enabled: Boolean(id),
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+}
+export function useCreateWorkflow() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) =>
+      apiFetch<WorkflowSummary>(getToken, '/workflows', {
+        method: 'POST',
+        body: JSON.stringify({ name }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['workflows'] }),
+  });
+}
+export function useSaveWorkflow(id: string) {
+  const { getToken } = useAuth();
+  return useMutation({
+    mutationFn: (graph: unknown) =>
+      apiFetch<WorkflowSummary>(getToken, `/workflows/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(graph),
+      }),
+  });
+}
+export function useSetWorkflowStatus(id: string) {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (status: 'active' | 'paused' | 'draft') =>
+      apiFetch<WorkflowSummary>(getToken, `/workflows/${id}/status`, {
+        method: 'POST',
+        body: JSON.stringify({ status }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['workflows'] }),
+  });
+}
+export function useDeleteWorkflow() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ id: string }>(getToken, `/workflows/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['workflows'] }),
+  });
+}
+export function useWorkflowRuns(id: string) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['workflow-runs', id],
+    queryFn: () => apiFetch<WorkflowRun[]>(getToken, `/workflows/${id}/runs`),
+    enabled: Boolean(id),
+  });
+}
+export function useWorkflowSteps(runId: string | null) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['workflow-steps', runId],
+    queryFn: () => apiFetch<WorkflowRunStep[]>(getToken, `/workflows/runs/${runId}/steps`),
+    enabled: Boolean(runId),
+  });
+}
+export function useTriggerWorkflow(id: string) {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (event: Record<string, unknown>) =>
+      apiFetch<WorkflowRun>(getToken, `/workflows/${id}/trigger`, {
+        method: 'POST',
+        body: JSON.stringify(event),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['workflow-runs', id] }),
+  });
+}
