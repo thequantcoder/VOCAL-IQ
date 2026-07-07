@@ -1,6 +1,7 @@
-import { buildOpenApiSpec } from '@vocaliq/shared';
+import { analyticsQuerySchema, buildOpenApiSpec, hasScope } from '@vocaliq/shared';
 import { Router } from 'express';
 import type { AgentsService } from '../agents/agents.service';
+import type { AnalyticsApiService } from '../analytics-api/analytics-api.service';
 import { apiKeyAuth, requireScope } from '../api-keys/api-key.middleware';
 import type { ApiKeyService } from '../api-keys/api-key.service';
 import type { CallsReadService } from '../calls/calls-read.service';
@@ -20,6 +21,7 @@ export function v1Routes(deps: {
   callsRead: CallsReadService;
   outbound: OutboundService;
   leads: LeadsService;
+  analyticsApi: AnalyticsApiService;
 }): Router {
   const r = Router();
 
@@ -72,6 +74,30 @@ export function v1Routes(deps: {
           status: req.query.status as string | undefined,
           stage: req.query.stage as string | undefined,
           owner: req.query.owner as string | undefined,
+        }),
+      );
+    }),
+  );
+
+  // ── analytics (Day 87 — enterprise BI). PII is masked unless the key ALSO holds pii:read. ──
+  r.get(
+    '/analytics/calls',
+    requireScope('analytics:read'),
+    ah(async (req, res) => {
+      const query = analyticsQuerySchema.parse(req.query);
+      const includePii = hasScope(req.apiScopes ?? [], 'pii:read');
+      res.json(await deps.analyticsApi.listCalls(req.ctx!.tenantId, query, { includePii }));
+    }),
+  );
+  r.get(
+    '/analytics/usage',
+    requireScope('analytics:read'),
+    ah(async (req, res) => {
+      const q = analyticsQuerySchema.parse(req.query);
+      res.json(
+        await deps.analyticsApi.usage(req.ctx!.tenantId, {
+          ...(q.from ? { from: q.from } : {}),
+          ...(q.to ? { to: q.to } : {}),
         }),
       );
     }),

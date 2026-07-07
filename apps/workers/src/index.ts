@@ -9,6 +9,7 @@ import { createDbMemoryDeps, runMemoryExtraction } from './memory-extraction';
 import { createDbPostCallDeps, runPostCallIntel } from './post-call-intel';
 import { createDbQaDeps, runQaScoring } from './qa-scoring';
 import { createDbFindUnmetered, runReconciliation } from './reconciliation';
+import { createDbScheduledExportDeps, runScheduledExports } from './scheduled-exports';
 import { createDbWorkflowExecDeps, runWorkflowExecution } from './workflow-execution';
 
 /**
@@ -289,6 +290,44 @@ function registerWorkflowExecution(
   };
 }
 
+const SCHEDULED_EXPORTS_QUEUE = 'scheduled-exports';
+
+/**
+ * Scheduled BI exports worker (Day 87). A repeatable hourly tick materializes CSV exports for every
+ * due tenant schedule (calls/usage, PII-masked). Idempotent-ish: a schedule runs at most once per
+ * cadence (the `isScheduleDue` check gates on `lastRunAt`).
+ */
+function registerScheduledExports(
+  redisUrl: string,
+  databaseUrl: string | undefined,
+): () => Promise<void> {
+  const connection = new IORedis(redisUrl, { maxRetriesPerRequest: null });
+  const admin = createPrismaClient(databaseUrl);
+  const deps = createDbScheduledExportDeps(admin, (msg) => console.log(`[exports] ${msg}`));
+
+  const queue = new Queue(SCHEDULED_EXPORTS_QUEUE, { connection });
+  void queue.add(
+    'tick',
+    {},
+    { repeat: { every: 60 * 60 * 1000 }, jobId: 'scheduled-exports:tick' },
+  );
+
+  const worker = new Worker(
+    SCHEDULED_EXPORTS_QUEUE,
+    async () => runScheduledExports(deps, new Date()),
+    { connection },
+  );
+  worker.on('failed', (job, err) => console.error(`[exports] job ${job?.id} failed:`, err));
+
+  console.log('[workers] scheduled-exports queue + worker registered (hourly).');
+  return async () => {
+    await worker.close();
+    await queue.close();
+    await connection.quit();
+    await admin.$disconnect();
+  };
+}
+
 async function main(): Promise<void> {
   const env = parseEnv();
   console.log(`[workers] booted (env=${env.NODE_ENV}).`);
@@ -304,6 +343,7 @@ async function main(): Promise<void> {
   registerMemoryExtraction(env.REDIS_URL, env.DATABASE_URL);
   registerQaScoring(env.REDIS_URL, env.DATABASE_URL);
   registerWorkflowExecution(env.REDIS_URL, env.DATABASE_URL);
+  registerScheduledExports(env.REDIS_URL, env.DATABASE_URL);
 }
 
 void main();

@@ -2713,3 +2713,37 @@ J. Quality/docs: ✅ — the k-anonymity + min/max-drop + fixed-window privacy p
 K. Build/CI: ✅ — `pnpm build` exits 0; no migration; all gates green locally before push.
 
 Tenants can now see what "good" looks like: which of their agents leads each metric, and how they stack up against anonymized industry peers — with recommendations from the gaps. The peer network effect is privacy-safe: opt-in only, k-anonymous (≥5), aggregates-only (no min/max), and a server-fixed window (no differencing) — zero cross-tenant leakage. DoD CONFIRMED. Next: Day 87.
+
+## Day 87 — Voice Analytics API for Enterprise BI — 2026-07-07 — ✅ DONE — 🟣 PHASE 6
+Model: Sonnet (⚡ SONNET day). Branch `day/87-voice-analytics-api`. Prereq: Day 48 (public API + API keys + scopes) · Day 41 (analytics) · Day 62 (scale) — present. **No new env** (warehouse/R2 delivery is a gated future sink; exports store inline). Migration `20260707210000_day87_analytics_exports` (AnalyticsExport + ExportSchedule + RLS). Self-audit focus **C (scoped keys + PII governance) + B + F.**
+
+Enterprises pipe call/usage analytics into their own BI: a **scoped read API** (`/v1/analytics/*`, API-key + `analytics:read`) and **CSV exports** (on-demand + scheduled). Reuses the Day-48 public-API auth/scope/rate-limit substrate.
+
+Built (DONE):
+- **shared** `analytics-export.ts` (pure): **`toCsv`/`csvCell`** — RFC-4180 quoting + a **formula-injection guard** (a cell starting `= + - @`/tab/CR is prefixed with a quote so it can't execute in a spreadsheet — self-audit C), **`maskPhone`/`maskEmail`** (PII masking), **`isScheduleDue`**, the request schemas, and the shared CSV column contracts (`CALL_EXPORT_HEADERS`/`callCells`, `USAGE_EXPORT_HEADERS`/`usageCells`) so the API + worker emit identical governed CSVs. Added **`analytics:read` + `pii:read`** to the public-API scope catalogue + OpenAPI. **12 unit tests** incl. injection + masking + due.
+- **db/migration**: `AnalyticsExport` (kind/format/status/rowCount/window/`content`) + `ExportSchedule` (kind/cadence/active/lastRunAt) + RLS by tenantId.
+- **api** `AnalyticsApiService`: `listCalls` (RLS raw SQL, **composite keyset pagination**, PII **masked unless `pii:read`**) + `usage` aggregates; `AnalyticsExportService`: `create` (**always PII-masked stored CSV**), `list`/`download`, schedule CRUD; audited. Public `/v1/analytics/calls` + `/usage` (scope-gated; PII gated on the `pii:read` SCOPE not role); dashboard `/exports/*` (reads any-member; create/schedule config-writer). **9 RLS-real tests**: PII masked-by-default / un-masked with pii:read, composite-cursor pagination (no loss on identical timestamps), usage aggregates, export integrity + injection-neutralized + always-masked, foreign-download NotFound, schedule CRUD, isolation.
+- **workers** `scheduled-exports.ts`: an hourly repeatable tick runs every DUE schedule (`isScheduleDue`), materializing a masked CSV per tenant (admin client, every query + write scoped by the schedule's tenantId). **2 mocked-Deps tests** (due-gating, failure-skips-and-retries).
+- **web** `/dashboard/exports`: generate an export, download CSVs (authed blob), and manage schedules; shows the `analytics:read`/`pii:read` scope contract. Nav entry.
+
+Verification: shared **630** tests, api **411** tests, workers **42** tests, full **typecheck 12/12**, **lint 12/12** (warnings only), **build 8/8**. Migration applies on PG 16.
+
+**Adversarial review (focused reviewer; PII governance, isolation, CSV injection, correctness).** It confirmed the `/v1` PII-on-scope gating, RLS scoping, injection guard (every cell, both paths), and no other PII (email/name/transcript/recordingUrl never selected) all hold, and found **three real issues — all fixed**:
+- **(major) any-member export download could bypass the OWNER/ADMIN PII gate** (an admin-created PII export was raw-PII in a downloadable artifact any read-only member could pull). **Fix — better than a role-gate:** STORED exports are now **always PII-masked** (raw PII never persisted); un-masked PII is available ONLY via the live `/v1` API with `pii:read` (streamed, never stored). Removed the dashboard `pii=1` path entirely.
+- **(major) createdAt-only keyset pagination silently DROPPED rows sharing a millisecond** (a real BI undercount). **Fix:** composite keyset `(createdAt, id)` cursor + `ORDER BY createdAt DESC, id DESC`; added an identical-timestamp no-loss test.
+- **(minor) the worker's admin-client Contact join wasn't tenant-constrained.** **Fix:** `AND ct."tenantId" = schedule.tenantId` (the api path is already RLS-protected). The pre-existing single-node rate-limiter staleness + the leading-space CSV nit are noted/accepted.
+
+## Self-Audit — Day 87 (A–K)
+A. Correctness: ✅ — the CSV writer, masking, and due-check are pure + unit-tested; the read API + exports are integration-tested on real Postgres; composite-cursor pagination proven lossless on identical timestamps.
+B. Isolation (focus): ✅ — the read API + on-demand exports are RLS-scoped (`db.withTenant`); a foreign export download → NotFound (RLS); the worker uses the admin client but scopes EVERY query + write (incl. the Contact join) by the schedule's own tenantId — no cross-tenant path.
+C. Governance / scoped keys + PII (focus): ✅ — the public API is API-key-auth + `analytics:read` scope-gated + per-key rate-limited (Day-48 substrate); raw PII (contact phone) is **masked unless the key holds `pii:read`** (gated on the SCOPE, not the middleware role); STORED exports are ALWAYS masked (raw PII never persisted to a downloadable file); no other PII (email/name/transcript/recordingUrl) is ever selected; the CSV is formula-injection-safe; exports are audited.
+D. Cost: ✅ (n/a — read-only; usage is metered elsewhere; no provider spend added).
+E. Errors/obs: ✅ — Zod-validated query/export/schedule; typed errors; a failed scheduled export is logged + retried (not marked run); exports carry status/error.
+F. Performance (focus): ✅ — reads are indexed + keyset-paginated (max 1000/page) + rate-limited; the correlated per-row cost subquery is bounded; exports cap at `MAX_EXPORT_ROWS`=50k; the worker tick is hourly + due-gated.
+G. Error handling: ✅ — best-effort scheduled runs; empty windows → empty CSV (header only), never a crash; a bad cursor degrades to the first page.
+H. UI/a11y: ✅ — labelled selects, generate + authed CSV download (blob), schedule management, the scope contract surfaced, loading/empty/error states, design tokens + dark mode.
+I. Regression: ✅ — additive: new pure module, two new tables, new api services/routes, a new worker, a new web page/hooks/nav; extends the Day-48 scope catalogue (additive). 630 shared + 411 api + 42 workers green.
+J. Quality/docs: ✅ — the "stored exports always masked; raw PII only via the live scoped API" governance posture + the composite-cursor rationale are documented in code; the API + worker share the CSV column contract.
+K. Build/CI: ✅ — `pnpm build` exits 0; migration applies on PG 16; all gates green locally before push.
+
+Enterprises can now pull governed voice analytics into their BI: a scoped, rate-limited, PII-masked read API (`pii:read` to un-mask, live only) and masked CSV exports (on-demand + scheduled) — with formula-injection-safe CSVs, composite-keyset pagination that never loses rows, and strict tenant isolation. DoD CONFIRMED. Next: Day 88.

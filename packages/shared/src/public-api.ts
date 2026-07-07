@@ -13,6 +13,10 @@ export const API_SCOPES = [
   'calls:write',
   'leads:read',
   'campaigns:read',
+  // Day 87 — enterprise BI analytics. `analytics:read` grants the read API + exports; `pii:read` is an
+  // ADDITIONAL scope that un-masks raw PII (phone/email) in those reads (governance — self-audit C).
+  'analytics:read',
+  'pii:read',
 ] as const;
 export type ApiScope = (typeof API_SCOPES)[number];
 
@@ -56,6 +60,18 @@ const OPERATIONS: OpenApiOperation[] = [
   { method: 'get', path: '/v1/calls', summary: 'List calls', scope: 'calls:read' },
   { method: 'post', path: '/v1/calls', summary: 'Place an outbound call', scope: 'calls:write' },
   { method: 'get', path: '/v1/leads', summary: 'List leads', scope: 'leads:read' },
+  {
+    method: 'get',
+    path: '/v1/analytics/calls',
+    summary: 'List call analytics (paginated; PII masked unless pii:read)',
+    scope: 'analytics:read',
+  },
+  {
+    method: 'get',
+    path: '/v1/analytics/usage',
+    summary: 'Usage + cost aggregates',
+    scope: 'analytics:read',
+  },
 ];
 
 /** Build the OpenAPI 3.0 document for the public API (served at /v1/openapi.json). */
