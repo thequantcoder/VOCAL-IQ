@@ -2681,3 +2681,35 @@ J. Quality/docs: ✅ — the pure planner, the checkpoint/resume durability mode
 K. Build/CI: ✅ — `pnpm build` exits 0; migration applies on PG 16 (three tables + indexes + RLS); all gates green locally before push.
 
 VocalIQ is now a business-automation platform, not just voice agents: operators visually wire trigger → conditions → actions → delays across systems, and a durable, retryable, observable engine runs them — with guaranteed termination (acyclic + step-capped), deterministic resume-from-checkpoint, SSRF-safe webhooks, and strict tenant isolation. DoD CONFIRMED. Next: Day 86.
+
+## Day 86 — Multi-Agent Analytics Benchmarking — 2026-07-07 — ✅ DONE — 🟣 PHASE 6
+Model: Sonnet (⚡ SONNET day). Branch `day/86-benchmarking-analytics`. Prereq: Day 41 (analytics) · Day 43 (QA) · Day 81 (revenue) — present. **No new env. No migration** (opt-in + industry live in the existing `Tenant.settings` Json). Self-audit focus **B (anonymization — zero cross-tenant leakage) + C (opt-in) + A.**
+
+Lets a tenant see what "good" looks like: benchmark its agents against its OWN history (internal) and against **anonymized, opt-in peer averages** for its industry. Reuses the Day-41/43/81 metric sources (Call/UsageRecord/QaScore/RevenueEvent). The hard part is the peer benchmark: cross-tenant aggregates that must be opt-in + privacy-safe.
+
+Built (DONE):
+- **shared** `benchmarking.ts` (pure): the five benchmark metrics (success rate, avg sentiment, cost/call, QA, ROI — with higher/lower-is-better direction), **`percentileRank`** (direction-aware — a cheaper cost still ranks high), **`summarize`** (mean/median/quartiles), **`MIN_PEER_COHORT`=5** k-anonymity gate, **`toPeerSummary`** (the peer-facing view — deliberately DROPS min/max, which would be a single peer's exact value), `recommendationsFrom` (gaps → advice), `INDUSTRIES` + `benchmarkSettingsSchema`. **12 unit tests** incl. the k-anon gate + the min/max-drop.
+- **api** `BenchmarkingService`: `getSettings`/`updateSettings` (opt-in + industry in `Tenant.settings`), **`internal`** (per-agent comparison over the tenant's own calls — RLS-scoped `db.withTenant` raw SQL grouped by agent — best agent per metric + recommendations vs the best), **`peers`** (cross-tenant via `db.admin` but privacy-safe: aggregates ONLY opted-in tenants in the same industry excluding self, **withholds everything below the k-anon cohort AND per-metric**, and returns ONLY `PeerSummary` aggregates + the tenant's percentile — never a peer id or raw value). Routes `/benchmarking/*` (reads any-member; opt-in/industry mutation config-writer). **6 RLS-real tests**: settings, internal best-agent, opt-in gate, k-anon gate (< 5 peers → withheld), aggregate-only-no-leakage (asserts no peer UUID + no min/max in the response), and cross-industry / non-opted-in isolation (cohort count is exactly the honest peers).
+- **web** `/dashboard/benchmarking`: opt-in toggle + industry select; internal per-agent comparison (zero-dep bar charts per metric, best-agent ★); peer section (percentile bar + peer median per metric when available, else an opt-in / "not enough peers yet" message); recommendations. Nav entry.
+
+Verification: shared **621** tests, api **402** tests, workers 40, full **typecheck 12/12**, **lint 12/12** (warnings only), **build 8/8**.
+
+**Adversarial review (focused reviewer; anonymization/leakage, opt-in, correctness).** It confirmed the opt-in gate, per-metric k-anon, isolation, metric math, and RBAC all hold, and found **two genuine cross-tenant leaks — both fixed**:
+- **(major) `min`/`max` in the peer summary leaked a single peer's exact value** (with a 5-tenant cohort, `max` = the single best competitor's exact metric) — contradicting the "only averages" guarantee. **Fix:** `toPeerSummary` drops min/max; only mean/median/quartiles (+count) — which can't be attributed to a known tenant — cross the boundary. Test asserts they're absent.
+- **(major) a caller-controlled window enabled a differencing attack** (vary `?from`/`?to` to move the contributing cohort across the k-anon boundary and difference out one peer). **Fix:** the peer window is now FIXED server-side (trailing 30 days); `?from`/`?to` are ignored for `/peers` (internal, own-data, may still be windowed).
+The remaining minors (exact sub-threshold cohort count is existence-only; `available:true` with no in-window peer metrics shows a graceful empty state; the settings read-modify-write race matches the existing reseller pattern) are accepted as low-risk.
+
+## Self-Audit — Day 86 (A–K)
+A. Correctness: ✅ — the metric math (success = completed/calls, cost/call, ROI = (rev−cost)/cost guarded on cost>0), percentile direction (cost lower-is-better), and recommendation gaps are pure + unit-tested; internal per-agent + peer aggregation are integration-tested against real Postgres.
+B. Anonymization (focus): ✅ — peer data is exposed ONLY as aggregates over a cohort of ≥5 opted-in tenants, gated BOTH at the cohort level AND per-metric; **min/max are dropped** (no single-peer exact value); the **peer window is server-fixed** (no differencing via window control); a peer id or per-peer value never appears in the response (asserted); the internal view is RLS-scoped.
+C. Opt-in (focus): ✅ — only tenants with `benchmarkOptIn === true` are ever aggregated (live admin filter — opt-out excludes immediately); a tenant sees peer data only if it too opted in; changing opt-in/industry is config-writer-gated.
+D. Cost: ✅ (n/a — read-only analytics; no provider spend added).
+E. Errors/obs: ✅ — Zod-validated settings; typed errors; peer unavailability is a typed reason (opt_in_required / insufficient_cohort) the UI explains.
+F. Performance: ✅ — internal is a few indexed grouped reads under RLS; peer caps the cohort at 1000 tenants + a fixed window + grouped SQL; on-the-fly (a materialized peer snapshot is a future optimization, noted).
+G. Error handling: ✅ — empty cohorts / no-data windows degrade to a graceful "unavailable" + empty state, never a crash; the `ANY('{}'::uuid[])` empty path matches nothing safely.
+H. UI/a11y: ✅ — labelled opt-in toggle + industry select, zero-dep bar + percentile charts, best-agent marker, recommendations, loading/empty/error states, design tokens + dark mode.
+I. Regression: ✅ — additive: new pure module, a new api service/routes, a new web page/hooks/nav; no schema change (settings Json); reuses existing metric tables read-only. 621 shared + 402 api + 40 workers green.
+J. Quality/docs: ✅ — the k-anonymity + min/max-drop + fixed-window privacy posture is documented in code; the peer path clearly separates admin (aggregate-only) from the RLS-scoped internal path.
+K. Build/CI: ✅ — `pnpm build` exits 0; no migration; all gates green locally before push.
+
+Tenants can now see what "good" looks like: which of their agents leads each metric, and how they stack up against anonymized industry peers — with recommendations from the gaps. The peer network effect is privacy-safe: opt-in only, k-anonymous (≥5), aggregates-only (no min/max), and a server-fixed window (no differencing) — zero cross-tenant leakage. DoD CONFIRMED. Next: Day 87.

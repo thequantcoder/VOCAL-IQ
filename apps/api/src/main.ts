@@ -13,6 +13,7 @@ import { apiKeyRoutes } from './api-keys/api-key.routes';
 import { appointmentsRoutes } from './appointments/appointments.routes';
 import { authRoutes } from './auth/auth.routes';
 import { automationsRoutes } from './automations/automations.routes';
+import { benchmarkingRoutes } from './benchmarking/benchmarking.routes';
 import { billingRoutes, billingWebhookHandler } from './billing/billing.routes';
 import { outcomeBillingRoutes } from './billing/outcome-billing.routes';
 import { planBuilderRoutes } from './billing/plan-builder.routes';
@@ -158,6 +159,7 @@ function bootstrap(): void {
   app.use('/marketplace', marketplaceRoutes(s.marketplace, s.tenants));
   app.use('/apps', developerAppsRoutes(s.developerApps, s.tenants));
   app.use('/workflows', workflowsRoutes(s.workflows, s.tenants));
+  app.use('/benchmarking', benchmarkingRoutes(s.benchmarking, s.tenants));
   app.use('/disclosure', disclosureRoutes(s.disclosure, s.tenants));
   app.use('/email', emailRoutes(s.email, s.tenants));
   app.get('/u/:token', unsubscribeHandler(s.email));
