@@ -23,6 +23,7 @@ export * from './agent-desk.js';
 export * from './ai-disclosure.js';
 export * from './agent-templates.js';
 export * from './analytics.js';
+export * from './analytics-export.js';
 export * from './appointment.js';
 export * from './automation.js';
 export * from './banned-words.js';

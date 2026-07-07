@@ -3935,3 +3935,105 @@ export function usePeerBenchmark() {
     queryFn: () => apiFetch<PeerBenchmark>(getToken, '/benchmarking/peers'),
   });
 }
+
+// ── Voice analytics API / BI exports (Day 87) ─────────────────────────────────
+
+export interface AnalyticsExport {
+  id: string;
+  kind: string;
+  format: string;
+  status: string;
+  rowCount: number;
+  fromTs: string | null;
+  toTs: string | null;
+  error: string | null;
+  createdAt: string;
+}
+export interface ExportSchedule {
+  id: string;
+  kind: string;
+  cadence: string;
+  active: boolean;
+  lastRunAt: string | null;
+  createdAt: string;
+}
+
+export function useExports() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['exports'],
+    queryFn: () => apiFetch<AnalyticsExport[]>(getToken, '/exports'),
+  });
+}
+export function useCreateExport() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { kind: 'calls' | 'usage' }) =>
+      apiFetch<AnalyticsExport>(getToken, '/exports', {
+        method: 'POST',
+        body: JSON.stringify({ kind: vars.kind }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['exports'] }),
+  });
+}
+/** Fetch an export's CSV (auth) and trigger a browser download. */
+export function useDownloadExport() {
+  const { getToken } = useAuth();
+  return useMutation({
+    mutationFn: async (exp: { id: string; kind: string }) => {
+      const token = await getToken();
+      const res = await fetch(`${API_URL}/exports/${exp.id}/download`, {
+        headers: token ? { authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error('Download failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `vocaliq-${exp.kind}-${exp.id.slice(0, 8)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    },
+  });
+}
+export function useExportSchedules() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['export-schedules'],
+    queryFn: () => apiFetch<ExportSchedule[]>(getToken, '/exports/schedules'),
+  });
+}
+export function useCreateExportSchedule() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { kind: 'calls' | 'usage'; cadence: 'daily' | 'weekly' }) =>
+      apiFetch<ExportSchedule>(getToken, '/exports/schedules', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['export-schedules'] }),
+  });
+}
+export function useToggleExportSchedule() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; active: boolean }) =>
+      apiFetch<ExportSchedule>(getToken, `/exports/schedules/${vars.id}/active`, {
+        method: 'POST',
+        body: JSON.stringify({ active: vars.active }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['export-schedules'] }),
+  });
+}
+export function useDeleteExportSchedule() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ id: string }>(getToken, `/exports/schedules/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['export-schedules'] }),
+  });
+}

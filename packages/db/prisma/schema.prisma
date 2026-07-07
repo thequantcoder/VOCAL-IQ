@@ -247,6 +247,8 @@ model Tenant {
   workflows            Workflow[]
   workflowRuns         WorkflowRun[]
   workflowRunSteps     WorkflowRunStep[]
+  analyticsExports     AnalyticsExport[]
+  exportSchedules      ExportSchedule[]
   flows               Flow[]
   flowVersions        FlowVersion[]
   transcripts         Transcript[]
@@ -1626,6 +1628,43 @@ model AbuseCase {
 
   @@index([tenantId, status])
   @@index([status])
+}
+
+/// A BI analytics export (Day 87) — a materialized CSV of a tenant's calls/usage over a window, for
+/// piping into a warehouse/BI. The CSV is stored inline (bounded rows); larger deliveries to R2/S3/a
+/// warehouse are a gated future sink. Tenant-scoped via RLS.
+model AnalyticsExport {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @db.Uuid
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  kind       String // calls | usage
+  format     String   @default("csv")
+  status     String   @default("ready") // ready | failed
+  rowCount   Int      @default(0)
+  fromTs     DateTime?
+  toTs       DateTime?
+  content    String?  @db.Text // the CSV body (bounded); null if delivered to an external sink
+  error      String?
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, createdAt])
+}
+
+/// A scheduled export (Day 87) — a worker generates an {@link AnalyticsExport} of `kind` every cadence.
+model ExportSchedule {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  kind      String // calls | usage
+  cadence   String // daily | weekly
+  active    Boolean  @default(true)
+  lastRunAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([active, cadence])
 }
 
 /// Agent Desk presence (Day 67) — a human agent's live availability + skills for transfer routing.

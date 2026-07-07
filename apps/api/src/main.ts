@@ -8,6 +8,7 @@ loadDotenv({ path: resolve(process.cwd(), '../../.env') });
 
 import { abuseRoutes } from './abuse/abuse.routes';
 import { agentsRoutes } from './agents/agents.routes';
+import { analyticsExportRoutes } from './analytics-api/analytics-export.routes';
 import { analyticsRoutes } from './analytics/analytics.routes';
 import { apiKeyRoutes } from './api-keys/api-key.routes';
 import { appointmentsRoutes } from './appointments/appointments.routes';
@@ -190,8 +191,10 @@ function bootstrap(): void {
       callsRead: s.callsRead,
       outbound: s.outbound,
       leads: s.leads,
+      analyticsApi: s.analyticsApi,
     }),
   );
+  app.use('/exports', analyticsExportRoutes(s.analyticsExport, s.tenants));
   app.use('/messaging', messagingRoutes(s.messaging, s.tenants));
   app.use('/leads', leadsRoutes(s.leads, s.tenants));
   app.use('/memory', memoryRoutes(s.memory, s.tenants));

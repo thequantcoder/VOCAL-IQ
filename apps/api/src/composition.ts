@@ -1,5 +1,7 @@
 import { AbuseService } from './abuse/abuse.service';
 import { AgentsService } from './agents/agents.service';
+import { AnalyticsApiService } from './analytics-api/analytics-api.service';
+import { AnalyticsExportService } from './analytics-api/analytics-export.service';
 import { AnalyticsService } from './analytics/analytics.service';
 import { ApiKeyService } from './api-keys/api-key.service';
 import { AppointmentsService } from './appointments/appointments.service';
@@ -133,6 +135,8 @@ export function createServices() {
   // Workflow runs are executed by the apps/workers BullMQ engine; the live enqueue wires at deploy.
   const workflows = new WorkflowsService(db, new PendingWorkflowQueue());
   const benchmarking = new BenchmarkingService(db);
+  const analyticsApi = new AnalyticsApiService(db);
+  const analyticsExport = new AnalyticsExportService(db, analyticsApi);
   const forms = new FormsService(db);
   const integrations = new IntegrationsService(db);
   const leads = new LeadsService(db);
@@ -278,6 +282,8 @@ export function createServices() {
     developerApps,
     workflows,
     benchmarking,
+    analyticsApi,
+    analyticsExport,
     disclosure,
     email,
     reputation,
