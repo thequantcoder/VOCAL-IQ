@@ -9,6 +9,7 @@ import { createDbMemoryDeps, runMemoryExtraction } from './memory-extraction';
 import { createDbPostCallDeps, runPostCallIntel } from './post-call-intel';
 import { createDbQaDeps, runQaScoring } from './qa-scoring';
 import { createDbFindUnmetered, runReconciliation } from './reconciliation';
+import { createDbWorkflowExecDeps, runWorkflowExecution } from './workflow-execution';
 
 /**
  * @vocaliq/workers — BullMQ async jobs (campaigns, transcription, scoring, embeddings,
@@ -240,6 +241,54 @@ function registerReconciliation(
   };
 }
 
+const WORKFLOW_QUEUE = 'workflow-execution';
+
+/**
+ * Workflow execution worker (Day 85). Consumes `{ runId }` jobs — the api enqueues one when a workflow
+ * fires (via the WorkflowQueue seam); a DELAY node re-enqueues the same run with a delay. Walks the
+ * graph durably (checkpointed) + retries on failure (BullMQ attempts + backoff). Exported queue name so
+ * the api can enqueue via the same name at deploy.
+ */
+function registerWorkflowExecution(
+  redisUrl: string,
+  databaseUrl: string | undefined,
+): () => Promise<void> {
+  const connection = new IORedis(redisUrl, { maxRetriesPerRequest: null });
+  const admin = createPrismaClient(databaseUrl);
+  const queue = new Queue(WORKFLOW_QUEUE, {
+    connection,
+    // Retries with exponential backoff — a crash mid-run is re-driven and resumes from the last
+    // checkpoint (durability, self-audit A). Without `attempts` BullMQ would try once + strand the run.
+    defaultJobOptions: {
+      attempts: 5,
+      backoff: { type: 'exponential', delay: 5_000 },
+      removeOnComplete: true,
+      removeOnFail: 1_000,
+    },
+  });
+  const enqueue = async (runId: string, delayMs: number): Promise<void> => {
+    // jobId keyed by the run de-dups concurrent deliveries of the same run (removeOnComplete frees it
+    // for the next delay hop).
+    await queue.add('run', { runId }, { delay: Math.max(0, delayMs), jobId: `wf-run:${runId}` });
+  };
+  const deps = createDbWorkflowExecDeps(admin, enqueue, (msg) => console.log(`[workflow] ${msg}`));
+
+  const worker = new Worker<{ runId: string }>(
+    WORKFLOW_QUEUE,
+    async (job) => runWorkflowExecution(deps, { runId: job.data.runId }),
+    { connection },
+  );
+  worker.on('failed', (job, err) => console.error(`[workflow] job ${job?.id} failed:`, err));
+
+  console.log('[workers] workflow-execution queue + worker registered.');
+  return async () => {
+    await worker.close();
+    await queue.close();
+    await connection.quit();
+    await admin.$disconnect();
+  };
+}
+
 async function main(): Promise<void> {
   const env = parseEnv();
   console.log(`[workers] booted (env=${env.NODE_ENV}).`);
@@ -254,6 +303,7 @@ async function main(): Promise<void> {
   registerConversationIntel(env.REDIS_URL, env.DATABASE_URL);
   registerMemoryExtraction(env.REDIS_URL, env.DATABASE_URL);
   registerQaScoring(env.REDIS_URL, env.DATABASE_URL);
+  registerWorkflowExecution(env.REDIS_URL, env.DATABASE_URL);
 }
 
 void main();

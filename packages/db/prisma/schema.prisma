@@ -244,6 +244,9 @@ model Tenant {
   marketplaceReviews   MarketplaceReview[]   @relation("MarketplaceReviewer")
   developerApps        DeveloperApp[]        @relation("AppDeveloper")
   appInstalls          AppInstall[]          @relation("AppInstaller")
+  workflows            Workflow[]
+  workflowRuns         WorkflowRun[]
+  workflowRunSteps     WorkflowRunStep[]
   flows               Flow[]
   flowVersions        FlowVersion[]
   transcripts         Transcript[]
@@ -1543,6 +1546,68 @@ model AppInstall {
   @@unique([installerTenantId, appId])
   @@index([installerTenantId])
   @@index([appId])
+}
+
+/// A visual workflow automation (Day 85) — a DAG of trigger/condition/action/delay/end nodes that
+/// automates a cross-system business process. The graph is validated ACYCLIC before it can go active;
+/// `triggerEvent` is denormalized so an incoming event can index the workflows that might fire.
+model Workflow {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @db.Uuid
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name         String
+  graph        Json     @default("{\"nodes\":[],\"edges\":[]}") // {nodes, edges}
+  triggerEvent String? // denormalized trigger event (call_ended | disposition_set | lead_status_changed)
+  status       String   @default("draft") // draft | active | paused
+  version      Int      @default(1)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  runs WorkflowRun[]
+
+  @@index([tenantId])
+  @@index([tenantId, status, triggerEvent])
+}
+
+/// One execution of a workflow (Day 85) — durable + observable. `context` holds the trigger event +
+/// accumulated vars; `currentNodeId` is the checkpoint a retry/delay resumes from.
+model WorkflowRun {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @db.Uuid
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workflowId    String   @db.Uuid
+  workflow      Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  status        String   @default("running") // running | waiting | completed | failed
+  context       Json     @default("{}") // { event, vars }
+  currentNodeId String? // the node to resume at (checkpoint) — null before the first advance
+  stepCount     Int      @default(0)
+  error         String?
+  startedAt     DateTime @default(now())
+  finishedAt    DateTime?
+
+  steps WorkflowRunStep[]
+
+  @@index([tenantId, workflowId])
+  @@index([tenantId, status])
+}
+
+/// One executed node in a run (Day 85) — the observability log. Records the node, its outcome, and any
+/// detail, so an operator can see exactly what a run did and why.
+model WorkflowRunStep {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  runId     String   @db.Uuid
+  run       WorkflowRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  nodeId    String
+  nodeType  String // TRIGGER | CONDITION | ACTION | DELAY | END
+  status    String // ok | skipped | error | branched | waiting
+  detail    String?
+  attempt   Int      @default(1)
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, runId])
+  @@index([runId])
 }
 
 /// A fraud/abuse case (Day 70) — the auditable record of an automated enforcement + its review.

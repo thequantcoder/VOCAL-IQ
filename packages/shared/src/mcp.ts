@@ -70,6 +70,32 @@ function isPrivateIpv4(host: string): boolean {
   return false;
 }
 
+/**
+ * A host that is an IP-address literal in a NON-canonical form (bare integer `2130706433`, hex
+ * `0x7f000001`, or a short-form dotted quad `127.1`). The OS resolver expands these to real addresses
+ * (often loopback/private), so they'd slip past the dotted-quad private check — block them outright.
+ */
+function isAmbiguousNumericHost(host: string): boolean {
+  const canonicalIpv4 = /^(\d{1,3}\.){3}\d{1,3}$/;
+  if (canonicalIpv4.test(host)) return false; // handled by isPrivateIpv4
+  if (/^\d+$/.test(host)) return true; // bare integer
+  if (/^0x[0-9a-f]+$/i.test(host)) return true; // hex
+  if (/^[0-9.]+$/.test(host)) return true; // digits+dots but not a canonical quad (e.g. 127.1, 10.0)
+  return false;
+}
+
+/** Blocked IPv6 literals: loopback/unspecified, IPv4-mapped (any), ULA (fc00::/7), link-local (fe80::/10). */
+function isBlockedIpv6(host: string): boolean {
+  const s = host.replace(/^\[/, '').replace(/\]$/, '').toLowerCase();
+  if (!s.includes(':')) return false;
+  if (s === '::1' || s === '::') return true; // loopback + unspecified
+  if (s.includes(':ffff:') || s.startsWith('::ffff:')) return true; // any IPv4-mapped address
+  const first = s.split(':')[0] ?? '';
+  if (/^f[cd][0-9a-f]*$/.test(first)) return true; // fc00::/7 unique-local
+  if (/^fe[89ab][0-9a-f]*$/.test(first)) return true; // fe80::/10 link-local
+  return false;
+}
+
 export interface UrlCheck {
   ok: boolean;
   reason?: string;
@@ -100,7 +126,8 @@ export function checkPublicHttpUrl(raw: string): UrlCheck {
   if (host.endsWith('.internal') || host.endsWith('.local')) {
     return { ok: false, reason: 'internal hostname' };
   }
-  if (host === '[::1]' || host === '::1') return { ok: false, reason: 'loopback address' };
+  if (isBlockedIpv6(host)) return { ok: false, reason: 'private or link-local IPv6 address' };
+  if (isAmbiguousNumericHost(host)) return { ok: false, reason: 'ambiguous numeric host' };
   if (isPrivateIpv4(host)) return { ok: false, reason: 'private or link-local address' };
   return { ok: true };
 }
