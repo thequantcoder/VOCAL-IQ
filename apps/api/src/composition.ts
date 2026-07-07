@@ -44,6 +44,7 @@ import { KeyPoolService } from './keypool/keypool.service';
 import { LatencyService } from './latency/latency.service';
 import { LaunchService } from './launch/launch.service';
 import { LeadsService } from './leads/leads.service';
+import { LearningService } from './learning/learning.service';
 import { MarketplaceService } from './marketplace/marketplace.service';
 import { McpService } from './mcp/mcp.service';
 import { httpMcpTransport } from './mcp/transport';
@@ -224,6 +225,18 @@ export function createServices() {
     },
   );
 
+  // Learn-from-top-reps (Day 89): distils an agent's best consent-eligible calls into persona
+  // improvements. The single analysis routes through the metered RouterService (rule #4 — no un-metered
+  // LLM path); the prompt treats transcripts strictly as data (self-audit A, injection defence).
+  const learning = new LearningService(db, agents, async ({ tenantId, system, user }) => {
+    const result = await routerSvc.complete({
+      tenantId,
+      system,
+      messages: [{ role: 'user', content: user }],
+    });
+    return { text: result.text, model: result.model };
+  });
+
   const plans = new PlansService(db);
   const billingWebhook = new BillingWebhookService(db);
   const processor = new PendingBillingProcessor();
@@ -302,6 +315,7 @@ export function createServices() {
     analyticsApi,
     analyticsExport,
     translation,
+    learning,
     disclosure,
     email,
     reputation,

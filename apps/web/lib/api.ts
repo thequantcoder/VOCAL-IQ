@@ -4113,3 +4113,83 @@ export function useTranslateTranscript(callId: string) {
       qc.invalidateQueries({ queryKey: ['translation', 'transcript', callId, targetLanguage] }),
   });
 }
+
+// ── Learn from top reps (Day 89) ─────────────────────────────────────────────────
+export interface LearningSettings {
+  enabled: boolean;
+}
+export interface LearningPattern {
+  kind: string;
+  insight: string;
+  example?: string;
+}
+export interface LearningSuggestion {
+  id: string;
+  title: string;
+  text: string;
+  applied: boolean;
+}
+export interface LearningRun {
+  id: string;
+  agentId: string;
+  status: string;
+  callsUsed: number;
+  callsExcluded: number;
+  patterns: LearningPattern[];
+  suggestions: LearningSuggestion[];
+  model: string | null;
+  createdAt: string;
+}
+
+export function useLearningSettings() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['learning', 'settings'],
+    queryFn: () => apiFetch<LearningSettings>(getToken, '/learning/settings'),
+  });
+}
+export function useSetLearningSettings() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: LearningSettings) =>
+      apiFetch<LearningSettings>(getToken, '/learning/settings', {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['learning', 'settings'] }),
+  });
+}
+export function useLearningRuns(agentId: string) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['learning', 'runs', agentId],
+    queryFn: () => apiFetch<LearningRun[]>(getToken, `/learning/agents/${agentId}/runs`),
+    enabled: Boolean(agentId),
+  });
+}
+export function useAnalyzeAgent(agentId: string) {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<LearningRun>(getToken, `/learning/agents/${agentId}/analyze`, { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['learning', 'runs', agentId] }),
+  });
+}
+export function useApplySuggestion(agentId: string) {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { runId: string; suggestionId: string }) =>
+      apiFetch<{ applied: boolean; agentId: string }>(
+        getToken,
+        `/learning/runs/${vars.runId}/suggestions/${vars.suggestionId}/apply`,
+        { method: 'POST' },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['learning', 'runs', agentId] });
+      qc.invalidateQueries({ queryKey: ['agents', agentId] });
+    },
+  });
+}

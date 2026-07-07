@@ -71,6 +71,11 @@ export default function AgentsPage() {
                       Chat
                     </Button>
                   </Link>
+                  <Link href={`/dashboard/agents/${agent.id}/learning`}>
+                    <Button variant="ghost" size="sm">
+                      Learn
+                    </Button>
+                  </Link>
                   <Link href={`/dashboard/agents/${agent.id}/builder`}>
                     <Button variant="secondary" size="sm">
                       Build
