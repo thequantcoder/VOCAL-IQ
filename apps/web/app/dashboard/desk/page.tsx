@@ -4,6 +4,7 @@ import { Button, Card, CardContent, CardHeader, CardTitle } from '@vocaliq/ui';
 import { Headphones, PhoneIncoming } from 'lucide-react';
 import { useState } from 'react';
 import { CoachPanel } from '../../../components/coach-panel';
+import { LiveCaptions } from '../../../components/live-captions';
 import { EmptyState, ErrorState, LoadingCard } from '../../../components/states';
 import { useDeskQueue, useSetPresence } from '../../../lib/api';
 
@@ -109,6 +110,9 @@ export default function DeskPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Live translated captions (Day 88) — only when the tenant enabled translation. */}
+      <LiveCaptions />
 
       {/* Whisper copilot for the call this agent is on (the assigned one, else the first waiting). */}
       {(() => {

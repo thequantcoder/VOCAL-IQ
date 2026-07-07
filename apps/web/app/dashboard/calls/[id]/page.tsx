@@ -1,7 +1,8 @@
 'use client';
 
+import { languageLabel } from '@vocaliq/shared';
 import { Button, Card, CardContent, CardHeader, CardTitle, Waveform, cn } from '@vocaliq/ui';
-import { ArrowLeft, BookMarked, ClipboardCheck, Sparkles } from 'lucide-react';
+import { ArrowLeft, BookMarked, ClipboardCheck, Languages, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -10,9 +11,13 @@ import { StatusBadge, formatDuration, formatUsd } from '../../../../components/u
 import {
   type CallDetail,
   type CostBreakdown,
+  type TranscriptSegment,
   useCall,
   useCallQaScores,
+  useOperatorLanguage,
   useScoreCallNow,
+  useTranscriptTranslation,
+  useTranslateTranscript,
 } from '../../../../lib/api';
 
 const SENTIMENT_STYLE: Record<string, string> = {
@@ -104,58 +109,117 @@ export default function CallDetailPage() {
             <SourcesCard transcript={data.transcript} />
           ) : null}
 
-          <Card>
-            <CardHeader className="flex-row items-center justify-between">
-              <CardTitle>Transcript</CardTitle>
-              {data.transcript?.cleanSegments && data.transcript.cleanSegments.length > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => setShowClean((v) => !v)}
-                  className="rounded-vq-pill border border-vq-border px-2.5 py-1 text-vq-text-lo text-xs hover:text-vq-text-hi"
-                >
-                  {showClean ? 'Showing clean · view raw' : 'Showing raw · view clean'}
-                </button>
-              ) : null}
-            </CardHeader>
-            <CardContent>
-              {(() => {
-                const clean = data.transcript?.cleanSegments;
-                const segs =
-                  showClean && clean && clean.length > 0 ? clean : data.transcript?.segments;
-                return segs && segs.length > 0 ? (
-                  <ol className="flex flex-col gap-3">
-                    {segs.map((seg) => (
-                      <li key={`${seg.startMs}:${seg.endMs}:${seg.speaker}`}>
-                        <button
-                          type="button"
-                          onClick={() => seekTo(seg.startMs)}
-                          title="Jump to this moment"
-                          className="flex w-full flex-col gap-0.5 rounded-vq px-2 py-1 text-left hover:bg-vq-bg-elevated"
-                        >
-                          <span
-                            className={cn(
-                              'font-medium text-xs uppercase tracking-wide',
-                              seg.speaker === 'agent' ? 'text-vq-violet' : 'text-vq-cyan',
-                            )}
-                          >
-                            {seg.speaker} · {formatDuration(Math.floor(seg.startMs / 1000))}
-                          </span>
-                          <span className="font-mono text-sm text-vq-text-hi">{seg.text}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ol>
-                ) : (
-                  <p className="text-sm text-vq-text-lo">
-                    No transcript yet — it’s captured live during the call.
-                  </p>
-                );
-              })()}
-            </CardContent>
-          </Card>
+          <TranscriptCard
+            callId={id}
+            transcript={data.transcript}
+            showClean={showClean}
+            setShowClean={setShowClean}
+            seekTo={seekTo}
+          />
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * Transcript with a clean/raw toggle AND a dual-language translation toggle (Day 88). "Translate"
+ * renders the transcript in the operator's working language while the native transcript is preserved.
+ */
+function TranscriptCard({
+  callId,
+  transcript,
+  showClean,
+  setShowClean,
+  seekTo,
+}: {
+  callId: string;
+  transcript: CallDetail['transcript'];
+  showClean: boolean;
+  setShowClean: (fn: (v: boolean) => boolean) => void;
+  seekTo: (ms: number) => void;
+}) {
+  const [translated, setTranslated] = useState(false);
+  const lang = useOperatorLanguage();
+  const target = lang.data?.targetLanguage ?? 'en';
+  const stored = useTranscriptTranslation(callId, target, translated);
+  const doTranslate = useTranslateTranscript(callId);
+
+  const clean = transcript?.cleanSegments;
+  const nativeSegs = showClean && clean && clean.length > 0 ? clean : (transcript?.segments ?? []);
+  const translatedSegs = (stored.data?.segments ?? null) as TranscriptSegment[] | null;
+  const segs = translated && translatedSegs ? translatedSegs : nativeSegs;
+
+  return (
+    <Card>
+      <CardHeader className="flex-row items-center justify-between gap-2">
+        <CardTitle>Transcript</CardTitle>
+        <div className="flex items-center gap-2">
+          {transcript && (
+            <button
+              type="button"
+              onClick={async () => {
+                if (!translated && !translatedSegs) await doTranslate.mutateAsync(target);
+                setTranslated((v) => !v);
+              }}
+              disabled={doTranslate.isPending}
+              className={cn(
+                'flex items-center gap-1 rounded-vq-pill border px-2.5 py-1 text-xs',
+                translated
+                  ? 'border-vq-cyan/50 text-vq-cyan'
+                  : 'border-vq-border text-vq-text-lo hover:text-vq-text-hi',
+              )}
+            >
+              <Languages size={12} />
+              {doTranslate.isPending
+                ? 'Translating…'
+                : translated
+                  ? `In ${languageLabel(target)} · view original`
+                  : `Translate → ${languageLabel(target)}`}
+            </button>
+          )}
+          {clean && clean.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setShowClean((v) => !v)}
+              className="rounded-vq-pill border border-vq-border px-2.5 py-1 text-vq-text-lo text-xs hover:text-vq-text-hi"
+            >
+              {showClean ? 'clean · raw' : 'raw · clean'}
+            </button>
+          ) : null}
+        </div>
+      </CardHeader>
+      <CardContent>
+        {segs && segs.length > 0 ? (
+          <ol className="flex flex-col gap-3">
+            {segs.map((seg, i) => (
+              <li key={`${seg.startMs}:${seg.speaker}:${i}`}>
+                <button
+                  type="button"
+                  onClick={() => seekTo(seg.startMs)}
+                  title="Jump to this moment"
+                  className="flex w-full flex-col gap-0.5 rounded-vq px-2 py-1 text-left hover:bg-vq-bg-elevated"
+                >
+                  <span
+                    className={cn(
+                      'font-medium text-xs uppercase tracking-wide',
+                      seg.speaker === 'agent' ? 'text-vq-violet' : 'text-vq-cyan',
+                    )}
+                  >
+                    {seg.speaker} · {formatDuration(Math.floor((seg.startMs ?? 0) / 1000))}
+                  </span>
+                  <span className="font-mono text-sm text-vq-text-hi">{seg.text}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="text-sm text-vq-text-lo">
+            No transcript yet — it’s captured live during the call.
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
