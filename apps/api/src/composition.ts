@@ -1,3 +1,4 @@
+import { buildTranslationPrompt } from '@vocaliq/shared';
 import { AbuseService } from './abuse/abuse.service';
 import { AgentsService } from './agents/agents.service';
 import { AnalyticsApiService } from './analytics-api/analytics-api.service';
@@ -76,6 +77,7 @@ import { TemplatesService } from './templates/templates.service';
 import { TenantService } from './tenancy/tenant.service';
 import { TestsService, routerGrader } from './tests/tests.service';
 import { TranscriptionService } from './transcription/transcription.service';
+import { TranslationService } from './translation/translation.service';
 import { RoutingDefaultsService } from './vault/routing-defaults.service';
 import { VaultService } from './vault/vault.service';
 import { VoicesService, elevenLabsCloner } from './voices/voices.service';
@@ -207,6 +209,21 @@ export function createServices() {
     return { text: result.text, model: result.model };
   });
 
+  // Real-time translation: every translation routes through the metered RouterService (rule #4 — no
+  // un-metered LLM path). The prompt pins the model to a faithful translation (self-audit A).
+  const translation = new TranslationService(
+    db,
+    async ({ tenantId, sourceLanguage, targetLanguage, text }) => {
+      const { system, user } = buildTranslationPrompt(sourceLanguage, targetLanguage, text);
+      const result = await routerSvc.complete({
+        tenantId,
+        system,
+        messages: [{ role: 'user', content: user }],
+      });
+      return { translatedText: result.text, model: result.model };
+    },
+  );
+
   const plans = new PlansService(db);
   const billingWebhook = new BillingWebhookService(db);
   const processor = new PendingBillingProcessor();
@@ -284,6 +301,7 @@ export function createServices() {
     benchmarking,
     analyticsApi,
     analyticsExport,
+    translation,
     disclosure,
     email,
     reputation,

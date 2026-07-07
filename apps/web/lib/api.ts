@@ -4037,3 +4037,79 @@ export function useDeleteExportSchedule() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['export-schedules'] }),
   });
 }
+
+// ── Real-time translation (Day 88) ────────────────────────────────────────────
+
+export interface OperatorLanguage {
+  targetLanguage: string;
+  enabled: boolean;
+}
+export interface CaptionResult {
+  text: string;
+  cached: boolean;
+  passthrough: boolean;
+}
+export interface TranscriptTranslation {
+  id: string;
+  callId: string;
+  targetLang: string;
+  segments: TranscriptSegment[];
+  summary: string | null;
+  model: string | null;
+  createdAt: string;
+}
+
+export function useOperatorLanguage() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['translation', 'language'],
+    queryFn: () => apiFetch<OperatorLanguage>(getToken, '/translation/language'),
+  });
+}
+export function useSetOperatorLanguage() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: OperatorLanguage) =>
+      apiFetch<OperatorLanguage>(getToken, '/translation/language', {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['translation', 'language'] }),
+  });
+}
+export function useTranslateCaption() {
+  const { getToken } = useAuth();
+  return useMutation({
+    mutationFn: (body: { text: string; sourceLanguage?: string; targetLanguage: string }) =>
+      apiFetch<CaptionResult>(getToken, '/translation/caption', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+  });
+}
+export function useTranscriptTranslation(callId: string, lang: string, enabled: boolean) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['translation', 'transcript', callId, lang],
+    queryFn: () =>
+      apiFetch<TranscriptTranslation | null>(
+        getToken,
+        `/translation/calls/${callId}/translation?lang=${lang}`,
+      ),
+    enabled: enabled && Boolean(callId) && Boolean(lang),
+  });
+}
+export function useTranslateTranscript(callId: string) {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (targetLanguage: string) =>
+      apiFetch<TranscriptTranslation>(getToken, `/translation/calls/${callId}/translate`, {
+        method: 'POST',
+        body: JSON.stringify({ targetLanguage }),
+      }),
+    onSuccess: (_d, targetLanguage) =>
+      qc.invalidateQueries({ queryKey: ['translation', 'transcript', callId, targetLanguage] }),
+  });
+}

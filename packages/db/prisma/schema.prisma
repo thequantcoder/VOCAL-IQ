@@ -249,6 +249,8 @@ model Tenant {
   workflowRunSteps     WorkflowRunStep[]
   analyticsExports     AnalyticsExport[]
   exportSchedules      ExportSchedule[]
+  transcriptTranslations TranscriptTranslation[]
+  translationCache       TranslationCache[]
   flows               Flow[]
   flowVersions        FlowVersion[]
   transcripts         Transcript[]
@@ -1665,6 +1667,41 @@ model ExportSchedule {
 
   @@index([tenantId])
   @@index([active, cadence])
+}
+
+/// A translated transcript (Day 88) — a call's segments + summary rendered into an operator's working
+/// language, stored alongside the native transcript (dual-language). One per (call, target language).
+model TranscriptTranslation {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @db.Uuid
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  callId     String   @db.Uuid
+  targetLang String
+  segments   Json     @default("[]") // translated [{speaker, text, startMs, ...}]
+  summary    String?
+  model      String? // the model that served the translation (audit)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([callId, targetLang])
+  @@index([tenantId])
+}
+
+/// The translation cache (Day 88) — a deduped utterance→translation store keyed by content hash +
+/// target language, so identical text (a repeated caption, a re-run transcript) is translated ONCE
+/// (instant + free on repeat — self-audit F/D). Tenant-scoped.
+model TranslationCache {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @db.Uuid
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sourceHash String
+  sourceLang String   @default("auto") // the (detected/declared) source language — part of the key so
+  targetLang String //                    identical text in DIFFERENT source languages never collides
+  text       String   @db.Text // the translated text
+  createdAt  DateTime @default(now())
+
+  @@unique([tenantId, sourceHash, sourceLang, targetLang])
+  @@index([tenantId])
 }
 
 /// Agent Desk presence (Day 67) — a human agent's live availability + skills for transfer routing.

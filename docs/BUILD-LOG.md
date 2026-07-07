@@ -2747,3 +2747,37 @@ J. Quality/docs: ✅ — the "stored exports always masked; raw PII only via the
 K. Build/CI: ✅ — `pnpm build` exits 0; migration applies on PG 16; all gates green locally before push.
 
 Enterprises can now pull governed voice analytics into their BI: a scoped, rate-limited, PII-masked read API (`pii:read` to un-mask, live only) and masked CSV exports (on-demand + scheduled) — with formula-injection-safe CSVs, composite-keyset pagination that never loses rows, and strict tenant isolation. DoD CONFIRMED. Next: Day 88.
+
+## Day 88 — Real-Time Language Translation (Caller ↔ Operator) — 2026-07-07 — ✅ DONE — 🟣 PHASE 6
+Model: Opus (🧠 OPUS day). Branch `day/88-realtime-translation`. Prereq: Day 25 (multilingual) · Day 9 (loop) — present; **translation-capable model = the existing LLM keys via the Provider Router (no new env)**. Migration `20260707230000_day88_translation` (TranscriptTranslation + TranslationCache + RLS). Self-audit focus **A (fidelity) + F (real-time) + D (cost) + B.**
+
+A business serves any language without multilingual staff: the caller is answered natively (Day 25); the operator sees **live translated captions + dual-language transcripts** in their working language. Every translation routes through the **metered Provider Router** (rule #4 — no un-metered LLM path), reusing the QaCompleter injectable pattern.
+
+Built (DONE):
+- **shared** `translation.ts` (pure): **`buildTranslationPrompt`** (fidelity — pins the model to translate ONLY + treats the caller's text as DATA, never instructions → prompt-injection defence), **`sanitizeTranslation`**, **`hashText`** (64-bit content hash for the dedupe cache), **`needsTranslation`** (skip same-language → no spend), `baseLang`, the language catalogue + schemas. **7 unit tests** incl. injection-as-data + dedupe hash.
+- **db/migration**: `TranscriptTranslation` (a call's segments + summary in a target language — **dual-language**, per (call, targetLang)) + `TranslationCache` (deduped utterance→translation keyed by **(tenant, sourceHash, sourceLang, targetLang)**) + RLS.
+- **api** `TranslationService` (injects a metered `Translator` port): operator working language (tenant.settings); **`caption`** (live — same-language passthrough, cache hit, else metered translate + cache); **`translateTranscript`** (RLS-load segments, translate each reusing the cache, store dual-language + translated summary, **native transcript preserved**). Router-backed Translator wired in composition. Routes `/translation/*` (language read any-member / set config-writer; caption any-member; transcript-translate config-writer + segment-capped). **7 RLS-real tests**: operator language, **cache dedupe** (identical utterance → no re-translation), **source-language cache separation** (same text, different source → no wrong translation), same-language passthrough (no spend), injection-as-data, dual-language store (native preserved), isolation.
+- **web**: a **dual-language transcript toggle** on the call detail (Translate → operator language / view original, native preserved); a **live-captions card** on the Agent Desk (translates each caller utterance, shows `cached`); a **translation settings** page (operator working language + enable). Nav entry.
+
+Verification: shared **637** tests, api **418** tests, workers 42, full **typecheck 12/12**, **lint 12/12** (warnings only), **build 8/8**. Migration applies on PG 16.
+
+**Adversarial review (focused reviewer; fidelity/injection, cache correctness, metering, isolation).** It confirmed the injection defence (caller text is the user message, never concatenated into the system prompt), metering (no un-metered path; cache checked before the model; same-language skipped), isolation (RLS on both tables; foreign callId → NotFound), and native-transcript preservation all hold, and found **4 real issues — all fixed**:
+- **(major, the priority bug) the cache key omitted the source language** → identical text in different source languages (homographs like es "burro"=donkey vs it "burro"=butter) collided and served the WRONG translation. **Fix:** added `sourceLang` (declared, else script-detected) to the cache key + unique index; added a source-separation test.
+- **(major, cost/DoS) `translateTranscript` was unbounded + not gated.** **Fix:** capped at `MAX_TRANSLATE_SEGMENTS`=1000 + gated the route to config-writer.
+- **(minor→major, cache poisoning) an empty model response was cached** (permanently blanking a caption). **Fix:** never cache an empty translation; fall back to the native text.
+- **(minor) a re-translate wiped the stored `model` audit field** (all cache hits → model null). **Fix:** keep the existing model on a re-run. The remaining minor (`sanitizeTranslation` over/under-stripping edge cases) is accepted as fidelity noise (output is displayed as data, never executed).
+
+## Self-Audit — Day 88 (A–K)
+A. Translation fidelity (focus): ✅ — the prompt pins the model to a faithful translation + treats the caller's message as DATA (never an instruction — injection-tested); output is sanitized; the **cache is keyed by source language** so a homograph never serves the wrong translation; the native transcript is always preserved (true dual-language).
+B. Isolation (focus): ✅ — RLS `tenant_isolation` on TranscriptTranslation + TranslationCache; every read/write is `db.withTenant`-scoped; a foreign callId → NotFound; the cache lookup includes tenantId — no cross-tenant reuse.
+C. Governance: ✅ — set-language + transcript-translate are config-writer; caption (a live operator tool, one bounded utterance) is any-member.
+D. Cost (focus): ✅ — every real translation routes through the **metered RouterService** (no un-metered LLM path); the cache is checked BEFORE the model (dedupe = no repeat spend); same-language input is skipped entirely; transcript translation is segment-capped.
+E. Errors/obs: ✅ — Zod-validated caption/language input; typed Validation/NotFound; the stored translation records the serving model.
+F. Real-time (focus): ✅ — identical utterances are translated ONCE + served from cache instantly (proven — model-call count); the live-caption path is one bounded call + a cache lookup.
+G. Error handling: ✅ — an empty model output falls back to the native text (never a blank caption, never cached); concurrent cache writes resolve via the unique row; a huge transcript truncates rather than runs away.
+H. UI/a11y: ✅ — a dual-language transcript toggle, a live-captions card, a language-settings page; labelled controls; cyan "live/translated" cue; design tokens + dark mode.
+I. Regression: ✅ — additive: new pure module, two new tables, a new api service/routes, new web components/pages/nav; reuses the QaCompleter metered-router pattern + Day-25 languages. 637 shared + 418 api + 42 workers green.
+J. Quality/docs: ✅ — the metered-router translation path, the source-keyed dedupe cache, and the injection-as-data contract are documented in code; the caller-native / operator-translated model is explicit.
+K. Build/CI: ✅ — `pnpm build` exits 0; migration applies on PG 16 (two tables + RLS + the source-keyed unique index); all gates green locally before push.
+
+A business can now serve any language without multilingual staff: callers are answered natively while operators read live translated captions + dual-language transcripts in their own language — every translation metered, deduped (source-keyed so homographs never mistranslate), injection-hardened, and tenant-isolated. DoD CONFIRMED. Next: Day 89.

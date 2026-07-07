@@ -74,6 +74,7 @@ import { superAdminRoutes } from './superadmin/superadmin.routes';
 import { templatesRoutes } from './templates/templates.routes';
 import { tenantRoutes } from './tenancy/tenant.routes';
 import { testsRoutes } from './tests/tests.routes';
+import { translationRoutes } from './translation/translation.routes';
 import { vaultRoutes } from './vault/vault.routes';
 import { voicesRoutes } from './voices/voices.routes';
 import { walletRoutes } from './wallet/wallet.routes';
@@ -161,6 +162,7 @@ function bootstrap(): void {
   app.use('/apps', developerAppsRoutes(s.developerApps, s.tenants));
   app.use('/workflows', workflowsRoutes(s.workflows, s.tenants));
   app.use('/benchmarking', benchmarkingRoutes(s.benchmarking, s.tenants));
+  app.use('/translation', translationRoutes(s.translation, s.tenants));
   app.use('/disclosure', disclosureRoutes(s.disclosure, s.tenants));
   app.use('/email', emailRoutes(s.email, s.tenants));
   app.get('/u/:token', unsubscribeHandler(s.email));
