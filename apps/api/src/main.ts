@@ -44,6 +44,7 @@ import { keyPoolRoutes } from './keypool/keypool.routes';
 import { latencyRoutes } from './latency/latency.routes';
 import { launchRoutes, statusRoutes } from './launch/launch.routes';
 import { leadsRoutes } from './leads/leads.routes';
+import { learningRoutes } from './learning/learning.routes';
 import { marketplaceRoutes } from './marketplace/marketplace.routes';
 import { mcpRoutes } from './mcp/mcp.routes';
 import { memoryRoutes } from './memory/memory.routes';
@@ -163,6 +164,7 @@ function bootstrap(): void {
   app.use('/workflows', workflowsRoutes(s.workflows, s.tenants));
   app.use('/benchmarking', benchmarkingRoutes(s.benchmarking, s.tenants));
   app.use('/translation', translationRoutes(s.translation, s.tenants));
+  app.use('/learning', learningRoutes(s.learning, s.tenants));
   app.use('/disclosure', disclosureRoutes(s.disclosure, s.tenants));
   app.use('/email', emailRoutes(s.email, s.tenants));
   app.get('/u/:token', unsubscribeHandler(s.email));

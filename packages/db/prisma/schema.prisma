@@ -251,6 +251,7 @@ model Tenant {
   exportSchedules      ExportSchedule[]
   transcriptTranslations TranscriptTranslation[]
   translationCache       TranslationCache[]
+  learningRuns           LearningRun[]
   flows               Flow[]
   flowVersions        FlowVersion[]
   transcripts         Transcript[]
@@ -1702,6 +1703,27 @@ model TranslationCache {
 
   @@unique([tenantId, sourceHash, sourceLang, targetLang])
   @@index([tenantId])
+}
+
+/// A learning run (Day 89) — an analysis of an agent's TOP consent-eligible calls that distilled winning
+/// patterns + proposed persona improvements. Suggestions carry an `applied` flag; applying one appends it
+/// to the agent's system prompt (a reviewed, then test-validated, change). Tenant-scoped via RLS.
+model LearningRun {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @db.Uuid
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agentId       String   @db.Uuid
+  status        String   @default("ready") // ready | failed | empty
+  callsUsed     Int      @default(0)
+  callsExcluded Int      @default(0) // excluded by the consent gate (audit)
+  patterns      Json     @default("[]")
+  suggestions   Json     @default("[]") // [{ id, title, text, applied }]
+  model         String?
+  error         String?
+  createdAt     DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, agentId])
 }
 
 /// Agent Desk presence (Day 67) — a human agent's live availability + skills for transfer routing.
