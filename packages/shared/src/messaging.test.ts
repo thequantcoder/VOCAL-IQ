@@ -74,6 +74,12 @@ describe('smsSegments + messageCostUsd', () => {
     expect(messageCostUsd('SMS', 'a'.repeat(161))).toBeGreaterThan(messageCostUsd('SMS', 'hi'));
     expect(messageCostUsd('WHATSAPP', 'anything')).toBe(messageCostUsd('WHATSAPP', 'x'));
   });
+  it('prices the new channels: RCS per-message, Telegram/Messenger/Instagram free (Day 93)', () => {
+    expect(messageCostUsd('RCS', 'hi')).toBeGreaterThan(0);
+    expect(messageCostUsd('TELEGRAM', 'hi')).toBe(0);
+    expect(messageCostUsd('MESSENGER', 'hi')).toBe(0);
+    expect(messageCostUsd('INSTAGRAM', 'hi')).toBe(0);
+  });
 });
 
 describe('blendedNextStep', () => {

@@ -1493,7 +1493,7 @@ export function useScoreCallNow(callId: string) {
 
 // ── Messaging (Day 44) ─────────────────────────────────────────────────────────
 
-export type MessageChannel = 'WHATSAPP' | 'SMS';
+export type MessageChannel = 'WHATSAPP' | 'SMS' | 'TELEGRAM' | 'MESSENGER' | 'INSTAGRAM' | 'RCS';
 
 export interface MessageTemplate {
   id: string;

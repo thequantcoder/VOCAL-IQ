@@ -141,3 +141,21 @@ describe('MessagingService.updateStatus', () => {
     expect(c1Messages.some((m) => m.body === 'parent only')).toBe(false);
   });
 });
+
+describe('Day 93 channels — per-channel opt-out + gated dispatch', () => {
+  it('opt-out is per channel: opting out of TELEGRAM does not block SMS', async () => {
+    const to = 'tg-9001';
+    await svc.recordInbound(C1, { channel: 'TELEGRAM', from: to, body: 'STOP' });
+    expect(await svc.isOptedOut(C1, 'TELEGRAM', to)).toBe(true);
+    expect(await svc.isOptedOut(C1, 'SMS', to)).toBe(false);
+    // A TELEGRAM send to the opted-out contact is refused.
+    await expect(svc.send(C1, { channel: 'TELEGRAM', to, body: 'hi' })).rejects.toThrow();
+  });
+
+  it('records a QUEUED message when the channel has no configured sender (gated)', async () => {
+    const msg = await svc.send(C1, { channel: 'INSTAGRAM', to: 'ig-777', body: 'hello there' });
+    expect(msg.channel).toBe('INSTAGRAM');
+    expect(msg.status).toBe('QUEUED');
+    expect(msg.error).toContain('No messaging provider');
+  });
+});

@@ -53,6 +53,9 @@ import { mcpRoutes } from './mcp/mcp.routes';
 import { memoryRoutes } from './memory/memory.routes';
 import {
   messagingRoutes,
+  metaMessagingWebhookHandler,
+  rcsWebhookHandler,
+  telegramWebhookHandler,
   twilioWebhookHandler,
   whatsappWebhookHandler,
 } from './messaging/messaging.routes';
@@ -122,6 +125,37 @@ function bootstrap(): void {
     '/public/messaging/twilio/:tenantId',
     express.urlencoded({ extended: false }),
     twilioWebhookHandler(s.messaging),
+  );
+
+  // Day 93 channels — all verified over the RAW body (Meta HMAC / RCS HMAC) or a header secret
+  // (Telegram), so they register before the JSON parser too. Per-tenant path.
+  app.post(
+    '/public/messaging/telegram/:tenantId',
+    express.raw({ type: '*/*' }),
+    telegramWebhookHandler(s.messaging),
+  );
+  app.get(
+    '/public/messaging/messenger/:tenantId',
+    metaMessagingWebhookHandler(s.messaging, 'MESSENGER'),
+  );
+  app.post(
+    '/public/messaging/messenger/:tenantId',
+    express.raw({ type: '*/*' }),
+    metaMessagingWebhookHandler(s.messaging, 'MESSENGER'),
+  );
+  app.get(
+    '/public/messaging/instagram/:tenantId',
+    metaMessagingWebhookHandler(s.messaging, 'INSTAGRAM'),
+  );
+  app.post(
+    '/public/messaging/instagram/:tenantId',
+    express.raw({ type: '*/*' }),
+    metaMessagingWebhookHandler(s.messaging, 'INSTAGRAM'),
+  );
+  app.post(
+    '/public/messaging/rcs/:tenantId',
+    express.raw({ type: '*/*' }),
+    rcsWebhookHandler(s.messaging),
   );
 
   app.use(express.json({ limit: '5mb' }));

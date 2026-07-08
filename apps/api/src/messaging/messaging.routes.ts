@@ -1,4 +1,10 @@
-import { type MessageStatus, ValidationError, messageTemplateInputSchema } from '@vocaliq/shared';
+import {
+  type MessageChannel,
+  type MessageStatus,
+  TEXT_MESSAGE_CHANNELS,
+  ValidationError,
+  messageTemplateInputSchema,
+} from '@vocaliq/shared';
 import { type Request, type Response, Router } from 'express';
 import { z } from 'zod';
 import { ah } from '../http/async-handler';
@@ -8,11 +14,16 @@ import { tenantMiddleware } from '../http/tenant.middleware';
 import { CONFIG_WRITERS } from '../tenancy/roles';
 import type { TenantService } from '../tenancy/tenant.service';
 import type { MessagingService } from './messaging.service';
-import { verifyMetaSignature, verifyTwilioSignature } from './webhook-verify';
+import {
+  verifyMetaSignature,
+  verifyRcsSignature,
+  verifyTelegramSecret,
+  verifyTwilioSignature,
+} from './webhook-verify';
 
 const sendSchema = z.object({
-  channel: z.enum(['WHATSAPP', 'SMS']),
-  to: z.string().min(3).max(32),
+  channel: z.enum(TEXT_MESSAGE_CHANNELS),
+  to: z.string().min(1).max(200),
   templateId: z.string().uuid().optional(),
   body: z.string().min(1).max(1024).optional(),
   variables: z.record(z.string(), z.string()).optional(),
@@ -195,5 +206,113 @@ interface MetaWebhook {
         statuses?: { id?: string; status?: string }[];
       };
     }[];
+    // Messenger/Instagram deliver messages under `entry[].messaging[]` (not `changes`).
+    messaging?: {
+      sender?: { id?: string };
+      message?: { mid?: string; text?: string };
+    }[];
   }[];
+}
+
+/**
+ * Telegram Bot webhook (Day 93). Verified by the `X-Telegram-Bot-Api-Secret-Token` shared secret
+ * (set on `setWebhook`), constant-time. Gated: 503 when `TELEGRAM_WEBHOOK_SECRET` is unset. Inbound
+ * text is recorded (+ opt-out/opt-in keywords). Tenant from the per-tenant path.
+ */
+export function telegramWebhookHandler(messaging: MessagingService) {
+  return ah(async (req: Request, res: Response) => {
+    const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
+    if (!secret) return res.status(503).json({ error: 'messaging not configured' });
+    if (!verifyTelegramSecret(req.header('X-Telegram-Bot-Api-Secret-Token'), secret)) {
+      return res.status(403).json({ error: 'invalid signature' });
+    }
+    const tenantId = req.params.tenantId as string;
+    const raw = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : JSON.stringify(req.body);
+    const update = JSON.parse(raw) as {
+      message?: { message_id?: number; text?: string; chat?: { id?: number } };
+    };
+    const m = update.message;
+    if (m?.chat?.id !== undefined && m.text !== undefined) {
+      await messaging.recordInbound(tenantId, {
+        channel: 'TELEGRAM',
+        from: String(m.chat.id),
+        body: m.text,
+        ...(m.message_id !== undefined ? { providerMessageId: String(m.message_id) } : {}),
+      });
+    }
+    return res.status(200).end();
+  });
+}
+
+/**
+ * Meta Messenger + Instagram DM webhook (Day 93). Same GET challenge + `X-Hub-Signature-256` HMAC as
+ * WhatsApp (self-audit C). The channel is fixed per mounted path so inbound records to the right
+ * surface. Gated: 503 when the app secret for that channel is unset. RAW body required.
+ */
+export function metaMessagingWebhookHandler(
+  messaging: MessagingService,
+  channel: Extract<MessageChannel, 'MESSENGER' | 'INSTAGRAM'>,
+) {
+  const secretEnv = channel === 'MESSENGER' ? 'MESSENGER_APP_SECRET' : 'INSTAGRAM_APP_SECRET';
+  const verifyEnv = channel === 'MESSENGER' ? 'MESSENGER_VERIFY_TOKEN' : 'INSTAGRAM_VERIFY_TOKEN';
+  return ah(async (req: Request, res: Response) => {
+    if (req.method === 'GET') {
+      if (
+        req.query['hub.mode'] === 'subscribe' &&
+        req.query['hub.verify_token'] === process.env[verifyEnv]
+      ) {
+        return res.status(200).send(String(req.query['hub.challenge'] ?? ''));
+      }
+      return res.status(403).end();
+    }
+    const secret = process.env[secretEnv];
+    if (!secret) return res.status(503).json({ error: 'messaging not configured' });
+    const tenantId = req.params.tenantId as string;
+    const raw = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : JSON.stringify(req.body);
+    if (!verifyMetaSignature(raw, req.header('X-Hub-Signature-256'), secret)) {
+      return res.status(403).json({ error: 'invalid signature' });
+    }
+    const payload = JSON.parse(raw) as MetaWebhook;
+    for (const entry of payload.entry ?? []) {
+      for (const ev of entry.messaging ?? []) {
+        if (ev.sender?.id && ev.message?.text !== undefined) {
+          await messaging.recordInbound(tenantId, {
+            channel,
+            from: ev.sender.id,
+            body: ev.message.text,
+            ...(ev.message.mid ? { providerMessageId: ev.message.mid } : {}),
+          });
+        }
+      }
+    }
+    return res.status(200).end();
+  });
+}
+
+/**
+ * RCS provider webhook (Day 93). Verified by an `sha256` HMAC of the raw body with a shared signing
+ * secret (self-audit C), constant-time. Gated: 503 when `RCS_SIGNING_SECRET` is unset. RAW body
+ * required. The gateway payload shape varies; we read the common `from` + `text`.
+ */
+export function rcsWebhookHandler(messaging: MessagingService) {
+  return ah(async (req: Request, res: Response) => {
+    const secret = process.env.RCS_SIGNING_SECRET;
+    if (!secret) return res.status(503).json({ error: 'messaging not configured' });
+    const tenantId = req.params.tenantId as string;
+    const raw = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : JSON.stringify(req.body);
+    if (!verifyRcsSignature(raw, req.header('X-RCS-Signature'), secret)) {
+      return res.status(403).json({ error: 'invalid signature' });
+    }
+    const body = JSON.parse(raw) as { from?: string; sender?: string; text?: string; id?: string };
+    const from = body.from ?? body.sender;
+    if (from && body.text !== undefined) {
+      await messaging.recordInbound(tenantId, {
+        channel: 'RCS',
+        from,
+        body: body.text,
+        ...(body.id ? { providerMessageId: body.id } : {}),
+      });
+    }
+    return res.status(200).end();
+  });
 }

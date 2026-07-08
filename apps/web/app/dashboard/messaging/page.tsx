@@ -28,7 +28,8 @@ export default function MessagingPage() {
             <MessageSquare size={20} /> Messaging
           </h1>
           <p className="text-sm text-vq-text-lo">
-            WhatsApp/SMS templates + follow-ups. Live send activates once channel keys are set.
+            SMS, WhatsApp, Telegram, Messenger, Instagram &amp; RCS templates + follow-ups. Live
+            send activates once each channel's keys are set.
           </p>
         </div>
         <Button size="sm" onClick={() => setCreating((v) => !v)}>
@@ -120,6 +121,10 @@ function SendPanel({ templates }: { templates: MessageTemplate[] }) {
           >
             <option value="SMS">SMS</option>
             <option value="WHATSAPP">WhatsApp</option>
+            <option value="TELEGRAM">Telegram</option>
+            <option value="MESSENGER">Messenger</option>
+            <option value="INSTAGRAM">Instagram</option>
+            <option value="RCS">RCS</option>
           </select>
           <Input placeholder="+15551234567" value={to} onChange={(e) => setTo(e.target.value)} />
         </div>
@@ -220,6 +225,10 @@ function CreateTemplate({ onDone }: { onDone: () => void }) {
           >
             <option value="SMS">SMS</option>
             <option value="WHATSAPP">WhatsApp</option>
+            <option value="TELEGRAM">Telegram</option>
+            <option value="MESSENGER">Messenger</option>
+            <option value="INSTAGRAM">Instagram</option>
+            <option value="RCS">RCS</option>
           </select>
           <Input
             placeholder="name_in_snake_case"

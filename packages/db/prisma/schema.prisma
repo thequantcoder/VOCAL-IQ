@@ -161,6 +161,10 @@ enum MessageChannel {
   WHATSAPP
   SMS
   EMAIL
+  TELEGRAM
+  MESSENGER
+  INSTAGRAM
+  RCS
 }
 
 enum MessageDirection {
