@@ -14,6 +14,7 @@ import { apiKeyRoutes } from './api-keys/api-key.routes';
 import { appointmentsRoutes } from './appointments/appointments.routes';
 import { authRoutes } from './auth/auth.routes';
 import { automationsRoutes } from './automations/automations.routes';
+import { avatarRoutes } from './avatars/avatar.routes';
 import { benchmarkingRoutes } from './benchmarking/benchmarking.routes';
 import { billingRoutes, billingWebhookHandler } from './billing/billing.routes';
 import { outcomeBillingRoutes } from './billing/outcome-billing.routes';
@@ -169,6 +170,7 @@ function bootstrap(): void {
   app.use('/learning', learningRoutes(s.learning, s.tenants));
   app.use('/copilot', copilotRoutes(s.copilot, s.tenants));
   app.use('/biometrics', biometricsRoutes(s.biometrics, s.tenants));
+  app.use('/avatars', avatarRoutes(s.avatars, s.tenants));
   app.use('/disclosure', disclosureRoutes(s.disclosure, s.tenants));
   app.use('/email', emailRoutes(s.email, s.tenants));
   app.get('/u/:token', unsubscribeHandler(s.email));

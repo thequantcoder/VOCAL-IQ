@@ -256,6 +256,8 @@ model Tenant {
   battlecards            Battlecard[]
   voiceprints            Voiceprint[]
   voiceprintAudits       VoiceprintAudit[]
+  avatars                Avatar[]
+  avatarSessions         AvatarSession[]
   flows               Flow[]
   flowVersions        FlowVersion[]
   transcripts         Transcript[]
@@ -1354,6 +1356,48 @@ model VoiceprintAudit {
   createdAt DateTime @default(now())
 
   @@index([tenantId, contactId])
+}
+
+/// A digital-human / video avatar in a tenant's catalogue (Day 92). A `custom` avatar is a real
+/// person's likeness → it carries a `likenessConsentAt` (consent is required to create it). Tenant-
+/// scoped via RLS.
+model Avatar {
+  id               String    @id @default(uuid()) @db.Uuid
+  tenantId         String    @db.Uuid
+  tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name             String
+  provider         String // the avatar/video provider (e.g. heygen | d-id | mock)
+  providerAvatarId String // the provider's opaque avatar/actor id
+  kind             String    @default("stock") // stock | custom
+  likenessConsentAt DateTime? // set when a custom (real-likeness) avatar is consented
+  active           Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([tenantId])
+}
+
+/// A video-avatar session (Day 92) — a rendered digital human on a video/web channel. Video is
+/// expensive + plan-gated: a session either runs as `video` (metered per second) or AUTO-FALLS BACK to
+/// `voice` when the plan/provider/avatar isn't available. Cost is attributed to the tenant. RLS-scoped.
+model AvatarSession {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @db.Uuid
+  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agentId        String?   @db.Uuid
+  avatarId       String?   @db.Uuid
+  mode           String    @default("voice") // video | voice
+  fallback       Boolean   @default(false)
+  fallbackReason String? // plan | provider_unavailable | no_avatar
+  status         String    @default("active") // active | ended
+  seconds        Int       @default(0)
+  costUsd        Float     @default(0)
+  providerRef    String? // the provider's session handle (video only)
+  createdAt      DateTime  @default(now())
+  endedAt        DateTime?
+
+  @@index([tenantId])
+  @@index([tenantId, status])
 }
 
 /// A business signal mined from a call transcript (Day 75) — objection/buying/competitor/etc.
