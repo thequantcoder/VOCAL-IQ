@@ -25,6 +25,7 @@ import { chatRoutes } from './chat/chat.routes';
 import { coachRoutes } from './coach/coach.routes';
 import { complianceRoutes } from './compliance/compliance.routes';
 import { createServices } from './composition';
+import { copilotRoutes } from './copilot/copilot.routes';
 import { costRoutes } from './cost/cost.routes';
 import { deskRoutes } from './desk/desk.routes';
 import { developerAppsRoutes } from './developer-apps/developer-apps.routes';
@@ -165,6 +166,7 @@ function bootstrap(): void {
   app.use('/benchmarking', benchmarkingRoutes(s.benchmarking, s.tenants));
   app.use('/translation', translationRoutes(s.translation, s.tenants));
   app.use('/learning', learningRoutes(s.learning, s.tenants));
+  app.use('/copilot', copilotRoutes(s.copilot, s.tenants));
   app.use('/disclosure', disclosureRoutes(s.disclosure, s.tenants));
   app.use('/email', emailRoutes(s.email, s.tenants));
   app.get('/u/:token', unsubscribeHandler(s.email));

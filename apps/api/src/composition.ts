@@ -24,6 +24,7 @@ import { CampaignsService } from './campaigns/campaigns.service';
 import { ChatService } from './chat/chat.service';
 import { CoachService } from './coach/coach.service';
 import { ComplianceService } from './compliance/compliance.service';
+import { CopilotService } from './copilot/copilot.service';
 import { CostService } from './cost/cost.service';
 import { buildEncryptor } from './crypto/envelope';
 import { PrismaService } from './db/prisma.service';
@@ -210,6 +211,18 @@ export function createServices() {
     return { text: result.text, model: result.model };
   });
 
+  // Live Co-Pilot for human sales teams (Day 90): the standalone wedge product. Live assist + the
+  // post-call CRM draft route through the metered RouterService (rule #4); every suggestion is
+  // agent-only whisper (self-audit C — never spoken to the caller).
+  const copilot = new CopilotService(db, async ({ tenantId, system, user }) => {
+    const result = await routerSvc.complete({
+      tenantId,
+      system,
+      messages: [{ role: 'user', content: user }],
+    });
+    return { text: result.text, model: result.model };
+  });
+
   // Real-time translation: every translation routes through the metered RouterService (rule #4 — no
   // un-metered LLM path). The prompt pins the model to a faithful translation (self-audit A).
   const translation = new TranslationService(
@@ -316,6 +329,7 @@ export function createServices() {
     analyticsExport,
     translation,
     learning,
+    copilot,
     disclosure,
     email,
     reputation,
