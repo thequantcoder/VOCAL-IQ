@@ -3,6 +3,7 @@
  * One source of truth for enums, env validation, the typed error model, Zod DTOs,
  * Result helpers, tenant-scoped query keys, constants, and cost-attribution types.
  */
+export * from './avatar.js';
 export * from './benchmarking.js';
 export * from './biometrics.js';
 export * from './coaching.js';

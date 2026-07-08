@@ -4423,3 +4423,90 @@ export function useEraseVoiceprint() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['biometrics', 'audits'] }),
   });
 }
+
+// ── Digital-human / video avatars (Day 92) ───────────────────────────────────────
+export interface Avatar {
+  id: string;
+  name: string;
+  provider: string;
+  providerAvatarId: string;
+  kind: string;
+  likenessConsentAt: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface AvatarSession {
+  id: string;
+  agentId: string | null;
+  avatarId: string | null;
+  mode: string;
+  fallback: boolean;
+  fallbackReason: string | null;
+  status: string;
+  seconds: number;
+  costUsd: number;
+  providerRef: string | null;
+  createdAt: string;
+  endedAt: string | null;
+  decision?: { mode: string; fallback: boolean; reason?: string };
+}
+
+export function useAvatars() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['avatars'],
+    queryFn: () => apiFetch<Avatar[]>(getToken, '/avatars'),
+  });
+}
+export function useCreateAvatar() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      name: string;
+      providerAvatarId: string;
+      provider?: string;
+      kind?: string;
+      likenessConsent?: boolean;
+    }) => apiFetch<Avatar>(getToken, '/avatars', { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['avatars'] }),
+  });
+}
+export function useDeleteAvatar() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ id: string }>(getToken, `/avatars/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['avatars'] }),
+  });
+}
+export function useAvatarSessions() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['avatars', 'sessions'],
+    queryFn: () => apiFetch<AvatarSession[]>(getToken, '/avatars/sessions'),
+  });
+}
+export function useStartAvatarSession() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { avatarId?: string; agentId?: string; requestVideo?: boolean }) =>
+      apiFetch<AvatarSession>(getToken, '/avatars/sessions', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['avatars', 'sessions'] }),
+  });
+}
+export function useEndAvatarSession() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<AvatarSession>(getToken, `/avatars/sessions/${id}/end`, { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['avatars', 'sessions'] }),
+  });
+}

@@ -1,4 +1,4 @@
-import { buildTranslationPrompt } from '@vocaliq/shared';
+import { buildTranslationPrompt, planAllowsVideoAvatar } from '@vocaliq/shared';
 import { AbuseService } from './abuse/abuse.service';
 import { AgentsService } from './agents/agents.service';
 import { AnalyticsApiService } from './analytics-api/analytics-api.service';
@@ -9,6 +9,11 @@ import { AppointmentsService } from './appointments/appointments.service';
 import { AuthService } from './auth/auth.service';
 import { AutomationsService } from './automations/automations.service';
 import { buildActionExecutors } from './automations/executors';
+import {
+  AvatarService,
+  mockAvatarProvider,
+  unavailableAvatarProvider,
+} from './avatars/avatar.service';
 import { BenchmarkingService } from './benchmarking/benchmarking.service';
 import { EntitlementsService } from './billing/entitlements.service';
 import { OutcomeBillingService } from './billing/outcome-billing.service';
@@ -233,6 +238,15 @@ export function createServices() {
   // a real vendor swaps into this seam when VOICE_BIOMETRICS_API_KEY is set (gated external dep).
   const biometrics = new BiometricsService(db, encryptor, deterministicVoiceprintProvider());
 
+  // Video-avatar agents (Day 92): plan-gated + metered per second, with graceful voice fallback. The
+  // avatar/video vendor is gated — `unavailable` by default (so video safely falls back to voice), and a
+  // real provider (HeyGen/D-ID/Tavus-class) swaps into this seam when AVATAR_PROVIDER_API_KEY is set.
+  const avatars = new AvatarService(
+    db,
+    async (tid) => planAllowsVideoAvatar((await entitlements.entitlements(tid)).features),
+    process.env.AVATAR_PROVIDER_API_KEY ? mockAvatarProvider() : unavailableAvatarProvider(),
+  );
+
   // Real-time translation: every translation routes through the metered RouterService (rule #4 — no
   // un-metered LLM path). The prompt pins the model to a faithful translation (self-audit A).
   const translation = new TranslationService(
@@ -341,6 +355,7 @@ export function createServices() {
     learning,
     copilot,
     biometrics,
+    avatars,
     disclosure,
     email,
     reputation,
