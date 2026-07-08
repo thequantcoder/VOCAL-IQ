@@ -4334,3 +4334,92 @@ export function useDeleteBattlecard() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['copilot', 'battlecards'] }),
   });
 }
+
+// ── Voice biometrics (Day 91) ────────────────────────────────────────────────────
+export interface BiometricSettings {
+  enabled: boolean;
+  allowedRegions: string[];
+  threshold: number;
+  minLiveness: number;
+  retentionDays: number;
+}
+export interface BiometricAudit {
+  id: string;
+  contactId: string;
+  event: string;
+  outcome: string | null;
+  score: number | null;
+  liveness: number | null;
+  region: string | null;
+  createdAt: string;
+}
+export interface VerifyDecision {
+  outcome: 'verified' | 'step_up' | 'spoof';
+  verified: boolean;
+  needsStepUp: boolean;
+  score: number;
+  liveness: number;
+}
+
+export function useBiometricSettings() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['biometrics', 'settings'],
+    queryFn: () => apiFetch<BiometricSettings>(getToken, '/biometrics/settings'),
+  });
+}
+export function useSetBiometricSettings() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: BiometricSettings) =>
+      apiFetch<BiometricSettings>(getToken, '/biometrics/settings', {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['biometrics', 'settings'] }),
+  });
+}
+export function useBiometricAudits(contactId?: string) {
+  const { getToken } = useAuth();
+  const qs = contactId ? `?contactId=${encodeURIComponent(contactId)}` : '';
+  return useQuery({
+    queryKey: ['biometrics', 'audits', contactId ?? 'all'],
+    queryFn: () => apiFetch<BiometricAudit[]>(getToken, `/biometrics/audits${qs}`),
+  });
+}
+export function useEnrollVoiceprint() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { contactId: string; region: string; consent: true; sample: string }) =>
+      apiFetch<{ contactId: string; dims: number }>(getToken, '/biometrics/enroll', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['biometrics', 'audits'] }),
+  });
+}
+export function useVerifyVoiceprint() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { contactId: string; region: string; sample: string }) =>
+      apiFetch<VerifyDecision>(getToken, '/biometrics/verify', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['biometrics', 'audits'] }),
+  });
+}
+export function useEraseVoiceprint() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (contactId: string) =>
+      apiFetch<{ erased: number }>(getToken, `/biometrics/contacts/${contactId}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['biometrics', 'audits'] }),
+  });
+}

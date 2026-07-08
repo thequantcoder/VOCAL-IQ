@@ -254,6 +254,8 @@ model Tenant {
   learningRuns           LearningRun[]
   copilotSessions        CopilotSession[]
   battlecards            Battlecard[]
+  voiceprints            Voiceprint[]
+  voiceprintAudits       VoiceprintAudit[]
   flows               Flow[]
   flowVersions        FlowVersion[]
   transcripts         Transcript[]
@@ -1315,6 +1317,43 @@ model Battlecard {
   updatedAt     DateTime @updatedAt
 
   @@index([tenantId])
+}
+
+/// An enrolled caller voiceprint (Day 91) — voice-biometric identity for secure flows. The embedding
+/// is stored ENCRYPTED at rest (envelope encryption) in `vector` and is NEVER returned raw. Enrollment
+/// requires explicit biometric consent (`consentAt`) and is region-gated. Tenant-scoped via RLS.
+model Voiceprint {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contactId String // the enrolled identity (contact/customer ref)
+  region    String // the region the enrollment was captured + is legal in
+  provider  String // the biometrics provider that produced the embedding (audit)
+  dims      Int // embedding dimensionality (audit; the raw vector is never exposed)
+  vector    Bytes // the embedding, envelope-encrypted — never stored or returned in the clear
+  consentAt DateTime // when explicit biometric consent was recorded
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, contactId]) // one active enrollment per contact
+  @@index([tenantId])
+}
+
+/// An immutable audit of every biometric action (Day 91) — enroll / verify / erase. Records the
+/// outcome + scores (never the raw sample or embedding). Tenant-scoped via RLS.
+model VoiceprintAudit {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contactId String
+  event     String // enroll | verify | erase
+  outcome   String? // verified | step_up | spoof | enrolled | erased
+  score     Float?
+  liveness  Float?
+  region    String?
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, contactId])
 }
 
 /// A business signal mined from a call transcript (Day 75) — objection/buying/competitor/etc.
