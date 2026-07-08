@@ -16,6 +16,10 @@ import { PlanBuilderService } from './billing/plan-builder.service';
 import { PlansService } from './billing/plans.service';
 import { PendingBillingProcessor } from './billing/processor';
 import { BillingWebhookService } from './billing/webhook.service';
+import {
+  BiometricsService,
+  deterministicVoiceprintProvider,
+} from './biometrics/biometrics.service';
 import { CallbacksService } from './callbacks/callbacks.service';
 import { CallsReadService } from './calls/calls-read.service';
 import { PendingDialer } from './calls/dialer';
@@ -223,6 +227,12 @@ export function createServices() {
     return { text: result.text, model: result.model };
   });
 
+  // Voice biometrics (Day 91): OFF + region-deny by default per tenant. The voiceprint embedding is
+  // envelope-encrypted at rest (self-audit C) and never returned raw. The provider that turns audio
+  // into an embedding + liveness is injected — the local deterministic provider serves self-host/tests;
+  // a real vendor swaps into this seam when VOICE_BIOMETRICS_API_KEY is set (gated external dep).
+  const biometrics = new BiometricsService(db, encryptor, deterministicVoiceprintProvider());
+
   // Real-time translation: every translation routes through the metered RouterService (rule #4 — no
   // un-metered LLM path). The prompt pins the model to a faithful translation (self-audit A).
   const translation = new TranslationService(
@@ -330,6 +340,7 @@ export function createServices() {
     translation,
     learning,
     copilot,
+    biometrics,
     disclosure,
     email,
     reputation,

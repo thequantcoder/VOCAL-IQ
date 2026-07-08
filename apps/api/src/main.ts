@@ -18,6 +18,7 @@ import { benchmarkingRoutes } from './benchmarking/benchmarking.routes';
 import { billingRoutes, billingWebhookHandler } from './billing/billing.routes';
 import { outcomeBillingRoutes } from './billing/outcome-billing.routes';
 import { planBuilderRoutes } from './billing/plan-builder.routes';
+import { biometricsRoutes } from './biometrics/biometrics.routes';
 import { callbacksRoutes } from './callbacks/callbacks.routes';
 import { callsRoutes } from './calls/calls.routes';
 import { campaignsRoutes } from './campaigns/campaigns.routes';
@@ -167,6 +168,7 @@ function bootstrap(): void {
   app.use('/translation', translationRoutes(s.translation, s.tenants));
   app.use('/learning', learningRoutes(s.learning, s.tenants));
   app.use('/copilot', copilotRoutes(s.copilot, s.tenants));
+  app.use('/biometrics', biometricsRoutes(s.biometrics, s.tenants));
   app.use('/disclosure', disclosureRoutes(s.disclosure, s.tenants));
   app.use('/email', emailRoutes(s.email, s.tenants));
   app.get('/u/:token', unsubscribeHandler(s.email));
