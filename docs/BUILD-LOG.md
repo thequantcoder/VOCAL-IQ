@@ -2907,3 +2907,33 @@ J. Quality/docs: ✅ — the plan-gate + graceful-fallback decision, the per-sec
 K. Build/CI: ✅ — `pnpm build` exits 0; migration applies on PG 16 (two tables + RLS); all gates green locally before push. Live avatar vendor remains an admin decision (voice fallback until then).
 
 Video-avatar agents now put a photoreal digital human on web/video — plan-gated with automatic voice fallback, likeness-consent-gated, and metered per second — a high-'wow' upsell for reception/kiosk/premium use, with the real avatar vendor a config-only swap once `AVATAR_PROVIDER_API_KEY` lands. DoD CONFIRMED (engine). Next: Day 93.
+
+## Day 93 — Additional Channels: Telegram, Messenger, Instagram DM, RCS — 2026-07-08 — ✅ DONE (adapters; live sends gated) — ⚡ SONNET — 🟣 PHASE 6
+Model: Sonnet (⚡ — extends the Day-44 abstraction). Branch `day/93-telegram-messenger-rcs`. Prereq: Day 44 (messaging abstraction) · Day 45 (multimodal) — present. Migration `20260708090000_day93_channels` (extend the `MessageChannel` enum). Self-audit focus **C (webhook verify, opt-out per channel) + B + D.** **Admin action for LIVE sends/inbound** (`TELEGRAM_BOT_TOKEN`/`TELEGRAM_WEBHOOK_SECRET`, `MESSENGER_PAGE_ACCESS_TOKEN`/`MESSENGER_APP_SECRET`/`MESSENGER_VERIFY_TOKEN`, `INSTAGRAM_*`, `RCS_API_URL`/`RCS_API_TOKEN`/`RCS_SIGNING_SECRET`) — each channel is gated: with no keys a send is recorded QUEUED (not dispatched) and its webhook returns 503, so the app runs without them (memory: [[messaging-channels-live-test-pending]]).
+
+Extend the same agent runtime to **Telegram, Facebook Messenger, Instagram DM, and RCS** — the Day-44 messaging service is already channel-generic (send picks the adapter by channel; opt-out, cost, and campaign channelMix are channel-agnostic), so this day is almost entirely new **adapters + webhook verification** behind the existing seam.
+
+Built (DONE):
+- **shared** `messaging.ts`: extended `MessageChannel` (+ `TELEGRAM|MESSENGER|INSTAGRAM|RCS`), added `TEXT_MESSAGE_CHANNELS` (drives the template + channelMix enums so campaigns can blend any channel), and rewrote `messageCostUsd` as an explicit per-channel switch — SMS per-segment, WhatsApp + **RCS** per-message, Telegram/Messenger/Instagram **free ($0)**, unknown → $0 (no silent over-bill — self-audit D). 3 new cost tests (14 total).
+- **db/migration**: `ALTER TYPE "MessageChannel" ADD VALUE` for the four channels (idempotent, PG16-safe — new values not used in the same tx).
+- **api** `senders.ts`: `TelegramSender` (Bot API `sendMessage`), `MetaMessagingSender` (Messenger + Instagram share the Graph `/me/messages` Send API — one class, channel-parameterised), `RcsSender` (provider gateway, bearer). `buildSenders` extended — each channel built ONLY when its creds are set (gated). `webhook-verify.ts`: `verifyTelegramSecret` (the `X-Telegram-Bot-Api-Secret-Token` shared secret, constant-time) + `verifyRcsSignature` (HMAC-SHA256, accepts `sha256=`/bare-hex); Messenger/Instagram reuse `verifyMetaSignature`. `messaging.routes.ts`: `telegramWebhookHandler`, `metaMessagingWebhookHandler` (channel-parameterised, GET challenge + POST inbound under `entry[].messaging[]`), `rcsWebhookHandler` — all verified, all gated (503 without secrets), per-tenant path. Mounted in `main.ts` (raw-body, before the JSON parser). Send route widened to all text channels + a longer `to` (Telegram chat ids / Meta PSIDs).
+- **web**: the Messaging page's send + template channel pickers now offer Telegram/Messenger/Instagram/RCS; `MessageChannel` type + copy updated.
+
+Verification: shared **671** tests, api **456** tests (senders +5, webhook-verify +2, service +2), workers 42, db 7, provider-router 22 green; full **typecheck 12/12**, **lint 12/12** (warnings only), **build 8/8**. Migration applies on PG 16.
+
+**Adversarial self-review (webhook verify, opt-out isolation, cost, gating).** Confirmed: every new inbound webhook verifies its signature/secret constant-time and 503s when unconfigured (no unauthenticated write path); opt-out is **per (tenant, channel)** — a Telegram STOP never suppresses SMS, and vice-versa (proven); cost is explicit per channel (free channels bill $0, unknown → $0 — no over-bill); a channel with no creds records QUEUED, never silently "sent"; isolation unchanged (RLS). No defects found — a clean extension of the Day-44 seam.
+
+## Self-Audit — Day 93 (A–K)
+A. Correctness: ✅ — each adapter posts the provider's real payload shape (verified against fake HTTP) + maps SENT/FAILED without throwing; the generic service path (render → opt-out → dispatch → meter → persist) is unchanged + already tested.
+B. Isolation (focus): ✅ — no new tables; all sends/inbound/opt-out remain `db.withTenant`-scoped; webhooks route by the per-tenant path; a child never sees a parent's messages (existing test still green).
+C. Webhook verify + per-channel opt-out (focus): ✅ — Telegram (header secret), Messenger/Instagram (Meta X-Hub-Signature-256), RCS (HMAC) all constant-time-verified + gated to 503 without secrets; opt-out/opt-in keywords classify inbound on every channel and suppress **per channel** (unique (tenant, channel, phone)).
+D. Cost (focus): ✅ — explicit per-channel pricing (SMS per-segment, WhatsApp/RCS per-message, Telegram/Messenger/Instagram free); unknown channel → $0; cost metered on every outbound + attributed to the tenant.
+E. Errors/obs: ✅ — Zod-validated send/template input across all channels; adapters return typed FAILED with a truncated provider error; a missing provider → QUEUED + a clear error string.
+F. Performance: ✅ — one HTTP call per send with an 8s timeout; webhooks do bounded work per update.
+G. Error handling: ✅ — a non-2xx or thrown fetch → FAILED (never crashes the send); an unverified webhook → 403; an unconfigured channel → 503 / QUEUED.
+H. UI/a11y: ✅ — the send + template channel dropdowns list all six channels; labelled; copy updated; design tokens + dark mode.
+I. Regression: ✅ — additive: extend one enum + one pure module + the senders/verify/routes; reuse the entire Day-44 service. 671 shared + 456 api + 42 workers + 7 db green; build 8/8.
+J. Quality/docs: ✅ — each adapter + verifier documents its provider contract; the gated-per-channel behaviour + the free-vs-paid cost model are documented in code + here.
+K. Build/CI: ✅ — `pnpm build` exits 0; the enum migration applies on PG 16; all gates green locally before push. Live channel keys remain an admin decision (QUEUED/503 until then).
+
+The same agent now serves customers on **SMS, WhatsApp, Telegram, Messenger, Instagram DM, and RCS** through one runtime — webhook-verified, per-channel opt-out, per-channel cost, blendable into campaigns — with each new surface a keys-only activation. DoD CONFIRMED (adapters). Next: Day 94.

@@ -1,6 +1,11 @@
 import { createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { verifyMetaSignature, verifyTwilioSignature } from './webhook-verify';
+import {
+  verifyMetaSignature,
+  verifyRcsSignature,
+  verifyTelegramSecret,
+  verifyTwilioSignature,
+} from './webhook-verify';
 
 /** Webhook signature verification (Day 44, self-audit C) — reject tampered/absent signatures. */
 
@@ -32,5 +37,26 @@ describe('verifyMetaSignature', () => {
     expect(verifyMetaSignature(body, header, SECRET)).toBe(true);
     expect(verifyMetaSignature(`${body} `, header, SECRET)).toBe(false);
     expect(verifyMetaSignature(body, undefined, SECRET)).toBe(false);
+  });
+});
+
+describe('verifyTelegramSecret (Day 93)', () => {
+  it('accepts the matching secret token, rejects a wrong/absent one', () => {
+    expect(verifyTelegramSecret('s3cret', 's3cret')).toBe(true);
+    expect(verifyTelegramSecret('wrong', 's3cret')).toBe(false);
+    expect(verifyTelegramSecret(undefined, 's3cret')).toBe(false);
+    expect(verifyTelegramSecret('s3cret', '')).toBe(false);
+  });
+});
+
+describe('verifyRcsSignature (Day 93)', () => {
+  const SECRET = 'rcs_signing_secret';
+  const body = '{"from":"+15551230000","text":"hi"}';
+  const hex = createHmac('sha256', SECRET).update(body).digest('hex');
+  it('accepts sha256= and bare-hex headers, rejects tampered/absent', () => {
+    expect(verifyRcsSignature(body, `sha256=${hex}`, SECRET)).toBe(true);
+    expect(verifyRcsSignature(body, hex, SECRET)).toBe(true);
+    expect(verifyRcsSignature(`${body} `, `sha256=${hex}`, SECRET)).toBe(false);
+    expect(verifyRcsSignature(body, undefined, SECRET)).toBe(false);
   });
 });

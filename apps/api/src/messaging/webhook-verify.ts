@@ -48,3 +48,31 @@ export function verifyMetaSignature(
   const expected = `sha256=${createHmac('sha256', appSecret).update(rawBody, 'utf8').digest('hex')}`;
   return safeEqual(expected, signatureHeader);
 }
+
+/**
+ * Verify a Telegram webhook (Day 93). Telegram echoes the `secret_token` you set on `setWebhook` in
+ * the `X-Telegram-Bot-Api-Secret-Token` header — a shared secret, compared constant-time. (Messenger
+ * + Instagram reuse {@link verifyMetaSignature} — same X-Hub-Signature-256 HMAC as WhatsApp.)
+ */
+export function verifyTelegramSecret(
+  headerToken: string | undefined,
+  expectedSecret: string,
+): boolean {
+  if (!headerToken || !expectedSecret) return false;
+  return safeEqual(headerToken, expectedSecret);
+}
+
+/**
+ * Verify an RCS provider webhook (Day 93). RCS gateways are provider-specific; the common shape is an
+ * `sha256=<hex>` HMAC of the raw body with a shared signing secret — verified constant-time here.
+ */
+export function verifyRcsSignature(
+  rawBody: string,
+  signatureHeader: string | undefined,
+  signingSecret: string,
+): boolean {
+  if (!signatureHeader || !signingSecret) return false;
+  const digest = createHmac('sha256', signingSecret).update(rawBody, 'utf8').digest('hex');
+  // Accept both `sha256=<hex>` and a bare hex header for gateway flexibility.
+  return safeEqual(`sha256=${digest}`, signatureHeader) || safeEqual(digest, signatureHeader);
+}

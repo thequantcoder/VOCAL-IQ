@@ -9,14 +9,31 @@ import { z } from 'zod';
  * the api, so nothing here needs live credentials — self-audit A + C.
  */
 
-export type MessageChannel = 'WHATSAPP' | 'SMS' | 'EMAIL';
+export type MessageChannel =
+  | 'WHATSAPP'
+  | 'SMS'
+  | 'EMAIL'
+  | 'TELEGRAM'
+  | 'MESSENGER'
+  | 'INSTAGRAM'
+  | 'RCS';
 export type MessageDirection = 'OUTBOUND' | 'INBOUND';
 export type MessageStatus = 'QUEUED' | 'SENT' | 'DELIVERED' | 'READ' | 'FAILED' | 'RECEIVED';
+
+/** The text channels an agent can serve + blend into campaigns (Day 44 + Day 93). */
+export const TEXT_MESSAGE_CHANNELS = [
+  'SMS',
+  'WHATSAPP',
+  'TELEGRAM',
+  'MESSENGER',
+  'INSTAGRAM',
+  'RCS',
+] as const;
 
 // ── Templates ─────────────────────────────────────────────────────────────────
 
 export const messageTemplateInputSchema = z.object({
-  channel: z.enum(['WHATSAPP', 'SMS']),
+  channel: z.enum(TEXT_MESSAGE_CHANNELS),
   name: z
     .string()
     .min(1)
@@ -104,11 +121,24 @@ export function smsSegments(text: string): number {
 // Indicative platform rates (USD). Re-verify per CLAUDE.md §13 before billing live.
 const SMS_PER_SEGMENT_USD = 0.0079;
 const WHATSAPP_PER_MESSAGE_USD = 0.005;
+const RCS_PER_MESSAGE_USD = 0.007; // carrier RCS carries a per-message cost
 
-/** Estimated cost of one outbound message on a channel, given its rendered text. */
+/**
+ * Estimated cost of one outbound message on a channel, given its rendered text. SMS is per-segment;
+ * WhatsApp + RCS are per-message; Telegram/Messenger/Instagram bot APIs are free (metered $0). Any
+ * unknown channel is $0 so a new channel can never silently over-bill (self-audit D).
+ */
 export function messageCostUsd(channel: MessageChannel, text: string): number {
-  if (channel === 'SMS') return Math.round(smsSegments(text) * SMS_PER_SEGMENT_USD * 1e6) / 1e6;
-  return WHATSAPP_PER_MESSAGE_USD;
+  switch (channel) {
+    case 'SMS':
+      return Math.round(smsSegments(text) * SMS_PER_SEGMENT_USD * 1e6) / 1e6;
+    case 'WHATSAPP':
+      return WHATSAPP_PER_MESSAGE_USD;
+    case 'RCS':
+      return RCS_PER_MESSAGE_USD;
+    default:
+      return 0; // TELEGRAM / MESSENGER / INSTAGRAM / EMAIL — free-tier or metered elsewhere
+  }
 }
 
 // ── Blended voice → text campaigns ────────────────────────────────────────────
@@ -117,7 +147,7 @@ export const channelMixSchema = z.object({
   voice: z.boolean().default(true),
   /** Send a text follow-up when the call ends in one of these outcomes. */
   textFallbackOn: z.array(z.string()).default([]),
-  textChannel: z.enum(['WHATSAPP', 'SMS']).default('SMS'),
+  textChannel: z.enum(TEXT_MESSAGE_CHANNELS).default('SMS'),
   templateId: z.string().uuid().nullish(),
 });
 export type ChannelMix = z.infer<typeof channelMixSchema>;
