@@ -7,6 +7,7 @@ export * from './benchmarking.js';
 export * from './coaching.js';
 export * from './constants.js';
 export * from './conversation-intel.js';
+export * from './copilot.js';
 export * from './custom-models.js';
 export * from './developer-app.js';
 export * from './dialer.js';

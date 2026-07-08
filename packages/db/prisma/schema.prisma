@@ -252,6 +252,8 @@ model Tenant {
   transcriptTranslations TranscriptTranslation[]
   translationCache       TranslationCache[]
   learningRuns           LearningRun[]
+  copilotSessions        CopilotSession[]
+  battlecards            Battlecard[]
   flows               Flow[]
   flowVersions        FlowVersion[]
   transcripts         Transcript[]
@@ -1271,6 +1273,48 @@ model CoachNote {
   createdAt   DateTime  @default(now())
 
   @@index([tenantId, callId])
+}
+
+/// A live Co-Pilot session on a HUMAN-led call (Day 90) — the standalone wedge product. Not tied to a
+/// VocalIQ Agent or Call: a rep runs it over their own softphone/SIP/web call. Holds the transcribed
+/// turns + a post-call CRM DRAFT the human confirms. Tenant-scoped via RLS.
+model CopilotSession {
+  id           String    @id @default(uuid()) @db.Uuid
+  tenantId     String    @db.Uuid
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId       String?   @db.Uuid // the rep (membership user) who owns the session
+  membershipId String?   @db.Uuid
+  title        String?
+  contactName  String?
+  company      String?
+  channel      String    @default("web") // web | sip | phone
+  status       String    @default("live") // live | ended
+  turns        Json      @default("[]") // [{ role: 'caller'|'agent', text }] — capped
+  crmDraft     Json? // { contactName, company, email, phone, summary, nextSteps[], disposition }
+  crmConfirmed Boolean   @default(false)
+  durationSec  Int       @default(0)
+  model        String? // the model that produced the CRM draft (audit)
+  createdAt    DateTime  @default(now())
+  endedAt      DateTime?
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+/// A tenant-authored competitor battlecard (Day 90) — cue keywords that surface it live + talking
+/// points the rep sees (agent-only). Tenant-scoped via RLS.
+model Battlecard {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @db.Uuid
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  competitor    String
+  cues          String[] // keywords/phrases that trigger the card
+  talkingPoints Json     @default("[]") // string[]
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([tenantId])
 }
 
 /// A business signal mined from a call transcript (Day 75) — objection/buying/competitor/etc.

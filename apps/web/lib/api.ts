@@ -4193,3 +4193,144 @@ export function useApplySuggestion(agentId: string) {
     },
   });
 }
+
+// ── Live Co-Pilot for human sales teams (Day 90) ─────────────────────────────────
+export interface CopilotTurn {
+  role: 'caller' | 'agent';
+  text: string;
+}
+// Reuses the CoachSuggestion type (Day 74) — the same agent-only whisper shape.
+export interface Battlecard {
+  id: string;
+  competitor: string;
+  cues: string[];
+  talkingPoints: string[];
+  active?: boolean;
+}
+export interface CrmDraft {
+  contactName?: string;
+  company?: string;
+  email?: string;
+  phone?: string;
+  summary: string;
+  nextSteps: string[];
+  disposition: string;
+}
+export interface CopilotSession {
+  id: string;
+  userId: string | null;
+  title: string | null;
+  contactName: string | null;
+  company: string | null;
+  channel: string;
+  status: string;
+  turns: CopilotTurn[];
+  crmDraft: CrmDraft | null;
+  crmConfirmed: boolean;
+  durationSec: number;
+  model: string | null;
+  createdAt: string;
+  endedAt: string | null;
+}
+export interface AssistResult {
+  suggestions: CoachSuggestion[];
+  battlecards: Battlecard[];
+}
+
+export function useCopilotSessions() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['copilot', 'sessions'],
+    queryFn: () => apiFetch<CopilotSession[]>(getToken, '/copilot/sessions'),
+  });
+}
+export function useCopilotSession(id: string) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['copilot', 'session', id],
+    queryFn: () => apiFetch<CopilotSession>(getToken, `/copilot/sessions/${id}`),
+    enabled: Boolean(id),
+  });
+}
+export function useStartCopilotSession() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      title?: string;
+      contactName?: string;
+      company?: string;
+      channel?: string;
+    }) =>
+      apiFetch<CopilotSession>(getToken, '/copilot/sessions', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['copilot', 'sessions'] }),
+  });
+}
+export function useCopilotAssist(sessionId: string) {
+  const { getToken } = useAuth();
+  return useMutation({
+    mutationFn: (body: { turns: CopilotTurn[]; sentiment?: number; hasQuote?: boolean }) =>
+      apiFetch<AssistResult>(getToken, `/copilot/sessions/${sessionId}/assist`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+  });
+}
+export function useEndCopilotSession(sessionId: string) {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { durationSec?: number }) =>
+      apiFetch<CopilotSession>(getToken, `/copilot/sessions/${sessionId}/end`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['copilot', 'session', sessionId] });
+      qc.invalidateQueries({ queryKey: ['copilot', 'sessions'] });
+    },
+  });
+}
+export function useConfirmCrm(sessionId: string) {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (edits: Partial<CrmDraft>) =>
+      apiFetch<CopilotSession>(getToken, `/copilot/sessions/${sessionId}/crm`, {
+        method: 'POST',
+        body: JSON.stringify(edits),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['copilot', 'session', sessionId] }),
+  });
+}
+export function useBattlecards() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['copilot', 'battlecards'],
+    queryFn: () => apiFetch<Battlecard[]>(getToken, '/copilot/battlecards'),
+  });
+}
+export function useCreateBattlecard() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { competitor: string; cues: string[]; talkingPoints: string[] }) =>
+      apiFetch<Battlecard>(getToken, '/copilot/battlecards', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['copilot', 'battlecards'] }),
+  });
+}
+export function useDeleteBattlecard() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ id: string }>(getToken, `/copilot/battlecards/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['copilot', 'battlecards'] }),
+  });
+}
