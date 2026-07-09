@@ -4,6 +4,7 @@ import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@vocali
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
+import { DevLogin } from '../../../components/dev-login';
 import { useAuth } from '../../../lib/auth';
 
 /** Self-hosted sign-in (email + password → JWT). Replaces Clerk. */
@@ -70,6 +71,13 @@ export default function SignInPage() {
               Create one
             </Link>
           </p>
+
+          <DevLogin
+            onFill={(e, p) => {
+              setEmail(e);
+              setPassword(p);
+            }}
+          />
         </CardContent>
       </Card>
     </main>
