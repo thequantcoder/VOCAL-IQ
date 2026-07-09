@@ -1,24 +1,30 @@
 'use client';
 
-import { MOTION_DURATIONS, MOTION_LEVELS, THEME_PRESETS } from '@vocaliq/shared';
-import { Card, CardContent, CardHeader, CardTitle } from '@vocaliq/ui';
-import { FlaskConical, Sparkles } from 'lucide-react';
+import { THEME_PRESETS } from '@vocaliq/shared';
+import { Button, Card, CardContent, CardHeader, CardTitle } from '@vocaliq/ui';
+import {
+  AnimatedNumber,
+  Collapse,
+  Fade,
+  Pop,
+  Reveal,
+  Stagger,
+  StaggerItem,
+  useMotionLevel,
+} from '@vocaliq/ui/motion';
+import { FlaskConical, RotateCw, Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 /**
- * Kitchen-sink / living component gallery (UX-00). Every new primitive from the UI/UX Elevation
- * Program is demoed here as it's built (motion engine, voice-motion, data-viz, theme presets…), with
- * reduced-motion toggles for QA. Dev-only: the content renders solely on localhost (or when
- * NEXT_PUBLIC_DEV_LOGIN=true) so it never appears on a real deployment. Sections fill in over UX-01+.
+ * Kitchen-sink / living component gallery (UX-00, motion added UX-01). Demos every primitive with a
+ * live motion-level toggle so we QA reduced-motion / off parity. Dev-only (localhost).
  */
 export default function KitchenSinkPage() {
   const [show, setShow] = useState(false);
-  const [reducedOS, setReducedOS] = useState(false);
 
   useEffect(() => {
     const h = window.location.hostname;
     setShow(h === 'localhost' || h === '127.0.0.1' || process.env.NEXT_PUBLIC_DEV_LOGIN === 'true');
-    setReducedOS(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   }, []);
 
   if (!show) {
@@ -36,26 +42,15 @@ export default function KitchenSinkPage() {
           <FlaskConical size={20} /> Component gallery
         </h1>
         <p className="text-sm text-vq-text-lo">
-          The living kitchen-sink for the UI/UX Elevation program — primitives land here as they're
-          built. OS reduced-motion is currently{' '}
-          <span className="text-vq-text-hi">{reducedOS ? 'ON' : 'off'}</span>.
+          Primitives from the UI/UX Elevation program. Flip the motion level to QA reduced/off
+          parity.
         </p>
       </div>
 
-      <Section title="Motion tokens (UX-00 contract)">
-        <div className="flex flex-wrap gap-2">
-          {Object.entries(MOTION_DURATIONS).map(([k, v]) => (
-            <Chip key={k}>
-              {k} · {v}ms
-            </Chip>
-          ))}
-          {MOTION_LEVELS.map((m) => (
-            <Chip key={m}>motion: {m}</Chip>
-          ))}
-        </div>
-      </Section>
+      <MotionControls />
+      <MotionPrimitives />
 
-      <Section title="Theme presets (UX-00 contract · applied in UX-12)">
+      <Section title="Theme presets (contract · applied in UX-12)">
         <div className="flex flex-wrap gap-2">
           {THEME_PRESETS.map((p) => (
             <Chip key={p}>{p}</Chip>
@@ -70,13 +65,112 @@ export default function KitchenSinkPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-vq-text-lo">
-          UX-01 mounts the motion engine + primitives (Reveal / Stagger / Pop / AnimatedNumber /
-          PageTransition) here; UX-02 adds the color/elevation/density swatches; UX-03 the component
-          kit; UX-04 the voice-motion set; UX-09 the data-viz gallery. This page is the QA surface
-          for all of it.
+          UX-02 adds color/elevation/density swatches; UX-03 the component kit; UX-04 the
+          voice-motion set; UX-09 the data-viz gallery.
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function MotionControls() {
+  const { level, setLevel } = useMotionLevel();
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Motion level</CardTitle>
+      </CardHeader>
+      <CardContent className="flex items-center gap-2">
+        {(['full', 'reduced', 'off'] as const).map((l) => (
+          <Button
+            key={l}
+            size="sm"
+            variant={level === l ? 'primary' : 'secondary'}
+            onClick={() => setLevel(l)}
+          >
+            {l}
+          </Button>
+        ))}
+        <span className="ml-2 text-vq-text-lo text-xs">
+          current: <span className="text-vq-text-hi">{level}</span> · mirrored to{' '}
+          <code className="text-vq-text-hi">html[data-motion]</code>
+        </span>
+      </CardContent>
+    </Card>
+  );
+}
+
+function MotionPrimitives() {
+  const [nonce, setNonce] = useState(0); // remount to replay entrances
+  const [open, setOpen] = useState(false);
+  const [n, setN] = useState(1240);
+
+  return (
+    <Card>
+      <CardHeader className="flex-row items-center justify-between">
+        <CardTitle className="text-base">Motion primitives</CardTitle>
+        <Button size="sm" variant="ghost" onClick={() => setNonce((v) => v + 1)}>
+          <RotateCw size={14} /> Replay
+        </Button>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-5">
+        <div key={nonce} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <Reveal className="rounded-vq border border-vq-border p-4 text-sm text-vq-text-lo">
+            <span className="text-vq-text-hi">Reveal</span> — fade + rise
+          </Reveal>
+          <Fade className="rounded-vq border border-vq-border p-4 text-sm text-vq-text-lo">
+            <span className="text-vq-text-hi">Fade</span> — opacity only
+          </Fade>
+          <Pop className="rounded-vq border border-vq-border p-4 text-sm text-vq-text-lo">
+            <span className="text-vq-text-hi">Pop</span> — scale-in
+          </Pop>
+        </div>
+
+        <div>
+          <p className="mb-2 text-vq-text-lo text-xs">Stagger + StaggerItem</p>
+          <Stagger key={`s-${nonce}`} className="flex flex-wrap gap-2">
+            {['Sales', 'Support', 'Booking', 'Surveys', 'Outbound', 'Inbound'].map((t) => (
+              <StaggerItem
+                key={t}
+                className="rounded-vq-pill border border-vq-border px-3 py-1.5 text-sm text-vq-text-hi"
+              >
+                {t}
+              </StaggerItem>
+            ))}
+          </Stagger>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-6">
+          <div className="flex items-center gap-2">
+            <span className="text-vq-text-lo text-xs">AnimatedNumber:</span>
+            <span className="font-display font-semibold text-2xl text-vq-text-hi">
+              <AnimatedNumber value={n} />
+            </span>
+            <Button size="sm" variant="secondary" onClick={() => setN(Math.round(n * 1.7 + 130))}>
+              +
+            </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-vq-text-lo text-xs">$ format:</span>
+            <span className="font-mono text-vq-text-hi">
+              <AnimatedNumber value={n / 100} format={(v) => `$${v.toFixed(2)}`} />
+            </span>
+          </div>
+        </div>
+
+        <div>
+          <Button size="sm" variant="secondary" onClick={() => setOpen((v) => !v)}>
+            Toggle Collapse
+          </Button>
+          <Collapse open={open}>
+            <p className="mt-2 rounded-vq border border-vq-border p-3 text-sm text-vq-text-lo">
+              Collapse content — animates by height (grid-rows), layout-safe, killed when motion is
+              off.
+            </p>
+          </Collapse>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

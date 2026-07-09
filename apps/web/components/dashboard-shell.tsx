@@ -2,6 +2,7 @@
 
 import { brandName, parseBranding } from '@vocaliq/shared';
 import { cn } from '@vocaliq/ui';
+import { PageTransition } from '@vocaliq/ui/motion';
 import {
   Activity,
   BarChart3,
@@ -195,8 +196,12 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         </header>
         {/* `key={pathname}` remounts on navigation so the entrance replays as a page transition
             (reduced-motion-safe — `.vq-reveal` is gated on no-preference). */}
-        <main key={pathname} className="vq-reveal min-w-0 flex-1 px-6 py-8">
-          <ErrorBoundary>{children}</ErrorBoundary>
+        {/* Page-enter motion via the UX-01 engine (replaces the ad-hoc `vq-reveal`); replays on
+            navigation via key={pathname}, and no-ops under reduced/off motion. */}
+        <main key={pathname} className="min-w-0 flex-1 px-6 py-8">
+          <ErrorBoundary>
+            <PageTransition>{children}</PageTransition>
+          </ErrorBoundary>
         </main>
       </div>
     </div>
