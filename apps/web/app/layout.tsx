@@ -19,9 +19,35 @@ const display = Space_Grotesk({
 const sans = Inter({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
 const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'swap' });
 
+const SITE_TITLE = 'VocalIQ — AI that picks up the phone';
+const SITE_DESC =
+  'Design an AI voice agent, put it on a number, and let it sell, support, and book — inbound and outbound, in any language, on every channel. White-label & self-hostable.';
+
 export const metadata: Metadata = {
-  title: 'VocalIQ — AI that picks up the phone',
-  description: 'Multi-tenant, white-label Agentic Voice AI SaaS.',
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://vocaliq.dev'),
+  title: { default: SITE_TITLE, template: '%s · VocalIQ' },
+  description: SITE_DESC,
+  applicationName: 'VocalIQ',
+  keywords: [
+    'AI voice agent',
+    'voice AI',
+    'agentic voice AI',
+    'AI phone agent',
+    'white-label voice AI',
+    'conversational AI',
+  ],
+  openGraph: {
+    type: 'website',
+    siteName: 'VocalIQ',
+    title: SITE_TITLE,
+    description: SITE_DESC,
+    url: '/',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: SITE_TITLE,
+    description: SITE_DESC,
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

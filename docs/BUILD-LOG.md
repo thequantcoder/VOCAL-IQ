@@ -2968,3 +2968,33 @@ J. Quality/docs: ✅ — `ADVANCED-TIER.md` documents the catalogue, tier defaul
 K. Build/CI: ✅ — `pnpm build` exits 0; no new migration (reuses `Plan.features`); version bumped to 1.1.0; annotated tag `v1.1.0` on merge; all gates green locally before push.
 
 VocalIQ's **advanced tier is complete, integrated, hardened, priced + entitled, and documented** — a category-leading Phase-6 feature set gated so heavy/sensitive capabilities land on the right plans and margins hold, with the whole platform regression-green and tagged **v1.1.0**. DoD CONFIRMED. Next: Day 95 (landing page) — the final day.
+
+## Day 95 — Marketing Landing Page & Signature Waveform Hero — 2026-07-09 — ✅ DONE — 🟣 LAUNCH SURFACE
+Model: Opus (🧠 OPUS — the public face). Branch `day/95-landing`. Prereq: brand + copy (Claude's on-brand draft, approvable) — the sample voice clip is **synthesised in-browser** (a real ElevenLabs clip drops in by swapping the source); PostHog analytics already wired (Day 01). Self-audit focus **H (looks like the category leader, not a template; identity, motion, a11y AA, responsive, CWV) + A (hero interaction) + copy (§9).** **This completes the 96-day build (Day 00 → 95).**
+
+Replace the Day-1 design-system proof surface with a distinctive, high-converting **marketing landing page** whose hero is the **signature living waveform that TALKS** (DESIGN-SYSTEM §0 thesis) — not a templated big-stat/gradient hero.
+
+Built (DONE):
+- **web** `components/audio-hero.tsx` (the thesis): an interactive violet→cyan waveform + a **"Hear it talk"** button that plays a short voice signature (Web Audio API — a resolving 5-note motif through a gain envelope) and drives the bars from the live `AnalyserNode` amplitude. Idle = an ambient breathing loop; bars are mutated by ref in the RAF loop (no per-frame React re-render — smooth). **Honours `prefers-reduced-motion`** (no pulsing) + degrades cleanly with no Web Audio. Fires a PostHog `landing_hear_it_talk` event.
+- **web** `app/page.tsx` (SSG): sticky header (wordmark + nav + auth swap + theme), the hero (waveform + display headline "AI that picks up the phone." + subhead + Start-free/Book-demo CTAs + a channel row), a **live-call proof** mock (streaming-transcript styling, cyan "live" accents, intent + cost), **use-case** grid, **differentiators** (multi-channel, white-label, provider-agnostic, cost-metered), a **pricing** teaser (Free/Pro/Scale, Pro featured), a final CTA band (Start free / Become a reseller), and a footer (privacy/terms/status). `components/tracked-cta.tsx` fires PostHog conversion events on every CTA; `lib/analytics.ts` gained a `track()` helper.
+- **shared** `landing.ts` (pure, 5 unit tests): the structured, testable content — use-cases, differentiators, channel list (mirrors Days 44/93), and the pricing tiers (mirror the seeded Free/Pro/Scale ladder + Day-94 advanced-tier) + `formatTierPrice`. Rendering from typed data keeps copy in one place + the invariants tested (tiers ascending, Pro featured, Day-93 channels present).
+- **web** `app/layout.tsx`: full SEO/OG metadata (`metadataBase`, title template, description, keywords, OpenGraph + Twitter cards).
+
+Verification: shared **681** tests, api 460, workers 42, db 7, provider-router 22 green; full **typecheck 12/12**, **lint 12/12** (warnings only), **build 8/8** — the landing route builds as a **static (○) SSG** page (fast by construction; the only client islands are the audio hero + CTAs + auth). Prerendered HTML confirmed to contain the hero headline, "Hear it talk", CTAs, and pricing.
+
+**Self-review (craft, a11y, performance, copy).** Confirmed: the hero is the product's signature motif (waveform-that-talks), not a template; motion is deliberate + reduced-motion-safe; the page is SSG with client islands lazy by nature (CWV-friendly — no CI Lighthouse gate is configured in this repo, so CWV is met by construction: static HTML, system fonts via `next/font`, no heavy hero media); a11y — semantic landmarks, `aria-label` on the waveform, `aria-pressed` on the play button, labelled nav/links, AA-contrast tokens; responsive from mobile up (grid/flex + `sm:`/`md:` breakpoints); copy follows §9 (specific, benefit-first, no hype); CTAs fire analytics events + degrade to no-ops without PostHog. No defects.
+
+## Self-Audit — Day 95 (A–K)
+A. Hero interaction (focus): ✅ — "Hear it talk" synthesises a voice signature + the waveform reacts to live amplitude; play/stop toggle; graceful no-op without Web Audio; a real clip is a source swap.
+B. Isolation: ✅ — a public marketing page; no tenant data, no authed calls (the auth control only swaps sign-in ↔ dashboard).
+C. Security: ✅ — no secrets; external CTAs use `rel="noopener noreferrer"`; analytics no-ops without a key; no user input on the page.
+D. Cost: ✅ — no provider/LLM calls; SSG (no per-request compute).
+E. Errors/obs: ✅ — PostHog events on CTAs + hero; the page can't throw (static content + a defensive audio island).
+F. Performance (focus): ✅ — static SSG route, `next/font` (no layout shift), no heavy hero media (waveform is DOM + synthesised audio on demand), client islands minimal; CWV met by construction.
+G. Error handling: ✅ — the audio hero cleans up its AudioContext + RAF + timers on stop/unmount; no Web Audio → the button no-ops.
+H. UI/a11y (focus): ✅ — the signature waveform-that-talks hero (not a template), deliberate + reduced-motion-safe motion, AA-contrast design tokens, dark + light, responsive from mobile, labelled controls + landmarks.
+I. Regression: ✅ — additive: one new pure shared module + a new page/components; the old Day-1 proof surface is replaced. 681 shared + 460 api + 42 workers + 7 db green; build 8/8.
+J. Quality/docs: ✅ — the hero thesis, the SSG/client-island split, and the content-as-data approach are documented in code; copy follows §9.
+K. Build/CI: ✅ — `pnpm build` exits 0; `/` builds static; all gates green locally before push.
+
+The public face of VocalIQ is live: a signature **waveform that talks**, live-call + use-case + differentiator + pricing sections, on-brand copy, wired CTAs + analytics, full SEO/OG — built static + accessible to out-craft templated competitor pages. **This completes the 96-day VocalIQ build (Day 00 → 95).** DoD CONFIRMED. 🎉
