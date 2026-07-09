@@ -11,8 +11,8 @@ import { useFlow } from '../../../../../lib/api';
 
 /** Agent flow builder (Day 17): loads the draft graph and mounts the React Flow canvas. */
 export default function BuilderPage() {
-  const params = useParams<{ agentId: string }>();
-  const agentId = params?.agentId ?? '';
+  const params = useParams<{ id: string }>();
+  const agentId = params?.id ?? '';
   const { data, isLoading, isError, error, refetch } = useFlow(agentId);
 
   const graph = useMemo<FlowGraph | null>(() => {
