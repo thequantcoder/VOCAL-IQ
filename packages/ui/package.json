@@ -6,7 +6,14 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./motion": {
+      "types": "./dist/motion/index.d.ts",
+      "default": "./dist/motion/index.js"
+    },
     "./styles.css": "./src/styles/ui.css"
   },
   "scripts": {
@@ -16,6 +23,7 @@
   },
   "dependencies": {
     "clsx": "^2.1.1",
+    "framer-motion": "^12.42.2",
     "tailwind-merge": "^2.6.0"
   },
   "peerDependencies": {

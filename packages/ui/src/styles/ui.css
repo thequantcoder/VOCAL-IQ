@@ -54,3 +54,23 @@
     opacity: 0.85;
   }
 }
+
+/* ── Motion-level control (UX-01) ─────────────────────────────────────────────
+ * The MotionProvider mirrors the user's motion level onto <html data-motion="…">.
+ * `off` kills CSS animation + transition app-wide (framer primitives already no-op);
+ * `reduced` (or OS reduced-motion) holds the waveform static. Complements the
+ * primitives, which drop movement/scale themselves. */
+[data-motion="off"] *,
+[data-motion="off"] *::before,
+[data-motion="off"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+[data-motion="off"] .vq-waveform__bar,
+[data-motion="reduced"] .vq-waveform__bar {
+  animation: none;
+  transform: scaleY(0.6);
+  opacity: 0.85;
+}

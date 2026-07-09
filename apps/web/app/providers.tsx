@@ -1,6 +1,7 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MotionProvider } from '@vocaliq/ui/motion';
 import { ThemeProvider } from 'next-themes';
 import { type ReactNode, useEffect, useState } from 'react';
 import { initPostHog } from '../lib/analytics';
@@ -27,9 +28,11 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
-        <AuthProvider>
-          <I18nProvider>{children}</I18nProvider>
-        </AuthProvider>
+        <MotionProvider>
+          <AuthProvider>
+            <I18nProvider>{children}</I18nProvider>
+          </AuthProvider>
+        </MotionProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

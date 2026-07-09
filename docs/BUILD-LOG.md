@@ -3026,3 +3026,34 @@ J. Quality/docs: ✅ — `UX-AUDIT.md`, `DESIGN-SYSTEM.md §11`, and the plan do
 K. Build/CI: ✅ — typecheck/lint/test/build green; `.next.nosync` lint-ignore added; committed + pushed before merge.
 
 The UI/UX Elevation program has its blueprint: a full frontend audit (71 routes), an implementation-grade visual + motion + color + voice-motion + theme spec, the shared `ThemeConfig`/`MotionLevel` contracts (tested), and a dev-only gallery to QA every primitive as it lands. Ready for **UX-01 (motion engine)**. DoD CONFIRMED.
+
+## UX-Day 01 — Motion Engine & Primitives — 2026-07-09 — ✅ DONE — 🎨 UI/UX ELEVATION
+Model: Opus. Branch `ux/01-motion-engine`. Installs the animation foundation so every later UX-Day animates through one thin, reduced-motion-aware, performant seam — never importing framer-motion in pages. Self-audit focus **F (bundle/perf) + H (motion correctness) + reduced-motion parity + I (no regressions)**.
+
+Built (DONE):
+- **@vocaliq/ui** gains a `framer-motion` dep + a new **`@vocaliq/ui/motion`** subpath export (keeps client motion code out of the server-safe component barrel):
+  - **`MotionProvider`** — mounts `LazyMotion` (feature-split `domAnimation` → framer stays OUT of the shared bundle) + `MotionConfig` + a motion-level context. Level (`full`/`reduced`/`off`) seeds from `prefers-reduced-motion`, persists to `localStorage`, and mirrors onto `<html data-motion="…">`.
+  - **`useMotionLevel()`** → `{ level, setLevel, animate, subtle }`.
+  - **Primitives** (all honour the level — `!animate` → render plain/instant; `subtle` → fade-only): `Reveal`, `Fade`, `Pop`, `Stagger` + `StaggerItem`, `PageTransition`, `Collapse` (CSS grid-rows, layout-safe), and `AnimatedNumber` (rAF easeOutCubic count-up, `off` → instant, optional formatter). Plus framer-native **tokens** (`DUR`/`EASE`/`SPRING`/`STAGGER_STEP`) and an `m`/`AnimatePresence` escape hatch.
+- **ui.css** — `[data-motion="off"]` kills CSS animation/transition app-wide; `[data-motion="off"|"reduced"]` holds the waveform static (complements the primitives).
+- **web** — `MotionProvider` mounted once in `providers.tsx`; the dashboard shell's `<main>` now wraps content in **`PageTransition`** (replaces the ad-hoc `vq-reveal`), so navigation animates app-wide + replays via `key={pathname}`, and no-ops under reduced/off.
+- **kitchen-sink** `/dashboard/kitchen` — a live **motion-level toggle** (Full/Reduced/Off) + demos of every primitive with a Replay button, for QA parity.
+
+Verification: full **typecheck 12/12**, **lint 12/12** (after formatting `ui.css`), **test** green (api 460, workers 42, db 7, shared incl. the theme contract), **build 8/8**. **Bundle:** First Load JS shared stayed at **177 kB** — LazyMotion + the subpath export kept framer-motion out of the shared chunk (loads only where motion is used). Live smoke: dashboard renders with `html[data-motion="full"]`, **0 page errors**; kitchen gallery + toggle work.
+
+**Notes / deviations (§13):** used a **React context** for the motion level (not the planned zustand slice) to keep `@vocaliq/ui` dependency-light — it merges into the theme store in UX-12; noted here. `@vocaliq/ui` has no unit-test runner (it's a presentational lib) — the primitives are QA'd via the kitchen-sink + typecheck/build; the pure token/level contract is unit-tested in `@vocaliq/shared` (UX-00). App-wide migration of the remaining `vq-reveal/stagger/lift` classes happens per-screen in later UX-days (they still work + are reduced-motion-safe).
+
+## Self-Audit — UX-01 (A–K)
+A. Correctness: ✅ — primitives render plain when `off`, fade-only when `reduced`, full otherwise; `AnimatedNumber` eases + sets instantly when off; `Collapse` is layout-safe (grid-rows).
+B. Isolation: ✅ — no data/API/tenant surface.
+C. Security: ✅ — no secrets; motion level persisted to localStorage only.
+D. Cost: ✅ — no provider/LLM/DB path.
+E. Errors/obs: ✅ — provider degrades (localStorage try/catch, OS-preference fallback); primitives can't throw.
+F. Performance (focus): ✅ — LazyMotion feature-split → framer stays out of the shared bundle (First Load unchanged at 177 kB); animations are transform/opacity + rAF; `PageTransition` replays via key remount, no layout thrash.
+G. Error handling: ✅ — off/reduced neutralize motion via BOTH the primitives and the `[data-motion]` CSS; no runtime errors (smoke: 0 page errors).
+H. Motion correctness (focus): ✅ — one seam (`useMotionLevel`), reduced-motion seeded from OS + user-overridable + a manual off switch that fully neutralizes (CSS + framer); demoed in the kitchen-sink.
+I. Regressions (focus): ✅ — additive; the shell swap is behaviour-preserving (page still renders, smoke-tested); full suite + build green.
+J. Quality/docs: ✅ — the motion module + tokens are documented; the deviation (context vs zustand) logged; kitchen-sink is the living QA surface.
+K. Build/CI: ✅ — ui builds to `dist/motion` with `'use client'` preserved; typecheck/lint/test/build green; committed + pushed before merge.
+
+The app now moves: a single reduced-motion-aware motion engine (LazyMotion, zero shared-bundle cost) with Reveal/Fade/Pop/Stagger/PageTransition/Collapse/AnimatedNumber primitives, a user motion-level switch, and app-wide page-enter transitions — the foundation every later UX-Day builds on. DoD CONFIRMED. Next: UX-02 (expanded color/token system).
