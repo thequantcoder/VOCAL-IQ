@@ -67,10 +67,30 @@ async function main(): Promise<void> {
 
   // Plan ladder — global plans (tenantId null), base currency USD. Prices/limits
   // are minor-unit + editable later (the no-code plan builder is Day 56).
+  // Phase-6 advanced-feature entitlements per tier (Day 94). Mirrors PLAN_FEATURE_DEFAULTS in
+  // @vocaliq/shared (inlined so the seed stays dependency-free). Pro unlocks the lighter advanced
+  // features; Scale unlocks everything incl. the heavy/sensitive ones (video avatars, voice biometrics).
+  const proFeatures = {
+    conversationIntel: true,
+    learnFromCalls: true,
+    liveCopilot: true,
+    extraChannels: true,
+    workflowAutomation: true,
+    voiceAnalyticsApi: true,
+    multiAgentBenchmarking: true,
+    translation: true,
+  };
+  const scaleFeatures = {
+    ...proFeatures,
+    developerApps: true,
+    marketplace: true,
+    videoAvatar: true,
+    voiceBiometrics: true,
+  };
   const plans = [
-    { id: ID.planFree, name: 'Free', priceMonthly: 0, includedMinutes: 30, agentLimit: 1, numberLimit: 0, sipLimit: 0, overageRatePerMin: 25 },
-    { id: ID.planPro, name: 'Pro', priceMonthly: 9900, includedMinutes: 1000, agentLimit: 10, numberLimit: 3, sipLimit: 1, overageRatePerMin: 12 },
-    { id: ID.planScale, name: 'Scale', priceMonthly: 49900, includedMinutes: 6000, agentLimit: 50, numberLimit: 25, sipLimit: 10, overageRatePerMin: 8 },
+    { id: ID.planFree, name: 'Free', priceMonthly: 0, includedMinutes: 30, agentLimit: 1, numberLimit: 0, sipLimit: 0, overageRatePerMin: 25, features: {} },
+    { id: ID.planPro, name: 'Pro', priceMonthly: 9900, includedMinutes: 1000, agentLimit: 10, numberLimit: 3, sipLimit: 1, overageRatePerMin: 12, features: proFeatures },
+    { id: ID.planScale, name: 'Scale', priceMonthly: 49900, includedMinutes: 6000, agentLimit: 50, numberLimit: 25, sipLimit: 10, overageRatePerMin: 8, features: scaleFeatures },
   ];
   for (const p of plans) {
     await prisma.plan.upsert({

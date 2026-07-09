@@ -6,6 +6,7 @@
 export * from './avatar.js';
 export * from './benchmarking.js';
 export * from './biometrics.js';
+export * from './phase6-features.js';
 export * from './coaching.js';
 export * from './constants.js';
 export * from './conversation-intel.js';

@@ -1,11 +1,17 @@
 'use client';
 
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@vocaliq/ui';
-import { CheckCircle2, Plus, Wallet } from 'lucide-react';
+import { CheckCircle2, Lock, Plus, Sparkles, Wallet } from 'lucide-react';
 import { useState } from 'react';
 import { ErrorState, LoadingCard } from '../../../components/states';
 import { formatUsd } from '../../../components/ui-bits';
-import { useMarginReconcile, useTopUp, useWalletDetail } from '../../../lib/api';
+import {
+  ADVANCED_FEATURE_LABELS,
+  useMarginReconcile,
+  useSubscription,
+  useTopUp,
+  useWalletDetail,
+} from '../../../lib/api';
 
 /** Wallet + margins (Day 53): prepaid balance reconciled to the ledger + reseller margin. */
 export default function WalletPage() {
@@ -53,7 +59,56 @@ export default function WalletPage() {
           <MarginCard />
         </>
       ) : null}
+      <AdvancedTierCard />
     </div>
+  );
+}
+
+/** The advanced-tier (Phase 6) feature entitlements for the current plan — Day 94. */
+function AdvancedTierCard() {
+  const sub = useSubscription();
+  if (!sub.data) return null;
+  const { planName, advancedFeatures } = sub.data.entitlements;
+  const keys = Object.keys(ADVANCED_FEATURE_LABELS);
+  const included = keys.filter((k) => advancedFeatures[k]).length;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Sparkles size={16} /> Advanced tier · {planName}
+          <span className="text-vq-text-lo text-xs">
+            {included}/{keys.length} features
+          </span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+        {keys.map((k) => {
+          const on = advancedFeatures[k];
+          const meta = ADVANCED_FEATURE_LABELS[k];
+          return (
+            <div
+              key={k}
+              className={`flex items-center gap-2 rounded-vq border px-2.5 py-1.5 text-xs ${
+                on ? 'border-vq-border text-vq-text-hi' : 'border-vq-border/50 text-vq-text-lo'
+              }`}
+            >
+              {on ? (
+                <CheckCircle2 size={13} className="shrink-0 text-vq-success" />
+              ) : (
+                <Lock size={13} className="shrink-0 text-vq-text-lo" />
+              )}
+              <span className="truncate">{meta?.label ?? k}</span>
+              {meta?.heavy && (
+                <span className="ml-auto shrink-0 rounded-vq-pill border border-vq-border px-1.5 text-[10px] text-vq-text-lo">
+                  premium
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
   );
 }
 
