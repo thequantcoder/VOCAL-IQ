@@ -85,6 +85,7 @@ export * from './sso.js';
 export * from './superadmin.js';
 export * from './transcript-search.js';
 export * from './transcription.js';
+export * from './theme.js';
 export * from './translation.js';
 export * from './usage.js';
 export * from './wallet.js';

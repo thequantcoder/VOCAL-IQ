@@ -223,3 +223,80 @@ Build every screen to this floor — it's the difference between "works" and "fe
 - **Every UI day:** meet the §7 senior-FE checklist before the self-audit passes.
 
 > Design is not a phase. Each UI day's self-audit (Section H) must check against this file: identity applied (not defaults), four states, a11y AA, reduced-motion, responsive, the right motion, and the senior-FE floor.
+
+---
+
+## 11. UI/UX Elevation Program — expanded specs (UX-00)
+
+> Added by the UI/UX Elevation program (`UI-UX-ELEVATION-PLAN.md`). This section is the **expanded,
+> implementation-grade** spec that supersedes/extends §1 (palette), §3 (elevation), §4 (motion) as the
+> program builds. Contracts live in `@vocaliq/shared` → `theme.ts`. Nothing here is decorative — every
+> token/motion maps to meaning.
+
+### 11.1 Motion spec v2 (the taxonomy + tokens)
+
+**Every animation maps to one kind** (`MOTION_KINDS`): `enter` (mount/appear), `exit` (unmount),
+`state` (a value/status change), `feedback` (response to a user action), `ambient` (always-on, e.g. the
+waveform). If an animation isn't one of these, cut it.
+
+- **Durations** (`MOTION_DURATIONS`, ms): `instant 0 · fast 120 · base 220 · slow 380 · slower 560`.
+  Enter/exit ≈ base; feedback ≈ fast; big spatial moves ≈ slow.
+- **Easings** (`MOTION_EASINGS`): `out` (house ease — calm, decisive) for enters; `inOut` for moves;
+  `in` for exits; `emphasized` for hero moments.
+- **Springs** (`MOTION_SPRINGS`): `soft` (default interactive), `snappy` (toggles/controls), `bouncy`
+  (celebration only).
+- **Stagger**: `STAGGER_STEP` = 0.045s between list/grid children.
+- **Discipline:** transform + opacity only (60fps); no animating layout/color that thrashes; everything
+  honours `MotionLevel` (`full`/`reduced`/`off`) — reduced/off collapse to instant. A global `.motion-off`
+  class disables CSS keyframes too.
+
+### 11.2 Expanded color system (UX-02 builds this)
+
+- **Scales 50–900** for `primary` (violet), `secondary` (new complementary hue), `accent` (cyan),
+  `neutral`; plus `-fg` (on-color) tokens guaranteeing AA contrast on each step.
+- **Semantic** scales: `success` `warn` `danger` `info`.
+- **Data-viz palette**: categorical `--viz-1..8` (colorblind-safe order) + sequential + diverging ramps,
+  tuned per mode.
+- **Rule:** components read CSS variables only — **never hard-code hex**. Back-compat aliases keep
+  `--vq-violet` = `primary-500`, `--vq-cyan` = `accent-500` so nothing breaks.
+- **"More colorful" reconciled with §0 restraint:** neutral surfaces stay calm; color escalates around
+  meaning (cyan = live; sentiment/outcome color on data; gradient accents on hero/CTA). An optional
+  **Vivid** density/theme raises saturation for users who want it — opt-in, never default.
+
+### 11.3 Elevation, radius & density
+
+- **Surfaces** `--surface-0..3` + **shadows** `--elev-1..3` + a subtle **glass** token for overlays.
+- **Radius** scale (`sharp`/`soft`/`round`) via `--radius-*`; user-selectable (theme engine).
+- **Density** (`comfortable`/`cozy`/`compact`) via a `--density` multiplier scaling paddings + control
+  heights. Reseller/super-admin default to **cozy**; data-heavy tables to **compact**.
+
+### 11.4 Voice-motion vocabulary (the identity — UX-04)
+
+The product can "hear and speak"; these are first-class, reused everywhere:
+
+- **`LiveWaveform`** — amplitude-reactive (Web Audio `AnalyserNode`), states: `idle` (breathing) /
+  `listening` / `thinking` / `speaking`; violet→cyan gradient; reduced-motion → static silhouette.
+- **`VoiceOrb`** — the agent's presence: `idle` (soft pulse) / `listening` (inward ripples) / `thinking`
+  (rotating dashed ring) / `speaking` (amplitude pulse).
+- **`ConversationViz`** — agent ↔ caller nodes with a connection that lights the active speaker + a
+  traveling pulse for turn-taking.
+- **`TranscriptStream`** — word-by-word caption reveal, speaker color-coding, live cyan pulse.
+- **`ThinkingDots` / `ListeningPulse`** — small state indicators.
+- A shared `useAgentState()` (`idle→listening→thinking→speaking`) choreographs them together.
+
+### 11.5 Theme engine (UX-12/13)
+
+Resolution: **platform default → reseller white-label (§8 branding) → per-user theme**. Per-user
+`ThemeConfig` = `{ preset, mode, colors{primary,secondary,accent}, radius, density, motion, font }`.
+Runtime generates the full 50–900 ramps + AA-safe `-fg` tokens from the base colors and writes CSS vars
+at `:root` (no FOUC — persisted theme inlined on first paint). 8 presets (`nebula` default, `aurora`,
+`sunset`, `mono`, `ocean`, `grape`, `forest`, `contrast`), each AA in light + dark. Guardrail:
+auto-contrast correction so a custom color can never produce unreadable text; a reseller may lock brand
+colors while still allowing user radius/density/motion/mode.
+
+### 11.6 Per-day self-audit addendum (H, F, I)
+
+Beyond §7, every UX-Day's self-audit must confirm: **motion maps to a kind** + reduced-motion/off parity;
+**AA contrast in every theme** (light+dark+presets); **CWV budget** (LCP<2.5s, INP<200ms, CLS<0.02 on
+the shell) + LazyMotion/code-split; **token-driven** (no hard-coded hex); and **no regression** to the
+working app.
