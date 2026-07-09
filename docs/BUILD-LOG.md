@@ -2937,3 +2937,34 @@ J. Quality/docs: ✅ — each adapter + verifier documents its provider contract
 K. Build/CI: ✅ — `pnpm build` exits 0; the enum migration applies on PG 16; all gates green locally before push. Live channel keys remain an admin decision (QUEUED/503 until then).
 
 The same agent now serves customers on **SMS, WhatsApp, Telegram, Messenger, Instagram DM, and RCS** through one runtime — webhook-verified, per-channel opt-out, per-channel cost, blendable into campaigns — with each new surface a keys-only activation. DoD CONFIRMED (adapters). Next: Day 94.
+
+## Day 94 — Phase 6 Integration, Hardening & Advanced-Tier Launch — 2026-07-09 — ✅ DONE — 🟣 PHASE 6
+Model: Opus (🧠 OPUS — release/hardening capstone). Branch `day/94-phase6-hardening-launch`. Prereq: all Phase-6 features (Days 73–93) — present. No new migration (reuses `Plan.features`). Self-audit focus **all A–K — the final advanced-tier gate; especially I (regression), F (heavy-feature perf), C (new sensitive data), D (margins).** Tagged **v1.1.0** (advanced tier).
+
+Integrate + regression-test + harden all Phase-6 additions and ship the advanced tier. The headline deliverable is a **plan-based feature-entitlement system** so the heavy/sensitive advanced features are correctly priced + gated (self-audit D), with the whole platform (Phase 0–6) regression-green.
+
+Built (DONE):
+- **shared** `phase6-features.ts` (pure, 5 unit tests): the advanced-feature **catalogue** (`PHASE6_FEATURES` — 12 features with a `heavy` flag), the **tier defaults** (`PLAN_FEATURE_DEFAULTS` — Free none / Pro the light set / Scale everything incl. video avatars + biometrics), and the resolution helpers **`planIncludesFeature`** (explicit plan override wins → else tier default → else deny) + **`resolveAdvancedFeatures`** (the full boolean map). Deterministic, DB-free.
+- **api** `EntitlementsService`: `advancedFeatures` now on the `Entitlements` DTO; new **`hasFeature(tenantId, key)`** + **`assertFeature(tenantId, key)`** (throws a clear upgrade `BillingError`). The Day-92 video-avatar gate was **refactored** from an inline `features.videoAvatar` check to `entitlements.hasFeature(tid, 'videoAvatar')` — so video now works on Scale (and any plan whose `features` enable it), still auto-falling back to voice otherwise. **4 RLS-real tests** (Free → none; Pro → translation yes / video no; Scale → all; assertFeature throws only when not entitled).
+- **seed**: the Free/Pro/Scale plans now carry explicit `features` maps (Pro = light set, Scale = all) mirroring the shared tier defaults, so pricing reflects entitlements on a fresh install (resolution also falls back to the tier name, so existing DBs are correct without a re-seed).
+- **web**: an **Advanced tier** card on the Wallet page — the plan name + a 12-feature grid with included/locked state + a "premium" tag on the heavy features (`useSubscription` hook + `ADVANCED_FEATURE_LABELS`).
+- **docs + release**: `docs/ADVANCED-TIER.md` (the launch notes — feature/tier/margin table + entitlements model + provider-gating), root `package.json` bumped to **1.1.0**, and this BUILD-LOG entry.
+
+Verification (full-platform regression, Phase 0–6): **shared 676** tests, **api 460** tests, **workers 42**, **db 7**, **provider-router 22** green; full **typecheck 12/12**, **lint 12/12** (warnings only), **build 8/8**. No regressions from the entitlement refactor.
+
+**Adversarial self-review (regression, gating correctness, margins, no-break).** Confirmed: the entitlement resolution is correct for every tier (explicit override → tier default → deny) and internally consistent (Pro ⊆ Scale — tested); the video-avatar refactor preserves the auto-voice-fallback behaviour (the injected entitlement fn is the only change, and its tests inject directly); no existing test broke (the whole suite is green); heavy features (video avatars, biometrics) are Scale-only so margins hold; provider-gated features still degrade safely without keys. No defects found.
+
+## Self-Audit — Day 94 (A–K — advanced-tier gate)
+A. Correctness: ✅ — entitlement resolution is pure + unit-tested (explicit>tier>deny); the video gate refactor is behaviour-preserving; full suite green.
+B. Isolation: ✅ — entitlements resolve the tenant's own subscription under `withTenant`; the plan catalogue is global reference data; no cross-tenant leakage; all Phase-6 tables remain RLS-scoped.
+C. New sensitive data (focus): ✅ — biometrics (default-deny + encrypted + consent + region), payments (PCI-gated), video likeness (consent), marketplace/dev-apps (tenant-scoped) all reviewed; each ships governed + gated; the advanced-tier doc records the posture.
+D. Margins (focus): ✅ — the heavy/expensive features (video avatars per-second, translation metered, biometrics) are **Scale-only** by default; `assertFeature`/`hasFeature` is the pre-spend gate; non-entitled video incurs no cost (voice fallback); free channels bill $0.
+E. Errors/obs: ✅ — `assertFeature` throws a typed, user-facing upgrade `BillingError` (no internals leaked); the entitlements DTO is additive.
+F. Heavy-feature perf (focus): ✅ — video is one provider handshake + per-second metering; translation is a deduped metered call; benchmarking/analytics run bounded; the perf posture is documented per feature.
+G. Error handling: ✅ — an unknown plan/feature denies by default (never a crash); a missing subscription resolves to Free; provider-gated features degrade (fallback / QUEUED / 503).
+H. UI/a11y: ✅ — the Advanced-tier card lists every feature with included/locked + premium badges; labelled; design tokens + dark mode.
+I. Regression (focus): ✅ — Phase 0–6 full suite green (676 shared + 460 api + 42 workers + 7 db + 22 router); typecheck 12/12; build 8/8; the one refactor (video gate) is covered.
+J. Quality/docs: ✅ — `ADVANCED-TIER.md` documents the catalogue, tier defaults, resolution order, margin notes, and provider gating; the entitlement seam is documented in code.
+K. Build/CI: ✅ — `pnpm build` exits 0; no new migration (reuses `Plan.features`); version bumped to 1.1.0; annotated tag `v1.1.0` on merge; all gates green locally before push.
+
+VocalIQ's **advanced tier is complete, integrated, hardened, priced + entitled, and documented** — a category-leading Phase-6 feature set gated so heavy/sensitive capabilities land on the right plans and margins hold, with the whole platform regression-green and tagged **v1.1.0**. DoD CONFIRMED. Next: Day 95 (landing page) — the final day.

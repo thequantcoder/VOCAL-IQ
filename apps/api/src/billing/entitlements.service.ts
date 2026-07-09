@@ -1,4 +1,10 @@
-import { BillingError } from '@vocaliq/shared';
+import {
+  BillingError,
+  PHASE6_FEATURES,
+  type Phase6FeatureKey,
+  planIncludesFeature,
+  resolveAdvancedFeatures,
+} from '@vocaliq/shared';
 import { PrismaService } from '../db/prisma.service';
 
 /**
@@ -17,6 +23,8 @@ export interface Entitlements {
   sipLimit: number;
   overageRatePerMin: number;
   features: Record<string, unknown>;
+  /** Resolved advanced-tier (Phase 6) feature entitlements for this plan — Day 94. */
+  advancedFeatures: Record<Phase6FeatureKey, boolean>;
   usage: { agents: number };
 }
 
@@ -57,8 +65,32 @@ export class EntitlementsService {
       sipLimit: plan.sipLimit,
       overageRatePerMin: plan.overageRatePerMin,
       features: (plan.features as Record<string, unknown>) ?? {},
+      advancedFeatures: resolveAdvancedFeatures(
+        plan.name,
+        plan.features as Record<string, unknown> | null,
+      ),
       usage: { agents },
     };
+  }
+
+  /**
+   * Does the tenant's plan include a Phase-6 advanced feature (Day 94)? Resolves explicit plan
+   * overrides on top of the tier default. The heavy/sensitive features (video avatars, biometrics)
+   * are Scale-only by default so margins hold (self-audit D) — the gate services call before spend.
+   */
+  async hasFeature(tenantId: string, key: Phase6FeatureKey): Promise<boolean> {
+    const plan = await this.resolvePlan(tenantId);
+    return planIncludesFeature(plan.name, plan.features as Record<string, unknown> | null, key);
+  }
+
+  /** Throw a clear upgrade error when a tenant's plan does not include an advanced feature. */
+  async assertFeature(tenantId: string, key: Phase6FeatureKey): Promise<void> {
+    if (await this.hasFeature(tenantId, key)) return;
+    const plan = await this.resolvePlan(tenantId);
+    const label = PHASE6_FEATURES.find((f) => f.key === key)?.label ?? key;
+    throw new BillingError(
+      `Your ${plan.name} plan does not include ${label}. Upgrade to enable it.`,
+    );
   }
 
   /** Guard agent creation against the plan's agent limit (called before a create). */

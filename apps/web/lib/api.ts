@@ -4510,3 +4510,42 @@ export function useEndAvatarSession() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['avatars', 'sessions'] }),
   });
 }
+
+// ── Plan entitlements incl. Phase-6 advanced tier (Day 94) ───────────────────────
+export interface Entitlements {
+  planId: string;
+  planName: string;
+  includedMinutes: number;
+  agentLimit: number;
+  features: Record<string, unknown>;
+  advancedFeatures: Record<string, boolean>;
+  usage: { agents: number };
+}
+export interface SubscriptionInfo {
+  subscription: { id: string; status: string; planId: string } | null;
+  entitlements: Entitlements;
+}
+/** The plan + resolved advanced-feature entitlements for the current tenant. */
+export function useSubscription() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['billing', 'subscription'],
+    queryFn: () => apiFetch<SubscriptionInfo>(getToken, '/billing/subscription'),
+  });
+}
+
+/** The advanced-tier feature catalogue (label + heavy flag) — for the entitlements UI. */
+export const ADVANCED_FEATURE_LABELS: Record<string, { label: string; heavy: boolean }> = {
+  conversationIntel: { label: 'Conversation intelligence', heavy: false },
+  learnFromCalls: { label: 'Learn from top reps', heavy: false },
+  liveCopilot: { label: 'Live call co-pilot', heavy: false },
+  extraChannels: { label: 'Telegram / Messenger / Instagram / RCS', heavy: false },
+  workflowAutomation: { label: 'Visual workflow automation', heavy: false },
+  voiceAnalyticsApi: { label: 'Voice analytics BI API', heavy: false },
+  multiAgentBenchmarking: { label: 'Multi-agent benchmarking', heavy: false },
+  developerApps: { label: 'Developer apps & integrations', heavy: false },
+  marketplace: { label: 'Agent marketplace', heavy: false },
+  translation: { label: 'Real-time translation', heavy: true },
+  videoAvatar: { label: 'Video avatar agents', heavy: true },
+  voiceBiometrics: { label: 'Voice biometrics', heavy: true },
+};

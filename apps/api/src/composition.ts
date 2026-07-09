@@ -1,4 +1,4 @@
-import { buildTranslationPrompt, planAllowsVideoAvatar } from '@vocaliq/shared';
+import { buildTranslationPrompt } from '@vocaliq/shared';
 import { AbuseService } from './abuse/abuse.service';
 import { AgentsService } from './agents/agents.service';
 import { AnalyticsApiService } from './analytics-api/analytics-api.service';
@@ -243,7 +243,7 @@ export function createServices() {
   // real provider (HeyGen/D-ID/Tavus-class) swaps into this seam when AVATAR_PROVIDER_API_KEY is set.
   const avatars = new AvatarService(
     db,
-    async (tid) => planAllowsVideoAvatar((await entitlements.entitlements(tid)).features),
+    (tid) => entitlements.hasFeature(tid, 'videoAvatar'),
     process.env.AVATAR_PROVIDER_API_KEY ? mockAvatarProvider() : unavailableAvatarProvider(),
   );
 
