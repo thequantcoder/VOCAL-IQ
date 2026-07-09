@@ -2998,3 +2998,31 @@ J. Quality/docs: ✅ — the hero thesis, the SSG/client-island split, and the c
 K. Build/CI: ✅ — `pnpm build` exits 0; `/` builds static; all gates green locally before push.
 
 The public face of VocalIQ is live: a signature **waveform that talks**, live-call + use-case + differentiator + pricing sections, on-brand copy, wired CTAs + analytics, full SEO/OG — built static + accessible to out-craft templated competitor pages. **This completes the 96-day VocalIQ build (Day 00 → 95).** DoD CONFIRMED. 🎉
+
+## UX-Day 00 — Frontend Audit, Visual Language & Motion North-Star — 2026-07-09 — ✅ DONE — 🎨 UI/UX ELEVATION
+Model: Opus. Branch `ux/00-audit-north-star`. First day of the **UI/UX Elevation program** (`UI-UX-ELEVATION-PLAN.md`) — a 17-day (UX-00→16) frontend-excellence layer on the shipped app. This day is the **blueprint**: no shipping UI beyond a dev-only gallery stub. Self-audit focus **H (craft) + I (no regressions) + F (perf posture)**.
+
+Built (DONE):
+- **docs** `UX-AUDIT.md` — a real inventory of all **71 routes** (grouped by area) with each screen's motion / color-infographic / a11y gap, priority (P0–P2), and target UX-Day; plus the 8 cross-cutting gaps + a first-wave recommendation (voice-identity 04–05 + viz 09–10 after foundations).
+- **docs** `DESIGN-SYSTEM.md` §11 — the implementation-grade expanded spec: motion taxonomy (`enter/exit/state/feedback/ambient`) + tokens (durations/easings/springs/stagger), the expanded color system (50–900 scales + `-fg` AA tokens + viz palette, back-compat aliases, "more colorful reconciled with §0 restraint"), elevation/radius/density tokens, the **voice-motion vocabulary** (LiveWaveform/VoiceOrb/ConversationViz/TranscriptStream + `useAgentState`), the theme-engine resolution model, and a per-day self-audit addendum (H/F/I).
+- **shared** `theme.ts` (pure, 4 unit tests): the **contracts** the later days implement — `MotionLevel`, motion tokens (`MOTION_DURATIONS/EASINGS/SPRINGS`, `STAGGER_STEP`, `MOTION_KINDS`), the `ThemeConfig` zod schema (`preset/mode/colors/radius/density/motion/font`), `THEME_PRESETS` (8) + `THEME_PRESET_SWATCHES`, `DEFAULT_THEME`, `parseThemeConfig`. No runtime UI change yet.
+- **web** `/dashboard/kitchen` — the living kitchen-sink/gallery stub, **dev-gated** (renders only on localhost / `NEXT_PUBLIC_DEV_LOGIN=true`), showing the motion + preset contracts today; primitives fill in from UX-01. (Named `kitchen`, not `_kitchen` — App-Router underscore folders are private/non-routable.)
+- **tooling** `biome.json` — ignore `**/.next.nosync/**` (the iCloud-safe build dir from the earlier distDir fix) so lint doesn't scan generated output.
+- **plan** `UI-UX-ELEVATION-PLAN.md` — the full 17-day super-prompt program committed.
+
+Verification: shared tests incl. the new theme contract green; api **460** tests (one transient failure during a Postgres restart, green on re-run), workers 42, db 7; full **typecheck 12/12**, **lint 12/12** (after the `.next.nosync` ignore), **build 8/8** (`/dashboard/kitchen` route present). No feature regressions — this day is additive (2 docs, 1 pure shared module, 1 dev-only route, 1 tooling ignore).
+
+## Self-Audit — UX-00 (A–K)
+A. Correctness: ✅ — `parseThemeConfig` validates/defaults (tested); the kitchen route renders the real contracts; the audit reflects the actual 71 routes.
+B. Isolation: ✅ — no data/API/tenant surface touched.
+C. Security: ✅ — the gallery is dev-gated (localhost only); no secrets; no user input.
+D. Cost: ✅ — no provider/LLM/DB path.
+E. Errors/obs: ✅ — pure module + a defensive client page; nothing can throw for real users (gated).
+F. Performance (focus): ✅ — no libraries added yet (the motion engine is UX-01, planned via LazyMotion); the kitchen route is tiny (3.1 kB); CWV posture documented as a per-day gate.
+G. Error handling: ✅ — the gallery no-ops off-localhost; `parseThemeConfig` degrades to defaults.
+H. UI/craft (focus): ✅ — the north-star, motion taxonomy, expanded token/color/voice-motion specs, and the per-screen audit are written as the source of truth for every later day; the kitchen-sink QA surface exists.
+I. Regressions (focus): ✅ — additive only; nothing existing changed behaviour; full suite + build green.
+J. Quality/docs: ✅ — `UX-AUDIT.md`, `DESIGN-SYSTEM.md §11`, and the plan document the whole program; contracts are typed + tested.
+K. Build/CI: ✅ — typecheck/lint/test/build green; `.next.nosync` lint-ignore added; committed + pushed before merge.
+
+The UI/UX Elevation program has its blueprint: a full frontend audit (71 routes), an implementation-grade visual + motion + color + voice-motion + theme spec, the shared `ThemeConfig`/`MotionLevel` contracts (tested), and a dev-only gallery to QA every primitive as it lands. Ready for **UX-01 (motion engine)**. DoD CONFIRMED.
