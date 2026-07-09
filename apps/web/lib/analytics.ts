@@ -19,3 +19,9 @@ export function initPostHog(): void {
   });
   started = true;
 }
+
+/** Track a product event (e.g. a landing CTA). No-ops cleanly when PostHog isn't configured. */
+export function track(event: string, props?: Record<string, unknown>): void {
+  if (!started || typeof window === 'undefined') return;
+  posthog.capture(event, props);
+}
