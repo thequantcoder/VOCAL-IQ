@@ -1,9 +1,10 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@vocaliq/ui';
+import { AreaTrend, DonutBreakdown, SentimentRibbon, StatCard } from '@vocaliq/ui/charts';
 import { Activity, AlertTriangle, BarChart3 } from 'lucide-react';
 import { type ReactNode, useMemo, useState } from 'react';
-import { BarChart, LineChart, RatioBar } from '../../../components/charts';
+import { RatioBar } from '../../../components/charts';
 import { EmptyState, ErrorState, LoadingCard } from '../../../components/states';
 import { formatUsd } from '../../../components/ui-bits';
 import {
@@ -179,35 +180,68 @@ function Historical({ data }: { data: HistoricalAnalytics }) {
   const outcomes = Object.entries(data.outcomes)
     .map(([label, value]) => ({ label, value }))
     .sort((a, b) => b.value - a.value);
-  const sentiment = data.sentimentTrend.map((d) => ({ label: d.day.slice(5), value: d.value }));
-  const cost = data.costByDay.map((d) => ({ label: d.day.slice(5), value: d.value }));
-  const calls = data.callsByDay.map((d) => ({ label: d.day.slice(5), value: d.value }));
+  const callsData = data.callsByDay.map((d) => d.value);
+  const callsLabels = data.callsByDay.map((d) => d.day.slice(5));
+  const costData = data.costByDay.map((d) => d.value);
+  const costLabels = data.costByDay.map((d) => d.day.slice(5));
+  const sentimentPoints = data.sentimentTrend.map((d) => ({
+    score: d.value,
+    label: d.day.slice(5),
+  }));
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="grid gap-3 sm:grid-cols-4">
-        <Tile label="Total calls" value={String(data.totalCalls)} />
-        <Tile label="Minutes" value={String(data.totalMinutes)} />
-        <Tile label="Success rate" value={pct(data.successRate)} />
-        <Tile label="Drop-off" value={pct(data.dropOffRate)} />
+      {/* KPI infographics (count-up + sentiment glow). */}
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Total calls" value={data.totalCalls} spark={callsData} sentiment="good" />
+        <StatCard label="Minutes" value={data.totalMinutes} sentiment="neutral" />
+        <StatCard
+          label="Success rate"
+          value={Math.round(data.successRate * 100)}
+          format={(v) => `${Math.round(v)}%`}
+          sentiment={data.successRate >= 0.7 ? 'good' : data.successRate >= 0.4 ? 'neutral' : 'bad'}
+        />
+        <StatCard
+          label="Drop-off"
+          value={Math.round(data.dropOffRate * 100)}
+          format={(v) => `${Math.round(v)}%`}
+          sentiment={data.dropOffRate <= 0.15 ? 'good' : 'bad'}
+        />
       </section>
 
       <div className="grid gap-4 md:grid-cols-2">
         <ChartCard title="Calls per day">
-          <BarChart data={calls} />
+          <AreaTrend
+            data={callsData}
+            labels={callsLabels}
+            color="var(--viz-1)"
+            label="Calls per day"
+          />
+        </ChartCard>
+        <ChartCard title="Cost per day">
+          <AreaTrend
+            data={costData}
+            labels={costLabels}
+            color="var(--viz-5)"
+            format={formatUsd}
+            label="Cost per day"
+          />
         </ChartCard>
         <ChartCard title="Outcomes">
-          <BarChart data={outcomes} />
+          <DonutBreakdown data={outcomes} centerLabel="Calls" />
         </ChartCard>
-        <ChartCard title="Sentiment trend">
-          {sentiment.length > 0 ? (
-            <LineChart data={sentiment} format={(n) => n.toFixed(2)} />
+        <ChartCard title="Sentiment over time">
+          {sentimentPoints.length > 0 ? (
+            <div className="flex flex-col gap-3">
+              <SentimentRibbon points={sentimentPoints} height={16} label="Sentiment" />
+              <div className="flex justify-between text-vq-text-lo text-xs">
+                <span>{callsLabels[0]}</span>
+                <span>{callsLabels[callsLabels.length - 1]}</span>
+              </div>
+            </div>
           ) : (
             <p className="text-sm text-vq-text-lo">No sentiment scored in this range.</p>
           )}
-        </ChartCard>
-        <ChartCard title="Cost per day">
-          <BarChart data={cost} format={formatUsd} color="var(--vq-violet, #7c5cff)" />
         </ChartCard>
         <ChartCard title="Talk vs listen">
           <RatioBar ratio={data.talkListen.agentRatio} leftLabel="Agent" rightLabel="Caller" />

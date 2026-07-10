@@ -3514,3 +3514,31 @@ J. Quality/docs: ✅ — helpers documented; the lint fix noted; composes shippe
 K. Build/CI: ✅ — typecheck/lint/test/build green; artifacts reverted before commit.
 
 Agents + Calls now match the elevated Overview — an animated agent gallery with per-agent usage trends and a KPI-headed, filterable, colour-coded calls table. DoD (part 2) CONFIRMED. Next: UX-10c — Analytics (viz kit applied) + Wallet/Billing (spend sparkline + usage meters).
+
+## UX-Day 10c — Analytics & Wallet Redesign — 2026-07-10 — ✅ DONE — 🎨 UI/UX ELEVATION
+Model: Opus. Branch `ux/10c-analytics-wallet`. Final increment of UX-10 — the Analytics + Wallet screens rebuilt on the UX-09 viz kit, completing the user dashboard redesign. Self-audit focus **H (infographic-rich), I (same hooks/data, no regressions), F (CWV holds)**.
+
+Built (DONE):
+- **Analytics** (`analytics/page.tsx`) — the historical section swapped from the old zero-dep `components/charts` set to the **UX-09 viz kit** (same `useHistoricalAnalytics` data): KPI row → 4 `StatCard`s (Total calls w/ sparkline, Minutes, Success rate + sentiment glow, Drop-off inverted-sentiment); **Calls per day** + **Cost per day** → `AreaTrend` (gradient area, hover tooltip, viz colours, `formatUsd`); **Outcomes** → `DonutBreakdown` (centre total + %-legend); **Sentiment over time** → `SentimentRibbon` with a start/end date axis; **Talk vs listen** retained (`RatioBar`). Live tiles + budget banner + filters unchanged.
+- **Wallet** (`wallet/page.tsx`) — the balance card polished with a primary→accent **gradient wash** + a **recent-spend `Sparkline`** (7-day billable, from `useCalls`); a new **`UsageCard`** with budget **`Meter`s** — today's + this month's spend vs their limits (limit derived from `spend ÷ pct` via `useBudget`), plus the anomaly note. TopUp + Margin + Advanced-tier cards unchanged.
+
+Both screens use only existing tenant-scoped hooks — no new data paths.
+
+Verification: **typecheck 12/12**, **lint 12/12**, **test** green (api 460, workers 42, db 7, provider-router 22, shared), **build 8/8** (64/64 pages) — **shared First Load JS still 177 kB** (viz subpath code-split). Live smoke: analytics KPIs count up with a sparkline + sentiment glow, the area charts draw in with hover readouts, the outcomes donut sweeps + shows percentages, the sentiment ribbon colours by score; the wallet balance shows the spend trend + gradient, and the usage meters fill toward their caps — all reduced-motion-safe.
+
+**Note:** the day×hour heatmap (UX-09b) isn't applied on Analytics — `HistoricalAnalytics` exposes per-day series only, not hourly buckets, so there's no honest hourly matrix to render; it stays available in the kit for a surface that has hourly data.
+
+## Self-Audit — UX-10c (A–K)
+A. Correctness (focus): ✅ — charts map the real `callsByDay`/`costByDay`/`outcomes`/`sentimentTrend`; success/drop-off sentiment thresholds correct; wallet meter limits derived from `spend ÷ pct` and guarded when pct is null/0.
+B. Isolation: ✅ — existing tenant-scoped hooks; no new data path.
+C. Security: ✅ — no secrets; no new inputs.
+D. Cost: ✅ — no provider/LLM/DB path.
+E. Errors/obs: ✅ — empty-range + no-sentiment + no-budget states handled; charts have built-in empty states; 0 runtime errors.
+F. Performance (focus): ✅ — shared First Load JS unchanged (177 kB); viz code-split; charts are SVG + ResizeObserver; no CLS (cards/charts reserve height).
+G. Error handling: ✅ — null budget pct → the usage card hides that meter (or the whole card); missing sentiment → the existing "No sentiment" copy.
+H. UI/elevation (focus): ✅ — Analytics is now infographic-rich (count-up KPIs, gradient area trends, an outcomes donut, a sentiment ribbon) vs flat bars; the Wallet shows a spend trend + budget meters — both colorful + scannable, reduced-motion-safe.
+I. Regressions (focus): ✅ — same hooks/data + the live tiles/budget banner/filters/topup/margin cards preserved; the old `components/charts` still exist for other consumers; full suite + build green.
+J. Quality/docs: ✅ — helpers documented; the heatmap-not-applicable note logged; composes the shipped kit.
+K. Build/CI: ✅ — typecheck/lint/test/build green; artifacts reverted before commit.
+
+UX-10 is complete: the whole **user** dashboard — Overview, Agents, Calls, Analytics, Wallet — is now an animated, colorful, infographic-rich, scannable set of surfaces built on the shipped motion/presence/viz kits, all on real data and reduced-motion-safe. DoD CONFIRMED. Next: UX-11 (reseller & super-admin dashboard redesigns).
