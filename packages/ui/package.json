@@ -18,6 +18,10 @@
       "types": "./dist/voice/index.d.ts",
       "default": "./dist/voice/index.js"
     },
+    "./charts": {
+      "types": "./dist/charts/index.d.ts",
+      "default": "./dist/charts/index.js"
+    },
     "./styles.css": "./src/styles/ui.css"
   },
   "scripts": {
