@@ -15,34 +15,125 @@
  * flip between light (default) and dark. "cyan = live": reserved for real-time.
  */
 :root {
-  /* Brand (theme-independent) */
-  --vq-violet: #7c5cff;
-  --vq-violet-deep: #5b21b6;
-  --vq-cyan: #22d3ee;
-  --vq-success: #34d399;
-  --vq-warn: #fbbf24;
-  --vq-danger: #fb7185;
+  /* ── Brand color scales (theme-independent) — DESIGN-SYSTEM §11.2 ──────────
+   * A scale re-skins via the theme engine (UX-12) by remapping these vars. */
 
-  /* Semantic surfaces/text — LIGHT theme (first-class equal, §1) */
+  /* Primary — violet (500 = the VocalIQ brand) */
+  --primary-50: #f4f1ff;
+  --primary-100: #ebe5ff;
+  --primary-200: #d9ccff;
+  --primary-300: #bfa9ff;
+  --primary-400: #a482ff;
+  --primary-500: #7c5cff;
+  --primary-600: #6a45f0;
+  --primary-700: #5a34d6;
+  --primary-800: #4a2bad;
+  --primary-900: #3d2688;
+  --primary-fg: #ffffff;
+
+  /* Secondary — indigo (bridges violet → cyan) */
+  --secondary-50: #eef0ff;
+  --secondary-100: #e0e3ff;
+  --secondary-200: #c7caff;
+  --secondary-300: #a5a9fb;
+  --secondary-400: #8285f7;
+  --secondary-500: #6366f1;
+  --secondary-600: #4f52e0;
+  --secondary-700: #4042c4;
+  --secondary-800: #34379e;
+  --secondary-900: #2d2f7d;
+  --secondary-fg: #ffffff;
+
+  /* Accent — cyan (reserved for "live"/real-time, §0) */
+  --accent-50: #ecfeff;
+  --accent-100: #cff9fe;
+  --accent-200: #a5f0fc;
+  --accent-300: #67e4f9;
+  --accent-400: #38dcf2;
+  --accent-500: #22d3ee;
+  --accent-600: #0bb6d4;
+  --accent-700: #0e90a8;
+  --accent-800: #146b7f;
+  --accent-900: #155263;
+  --accent-fg: #06222b;
+
+  /* Neutral — violet-tinted gray (cohesive with the brand) */
+  --neutral-50: #f6f6fb;
+  --neutral-100: #ececf4;
+  --neutral-200: #d9d9e6;
+  --neutral-300: #b9b9cc;
+  --neutral-400: #9a9ab2;
+  --neutral-500: #6b6b86;
+  --neutral-600: #4f4f66;
+  --neutral-700: #3a3a4d;
+  --neutral-800: #262635;
+  --neutral-900: #14141f;
+
+  /* Semantic states — base + on-color fg + subtle tinted bg (subtle flips in .dark) */
+  --success: #34d399;
+  --success-fg: #06281c;
+  --success-subtle: #e7faf1;
+  --warn: #fbbf24;
+  --warn-fg: #3a2c00;
+  --warn-subtle: #fef6e0;
+  --danger: #fb7185;
+  --danger-fg: #ffffff;
+  --danger-subtle: #ffe9ec;
+  --info: #60a5fa;
+  --info-fg: #06213f;
+  --info-subtle: #e8f1ff;
+
+  /* Data-viz categorical palette (distinguishable ordering for charts) */
+  --viz-1: #7c5cff;
+  --viz-2: #22d3ee;
+  --viz-3: #34d399;
+  --viz-4: #fbbf24;
+  --viz-5: #fb7185;
+  --viz-6: #60a5fa;
+  --viz-7: #a78bfa;
+  --viz-8: #f472b6;
+
+  /* Back-compat brand aliases — existing utilities keep resolving (self-audit I) */
+  --vq-violet: var(--primary-500);
+  --vq-violet-deep: var(--primary-800);
+  --vq-cyan: var(--accent-500);
+  --vq-success: var(--success);
+  --vq-warn: var(--warn);
+  --vq-danger: var(--danger);
+
+  /* Semantic surfaces/text/border — LIGHT theme (first-class equal, §1) */
   --bg-base: #f6f6fb;
   --bg-elevated: #ffffff;
   --bg-overlay: #ffffff;
+  --surface-3: #ffffff;
   --border: #e5e5ef;
   --text-hi: #14141f;
   --text-lo: #5b5b73;
-  --ring: var(--vq-violet);
+  --ring: var(--primary-500);
+  --glass: rgba(255, 255, 255, 0.72);
 
-  /* Radii (§3) */
+  /* Elevation shadows — LIGHT (§11.3) */
+  --elev-1: 0 1px 2px rgba(20, 20, 31, 0.06), 0 1px 3px rgba(20, 20, 31, 0.08);
+  --elev-2: 0 4px 14px rgba(20, 20, 31, 0.08), 0 2px 4px rgba(20, 20, 31, 0.06);
+  --elev-3: 0 14px 34px rgba(20, 20, 31, 0.12), 0 4px 8px rgba(20, 20, 31, 0.08);
+
+  /* Radii (§3/§11.3) */
   --radius-sm: 8px;
   --radius: 10px;
   --radius-card: 14px;
+  --radius-lg: 18px;
   --radius-pill: 999px;
 
-  /* Motion (§4) */
+  /* Density multiplier — comfortable=1 (cozy/compact set by the theme engine, UX-12) */
+  --density: 1;
+
+  /* Motion (§4/§11.1) */
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
   --dur-fast: 120ms;
   --dur-base: 220ms;
   --dur-slow: 380ms;
+  --dur-slower: 560ms;
   --vq-wave-dur: 1500ms;
 
   color-scheme: light;
@@ -53,9 +144,22 @@
   --bg-base: #0b0b12;
   --bg-elevated: #14141f;
   --bg-overlay: #1c1c2b;
+  --surface-3: #24243a;
   --border: #262635;
   --text-hi: #f4f4fb;
   --text-lo: #9a9ab2;
+  --glass: rgba(20, 20, 31, 0.72);
+
+  /* Semantic subtle bgs — DARK (tinted, low-luminance so text stays AA) */
+  --success-subtle: #0f251d;
+  --warn-subtle: #2a2205;
+  --danger-subtle: #2a1015;
+  --info-subtle: #0d1f33;
+
+  /* Elevation shadows — DARK (deeper, since surfaces are dark) */
+  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --elev-2: 0 6px 20px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.4);
+  --elev-3: 0 16px 40px rgba(0, 0, 0, 0.6), 0 6px 12px rgba(0, 0, 0, 0.5);
 
   color-scheme: dark;
 }
@@ -66,6 +170,7 @@
  * semantic colors stay theme-reactive at use-site.
  */
 @theme inline {
+  /* Back-compat brand aliases (existing bg-vq and text-vq utilities keep working) */
   --color-vq-violet: var(--vq-violet);
   --color-vq-violet-deep: var(--vq-violet-deep);
   --color-vq-cyan: var(--vq-cyan);
@@ -81,9 +186,95 @@
   --color-vq-text-lo: var(--text-lo);
   --color-vq-ring: var(--ring);
 
+  /* Color scales (UX-02) → bg-primary-500 / text-accent-300 / border-neutral-200 … */
+  --color-primary-50: var(--primary-50);
+  --color-primary-100: var(--primary-100);
+  --color-primary-200: var(--primary-200);
+  --color-primary-300: var(--primary-300);
+  --color-primary-400: var(--primary-400);
+  --color-primary-500: var(--primary-500);
+  --color-primary-600: var(--primary-600);
+  --color-primary-700: var(--primary-700);
+  --color-primary-800: var(--primary-800);
+  --color-primary-900: var(--primary-900);
+  --color-primary-fg: var(--primary-fg);
+
+  --color-secondary-50: var(--secondary-50);
+  --color-secondary-100: var(--secondary-100);
+  --color-secondary-200: var(--secondary-200);
+  --color-secondary-300: var(--secondary-300);
+  --color-secondary-400: var(--secondary-400);
+  --color-secondary-500: var(--secondary-500);
+  --color-secondary-600: var(--secondary-600);
+  --color-secondary-700: var(--secondary-700);
+  --color-secondary-800: var(--secondary-800);
+  --color-secondary-900: var(--secondary-900);
+  --color-secondary-fg: var(--secondary-fg);
+
+  --color-accent-50: var(--accent-50);
+  --color-accent-100: var(--accent-100);
+  --color-accent-200: var(--accent-200);
+  --color-accent-300: var(--accent-300);
+  --color-accent-400: var(--accent-400);
+  --color-accent-500: var(--accent-500);
+  --color-accent-600: var(--accent-600);
+  --color-accent-700: var(--accent-700);
+  --color-accent-800: var(--accent-800);
+  --color-accent-900: var(--accent-900);
+  --color-accent-fg: var(--accent-fg);
+
+  --color-neutral-50: var(--neutral-50);
+  --color-neutral-100: var(--neutral-100);
+  --color-neutral-200: var(--neutral-200);
+  --color-neutral-300: var(--neutral-300);
+  --color-neutral-400: var(--neutral-400);
+  --color-neutral-500: var(--neutral-500);
+  --color-neutral-600: var(--neutral-600);
+  --color-neutral-700: var(--neutral-700);
+  --color-neutral-800: var(--neutral-800);
+  --color-neutral-900: var(--neutral-900);
+
+  /* Semantic states → bg-success / text-success-fg / bg-warn-subtle … */
+  --color-success: var(--success);
+  --color-success-fg: var(--success-fg);
+  --color-success-subtle: var(--success-subtle);
+  --color-warn: var(--warn);
+  --color-warn-fg: var(--warn-fg);
+  --color-warn-subtle: var(--warn-subtle);
+  --color-danger: var(--danger);
+  --color-danger-fg: var(--danger-fg);
+  --color-danger-subtle: var(--danger-subtle);
+  --color-info: var(--info);
+  --color-info-fg: var(--info-fg);
+  --color-info-subtle: var(--info-subtle);
+
+  /* Data-viz → bg-viz-1 … bg-viz-8 */
+  --color-viz-1: var(--viz-1);
+  --color-viz-2: var(--viz-2);
+  --color-viz-3: var(--viz-3);
+  --color-viz-4: var(--viz-4);
+  --color-viz-5: var(--viz-5);
+  --color-viz-6: var(--viz-6);
+  --color-viz-7: var(--viz-7);
+  --color-viz-8: var(--viz-8);
+
+  /* Surfaces + glass → bg-surface-0..3 / bg-glass */
+  --color-surface-0: var(--bg-base);
+  --color-surface-1: var(--bg-elevated);
+  --color-surface-2: var(--bg-overlay);
+  --color-surface-3: var(--surface-3);
+  --color-glass: var(--glass);
+
+  /* Elevation → shadow-elev-1..3 */
+  --shadow-elev-1: var(--elev-1);
+  --shadow-elev-2: var(--elev-2);
+  --shadow-elev-3: var(--elev-3);
+
+  /* Radii → rounded-vq-* */
   --radius-vq-sm: var(--radius-sm);
   --radius-vq: var(--radius);
   --radius-vq-card: var(--radius-card);
+  --radius-vq-lg: var(--radius-lg);
   --radius-vq-pill: var(--radius-pill);
 
   --font-display: var(--font-display);
