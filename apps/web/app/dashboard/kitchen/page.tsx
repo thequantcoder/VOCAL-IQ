@@ -6,6 +6,7 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
+  AgentAvatar,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -14,6 +15,7 @@ import {
   AlertDialogFooter,
   AlertDialogTitle,
   AlertDialogTrigger,
+  AmbientBackground,
   Avatar,
   Badge,
   Button,
@@ -40,6 +42,8 @@ import {
   DropdownMenuTrigger,
   EmptyState,
   FormField,
+  Illustration,
+  type IllustrationName,
   Input,
   Kbd,
   Label,
@@ -135,6 +139,7 @@ export default function KitchenSinkPage() {
       <ComponentKit />
       <InputsKit />
       <VoiceMotionKit />
+      <PresenceKit />
 
       <Section title="Theme presets (contract · applied in UX-12)">
         <div className="flex flex-wrap gap-2">
@@ -681,6 +686,101 @@ function InputsKit() {
             </Button>
           </div>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+const AGENT_SEEDS = [
+  'agent_sales_01',
+  'agent_support_ada',
+  'booking-bot',
+  'survey_9f2',
+  'nova-outbound',
+];
+const ILLUSTRATIONS: IllustrationName[] = [
+  'no-agents',
+  'no-calls',
+  'no-leads',
+  'all-done',
+  'error-404',
+  'error-500',
+];
+
+/** Presence + atmosphere (UX-05) — procedural agent avatars, ambient background, illustration set. */
+function PresenceKit() {
+  const [avatarState, setAvatarState] = useState<AgentState>('speaking');
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Presence &amp; atmosphere (UX-05)</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-6">
+        {/* Procedural agent avatars — distinct per seed. */}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <span className="font-medium text-sm text-vq-text-hi">Agent avatars (seeded)</span>
+            <SegmentedControl
+              value={avatarState}
+              onValueChange={(v) => setAvatarState(v as AgentState)}
+              aria-label="Avatar state"
+              options={[
+                { value: 'idle', label: 'Idle' },
+                { value: 'listening', label: 'Listening' },
+                { value: 'speaking', label: 'Speaking' },
+              ]}
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-4">
+            {AGENT_SEEDS.map((seed) => (
+              <div key={seed} className="flex flex-col items-center gap-1.5">
+                <AgentAvatar seed={seed} name={seed} size={52} state={avatarState} />
+                <span className="max-w-16 truncate text-[0.7rem] text-vq-text-lo">{seed}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Ambient background layer. */}
+        <div className="flex flex-col gap-2">
+          <span className="font-medium text-sm text-vq-text-hi">Ambient background</span>
+          <div className="relative h-40 overflow-hidden rounded-vq-card border border-vq-border">
+            <AmbientBackground intensity={0.6} particles />
+            <div className="relative z-10 grid h-full place-items-center">
+              <span className="font-display font-semibold text-lg text-vq-text-hi">
+                Sound, made visible.
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Illustration set. */}
+        <div className="flex flex-col gap-2">
+          <span className="font-medium text-sm text-vq-text-hi">Illustrations</span>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {ILLUSTRATIONS.map((n) => (
+              <div
+                key={n}
+                className="flex flex-col items-center gap-1 rounded-vq border border-vq-border p-3"
+              >
+                <Illustration name={n} size={96} />
+                <span className="text-[0.7rem] text-vq-text-lo">{n}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Illustrated empty state (composition with EmptyState). */}
+        <EmptyState
+          icon={<Illustration name="no-agents" size={104} />}
+          title="No agents yet"
+          hint="Create your first voice agent to place a call."
+          action={<Button size="sm">Create an agent</Button>}
+        />
       </CardContent>
     </Card>
   );
