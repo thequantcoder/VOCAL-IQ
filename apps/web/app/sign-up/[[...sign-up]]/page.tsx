@@ -96,8 +96,8 @@ export default function SignUpPage() {
               />
             </label>
             {error && <p className="text-sm text-vq-danger">{error}</p>}
-            <Button type="submit" disabled={busy}>
-              {busy ? 'Creating…' : 'Create account'}
+            <Button type="submit" loading={busy}>
+              Create account
             </Button>
           </form>
           <p className="mt-4 text-center text-sm text-vq-text-lo">

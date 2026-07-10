@@ -199,9 +199,11 @@ function PlaceTestCall() {
             type="submit"
             variant="primary"
             size="md"
-            disabled={place.isPending || noAgents || !to.trim() || !effectiveAgent}
+            loading={place.isPending}
+            success={place.isSuccess}
+            disabled={noAgents || !to.trim() || !effectiveAgent}
           >
-            <PhoneOutgoing size={16} /> {place.isPending ? 'Placing…' : 'Place test call'}
+            <PhoneOutgoing size={16} /> Place test call
           </Button>
         </form>
         {place.isError ? (

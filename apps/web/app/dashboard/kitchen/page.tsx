@@ -27,6 +27,7 @@ import {
   Checkbox,
   Chip,
   CircularProgress,
+  CopyButton,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -47,6 +48,7 @@ import {
   Input,
   Kbd,
   Label,
+  MagneticButton,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -137,6 +139,7 @@ export default function KitchenSinkPage() {
       <MotionPrimitives />
       <TokenGallery />
       <ComponentKit />
+      <ButtonKit />
       <InputsKit />
       <VoiceMotionKit />
       <PresenceKit />
@@ -530,6 +533,68 @@ const ONBOARD_STEPS = [
   { label: 'Number' },
   { label: 'Launch' },
 ];
+
+/** Button interaction system (UX-08) — press/hover sheen/loading/success + magnetic CTA + copy. */
+function ButtonKit() {
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const runAsync = () => {
+    setDone(false);
+    setLoading(true);
+    // Simulate a mutation: pending → success.
+    window.setTimeout(() => {
+      setLoading(false);
+      setDone(true);
+      window.setTimeout(() => setDone(false), 2000);
+    }, 1300);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Buttons &amp; CTAs (UX-08)</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-5">
+        {/* Variants with hover sheen (primary/danger). */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="primary">Primary</Button>
+          <Button variant="secondary">Secondary</Button>
+          <Button variant="ghost">Ghost</Button>
+          <Button variant="danger">Danger</Button>
+        </div>
+
+        {/* Async: loading → success. */}
+        <div className="flex flex-wrap items-center gap-3">
+          <Button variant="primary" loading={loading} success={done} onClick={runAsync}>
+            {done ? 'Published' : 'Publish agent'}
+          </Button>
+          <span className="text-vq-text-lo text-xs">
+            click → spinner → checkmark (reduced-motion: instant)
+          </span>
+        </div>
+
+        <Separator />
+
+        {/* Magnetic hero CTA + ripple. */}
+        <div className="flex flex-wrap items-center gap-4">
+          <MagneticButton variant="primary" size="lg" onClick={() => toast.success('Boom')}>
+            <Sparkles size={16} /> Magnetic CTA
+          </MagneticButton>
+          <span className="text-vq-text-lo text-xs">hover pulls + click ripples (hero only)</span>
+        </div>
+
+        {/* Copy micro-interaction. */}
+        <div className="flex items-center gap-3">
+          <code className="rounded-vq-sm bg-vq-bg-base px-2 py-1 font-mono text-vq-text-hi text-xs">
+            vq_live_sk_9f2a…c71
+          </code>
+          <CopyButton value="vq_live_sk_9f2a_demo_c71" showLabel />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 /** Inputs + nav kit (UX-03b) — form controls, select, segmented, slider, tabs, accordion, stepper. */
 function InputsKit() {
