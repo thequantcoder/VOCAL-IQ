@@ -3057,3 +3057,37 @@ J. Quality/docs: ✅ — the motion module + tokens are documented; the deviatio
 K. Build/CI: ✅ — ui builds to `dist/motion` with `'use client'` preserved; typecheck/lint/test/build green; committed + pushed before merge.
 
 The app now moves: a single reduced-motion-aware motion engine (LazyMotion, zero shared-bundle cost) with Reveal/Fade/Pop/Stagger/PageTransition/Collapse/AnimatedNumber primitives, a user motion-level switch, and app-wide page-enter transitions — the foundation every later UX-Day builds on. DoD CONFIRMED. Next: UX-02 (expanded color/token system).
+
+## UX-Day 02 — Expanded Color System, Elevation & Token Architecture — 2026-07-10 — ✅ DONE — 🎨 UI/UX ELEVATION
+Model: Opus. Branch `ux/02-token-system`. Grows the 2-colour palette into a full semantic token system the theme engine (UX-12) re-skins — all CSS variables mapped into Tailwind v4, light + dark, back-compat preserved. Self-audit focus **H (AA + token discipline) + I (no regressions)**.
+
+Built (DONE), all in `apps/web/app/globals.css`:
+- **Colour scales 50–900** for `primary` (violet, 500 = brand), `secondary` (indigo — bridges violet→cyan), `accent` (cyan = live), `neutral` (violet-tinted gray), each theme-independent, plus AA on-colour `--primary/secondary/accent-fg`.
+- **Semantic** `success/warn/danger/info` — base + `-fg` (on-colour) + `-subtle` (tinted bg that flips in `.dark`).
+- **Data-viz** categorical `--viz-1…8` (distinguishable ordering) for charts.
+- **Surfaces** `--surface-0…3` + `--glass` (backdrop overlay); **elevation** `--elev-1…3` (light + dark tuned shadows).
+- **Radius** (+`--radius-lg`) + a **density** multiplier `--density` (comfortable=1; cozy/compact set by the theme engine).
+- **Motion** as CSS vars (`--dur-fast/base/slow/slower`, `--ease-out-soft/-emphasized`) mirroring `@vocaliq/ui/motion`.
+- **Tailwind v4 `@theme inline` mapping** so every token becomes a utility: `bg-primary-500`, `text-accent-300`, `border-neutral-200`, `bg-success-subtle`, `text-danger-fg`, `bg-viz-3`, `bg-surface-2`, `shadow-elev-2`, `rounded-vq-lg`, …
+- **Back-compat aliases** — `--vq-violet`=`--primary-500`, `--vq-cyan`=`--accent-500`, `--vq-success/warn/danger` alias the semantics — so every existing `bg-vq-*`/`text-vq-*` utility keeps working (verified: no regressions).
+- **kitchen-sink** `/dashboard/kitchen` — a full token gallery (all four scales as swatch ramps, semantic chips, the viz palette, elevation cards, radius samples) rendering in both themes.
+- **docs** `DESIGN-SYSTEM.md §11.7` — the concrete token reference (names → utilities) + the "never hard-code hex" rule.
+
+Verification: full **typecheck 12/12**, **lint 12/12**, **test** green (api 460, workers 42, db 7, shared), **build 8/8** (64/64 pages). **Live smoke:** on `/dashboard/kitchen` the CSS vars resolve (`--primary-500`=#7c5cff, `--viz-3`=#34d399, `--elev-2` shadow) AND the generated Tailwind utility applies (`bg-primary-500` → `rgb(124,92,255)`, `text-primary-fg` → white) — the `@theme` mapping works end-to-end; **0 page errors**.
+
+**Bug caught + fixed during the day:** a `@theme` comment contained `bg-vq-*/text-vq-*`, whose `*/` prematurely closed the CSS comment → the Lightning-CSS/webpack build failed with "Unknown word utilities". Fixed the comment; build green. (Also re-confirmed the recurring local build-artifact rewrite of `tsconfig.json`/`next-env.d.ts` under `NEXT_DIST_DIR` is reverted before commit.)
+
+## Self-Audit — UX-02 (A–K)
+A. Correctness: ✅ — every token resolves + its Tailwind utility generates (verified in-browser); scales are perceptually ordered; `-fg`/`-subtle` present.
+B. Isolation: ✅ — CSS/token only; no data/API surface.
+C. Security: ✅ — no secrets; no input.
+D. Cost: ✅ — no provider/LLM/DB path.
+E. Errors/obs: ✅ — the token layer can't throw; the kitchen gallery renders (0 page errors).
+F. Performance: ✅ — pure CSS vars + Tailwind utilities (zero JS); build unaffected; no new deps.
+G. Error handling: ✅ — back-compat aliases mean any un-migrated component still resolves a valid colour.
+H. UI/AA (focus): ✅ — `-fg` tokens are on-colour AA (white on violet/indigo, dark ink on cyan/light steps); `-subtle` bgs flip in dark for readable text; scales expose AA-safe interactive steps (600/700 for white-text buttons — components adopt them in UX-03). Both themes verified.
+I. Regressions (focus): ✅ — additive + aliased; existing `bg-vq-*`/`text-vq-*`/`rounded-vq-*` utilities unchanged; full suite + build green; app renders unchanged.
+J. Quality/docs: ✅ — `DESIGN-SYSTEM §11.7` token reference + the no-hard-code-hex rule; kitchen-sink is the living swatch QA.
+K. Build/CI: ✅ — the CSS-comment build bug fixed; typecheck/lint/test/build green; artifacts reverted before commit.
+
+The palette is now a real system: primary/secondary/accent/neutral 50–900 (+ AA on-colour), semantic + subtle, an 8-colour viz palette, surfaces/elevation/glass, radius + density, and motion — all CSS vars → Tailwind utilities, light + dark, fully back-compatible. This is the token backbone the theme engine (UX-12) and every redesigned screen build on. DoD CONFIRMED. Next: UX-03 (component kit v1).

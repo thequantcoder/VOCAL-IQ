@@ -300,3 +300,26 @@ Beyond §7, every UX-Day's self-audit must confirm: **motion maps to a kind** + 
 **AA contrast in every theme** (light+dark+presets); **CWV budget** (LCP<2.5s, INP<200ms, CLS<0.02 on
 the shell) + LazyMotion/code-split; **token-driven** (no hard-coded hex); and **no regression** to the
 working app.
+
+### 11.7 Token reference (UX-02 — implemented)
+
+The token layer lives in `apps/web/app/globals.css` (`:root` + `.dark` + `@theme inline`). All are CSS
+variables mapped to Tailwind utilities. **Rule: components use these — never hard-code hex.**
+
+- **Scales** `--primary-50…900`, `--secondary-50…900`, `--accent-50…900`, `--neutral-50…900` +
+  `--primary-fg`/`--secondary-fg`/`--accent-fg` (AA on-color text). Utilities: `bg-primary-500`,
+  `text-accent-300`, `border-neutral-200`, `text-primary-fg`, …
+- **Semantic** `--success|warn|danger|info` + `-fg` + `-subtle` (subtle bg flips in dark). Utilities:
+  `bg-success`, `text-danger-fg`, `bg-warn-subtle`, …
+- **Data-viz** `--viz-1…8` (categorical). Utilities: `bg-viz-1` … `bg-viz-8` (charts theme to these).
+- **Surfaces** `--bg-base`/`--bg-elevated`/`--bg-overlay`/`--surface-3` + `--glass`. Utilities:
+  `bg-surface-0…3`, `bg-glass` (+ the legacy `bg-vq-bg-*`).
+- **Elevation** `--elev-1…3` → `shadow-elev-1|2|3` (light + dark tuned).
+- **Radius** `--radius-sm|·|-card|-lg|-pill` → `rounded-vq-sm|vq|vq-card|vq-lg|vq-pill`.
+- **Density** `--density` (1 = comfortable) — control padding/height multiplier (applied UX-03/12).
+- **Motion** `--dur-fast|base|slow|slower`, `--ease-out-soft`, `--ease-emphasized` (+ the JS mirror in
+  `@vocaliq/ui/motion`).
+- **Back-compat:** `--vq-violet`=`--primary-500`, `--vq-cyan`=`--accent-500`, `--vq-success|warn|danger`
+  alias the semantics — every existing `bg-vq-*`/`text-vq-*` utility keeps working (self-audit I).
+
+Live swatches (every scale/semantic/viz/elevation/radius, both themes) render at `/dashboard/kitchen`.
