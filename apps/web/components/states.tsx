@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, cn } from '@vocaliq/ui';
+import { Button, Illustration, type IllustrationName, cn } from '@vocaliq/ui';
 import type { ReactNode } from 'react';
 
 /**
@@ -37,13 +37,17 @@ export function EmptyState({
   title,
   hint,
   action,
+  illustration,
 }: {
   title: string;
   hint?: string;
   action?: ReactNode;
+  /** On-brand SVG scene shown above the title (UX-05). */
+  illustration?: IllustrationName;
 }) {
   return (
     <div className="flex flex-col items-center gap-3 rounded-vq-card border border-vq-border border-dashed px-6 py-14 text-center">
+      {illustration ? <Illustration name={illustration} size={112} className="mb-1" /> : null}
       <p className="font-display text-lg text-vq-text-hi">{title}</p>
       {hint ? <p className="max-w-sm text-sm text-vq-text-lo">{hint}</p> : null}
       {action}

@@ -3217,3 +3217,31 @@ J. Quality/docs: ✅ — every component has a doc comment; the quarter-res/IO p
 K. Build/CI: ✅ — ui builds to `dist/` with `'use client'` preserved; typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
 
 VocalIQ now has presence + atmosphere primitives — procedural per-agent avatars, a lazy GPU-cheap ambient background, and an on-brand illustration set — all reduced-motion-aware and at zero shared-bundle cost. DoD (part 1) CONFIRMED. Next: UX-05b — apply these across agent lists/cards/desk, overview & auth headers, illustrated empty/error pages, and the live-call console (VoiceOrb + ConversationViz + TranscriptStream on real call views).
+
+## UX-Day 05b — Wire Presence + Atmosphere into Real Surfaces — 2026-07-10 — ✅ DONE — 🎨 UI/UX ELEVATION
+Model: Opus. Branch `ux/05b-wire-surfaces`. Second increment of UX-05 — applies the UX-05a primitives (AgentAvatar, AmbientBackground, Illustration) and the UX-04 voice-motion set across the actual product screens. Self-audit focus **I (no regressions across many touched pages) + H (presence/atmosphere show up in the real product) + F (CWV holds)**.
+
+Wired (DONE) — 11 web files, all additive/presentational:
+- **Agent avatars** — `AgentAvatar seed={agent.id}` on the agent-list cards (`agents/page.tsx`) and on the call-detail header (`calls/[id]/page.tsx`, `seed={data.agent.id}`), giving every agent a distinct, stable face.
+- **Ambient backgrounds** — `AmbientBackground` behind the **dashboard overview hero** (`dashboard/page.tsx`, intensity 0.4 + particles, content lifted to `z-10`) and behind both **auth pages** (`sign-in` + `sign-up`, intensity 0.5 + particles, card lifted to `z-10`). Each host got `relative overflow-hidden` so the absolutely-positioned canvas clips cleanly.
+- **Illustrated states** — extended the shared `EmptyState` (`components/states.tsx`) with an optional `illustration` prop that renders `<Illustration>` above the title; adopted it on **agents** (`no-agents`), **calls** (`no-calls`), and **leads** (`no-leads`) empties. Error pages now use the scenes too: **404** (`not-found.tsx` → `error-404`) and the **global error boundary** (`global-error.tsx` → `error-500`), replacing the old bare colour-pill glyphs.
+- **Live-call console** — on the **Agent Desk** (`desk/page.tsx`), when there's an active/assigned escalated call, a presence strip now renders above the CoachPanel: a `VoiceOrb state="listening"` (the human agent is listening in) + a `ConversationViz` (You ↔ Caller). Uses `@vocaliq/ui/voice`.
+
+Verification: **typecheck 12/12**, **lint 12/12**, **test** green (api 460, workers 42, db 7, provider-router 22, shared), **build 8/8** (64/64 pages) — **shared First Load JS still 177 kB** (avatars/ambient are client leaves, code-split per route; the desk route pulls the voice subpath only where used). Live smoke: agent lists + call headers show seeded faces; the overview hero + auth pages have a drifting atmosphere that pauses off-screen and goes static under `data-motion=off`; empty/error screens show on-brand illustrations; the desk shows the live presence strip when a call is active.
+
+**Notes:** `not-found.tsx` (server component) and `global-error.tsx` (renders outside the providers) both use `Illustration` — safe because `useMotionLevel()` has a default context value (`full`), so it degrades to animated-by-default with no provider, and reduced-motion still works everywhere the provider is mounted. No new deps; no data/API/tenant changes.
+
+## Self-Audit — UX-05b (A–K)
+A. Correctness: ✅ — avatars seed off stable ids; illustrations map to the right empty/error context; the desk presence strip only renders when an active call exists.
+B. Isolation: ✅ — pure UI wiring; no query/mutation/tenant-scope changes.
+C. Security: ✅ — no secrets; no new inputs.
+D. Cost: ✅ — no provider/LLM/DB path touched.
+E. Errors/obs: ✅ — additive rendering; error pages still reset/link correctly; 0 new runtime errors.
+F. Performance (focus): ✅ — ambient canvases are IntersectionObserver-gated + quarter-res (off-screen heroes cost nothing); shared bundle unchanged (177 kB); voice code only on the desk route.
+G. Error handling: ✅ — the 404/500 boundaries keep their reset/back-home affordances; avatars fall back to the procedural face.
+H. UI/presence (focus): ✅ — the product now *feels* like a voice platform: agents have faces, headers/auth breathe, empty/error states are on-brand, and the live desk shows agent presence + turn-taking; all reduced-motion-aware.
+I. Regressions (focus): ✅ — 11 pages touched, all additive; existing layout/logic preserved (hero content re-parented under a `z-10` wrapper only); full suite + build green; no route errors.
+J. Quality/docs: ✅ — `EmptyState` gained a documented `illustration` prop; the server/boundary `Illustration` safety noted; consistent import style.
+K. Build/CI: ✅ — typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
+
+UX-05 is complete: the presence + atmosphere primitives from 05a are now live across the real product — agent avatars in lists + call headers, ambient backgrounds on the overview hero + auth pages, on-brand illustrated empty/error states, and a live-call presence console on the Agent Desk. The app reads as an AI voice platform, not a generic dashboard. DoD CONFIRMED. Next: UX-06 (page & route transitions).

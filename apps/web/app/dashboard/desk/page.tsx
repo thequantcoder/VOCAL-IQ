@@ -1,6 +1,7 @@
 'use client';
 
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@vocaliq/ui';
+import { ConversationViz, VoiceOrb } from '@vocaliq/ui/voice';
 import { Headphones, PhoneIncoming } from 'lucide-react';
 import { useState } from 'react';
 import { CoachPanel } from '../../../components/coach-panel';
@@ -118,7 +119,24 @@ export default function DeskPage() {
       {(() => {
         const active = queue.data?.items.find((it) => it.assigned) ?? queue.data?.items[0];
         return active ? (
-          <CoachPanel callId={active.callId} />
+          <div className="flex flex-col gap-4">
+            {/* Live-call presence — the human agent is listening in on the escalated call. */}
+            <Card>
+              <CardContent className="flex flex-col items-center gap-4 py-5 sm:flex-row sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <VoiceOrb state="listening" size={56} label="Live call" />
+                  <div className="flex flex-col">
+                    <span className="font-medium text-sm text-vq-text-hi">Live call</span>
+                    <span className="font-mono text-vq-text-lo text-xs">
+                      {active.callId.slice(0, 8)}
+                    </span>
+                  </div>
+                </div>
+                <ConversationViz state="listening" callerLabel="Caller" agentLabel="You" />
+              </CardContent>
+            </Card>
+            <CoachPanel callId={active.callId} />
+          </div>
         ) : (
           <EmptyState
             title="Copilot stands by"
