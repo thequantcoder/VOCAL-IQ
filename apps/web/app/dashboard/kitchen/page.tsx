@@ -80,7 +80,20 @@ import {
   fireConfetti,
   toast,
 } from '@vocaliq/ui';
-import { Meter, RadialGauge, Sparkline, StatCard, TrendDelta } from '@vocaliq/ui/charts';
+import {
+  AreaTrend,
+  BarSeries,
+  DonutBreakdown,
+  Heatmap,
+  LineSeries,
+  Meter,
+  RadialGauge,
+  SentimentRibbon,
+  Sparkline,
+  StackedBar,
+  StatCard,
+  TrendDelta,
+} from '@vocaliq/ui/charts';
 import {
   AnimatedNumber,
   Collapse,
@@ -146,6 +159,7 @@ export default function KitchenSinkPage() {
       <VoiceMotionKit />
       <PresenceKit />
       <DataVizKit />
+      <ChartsKit />
 
       <Section title="Theme presets (contract · applied in UX-12)">
         <div className="flex flex-wrap gap-2">
@@ -539,6 +553,125 @@ const ONBOARD_STEPS = [
 
 const SPARK_A = [4, 6, 5, 8, 7, 11, 9, 14, 13, 18];
 const SPARK_B = [20, 18, 19, 15, 16, 12, 13, 10, 11, 8];
+
+const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const HEAT_COLS = Array.from({ length: 24 }, (_, i) => `${i}`);
+const HEAT_MATRIX = DAY_LABELS.map((_, r) =>
+  HEAT_COLS.map((_, c) => {
+    // Busy 9–18 on weekdays; quiet nights + weekends.
+    const business = c >= 9 && c <= 18 ? 1 : 0.2;
+    const weekend = r >= 5 ? 0.4 : 1;
+    return Math.round(((c * 7 + r * 3) % 11) * business * weekend);
+  }),
+);
+
+/** Charts + distribution (UX-09b) — area/line/bar/stacked/donut + heatmap + sentiment ribbon. */
+function ChartsKit() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Charts &amp; distribution (UX-09b)</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-6">
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="flex flex-col gap-2">
+            <span className="font-medium text-sm text-vq-text-hi">Calls per day (area)</span>
+            <AreaTrend
+              data={[120, 180, 150, 220, 260, 240, 310, 290, 360, 420]}
+              labels={['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10']}
+              label="Calls per day"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <span className="font-medium text-sm text-vq-text-hi">Outcomes (bars)</span>
+            <BarSeries
+              data={[
+                { label: 'Booked', value: 84 },
+                { label: 'Lead', value: 62 },
+                { label: 'Callback', value: 41 },
+                { label: 'No ans', value: 33 },
+                { label: 'Failed', value: 12 },
+              ]}
+              label="Outcomes"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <span className="font-medium text-sm text-vq-text-hi">Cost vs revenue (lines)</span>
+            <LineSeries
+              series={[
+                { label: 'Revenue', data: [10, 18, 16, 24, 30, 28, 40] },
+                { label: 'Cost', data: [8, 10, 9, 12, 13, 12, 15] },
+              ]}
+              label="Cost vs revenue"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <span className="font-medium text-sm text-vq-text-hi">Volume by channel (stacked)</span>
+            <StackedBar
+              keys={['Phone', 'Web', 'SIP']}
+              data={[
+                { label: 'W1', values: { Phone: 40, Web: 22, SIP: 10 } },
+                { label: 'W2', values: { Phone: 52, Web: 30, SIP: 14 } },
+                { label: 'W3', values: { Phone: 48, Web: 26, SIP: 20 } },
+                { label: 'W4', values: { Phone: 60, Web: 34, SIP: 24 } },
+              ]}
+              label="Volume by channel"
+            />
+          </div>
+        </div>
+
+        <Separator />
+
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="flex flex-col gap-2">
+            <span className="font-medium text-sm text-vq-text-hi">Outcome breakdown (donut)</span>
+            <DonutBreakdown
+              centerLabel="Calls"
+              data={[
+                { label: 'Booked', value: 84 },
+                { label: 'Lead', value: 62 },
+                { label: 'Callback', value: 41 },
+                { label: 'No answer', value: 33 },
+                { label: 'Failed', value: 12 },
+              ]}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <span className="font-medium text-sm text-vq-text-hi">Call sentiment (ribbon)</span>
+            <SentimentRibbon
+              points={[0.6, 0.4, 0.2, -0.1, -0.5, 0.1, 0.5, 0.7, 0.8, 0.3, -0.2, 0.4].map(
+                (s, i) => ({
+                  score: s,
+                  label: `Seg ${i + 1}`,
+                }),
+              )}
+              label="Call sentiment over time"
+            />
+            <span className="mt-2 font-medium text-sm text-vq-text-hi">Sparkline row</span>
+            <div className="flex gap-4">
+              <Sparkline data={SPARK_A} />
+              <Sparkline data={SPARK_B} color="var(--viz-4)" />
+            </div>
+          </div>
+        </div>
+
+        <Separator />
+
+        <div className="flex flex-col gap-2">
+          <span className="font-medium text-sm text-vq-text-hi">
+            Call volume — day × hour (heatmap)
+          </span>
+          <Heatmap
+            matrix={HEAT_MATRIX}
+            rows={DAY_LABELS}
+            cols={HEAT_COLS}
+            format={(v) => `${v} calls`}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 /** Data-viz kit (UX-09a) — sparklines, radial gauges, meters, trend deltas, animated stat cards. */
 function DataVizKit() {
