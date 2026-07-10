@@ -1,6 +1,6 @@
 'use client';
 
-import { type MotionStyle, m } from 'framer-motion';
+import { AnimatePresence, type MotionStyle, m } from 'framer-motion';
 import type { CSSProperties, ReactNode } from 'react';
 import { useMotionLevel } from './provider';
 import { DUR, EASE, STAGGER_STEP } from './tokens';
@@ -153,6 +153,61 @@ export function PageTransition({ children, className }: BaseProps) {
     >
       {children}
     </m.div>
+  );
+}
+
+/**
+ * Route transition (UX-06) — an `AnimatePresence mode="wait"` that plays an exit (fade) then an enter
+ * (rise + fade) as `routeKey` changes, so navigations feel continuous instead of a hard cut. The caller
+ * supplies the key (e.g. the pathname) so this stays framework-agnostic. Reduced-motion → fade only;
+ * motion-off → instant swap (no presence). When the browser's View Transitions API is driving the
+ * navigation, pass `deferToViewTransitions` so this yields (no double-animation).
+ */
+export function RouteTransition({
+  routeKey,
+  children,
+  className,
+  deferToViewTransitions = false,
+}: BaseProps & { routeKey: string; deferToViewTransitions?: boolean }) {
+  const { animate, subtle } = useMotionLevel();
+  if (!animate || deferToViewTransitions) return <div className={className}>{children}</div>;
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <m.div
+        key={routeKey}
+        className={className}
+        initial={{ opacity: 0, y: subtle ? 0 : 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: subtle ? 0 : -6 }}
+        transition={{ duration: DUR.base, ease: EASE.out }}
+      >
+        {children}
+      </m.div>
+    </AnimatePresence>
+  );
+}
+
+/**
+ * Crossfade (UX-06) — swaps between states (e.g. skeleton → data) by fading the outgoing out and the
+ * incoming in, keyed by `swapKey`. Ties loading/empty/success states together without a hard flash.
+ * Motion-off → instant swap.
+ */
+export function Crossfade({ swapKey, children, className }: BaseProps & { swapKey: string }) {
+  const { animate } = useMotionLevel();
+  if (!animate) return <div className={className}>{children}</div>;
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <m.div
+        key={swapKey}
+        className={className}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: DUR.fast, ease: EASE.out }}
+      >
+        {children}
+      </m.div>
+    </AnimatePresence>
   );
 }
 

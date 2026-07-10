@@ -2,7 +2,6 @@
 
 import { brandName, parseBranding } from '@vocaliq/shared';
 import { cn } from '@vocaliq/ui';
-import { PageTransition } from '@vocaliq/ui/motion';
 import {
   Activity,
   BarChart3,
@@ -60,6 +59,7 @@ import { useAuth } from '../lib/auth';
 import { BrandingApplier } from './branding-applier';
 import { ErrorBoundary } from './error-boundary';
 import { LocaleSwitcher } from './locale-switcher';
+import { RouteShell } from './route-shell';
 
 const NAV = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard, exact: true },
@@ -194,13 +194,12 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           <ThemeToggle />
           <UserMenu />
         </header>
-        {/* `key={pathname}` remounts on navigation so the entrance replays as a page transition
-            (reduced-motion-safe — `.vq-reveal` is gated on no-preference). */}
-        {/* Page-enter motion via the UX-01 engine (replaces the ad-hoc `vq-reveal`); replays on
-            navigation via key={pathname}, and no-ops under reduced/off motion. */}
-        <main key={pathname} className="min-w-0 flex-1 px-6 py-8">
+        {/* Route transitions + a11y (UX-06): RouteShell crossfades content on navigation (framer, or the
+            View Transitions API where supported) and manages SR announce / focus / scroll on route change.
+            No `key` here — RouteShell owns the AnimatePresence so exits can play. */}
+        <main className="min-w-0 flex-1 px-6 py-8">
           <ErrorBoundary>
-            <PageTransition>{children}</PageTransition>
+            <RouteShell>{children}</RouteShell>
           </ErrorBoundary>
         </main>
       </div>

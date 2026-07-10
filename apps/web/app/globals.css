@@ -351,3 +351,22 @@ body {
     transform: translateY(-2px);
   }
 }
+
+/* ── View Transitions (UX-06) ────────────────────────────────────────────────
+   Progressive enhancement for route navigations (driven by useViewTransitionRouter). The browser
+   default is a crossfade; we tune the root fade to the house timing and morph shared elements tagged
+   with `view-transition-name` (e.g. the call agent avatar: list row → detail header). Fully disabled
+   under reduced motion so it never conflicts with the motion-level system. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
