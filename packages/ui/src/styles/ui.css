@@ -298,3 +298,13 @@
     stroke-dashoffset: 0;
   }
 }
+
+/* Bar grow-in (UX-09b) — scale up from the baseline. */
+@keyframes vq-bar-grow {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}

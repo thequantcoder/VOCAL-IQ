@@ -3423,3 +3423,35 @@ J. Quality/docs: ✅ — every piece documented; the Recharts deviation logged; 
 K. Build/CI: ✅ — ui builds to `dist/charts` with `'use client'` preserved; typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
 
 VocalIQ now has a themed, animated, zero-dep infographic kit — sparklines, radial gauges, meters, trend deltas, and sentiment-aware stat cards — the building blocks the dashboard redesign (UX-10/11) composes from, at zero shared-bundle cost. DoD (part 1) CONFIRMED. Next: UX-09b — area/line/bar/donut charts + day×hour heatmap + sentiment ribbon + `DATAVIZ.md`.
+
+## UX-Day 09b — Charts + Distribution (area/line/bar/stacked/donut + heatmap + ribbon) — 2026-07-10 — ✅ DONE — 🎨 UI/UX ELEVATION 🧠 OPUS
+Model: Opus. Branch `ux/09b-charts`. Second increment of UX-09 — the full chart set + distribution/heat + the `DATAVIZ.md` guide, completing the data-viz kit. Same **zero-dep SVG** approach as 09a (no Recharts). Self-audit focus **H (colorful + meaningful), F (responsive + lazy, no bundle cost), A (chart geometry correctness)**.
+
+Built (DONE) — added to `@vocaliq/ui/charts` (subpath, off the shared bundle):
+- **`AreaTrend`** — single-series area+line with gradient fill, animated draw-in, a **hover crosshair + floating tooltip**, and an empty state. Responsive via a `useWidth` ResizeObserver so SVG renders crisp at real pixels.
+- **`BarSeries`** — categorical bars with a grow-in (`vq-bar-grow` scaleY keyframe), hover highlight + tooltip, x labels (≤16).
+- **`LineSeries`** — multi-series lines sharing one min/max (comparable), a legend, and a staggered draw-in.
+- **`StackedBar`** — one stacked bar per category split into keyed segments, legend, native `<title>` per segment.
+- **`DonutBreakdown`** — proportional donut with a centre total (or hovered slice), hover emphasis, sweep-in, and a %-legend.
+- **`Heatmap`** — day×hour (7×24) grid; cell opacity ∝ value/max, tinted with the primary token, native `<title>` tooltips.
+- **`SentimentRibbon`** — a horizontal timeline coloured green/grey/red by score, tinted by magnitude.
+- **Shared** — `useWidth` (ResizeObserver), `ChartTooltip` + `LegendItem` + `VIZ_COLORS` (the categorical viz palette), reusing the 09a `geometry` helpers.
+- **`docs/DATAVIZ.md`** — the usage guide: a "when to use what" table, per-component props, and the rules (tokens-not-hex, reduced-motion-automatic, always-give-context, built-in empty states, import-from-subpath).
+- **kitchen-sink** — a `ChartsKit` section demoing every chart (area/bar/line/stacked/donut) + the heatmap + the sentiment ribbon + a sparkline row.
+
+Verification: **typecheck 12/12**, **lint 12/12**, **test** green (api 460, workers 42, db 7, provider-router 22, shared), **build 8/8** (64/64 pages) — **shared First Load JS still 177 kB** (all SVG; the `/charts` subpath is code-split). Live smoke: area/line draw in with hover tooltips, bars grow + highlight, the donut sweeps + swaps its centre on hover, the heatmap shades by volume, the ribbon colours by sentiment — all static under `data-motion=off`; charts reflow to their container width.
+
+## Self-Audit — UX-09b (A–K)
+A. Correctness (focus): ✅ — shared min/max makes multi-series/stacks comparable; donut arc offsets accumulate correctly; hover index maps from pointer x via the bounding rect; heatmap/ribbon scale to the matrix/score max; empty inputs render placeholders (no NaN paths).
+B. Isolation: ✅ — presentational; callers pass data; no API/tenant surface.
+C. Security: ✅ — no secrets; no user input beyond numbers/labels rendered as text.
+D. Cost: ✅ — no provider/LLM/DB path.
+E. Errors/obs: ✅ — ResizeObserver disconnected on unmount; empty-state guards; 0 render errors in the gallery.
+F. Performance (focus): ✅ — pure SVG (no charting lib/canvas); responsive via one ResizeObserver per chart; draws are stroke-dashoffset/scaleY (GPU); **shared First Load JS unchanged (177 kB)**; `/charts` code-split; no CLS (charts reserve height).
+G. Error handling: ✅ — empty/degenerate data → "No data yet."; single-point series handled; division-by-zero guarded (max ≥ 1).
+H. UI/meaning (focus): ✅ — the full colourful chart vocabulary (trend/compare/proportion/heat/sentiment) on the viz tokens with hover readouts + legends; AA in both themes; reduced-motion-safe.
+I. Regressions: ✅ — purely additive (new chart files + subpath exports + kitchen section + one keyframe + a doc); existing screens untouched; full suite + build green.
+J. Quality/docs: ✅ — every chart documented + `DATAVIZ.md` guide; the zero-dep decision reiterated; shared helpers reused.
+K. Build/CI: ✅ — ui builds to `dist/charts` with `'use client'` preserved; typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
+
+UX-09 is complete: a themed, animated, reduced-motion-safe, **zero-dep** data-viz kit — sparklines, gauges, meters, trend deltas, sentiment stat cards (09a) + area/line/bar/stacked/donut charts, a day×hour heatmap, and a sentiment ribbon (09b), with a `DATAVIZ.md` guide — the infographic toolkit the dashboard redesign (UX-10/11) builds on, at zero shared-bundle cost. DoD CONFIRMED. Next: UX-10 (user dashboard redesign — overview + key screens).
