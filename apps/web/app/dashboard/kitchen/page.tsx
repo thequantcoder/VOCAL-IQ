@@ -2,6 +2,10 @@
 
 import { THEME_PRESETS } from '@vocaliq/shared';
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -18,6 +22,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  Checkbox,
   Chip,
   CircularProgress,
   Dialog,
@@ -34,11 +39,22 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   EmptyState,
+  FormField,
+  Input,
   Kbd,
+  Label,
   Popover,
   PopoverContent,
   PopoverTrigger,
   Progress,
+  RadioGroup,
+  RadioGroupItem,
+  SegmentedControl,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Separator,
   Sheet,
   SheetContent,
@@ -46,6 +62,14 @@ import {
   SheetTitle,
   SheetTrigger,
   Skeleton,
+  Slider,
+  Stepper,
+  Switch,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Textarea,
   Tooltip,
   toast,
 } from '@vocaliq/ui';
@@ -98,6 +122,7 @@ export default function KitchenSinkPage() {
       <MotionPrimitives />
       <TokenGallery />
       <ComponentKit />
+      <InputsKit />
 
       <Section title="Theme presets (contract · applied in UX-12)">
         <div className="flex flex-wrap gap-2">
@@ -477,6 +502,173 @@ function ComponentKit() {
           hint="Create your first voice agent to place a call."
           action={<Button size="sm">Create an agent</Button>}
         />
+      </CardContent>
+    </Card>
+  );
+}
+
+const ONBOARD_STEPS = [
+  { label: 'Account' },
+  { label: 'Agent' },
+  { label: 'Number' },
+  { label: 'Launch' },
+];
+
+/** Inputs + nav kit (UX-03b) — form controls, select, segmented, slider, tabs, accordion, stepper. */
+function InputsKit() {
+  const [notify, setNotify] = useState(true);
+  const [terms, setTerms] = useState(false);
+  const [plan, setPlan] = useState('pro');
+  const [voice, setVoice] = useState('nova');
+  const [temp, setTemp] = useState([40]);
+  const [mode, setMode] = useState('inbound');
+  const [step, setStep] = useState(1);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Inputs &amp; nav (UX-03b)</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-6">
+        {/* Toggles */}
+        <div className="flex flex-wrap items-center gap-6">
+          <div className="flex items-center gap-2">
+            <Switch id="k-notify" checked={notify} onCheckedChange={setNotify} />
+            <Label htmlFor="k-notify">Call notifications</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox id="k-terms" checked={terms} onCheckedChange={(v) => setTerms(v === true)} />
+            <Label htmlFor="k-terms">Accept terms</Label>
+          </div>
+        </div>
+
+        {/* Radio group */}
+        <div className="flex flex-col gap-2">
+          <Label>Plan</Label>
+          <RadioGroup value={plan} onValueChange={setPlan} className="flex gap-5">
+            {['free', 'pro', 'scale'].map((p) => (
+              <div key={p} className="flex items-center gap-2">
+                <RadioGroupItem value={p} id={`plan-${p}`} />
+                <Label htmlFor={`plan-${p}`} className="capitalize">
+                  {p}
+                </Label>
+              </div>
+            ))}
+          </RadioGroup>
+        </div>
+
+        <Separator />
+
+        {/* FormField + Input + Textarea + Select */}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField label="Agent name" hint="Shown to callers" required>
+            {(p) => <Input placeholder="Aria" {...p} />}
+          </FormField>
+          <FormField label="From number" error="Enter a valid E.164 number">
+            {(p) => <Input placeholder="+1…" invalid {...p} />}
+          </FormField>
+          <div className="flex flex-col gap-1.5">
+            <Label>Voice</Label>
+            <Select value={voice} onValueChange={setVoice}>
+              <SelectTrigger>
+                <SelectValue placeholder="Pick a voice" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="nova">Nova (warm)</SelectItem>
+                <SelectItem value="atlas">Atlas (deep)</SelectItem>
+                <SelectItem value="sky">Sky (bright)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <FormField label="Greeting">
+            {(p) => <Textarea placeholder="Hi, thanks for calling…" {...p} />}
+          </FormField>
+        </div>
+
+        {/* Slider + segmented */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-8">
+          <div className="flex-1">
+            <Label className="mb-2 block">Creativity — {temp[0]}%</Label>
+            <Slider
+              value={temp}
+              onValueChange={setTemp}
+              max={100}
+              step={1}
+              aria-label="Creativity"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label>Call mode</Label>
+            <SegmentedControl
+              value={mode}
+              onValueChange={setMode}
+              aria-label="Call mode"
+              options={[
+                { value: 'inbound', label: 'Inbound' },
+                { value: 'outbound', label: 'Outbound' },
+                { value: 'both', label: 'Both' },
+              ]}
+            />
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Tabs */}
+        <Tabs defaultValue="prompt">
+          <TabsList>
+            <TabsTrigger value="prompt">Prompt</TabsTrigger>
+            <TabsTrigger value="tools">Tools</TabsTrigger>
+            <TabsTrigger value="voice">Voice</TabsTrigger>
+          </TabsList>
+          <TabsContent value="prompt" className="text-sm text-vq-text-lo">
+            The system prompt that shapes the agent's persona and goals.
+          </TabsContent>
+          <TabsContent value="tools" className="text-sm text-vq-text-lo">
+            Webhooks, transfers, and knowledge the agent can call mid-conversation.
+          </TabsContent>
+          <TabsContent value="voice" className="text-sm text-vq-text-lo">
+            TTS voice, speaking rate, and language for this agent.
+          </TabsContent>
+        </Tabs>
+
+        {/* Accordion */}
+        <Accordion type="single" collapsible defaultValue="a1">
+          <AccordionItem value="a1">
+            <AccordionTrigger>What counts as a billed minute?</AccordionTrigger>
+            <AccordionContent>
+              Connected talk-time, rounded up, summed per call across STT + LLM + TTS + telephony.
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="a2">
+            <AccordionTrigger>Can I bring my own provider keys?</AccordionTrigger>
+            <AccordionContent>
+              Yes — BYOK mode uses your keys with a thin platform fee; managed mode meters credits.
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+
+        <Separator />
+
+        {/* Stepper */}
+        <div className="flex flex-col gap-4">
+          <Stepper steps={ONBOARD_STEPS} current={step} />
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setStep((s) => Math.max(0, s - 1))}
+            >
+              Back
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setStep((s) => Math.min(ONBOARD_STEPS.length - 1, s + 1))}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
