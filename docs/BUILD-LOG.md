@@ -3245,3 +3245,32 @@ J. Quality/docs: ✅ — `EmptyState` gained a documented `illustration` prop; t
 K. Build/CI: ✅ — typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
 
 UX-05 is complete: the presence + atmosphere primitives from 05a are now live across the real product — agent avatars in lists + call headers, ambient backgrounds on the overview hero + auth pages, on-brand illustrated empty/error states, and a live-call presence console on the Agent Desk. The app reads as an AI voice platform, not a generic dashboard. DoD CONFIRMED. Next: UX-06 (page & route transitions).
+
+## UX-Day 06 — Page & Route Transitions — 2026-07-10 — ✅ DONE — 🎨 UI/UX ELEVATION 🧠 OPUS
+Model: Opus. Branch `ux/06-route-transitions`. Makes navigating the dashboard feel continuous + intentional — enter/exit crossfades, a shared-element morph, skeleton→content handoff, and correct a11y (focus/scroll/announce). Self-audit focus **H (feels continuous, not a hard cut), F (no CLS/INP regressions), A (a11y focus/scroll/announce correct)**.
+
+Built (DONE):
+- **`RouteTransition` + `Crossfade` primitives** (`@vocaliq/ui/motion`) — `RouteTransition` is an `AnimatePresence mode="wait"` that plays exit(fade) → enter(rise+fade) as `routeKey` changes (reduced-motion → fade only; motion-off → instant; `deferToViewTransitions` yields when the VT API drives). `Crossfade` swaps states (skeleton→data) by keyed opacity fade. Both exported.
+- **`RouteShell`** (`components/route-shell.tsx`) — wraps page content in `RouteTransition` keyed by `usePathname()` AND, on every navigation, manages a11y: announces the new route via an `aria-live="assertive"` region, moves focus to the main content region (`tabIndex=-1`), and resets scroll to top. Replaces the shell's old `<main key={pathname}><PageTransition>` (removed the remount `key` so exits can play).
+- **View Transitions API integration** — `useViewTransitionRouter()` (`lib/view-transitions.ts`): a feature-detected, reduced-motion-aware navigation helper that wraps `router.push` in `document.startViewTransition` (double-rAF commit pattern; no experimental Next flag needed) when supported, else a plain push (framer covers the animation). `globals.css` tunes the root `::view-transition` crossfade to the house timing and **fully disables VT under `prefers-reduced-motion`**.
+- **Shared-element morph** (highest-value flow) — the **calls list → call detail**: each call-row agent avatar and the call-detail header avatar share `view-transition-name: vt-call-avatar-{callId}`, and rows navigate through `useViewTransitionRouter` (`CallLink`, which still renders a real `<a href>` so middle/modified-click + no-JS work). On supported browsers the avatar morphs from the row into the header.
+- **Skeleton → content choreography** — the calls + agents lists wrap their loading/error/empty/data branches in `<Crossfade swapKey=…>`, so the TanStack-Query skeleton fades into the rendered data instead of a hard flash.
+
+Verification: **typecheck 12/12**, **lint 12/12**, **test** green (api 460, workers 42, db 7, provider-router 22, shared), **build 8/8** (64/64 pages) — **shared First Load JS still 177 kB**. TS confirms `viewTransitionName` is a valid `CSSProperties` key (React 19). Live smoke: navigating between dashboard routes now crossfades (exit→enter); the calls→detail avatar morphs on Chromium; skeletons fade into data; SR announces the route + focus lands at the top on nav; everything degrades to instant under `data-motion=off` / reduced-motion.
+
+**Decisions:** rather than flip Next's experimental `viewTransition` flag (not in 15.1.3, and it changes static-gen behaviour across 64 pages — CI risk), the VT API is integrated at the app layer via a feature-detected navigation helper — a true progressive enhancement (unsupported browsers + reduced-motion + no-JS all fall back to the framer `RouteTransition` / normal push). Full SPA-wide VT can later ride a Next ≥15.2 upgrade + the flag. The old `PageTransition` export stays (back-compat) though the shell now uses `RouteTransition`.
+
+## Self-Audit — UX-06 (A–K)
+A. Correctness (focus): ✅ — route key drives exit→enter; a11y effect skips the initial mount and fires only on real navigations; VT helper feature-detects + falls back; shared-element names are unique per snapshot (keyed by call id).
+B. Isolation: ✅ — pure client-nav/presentation; no query/mutation/tenant change.
+C. Security: ✅ — no secrets; `CallLink` navigates to same-origin app routes only.
+D. Cost: ✅ — no provider/LLM/DB path.
+E. Errors/obs: ✅ — ErrorBoundary still wraps routed content; nav helper can't throw (guarded); 0 new runtime errors.
+F. Performance (focus): ✅ — transitions are opacity/transform only (no layout thrash → no CLS); VT uses the browser's compositor; framer path is short (DUR.base/fast); shared bundle unchanged (177 kB); no INP regression (nav is unchanged work + a cheap crossfade).
+G. Error handling: ✅ — VT unsupported / reduced-motion / modified-click all fall back to a plain push; `<a href>` preserved for no-JS + open-in-new-tab.
+H. UI/continuity (focus): ✅ — navigations crossfade instead of hard-cutting; the call avatar morphs list→detail; skeletons dissolve into data — the app feels intentional; all reduced-motion-safe.
+I. Regressions: ✅ — shell `key` removed but RouteShell owns presence (content still renders + replays); existing links/logic intact; full suite + build green.
+J. Quality/docs: ✅ — every new primitive/hook/component documented; the "no experimental flag / progressive enhancement" decision logged; consistent motion-level gating.
+K. Build/CI: ✅ — ui builds with `'use client'` preserved; typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
+
+Navigating VocalIQ now reads as one continuous surface: route crossfades, a shared-element avatar morph on the calls→detail flow, skeleton→data handoff, and correct SR-announce/focus/scroll on every navigation — all reduced-motion-safe and CLS-free, with the View Transitions API as a feature-detected enhancement. DoD CONFIRMED. Next: UX-07 (sidebar & navigation micro-interactions).

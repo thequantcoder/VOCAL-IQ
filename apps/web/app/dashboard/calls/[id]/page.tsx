@@ -85,7 +85,10 @@ export default function CallDetailPage() {
         <>
           <header className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <AgentAvatar seed={data.agent.id} name={data.agent.name} size={40} />
+              {/* Shared element: morphs from the call-row avatar (View Transitions API). */}
+              <span style={{ viewTransitionName: `vt-call-avatar-${id}` }}>
+                <AgentAvatar seed={data.agent.id} name={data.agent.name} size={40} />
+              </span>
               <h1 className="font-display font-semibold text-xl text-vq-text-hi">
                 {data.agent.name}
               </h1>
