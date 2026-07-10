@@ -1,21 +1,45 @@
 'use client';
 
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@vocaliq/ui';
+import { Meter, Sparkline } from '@vocaliq/ui/charts';
 import { CheckCircle2, Lock, Plus, Sparkles, Wallet } from 'lucide-react';
 import { useState } from 'react';
 import { ErrorState, LoadingCard } from '../../../components/states';
 import { formatUsd } from '../../../components/ui-bits';
 import {
   ADVANCED_FEATURE_LABELS,
+  type BudgetStatus,
+  type CallListItem,
+  useBudget,
+  useCalls,
   useMarginReconcile,
   useSubscription,
   useTopUp,
   useWalletDetail,
 } from '../../../lib/api';
 
+/** Recent daily spend (billable) over the last `n` days, from the calls feed. */
+function spendSeries(items: CallListItem[], n = 8): number[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const buckets = new Array<number>(n).fill(0);
+  for (const it of items) {
+    const d = new Date(it.createdAt);
+    d.setHours(0, 0, 0, 0);
+    const diff = Math.round((today.getTime() - d.getTime()) / 86_400_000);
+    if (diff < 0 || diff >= n) continue;
+    const idx = n - 1 - diff;
+    buckets[idx] = (buckets[idx] ?? 0) + (it.costBreakdown?.billable ?? 0);
+  }
+  return buckets;
+}
+
 /** Wallet + margins (Day 53): prepaid balance reconciled to the ledger + reseller margin. */
 export default function WalletPage() {
   const wallet = useWalletDetail();
+  const calls = useCalls();
+  const budget = useBudget();
+  const spend = spendSeries(calls.data?.items ?? []);
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
@@ -34,8 +58,8 @@ export default function WalletPage() {
         <ErrorState message={(wallet.error as Error).message} onRetry={() => wallet.refetch()} />
       ) : wallet.data ? (
         <>
-          <Card>
-            <CardContent className="flex items-center justify-between py-4">
+          <Card className="relative isolate overflow-hidden before:absolute before:inset-0 before:-z-10 before:bg-gradient-to-br before:from-primary-500/12 before:to-accent-500/6">
+            <CardContent className="flex items-center justify-between gap-4 py-4">
               <div className="flex flex-col gap-1">
                 <span className="text-vq-text-lo text-xs">Balance</span>
                 <span className="font-display font-semibold text-3xl text-vq-text-hi">
@@ -45,22 +69,71 @@ export default function WalletPage() {
                   {formatUsd(wallet.data.bonusCents / 100)} bonus · {wallet.data.currency}
                 </span>
               </div>
-              {wallet.data.reconciled && (
-                <span
-                  className="flex items-center gap-1.5 text-vq-success text-xs"
-                  title="Cached balance ties out to the ledger sum"
-                >
-                  <CheckCircle2 size={14} /> Reconciled
-                </span>
-              )}
+              <div className="flex flex-col items-end gap-2">
+                {wallet.data.reconciled && (
+                  <span
+                    className="flex items-center gap-1.5 text-vq-success text-xs"
+                    title="Cached balance ties out to the ledger sum"
+                  >
+                    <CheckCircle2 size={14} /> Reconciled
+                  </span>
+                )}
+                {spend.some((v) => v > 0) && (
+                  <div className="flex flex-col items-end gap-0.5">
+                    <Sparkline data={spend} color="var(--viz-5)" width={110} height={32} />
+                    <span className="text-vq-text-lo text-[0.7rem]">spend · 7d</span>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
+          {budget.data && <UsageCard budget={budget.data} />}
           <TopUpCard />
           <MarginCard />
         </>
       ) : null}
       <AdvancedTierCard />
     </div>
+  );
+}
+
+/** Budget usage meters — today's + this month's spend vs their limits (UX-10c). */
+function UsageCard({ budget }: { budget: BudgetStatus }) {
+  // Derive the limit from spend ÷ pct (pct is the fraction of the cap used).
+  const dailyMax =
+    budget.dailyPct && budget.dailyPct > 0 ? budget.todaySpendUsd / budget.dailyPct : null;
+  const monthlyMax =
+    budget.monthlyPct && budget.monthlyPct > 0 ? budget.monthSpendUsd / budget.monthlyPct : null;
+
+  if (dailyMax == null && monthlyMax == null) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Budget usage</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        {dailyMax != null && (
+          <Meter
+            label={`Today · ${formatUsd(budget.todaySpendUsd)}`}
+            value={Math.round(budget.todaySpendUsd * 100)}
+            max={Math.round(dailyMax * 100)}
+            showValue={false}
+          />
+        )}
+        {monthlyMax != null && (
+          <Meter
+            label={`This month · ${formatUsd(budget.monthSpendUsd)}`}
+            value={Math.round(budget.monthSpendUsd * 100)}
+            max={Math.round(monthlyMax * 100)}
+            showValue={false}
+          />
+        )}
+        {budget.anomaly && (
+          <p className="text-vq-warn text-xs">Spend anomaly detected — review recent activity.</p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
