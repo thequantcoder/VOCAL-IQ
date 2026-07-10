@@ -83,6 +83,17 @@ import {
   StaggerItem,
   useMotionLevel,
 } from '@vocaliq/ui/motion';
+import {
+  type AgentState,
+  ConversationViz,
+  ListeningPulse,
+  LiveWaveform,
+  ThinkingDots,
+  TranscriptStream,
+  type TranscriptTurn,
+  VoiceOrb,
+  useSimulatedAgent,
+} from '@vocaliq/ui/voice';
 import { FlaskConical, RotateCw, Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -123,6 +134,7 @@ export default function KitchenSinkPage() {
       <TokenGallery />
       <ComponentKit />
       <InputsKit />
+      <VoiceMotionKit />
 
       <Section title="Theme presets (contract · applied in UX-12)">
         <div className="flex flex-wrap gap-2">
@@ -669,6 +681,68 @@ function InputsKit() {
             </Button>
           </div>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+const STATE_COPY: Record<AgentState, string> = {
+  idle: 'Idle — waiting for the caller',
+  listening: 'Listening to the caller',
+  thinking: 'Thinking (LLM)',
+  speaking: 'Speaking (TTS)',
+};
+
+/** Voice-motion primitives (UX-04) — a mini "live call" that choreographs every primitive off one state. */
+function VoiceMotionKit() {
+  const state = useSimulatedAgent();
+
+  const turns: TranscriptTurn[] = [
+    { speaker: 'agent', text: 'Hi, thanks for calling VocalIQ — how can I help today?' },
+    { speaker: 'caller', text: 'I was hoping to book a product demo for next week.' },
+  ];
+  if (state === 'speaking') {
+    turns.push({
+      speaker: 'agent',
+      text: 'Absolutely — I can set that up for you. What day works best?',
+      live: true,
+    });
+  } else if (state === 'listening') {
+    turns.push({
+      speaker: 'caller',
+      text: 'Tuesday afternoon would be perfect if you have anything open.',
+      live: true,
+    });
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex-row items-center justify-between">
+        <CardTitle className="text-base">Voice-motion primitives (UX-04)</CardTitle>
+        <Badge variant="accent">auto-cycling</Badge>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-6">
+        <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-8">
+          <VoiceOrb state={state} size={104} label={`Agent ${state}`} />
+          <div className="flex flex-1 flex-col gap-3">
+            <div className="flex items-center gap-2 text-sm">
+              {state === 'listening' && <ListeningPulse />}
+              {state === 'thinking' && <ThinkingDots />}
+              <span className="font-medium text-vq-text-hi">{STATE_COPY[state]}</span>
+            </div>
+            <LiveWaveform state={state} label={`Waveform — ${state}`} />
+          </div>
+        </div>
+
+        <ConversationViz state={state} />
+
+        <TranscriptStream turns={turns} />
+
+        <p className="text-vq-text-lo text-xs">
+          One <code className="text-vq-text-hi">useSimulatedAgent()</code> drives the orb, waveform,
+          conversation viz, indicators, and transcript together. Flip the motion level above to see
+          the reduced-motion / off fallbacks (static forms, no rAF/loops).
+        </p>
       </CardContent>
     </Card>
   );

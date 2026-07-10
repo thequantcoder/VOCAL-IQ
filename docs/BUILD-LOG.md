@@ -3156,3 +3156,36 @@ J. Quality/docs: ✅ — each component has a doc comment; the deviation (framer
 K. Build/CI: ✅ — ui builds to `dist/` with `'use client'` preserved; typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
 
 The component kit is now complete (~26 primitives): the full form-control set (label/switch/checkbox/radio/select/segmented/slider/textarea/form-field) + navigation (tabs/accordion/stepper), all accessible, animated, reduced-motion-aware, token-driven, at zero shared-bundle cost. Screens (nav redesign UX-06+, dashboards UX-09+, onboarding UX-14) now compose from a consistent vocabulary. DoD CONFIRMED. Next: UX-04 (signature voice-motion primitives — LiveWaveform, VoiceOrb, ConversationViz, TranscriptStream).
+
+## UX-Day 04 — Signature Voice-Motion Primitives — 2026-07-10 — ✅ DONE — 🎨 UI/UX ELEVATION 🧠 OPUS
+Model: Opus. Branch `ux/04-voice-motion`. The differentiator layer — the voice/AI-voice motion vocabulary the product is *about*, reused across hero, live call, loaders, agent cards. Kept in a new `@vocaliq/ui/voice` subpath (like `/motion`) so the canvas/framer weight only loads where voice UI is used. Self-audit focus **H (does it feel like AI voice?), F (rAF/canvas perf + cleanup), A (state-machine correctness)**.
+
+Built (DONE) — `packages/ui/src/voice/`, all `'use client'`, reduced-motion-aware, exported from `voice/index.ts`:
+- **`useAgentState` / `useSimulatedAgent`** (`use-agent-state.ts`) — the shared state machine (`idle→listening→thinking→speaking`) every primitive subscribes to, plus an auto-cycling simulator (realistic per-state dwell times, timer cleaned up on unmount) and an `activeSpeaker()` helper.
+- **`LiveWaveform`** — the signature "sound made visible" element, now **amplitude-reactive** on a `<canvas>`: sources in priority order are a Web Audio `AnalyserNode` (real audio) → a controlled `amplitude` (0..1) → a synthetic per-state envelope. Violet→cyan gradient, mirrored rounded bars, eased for fluidity, DPR-aware. Under reduced-motion it paints one static silhouette and runs **no rAF loop**; the loop is throttled + fully cleaned up (cancelAnimationFrame + resize listener removed) on unmount.
+- **`VoiceOrb`** — the "AI agent presence" orb (SVG + framer): `idle` breath, `listening` expanding ripple rings, `thinking` rotating dashed ring + shimmer, `speaking` amplitude pulse. Calm static orb under reduced-motion.
+- **`ConversationViz`** — agent ↔ caller nodes with a connection that lights up on the active speaker + a pulse that **travels toward the listener** for turn-taking (direction follows `activeSpeaker`). Static highlight under reduced-motion.
+- **`TranscriptStream`** — live transcript that reveals the in-flight turn **word-by-word** with a blinking caret + speaker colour-coding (agent = violet, caller = cyan), auto-scrolls, `aria-live="polite"`. Full text immediately + static caret under reduced-motion.
+- **`ThinkingDots` / `ListeningPulse`** — small status indicators (bouncing dots / cyan "live" ping), `role="status"` labelled.
+- **CSS:** UX-04 keyframes in `ui.css` — `vq-orb-breathe`, `vq-thinking-bounce`, `vq-live-ping`, `vq-caret-blink`.
+- **subpath:** `@vocaliq/ui/voice` export added to `packages/ui/package.json` (types + default → `dist/voice`).
+- **kitchen-sink** `/dashboard/kitchen` — a `VoiceMotionKit` section that runs a **mini "live call"**: one `useSimulatedAgent()` drives the orb, waveform, conversation viz, indicators, and a scripted transcript together, so the whole set choreographs in sync against the motion-level toggle.
+
+Verification: **typecheck 12/12**, **lint 12/12**, **test** green (api 460, workers 42, db 7, provider-router 22, shared), **build 8/8** (64/64 pages) — **First Load JS still 177 kB** (all voice canvas/framer code lives on the `/voice` subpath, loaded only on routes that use it). Live smoke: the choreography cycles idle→listening→thinking→speaking; the waveform reacts, the orb changes behaviour, the conversation pulse reverses direction with the speaker, and the transcript streams word-by-word — all neutralized to static forms (no rAF/loops) under `data-motion=off`.
+
+**Notes / decisions:** LiveWaveform uses `<canvas>` (not SVG/DOM bars) so real-audio `AnalyserNode` playback stays at 60fps with 48 bars; latest props are held in refs so the rAF loop never restarts on re-render. biome fixes: removed a useless Fragment in VoiceOrb; the two indicator `role="status"` live regions carry justified `biome-ignore`s (same pattern as toast).
+
+## Self-Audit — UX-04 (A–K)
+A. Correctness: ✅ — the state machine cycles through the canonical order; `activeSpeaker` drives node highlight + pulse direction + transcript colour consistently; simulator dwell/cleanup correct.
+B. Isolation: ✅ — presentational; no data/API/tenant surface (real audio is passed in by the caller as an `AnalyserNode`).
+C. Security: ✅ — no secrets; no mic access taken here (the component consumes an analyser the app supplies).
+D. Cost: ✅ — no provider/LLM/DB path.
+E. Errors/obs: ✅ — canvas guards (no ctx → bail); components render 0 errors in the gallery.
+F. Performance (focus): ✅ — single rAF per LiveWaveform, throttled to refresh, DPR-capped at 2, `cancelAnimationFrame` + resize-listener cleanup on unmount; **no loop at all under reduced-motion**; framer loops are tiny (orb/pulse) and stop when state/level changes; `willChange: transform` on the orb.
+G. Error handling: ✅ — empty transcript / missing analyser / missing amplitude all degrade to the synthetic envelope.
+H. UI/"feels like AI voice" (focus): ✅ — amplitude-reactive waveform + presence orb + turn-taking pulse + word-by-word transcript read as a live agent; violet→cyan "live" language throughout; all reduced-motion-aware; labelled for AT.
+I. Regressions: ✅ — purely additive (new subpath + new files + one kitchen-sink section + additive keyframes); existing screens untouched; full suite + build green; shared bundle unchanged (177 kB).
+J. Quality/docs: ✅ — every primitive + hook has a doc comment; the canvas/ref decision noted; kitchen-sink is the living QA + integration demo.
+K. Build/CI: ✅ — ui builds to `dist/voice` with `'use client'` preserved; typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
+
+VocalIQ now has its signature motion vocabulary — an amplitude-reactive `LiveWaveform`, a stateful `VoiceOrb`, a turn-taking `ConversationViz`, a streaming `TranscriptStream`, and status indicators, all driven by one `useAgentState` machine and reduced-motion-safe, at zero shared-bundle cost. These are the pieces the redesigned hero, live-call console, and agent cards (UX-05+) build the "it's alive" feeling from. DoD CONFIRMED. Next: UX-05 (apply the voice-motion set to the live-call / agent surfaces).
