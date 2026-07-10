@@ -3486,3 +3486,31 @@ J. Quality/docs: ✅ — helpers documented; the index-guard fix noted; composes
 K. Build/CI: ✅ — typecheck/lint/test/build green; artifacts reverted before commit.
 
 The Overview is now the elevated, infographic-rich flagship the whole program was building toward — ambient hero + voice identity, animated KPI infographics from real data, a live activity feed, and a contextual next step. DoD (part 1) CONFIRMED. Next: UX-10b — Agents (richer animated cards) + Calls (animated table, sentiment/outcome colour, summary header).
+
+## UX-Day 10b — Agents & Calls Redesign — 2026-07-10 — ✅ DONE — 🎨 UI/UX ELEVATION
+Model: Opus. Branch `ux/10b-agents-calls`. Second increment of UX-10 — the Agents + Calls screens rebuilt into animated, infographic-rich, scannable surfaces. Analytics + Wallet are the 10c increment. Self-audit focus **H (richer + scannable), I (same data hooks, no regressions), F (CWV holds)**.
+
+Built (DONE):
+- **Agents** (`agents/page.tsx`) — the flat list → an **animated card grid** (`Stagger`/`StaggerItem`, `sm:2 / xl:3` cols). Each `AgentCard`: seeded `AgentAvatar` + name + type, a `StatusBadge`, **language chips** (`Badge`, +N overflow), a **mini usage sparkline** (that agent's calls-per-day over 8 days, derived from `useCalls`) with a call-count, hover **lift** (`vq-lift`), and quick actions (Build / Chat + a `DropdownMenu` overflow → Guards / Learning / Memory / Tests). Empty/error/loading states preserved via the `Crossfade`.
+- **Calls** (`calls/page.tsx`) — added a **summary infographic header** (`CallsSummary`: 4 `StatCard`s — Calls, Success rate w/ sentiment, Spend, Avg duration — from the real items), a **status filter** (`SegmentedControl`: All / Completed / Failed, client-side) with an "X of Y" count, and a **status-coloured left accent** per row (`statusAccent`: completed → green, failed/no-answer/busy → red, in-progress/ringing/queued → amber). The View-Transitions shared-element avatar morph + skeleton crossfade from earlier days are retained.
+
+Both screens use only the existing tenant-scoped hooks (`useAgents`, `useCalls`) — no new data paths.
+
+Verification: **typecheck 12/12**, **lint 12/12**, **test** green (api 460, workers 42, db 7, provider-router 22, shared), **build 8/8** (64/64 pages) — **shared First Load JS still 177 kB** (the charts subpath is code-split onto these routes). Live smoke: agent cards stagger in with avatars + language chips + per-agent sparklines + lift on hover, the overflow menu opens; the calls page shows the KPI header, filtering narrows the table with the count, and rows carry a status-coloured accent — all reduced-motion-safe.
+
+**Fix:** biome `noAssignInExpressions` on the sparkline-bucket lazy-init → refactored to an explicit `if (!arr) { … }`.
+
+## Self-Audit — UX-10b (A–K)
+A. Correctness (focus): ✅ — per-agent sparkline buckets by `agent.id` + day correctly; calls summary metrics (success/spend/avg-dur) computed from real items; the status filter + accent map cover the lifecycle states.
+B. Isolation: ✅ — existing tenant-scoped hooks; no new data path.
+C. Security: ✅ — no secrets; same-origin links only.
+D. Cost: ✅ — no provider/LLM/DB path.
+E. Errors/obs: ✅ — empty/error/loading states preserved; missing costBreakdown/duration guarded; 0 runtime errors.
+F. Performance (focus): ✅ — shared First Load JS unchanged (177 kB); charts code-split; sparkline derivation is O(items); cards are CSS-lift + SVG sparklines (no heavy work); no CLS.
+G. Error handling: ✅ — no-recent-calls agents show "No recent calls"; filter with no matches renders an empty table body gracefully.
+H. UI/elevation (focus): ✅ — Agents reads as a rich card gallery (faces, chips, usage trend, quick actions) vs a flat list; Calls gains a KPI header + filter + colour-coded rows — both scannable + colorful; reduced-motion-safe.
+I. Regressions (focus): ✅ — same hooks/data; every prior action (Build/Chat/Guards/Learning/Memory/Tests, call links, place-test-call, shared-element morph) preserved; full suite + build green.
+J. Quality/docs: ✅ — helpers documented; the lint fix noted; composes shipped kits (no new primitives).
+K. Build/CI: ✅ — typecheck/lint/test/build green; artifacts reverted before commit.
+
+Agents + Calls now match the elevated Overview — an animated agent gallery with per-agent usage trends and a KPI-headed, filterable, colour-coded calls table. DoD (part 2) CONFIRMED. Next: UX-10c — Analytics (viz kit applied) + Wallet/Billing (spend sparkline + usage meters).

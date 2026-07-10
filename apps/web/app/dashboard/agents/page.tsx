@@ -1,18 +1,51 @@
 'use client';
 
-import { AgentAvatar, Button, Card } from '@vocaliq/ui';
-import { Crossfade } from '@vocaliq/ui/motion';
-import { Plus } from 'lucide-react';
+import {
+  AgentAvatar,
+  Badge,
+  Button,
+  Card,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@vocaliq/ui';
+import { Sparkline } from '@vocaliq/ui/charts';
+import { Crossfade, Stagger, StaggerItem } from '@vocaliq/ui/motion';
+import { MoreHorizontal, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { EmptyState, ErrorState, LoadingCard } from '../../../components/states';
 import { StatusBadge } from '../../../components/ui-bits';
-import { useAgents } from '../../../lib/api';
+import { type AgentListItem, type CallListItem, useAgents, useCalls } from '../../../lib/api';
+
+/** Per-agent daily call counts over the last 8 days (for the mini usage sparkline). */
+function agentSparks(items: CallListItem[], days = 8): Record<string, number[]> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const map: Record<string, number[]> = {};
+  for (const it of items) {
+    const d = new Date(it.createdAt);
+    d.setHours(0, 0, 0, 0);
+    const diff = Math.round((today.getTime() - d.getTime()) / 86_400_000);
+    if (diff < 0 || diff >= days) continue;
+    let arr = map[it.agent.id];
+    if (!arr) {
+      arr = new Array<number>(days).fill(0);
+      map[it.agent.id] = arr;
+    }
+    const idx = days - 1 - diff;
+    arr[idx] = (arr[idx] ?? 0) + 1;
+  }
+  return map;
+}
 
 export default function AgentsPage() {
   const { data, isLoading, isError, error, refetch } = useAgents();
+  const calls = useCalls();
+  const sparks = agentSparks(calls.data?.items ?? []);
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-6">
+    <div className="mx-auto flex max-w-5xl flex-col gap-6">
       <header className="flex items-center justify-between">
         <div>
           <h1 className="font-display font-semibold text-xl text-vq-text-hi">Agents</h1>
@@ -55,49 +88,94 @@ export default function AgentsPage() {
             }
           />
         ) : (
-          <ul className="flex flex-col gap-3">
+          <Stagger className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {data.map((agent) => (
-              <li key={agent.id}>
-                <Card className="flex flex-row items-center justify-between px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <AgentAvatar seed={agent.id} name={agent.name} size={40} />
-                    <div className="flex flex-col gap-1">
-                      <span className="font-medium text-vq-text-hi">{agent.name}</span>
-                      <span className="text-vq-text-lo text-xs">
-                        {agent.type.toLowerCase()}
-                        {agent.languages.length ? ` · ${agent.languages.join(', ')}` : ''}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <StatusBadge status={agent.status} />
-                    <Link href={`/dashboard/agents/${agent.id}/settings`}>
-                      <Button variant="ghost" size="sm">
-                        Guards
-                      </Button>
-                    </Link>
-                    <Link href={`/dashboard/agents/${agent.id}/chat`}>
-                      <Button variant="ghost" size="sm">
-                        Chat
-                      </Button>
-                    </Link>
-                    <Link href={`/dashboard/agents/${agent.id}/learning`}>
-                      <Button variant="ghost" size="sm">
-                        Learn
-                      </Button>
-                    </Link>
-                    <Link href={`/dashboard/agents/${agent.id}/builder`}>
-                      <Button variant="secondary" size="sm">
-                        Build
-                      </Button>
-                    </Link>
-                  </div>
-                </Card>
-              </li>
+              <StaggerItem key={agent.id}>
+                <AgentCard agent={agent} spark={sparks[agent.id]} />
+              </StaggerItem>
             ))}
-          </ul>
+          </Stagger>
         )}
       </Crossfade>
     </div>
+  );
+}
+
+function AgentCard({ agent, spark }: { agent: AgentListItem; spark?: number[] }) {
+  const callTotal = spark?.reduce((s, v) => s + v, 0) ?? 0;
+  return (
+    <Card className="vq-lift flex h-full flex-col gap-3 p-4 transition-colors hover:border-vq-violet/50">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-3">
+          <AgentAvatar seed={agent.id} name={agent.name} size={40} />
+          <div className="flex min-w-0 flex-col">
+            <span className="truncate font-medium text-vq-text-hi">{agent.name}</span>
+            <span className="text-vq-text-lo text-xs">{agent.type.toLowerCase()}</span>
+          </div>
+        </div>
+        <StatusBadge status={agent.status} />
+      </div>
+
+      {/* Channel / language chips. */}
+      {agent.languages.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {agent.languages.slice(0, 4).map((l) => (
+            <Badge key={l} variant="neutral">
+              {l}
+            </Badge>
+          ))}
+          {agent.languages.length > 4 && (
+            <Badge variant="outline">+{agent.languages.length - 4}</Badge>
+          )}
+        </div>
+      )}
+
+      {/* Mini usage sparkline. */}
+      <div className="flex items-center justify-between border-vq-border border-t pt-3">
+        <span className="text-vq-text-lo text-xs">
+          <span className="font-medium text-vq-text-hi tabular-nums">{callTotal}</span> calls · 7d
+        </span>
+        {spark && spark.length > 1 ? (
+          <Sparkline data={spark} width={80} height={26} />
+        ) : (
+          <span className="text-vq-text-lo text-xs">No recent calls</span>
+        )}
+      </div>
+
+      {/* Quick actions. */}
+      <div className="mt-auto flex items-center gap-2">
+        <Link href={`/dashboard/agents/${agent.id}/builder`} className="flex-1">
+          <Button variant="secondary" size="sm" className="w-full">
+            Build
+          </Button>
+        </Link>
+        <Link href={`/dashboard/agents/${agent.id}/chat`} className="flex-1">
+          <Button variant="ghost" size="sm" className="w-full">
+            Chat
+          </Button>
+        </Link>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" aria-label="More actions">
+              <MoreHorizontal size={16} />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem asChild>
+              <Link href={`/dashboard/agents/${agent.id}/settings`}>Guards</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href={`/dashboard/agents/${agent.id}/learning`}>Learning</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href={`/dashboard/agents/${agent.id}/memory`}>Memory</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href={`/dashboard/agents/${agent.id}/tests`}>Tests</Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </Card>
   );
 }
