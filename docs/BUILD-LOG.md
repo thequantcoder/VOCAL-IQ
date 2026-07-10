@@ -3455,3 +3455,34 @@ J. Quality/docs: ✅ — every chart documented + `DATAVIZ.md` guide; the zero-d
 K. Build/CI: ✅ — ui builds to `dist/charts` with `'use client'` preserved; typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
 
 UX-09 is complete: a themed, animated, reduced-motion-safe, **zero-dep** data-viz kit — sparklines, gauges, meters, trend deltas, sentiment stat cards (09a) + area/line/bar/stacked/donut charts, a day×hour heatmap, and a sentiment ribbon (09b), with a `DATAVIZ.md` guide — the infographic toolkit the dashboard redesign (UX-10/11) builds on, at zero shared-bundle cost. DoD CONFIRMED. Next: UX-10 (user dashboard redesign — overview + key screens).
+
+## UX-Day 10a — Overview Redesign (hero + KPI row + activity + smart next-step) — 2026-07-10 — ✅ DONE — 🎨 UI/UX ELEVATION
+Model: Opus. Branch `ux/10-overview-redesign`. First increment of UX-10 — the flagship user surface (the dashboard Overview) rebuilt into a colorful, infographic-rich, animated, scannable page using the UX-04/05/09 kits. Agents / Calls / Analytics / Wallet redesigns are the 10b/10c increments. Self-audit focus **H (visibly elevated + scannable), I (data still correct via existing hooks, no regressions), F (CWV holds)**.
+
+Built (DONE) — `apps/web/app/dashboard/page.tsx` (rewrite, same data hooks `useAgents`/`useCalls`):
+- **Hero band** — a `relative overflow-hidden` card with the `AmbientBackground` (drifting mesh + particles) behind a `VoiceOrb` (voice identity), a time-of-day greeting, the headline, primary CTAs (Create agent / Place a test call), and the signature `Waveform`. Reveals in.
+- **Animated KPI row** — four `StatCard` v2 tiles (Agents, Calls, Spend, Success rate) with `<AnimatedNumber>` count-up, an inline **sparkline** (computed from real calls bucketed per-day), a **trend delta** (second-half vs first-half of the window; `deltaInvert` on spend), and **sentiment glow** (success-rate ≥70 good / ≥40 neutral / else bad). Staggered in.
+- **Live activity feed** — the 6 most-recent calls as rows: seeded `AgentAvatar`, agent name + direction/channel, billable cost, and a `StatusBadge`; each row links to the call detail (through the UX-06 route transition). Empty state built in.
+- **Smart "what to do next" card** — a contextual suggestion that adapts to the journey (no agents → create; agents but no calls → place a call; else → view analytics), with a gradient wash + a momentum `TrendDelta`.
+- **Onboarding checklist** retained. Everything reduced-motion-safe (Reveal/Stagger degrade).
+
+Data derivations (pure, from the existing `calls.items`): `dailyCounts` buckets calls/spend/success per-day over the last 8 days; `halfDelta` compares the two halves for the trend arrows; `successRate` from `status === 'COMPLETED'`. No new API calls.
+
+Verification: **typecheck 12/12**, **lint 12/12**, **test** green (api 460, workers 42, db 7, provider-router 22, shared), **build 8/8** (64/64 pages) — **shared First Load JS still 177 kB**; the `/dashboard` route now pulls the charts + voice + ambient subpaths (code-split, ~355 kB route First Load, as expected for the richest surface). Live smoke: the hero breathes with the orb + ambient, KPI numbers count up with sparklines + deltas + sentiment glow, the activity feed lists recent calls with avatars + status, and the next-step card adapts to state — all static/instant under `data-motion=off`.
+
+**Fix:** `noUncheckedIndexedAccess` flagged the daily-bucket write — guarded with `buckets[idx] = (buckets[idx] ?? 0) + …`.
+
+## Self-Audit — UX-10a (A–K)
+A. Correctness (focus): ✅ — metrics derive from the real `calls.items` (count/spend/success bucketed correctly; deltas from half-vs-half); recent list sorted by `createdAt`; next-step logic matches journey state.
+B. Isolation: ✅ — uses the existing tenant-scoped hooks; no new data path.
+C. Security: ✅ — no secrets; links are same-origin.
+D. Cost: ✅ — no provider/LLM/DB path added.
+E. Errors/obs: ✅ — empty feed + zero-data KPIs render sensibly (0 / 0% / flat spark); no runtime errors.
+F. Performance (focus): ✅ — shared First Load JS unchanged (177 kB); the heavy viz/voice load is code-split onto this route only; ambient canvas is IntersectionObserver-gated; derivations are O(items) memo-free but tiny; no CLS (sections reserve space).
+G. Error handling: ✅ — loading falls through to zeros/empty (the page renders immediately; hooks hydrate); no crashes on missing costBreakdown.
+H. UI/elevation (focus): ✅ — the Overview now reads as a live, colorful product surface: ambient hero + voice orb, count-up KPIs with sparklines/deltas/sentiment, activity feed with faces, and a smart next step — vs the old 3 flat stat cards.
+I. Regressions (focus): ✅ — same hooks + data; the onboarding checklist + all links preserved; full suite + build green.
+J. Quality/docs: ✅ — helpers documented; the index-guard fix noted; composes the shipped kits (no new primitives).
+K. Build/CI: ✅ — typecheck/lint/test/build green; artifacts reverted before commit.
+
+The Overview is now the elevated, infographic-rich flagship the whole program was building toward — ambient hero + voice identity, animated KPI infographics from real data, a live activity feed, and a contextual next step. DoD (part 1) CONFIRMED. Next: UX-10b — Agents (richer animated cards) + Calls (animated table, sentiment/outcome colour, summary header).
