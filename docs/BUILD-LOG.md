@@ -3304,3 +3304,31 @@ J. Quality/docs: ✅ — components documented; the domMax decision + the 07b de
 K. Build/CI: ✅ — ui builds with `'use client'` preserved; typecheck/lint/test/build green; artifacts reverted before commit.
 
 The nav is now a grouped, animated, role-aware system with a sliding active indicator and a real mobile drawer — 50 destinations made scannable and delightful. DoD (part 1) CONFIRMED. Next: UX-07b — ⌘K command palette + contextual sub-nav + desktop icon-only collapse.
+
+## UX-Day 07b — ⌘K Command Palette + Contextual Sub-Nav — 2026-07-10 — ✅ DONE — 🎨 UI/UX ELEVATION
+Model: Opus. Branch `ux/07b-command-palette`. Second increment of UX-07 — the keyboard-first command palette + a contextual secondary nav. Self-audit focus **H (keyboard-first, delightful), A (palette actions + sub-nav active-state correct), I (no regressions)**.
+
+Built (DONE):
+- **`CommandPalette`** (`components/command-palette.tsx`) — a global ⌘K / Ctrl-K overlay, mounted once in the shell. **Fuzzy search** over every role-visible nav destination (`flatNavItems`) + **quick actions**: Create an agent, Place a test call, Toggle theme (next-themes), Cycle motion level, Sign out. **Keyboard-first**: ↑/↓ move the selection (scrolls into view), Enter runs, Esc closes; the input autofocuses on open; results are grouped (Actions / Navigation). Animated open/close (framer, reduced-motion-safe), backdrop-dismiss, `role="dialog"` + `aria-modal`. Openable from anywhere via `openCommandPalette()` (a `vq-open-command` window event).
+- **Header search trigger** — a "Search… ⌘K" button in the dashboard header (`dashboard-shell.tsx`) that opens the palette; the shell also mounts `<CommandPalette/>` once and exposes `flatNavItems` / `OVERVIEW_ITEM` from `sidebar-nav.tsx`.
+- **`SubNav`** (`components/sub-nav.tsx`) — a reusable contextual secondary nav (real `<Link>`s) with the **same sliding `layoutId` active underline** as the primary nav (spring, via domMax; static under reduced-motion), horizontally scrollable, keyboard/AT accessible.
+- **Agent-detail sub-nav** — a new `app/dashboard/agents/[id]/layout.tsx` renders `SubNav` across an agent's sub-pages (Chat / Builder / Learning / Memory / Guards / Tests) so moving between an agent's tabs feels in-place. The **Builder opts out** (immersive full-canvas view — no max-width wrapper, no sub-nav bar eating vertical space), avoiding any width/height regression to the React-Flow builder.
+
+Verification: **typecheck 12/12**, **lint 12/12**, **test** green (api 460, workers 42, db 7, provider-router 22, shared), **build 8/8** (64/64 pages) — **shared First Load JS still 177 kB**. Live smoke: ⌘K opens the palette anywhere in the dashboard; typing filters actions + pages; arrows/enter/esc work; actions fire (navigate, theme flip, motion cycle, sign out); the agent sub-nav underline slides between tabs and the builder renders edge-to-edge without it — all reduced-motion-safe.
+
+**Decision:** the desktop **icon-only sidebar collapse** (UX-07 part 4, desktop half) is intentionally deferred — the mobile drawer (07a) already covers small screens, and an icon rail over grouped/collapsible sections adds complexity for marginal value; noted for a later polish pass. Contextual sub-nav (part 5) + command palette (part 6) complete the remaining UX-07 scope.
+
+## Self-Audit — UX-07b (A–K)
+A. Correctness (focus): ✅ — palette commands run the right nav/actions; fuzzy filter matches label + keywords; active index clamps to the filtered list; sub-nav active matching (exact vs prefix) correct; builder opt-out works.
+B. Isolation: ✅ — pure client nav/presentation; no query/mutation/tenant change; palette nav honours role gating (`flatNavItems` filters by membership).
+C. Security: ✅ — no secrets; actions are same-origin navigations + local theme/motion/sign-out.
+D. Cost: ✅ — no provider/LLM/DB path.
+E. Errors/obs: ✅ — event listeners cleaned up; `results[active]?.run()` is guarded; 0 new runtime errors.
+F. Performance: ✅ — shared First Load JS unchanged (177 kB); palette mounts nothing until opened (AnimatePresence); commands memoised.
+G. Error handling: ✅ — empty query shows all; no-match state handled; missing id in the agent layout degrades to a base path.
+H. UI/keyboard (focus): ✅ — fully keyboard-driven palette (⌘K/↑/↓/Enter/Esc, autofocus, active-row scroll), grouped results, animated + reduced-motion-safe; the sub-nav underline glides like the sidebar; header shows the ⌘K affordance.
+I. Regressions (focus): ✅ — additive (new palette + sub-nav + one agent layout + a header button); the builder is explicitly excluded so the canvas is untouched; full suite + build green.
+J. Quality/docs: ✅ — components documented; the builder opt-out + the icon-only-collapse deferral logged; consistent motion-level gating.
+K. Build/CI: ✅ — typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
+
+UX-07 is complete: a grouped, animated, role-aware sidebar with a sliding indicator + mobile drawer (07a), plus a keyboard-first ⌘K command palette and a contextual agent sub-nav (07b) — the ~50-item nav is now fast, scannable, and delightful for every role. DoD CONFIRMED. Next: UX-08 (CTA & button interaction system).

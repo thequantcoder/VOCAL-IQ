@@ -1,7 +1,7 @@
 'use client';
 
 import { brandName, parseBranding } from '@vocaliq/shared';
-import { LogOut } from 'lucide-react';
+import { LogOut, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
@@ -9,6 +9,7 @@ import { ThemeToggle } from '../app/theme-toggle';
 import { useBranding } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { BrandingApplier } from './branding-applier';
+import { CommandPalette, openCommandPalette } from './command-palette';
 import { ErrorBoundary } from './error-boundary';
 import { LocaleSwitcher } from './locale-switcher';
 import { RouteShell } from './route-shell';
@@ -53,6 +54,18 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       <div className="flex min-w-0 flex-col">
         <header className="flex items-center gap-3 border-vq-border border-b px-4 py-3 md:px-6">
           <MobileNav isReseller={isReseller} isSuperAdmin={isSuperAdmin} brand={brandMark} />
+          {/* Command palette trigger (⌘K) — search-first entry to nav + quick actions. */}
+          <button
+            type="button"
+            onClick={openCommandPalette}
+            className="flex items-center gap-2 rounded-vq border border-vq-border px-2.5 py-1.5 text-sm text-vq-text-lo transition-colors hover:border-vq-violet/50 hover:text-vq-text-hi focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vq-ring"
+          >
+            <Search size={15} aria-hidden />
+            <span className="hidden sm:inline">Search…</span>
+            <kbd className="hidden rounded-vq-sm border border-vq-border px-1.5 py-0.5 font-mono text-[0.65rem] sm:inline">
+              ⌘K
+            </kbd>
+          </button>
           <div className="flex flex-1 items-center justify-end gap-3">
             <LocaleSwitcher />
             <ThemeToggle />
@@ -68,6 +81,9 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           </ErrorBoundary>
         </main>
       </div>
+
+      {/* Global ⌘K command palette (mounted once). */}
+      <CommandPalette />
     </div>
   );
 }

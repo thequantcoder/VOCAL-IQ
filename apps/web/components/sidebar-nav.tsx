@@ -177,6 +177,17 @@ export const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
+/** The pinned Overview item, exported for consumers (e.g. the command palette). */
+export const OVERVIEW_ITEM = OVERVIEW;
+
+/** Flat list of every nav destination visible to the given roles — used by the ⌘K command palette. */
+export function flatNavItems(isReseller: boolean, isSuperAdmin: boolean): NavItem[] {
+  const groups = NAV_GROUPS.filter(
+    (g) => !g.role || (g.role === 'reseller' && isReseller) || (g.role === 'admin' && isSuperAdmin),
+  );
+  return [OVERVIEW, ...groups.flatMap((g) => g.items)];
+}
+
 const SECTIONS_KEY = 'vq-nav-sections';
 
 function matchActive(pathname: string, item: NavItem): boolean {
