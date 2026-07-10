@@ -1,7 +1,54 @@
 'use client';
 
 import { THEME_PRESETS } from '@vocaliq/shared';
-import { Button, Card, CardContent, CardHeader, CardTitle } from '@vocaliq/ui';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+  Avatar,
+  Badge,
+  Button,
+  Callout,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  EmptyState,
+  Kbd,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Progress,
+  Separator,
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  Skeleton,
+  Tooltip,
+  toast,
+} from '@vocaliq/ui';
 import {
   AnimatedNumber,
   Collapse,
@@ -50,6 +97,7 @@ export default function KitchenSinkPage() {
       <MotionControls />
       <MotionPrimitives />
       <TokenGallery />
+      <ComponentKit />
 
       <Section title="Theme presets (contract · applied in UX-12)">
         <div className="flex flex-wrap gap-2">
@@ -272,6 +320,168 @@ function TokenGallery() {
   );
 }
 
+/** Component kit v1 (UX-03) — overlays, feedback, display. */
+function ComponentKit() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Component kit v1 (UX-03)</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-5">
+        {/* Badges + chips */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="primary">primary</Badge>
+          <Badge variant="success">success</Badge>
+          <Badge variant="warn">warn</Badge>
+          <Badge variant="danger">danger</Badge>
+          <Badge variant="accent">live</Badge>
+          <Badge variant="outline">outline</Badge>
+          <Chip onRemove={() => {}}>removable</Chip>
+        </div>
+
+        <Separator />
+
+        {/* Feedback: toasts + callout */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => toast.success('Saved', { description: 'Your changes are live.' })}
+          >
+            Toast success
+          </Button>
+          <Button size="sm" variant="secondary" onClick={() => toast.error('Something failed')}>
+            Toast error
+          </Button>
+          <Button size="sm" variant="secondary" onClick={() => toast.info('Heads up')}>
+            Toast info
+          </Button>
+        </div>
+        <Callout variant="info" title="Callout">
+          A contextual note with a semantic left rule and tint.
+        </Callout>
+
+        {/* Overlays: tooltip, popover, dropdown, dialog, alert, sheet */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Tooltip content="A helpful tooltip">
+            <Button size="sm" variant="secondary">
+              Hover me
+            </Button>
+          </Tooltip>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button size="sm" variant="secondary">
+                Popover
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 text-sm text-vq-text-lo">
+              A popover with arbitrary content.
+            </PopoverContent>
+          </Popover>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="secondary">
+                Menu
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={() => toast('Edit')}>Edit</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => toast('Duplicate')}>Duplicate</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem destructive onSelect={() => toast.error('Deleted')}>
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button size="sm">Dialog</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create an agent</DialogTitle>
+                <DialogDescription>A focus-trapped, animated modal.</DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button size="sm">Create</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="sm" variant="danger">
+                Delete…
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogTitle>Delete this agent?</AlertDialogTitle>
+              <AlertDialogDescription>This can't be undone.</AlertDialogDescription>
+              <AlertDialogFooter>
+                <AlertDialogCancel asChild>
+                  <Button size="sm" variant="secondary">
+                    Cancel
+                  </Button>
+                </AlertDialogCancel>
+                <AlertDialogAction asChild>
+                  <Button size="sm" variant="danger" onClick={() => toast.error('Deleted')}>
+                    Delete
+                  </Button>
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button size="sm" variant="secondary">
+                Sheet
+              </Button>
+            </SheetTrigger>
+            <SheetContent>
+              <SheetHeader>
+                <SheetTitle>Side panel</SheetTitle>
+              </SheetHeader>
+              <p className="text-sm text-vq-text-lo">Slides in from the edge.</p>
+            </SheetContent>
+          </Sheet>
+        </div>
+
+        <Separator />
+
+        {/* Display: avatars, progress, skeleton */}
+        <div className="flex flex-wrap items-center gap-4">
+          <Avatar name="Sky Rivera" status="live" />
+          <Avatar name="Jordan Lee" status="online" />
+          <Avatar name="Casey Ng" status="busy" />
+          <div className="flex items-center gap-2 text-vq-text-lo text-xs">
+            <Kbd>⌘</Kbd>
+            <Kbd>K</Kbd> to search
+          </div>
+          <CircularProgress value={68} size={44}>
+            68
+          </CircularProgress>
+        </div>
+        <Progress value={68} label="Usage" />
+        <div className="flex gap-2">
+          <Skeleton className="h-10 flex-1" />
+          <Skeleton className="h-10 w-24" />
+        </div>
+
+        <EmptyState
+          title="No agents yet"
+          hint="Create your first voice agent to place a call."
+          action={<Button size="sm">Create an agent</Button>}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <Card>
@@ -280,13 +490,5 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       </CardHeader>
       <CardContent>{children}</CardContent>
     </Card>
-  );
-}
-
-function Chip({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="rounded-vq-pill border border-vq-border px-2.5 py-1 text-vq-text-lo text-xs">
-      {children}
-    </span>
   );
 }

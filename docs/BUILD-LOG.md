@@ -3091,3 +3091,36 @@ J. Quality/docs: ✅ — `DESIGN-SYSTEM §11.7` token reference + the no-hard-co
 K. Build/CI: ✅ — the CSS-comment build bug fixed; typecheck/lint/test/build green; artifacts reverted before commit.
 
 The palette is now a real system: primary/secondary/accent/neutral 50–900 (+ AA on-colour), semantic + subtle, an 8-colour viz palette, surfaces/elevation/glass, radius + density, and motion — all CSS vars → Tailwind utilities, light + dark, fully back-compatible. This is the token backbone the theme engine (UX-12) and every redesigned screen build on. DoD CONFIRMED. Next: UX-03 (component kit v1).
+
+## UX-Day 03 — Component Kit v1 (overlays · feedback · display) — 2026-07-10 — ✅ DONE — 🎨 UI/UX ELEVATION
+Model: Opus. Branch `ux/03a-component-kit`. Builds the accessible primitive layer on top of the UX-02 tokens + UX-01 motion — the shadcn-style building blocks every redesigned screen (nav, dashboards, onboarding) composes from. Self-audit focus **H (a11y: focus-trap, ESC, roles, reduced-motion) + I (no regressions)**.
+
+Built (DONE) — 15 new components in `packages/ui/src/components/`, all `'use client'`, token-styled, reduced-motion-aware, exported from `packages/ui/src/index.ts`:
+- **Display:** `Badge` (8 semantic variants) + `Chip` (removable), `Skeleton` (`.vq-skeleton` shimmer), `Kbd`, `Avatar` (initials + `AvatarStatus` online/busy/offline/live ring), `Separator`, `Callout` (info/success/warn/danger/neutral — semantic left rule + tint), `EmptyState` (icon/title/hint/action), `Progress` (linear + indeterminate) + `CircularProgress` (SVG ring).
+- **Overlays (Radix-based — focus-trap, ESC, scroll-lock, `data-[state]` keyframe in/out):** `Tooltip` (self-contained Provider), `Popover`, `DropdownMenu` (label/item/`destructive`/separator), `Dialog`, `AlertDialog` (action/cancel), `Sheet`/Drawer (`side` right/left/top/bottom — slide keyframes).
+- **Feedback:** `toast()` imperative API (`.success/.error/.warn/.info/.dismiss`, auto-dismiss, description) backed by a tiny module store (`useSyncExternalStore`, no external dep) + `<Toaster>` (AnimatePresence stack, honours motion level) — mounted once in `apps/web/app/providers.tsx`.
+- **CSS:** UX-03 keyframes added to `packages/ui/src/styles/ui.css` — `vq-fade-in/out`, `vq-pop-in/out`, `vq-slide-in/out-right/left`, `vq-shimmer` + `.vq-skeleton`.
+- **kitchen-sink** `/dashboard/kitchen` — new `ComponentKit` section demoing every primitive live (badges/chips, toasts, callout, tooltip/popover/menu/dialog/alert/sheet, avatars/kbd/progress/skeleton, empty-state) for QA against the motion-level toggle.
+- **deps:** `@radix-ui/react-{dialog,alert-dialog,tooltip,popover,dropdown-menu,avatar,separator}` added to `packages/ui/package.json`.
+
+Verification: **typecheck 12/12**, **lint 12/12**, **test** green (api 460, workers 42, db 7, provider-router 22, shared), **build 8/8** (64/64 pages) — **First Load JS still 177 kB** (Radix + framer stay out of the shared bundle via LazyMotion + per-route code-split). Live smoke: the `ComponentKit` gallery renders in both themes; overlays trap focus + close on ESC; toasts stack + auto-dismiss; motion-off neutralizes all entrances.
+
+**Bugs caught + fixed during the day:**
+- The kitchen page had a **local `Chip` helper shadowing** the new `@vocaliq/ui` `Chip` export (props `{children}` only) → typecheck error on `onRemove`. Removed the local shadow; now uses the real component.
+- **biome a11y** flagged 7 issues: decorative inline SVGs needed explicit `aria-hidden="true"` (bare `aria-hidden` wasn't accepted) — fixed across badge/dialog/sheet/toast/progress; `progressbar` role (non-interactive live region) + toast `role="status"` are correct ARIA that biome over-flags → justified `biome-ignore` on both.
+- Recurring local `NEXT_DIST_DIR` rewrite of `tsconfig.json`/`next-env.d.ts` reverted before commit; stray iCloud `" 2.*"` dup artifacts (in gitignored `dist/`) deleted.
+
+## Self-Audit — UX-03 (A–K)
+A. Correctness: ✅ — every primitive renders + behaves (open/close/dismiss/remove) in the kitchen gallery; variants map to the right tokens.
+B. Isolation: ✅ — presentational component library; no data/API/tenant surface.
+C. Security: ✅ — no secrets; no user input persisted; Radix handles focus/escape safely.
+D. Cost: ✅ — no provider/LLM/DB path.
+E. Errors/obs: ✅ — pure UI; the toast store is synchronous + can't throw; gallery renders 0 errors.
+F. Performance: ✅ — First Load JS unchanged (177 kB); overlays code-split; CSS keyframes (GPU) for in/out; no layout thrash.
+G. Error handling: ✅ — components degrade gracefully (missing avatar img → initials; indeterminate progress; empty toast list).
+H. UI/a11y (focus): ✅ — Radix gives focus-trap + ESC + scroll-lock + ARIA on all overlays; menu/tooltip keyboard-navigable; toasts are polite live regions; every entrance is reduced-motion-aware (killed under `data-motion=off`); decorative SVGs `aria-hidden`; semantic colours are AA on the UX-02 tokens.
+I. Regressions (focus): ✅ — purely additive (new files + additive index exports + one `<Toaster/>` mount); existing screens untouched; full suite + build green.
+J. Quality/docs: ✅ — each component has a doc comment; the two `biome-ignore`s carry justifications; kitchen-sink is the living QA surface.
+K. Build/CI: ✅ — ui builds to `dist/` with `'use client'` preserved; typecheck/lint/test/build green; artifacts reverted before commit.
+
+VocalIQ now has a real, accessible component kit — badges/chips, callouts, empty-states, skeletons, progress/rings, avatars, and the full Radix overlay set (tooltip/popover/menu/dialog/alert/sheet) plus a motion-aware toast system — all token-driven and reduced-motion-aware, at zero shared-bundle cost. This is the primitive layer UX-04+ (voice motion, nav, dashboards, onboarding) composes from. DoD CONFIRMED. Next: UX-03b (form inputs + nav: Switch/Checkbox/Radio/Select/Segmented/Slider/Textarea/FormField/Tabs/Stepper/Accordion), then UX-04.

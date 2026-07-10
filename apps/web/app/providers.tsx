@@ -1,6 +1,7 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from '@vocaliq/ui';
 import { MotionProvider } from '@vocaliq/ui/motion';
 import { ThemeProvider } from 'next-themes';
 import { type ReactNode, useEffect, useState } from 'react';
@@ -32,6 +33,7 @@ export function Providers({ children }: { children: ReactNode }) {
           <AuthProvider>
             <I18nProvider>{children}</I18nProvider>
           </AuthProvider>
+          <Toaster />
         </MotionProvider>
       </ThemeProvider>
     </QueryClientProvider>
