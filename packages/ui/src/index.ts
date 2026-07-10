@@ -79,6 +79,7 @@ export {
   SheetDescription,
 } from './components/sheet';
 export { toast, Toaster, type ToastVariant, type ToastOptions } from './components/toast';
+export { ConfettiHost, fireConfetti } from './components/confetti';
 
 // ── Component kit v1 — inputs + nav (UX-03b) ─────────────────────────────────
 export { Label } from './components/label';

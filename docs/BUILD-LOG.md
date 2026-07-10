@@ -3362,3 +3362,32 @@ J. Quality/docs: ✅ — components documented; the non-client/CSS decision + th
 K. Build/CI: ✅ — ui builds with `'use client'` preserved on the client components; typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
 
 Every action now has a responsive, rewarding feel — press, hover sheen, loading spinner, success checkmark, magnetic hero CTAs, and copy ticks — all reduced-motion-safe and at zero shared-bundle cost, with `Button` still server-safe app-wide. DoD (part 1) CONFIRMED. Next: UX-08b — `useActionFeedback` + milestone celebration confetti + broader CTA adoption.
+
+## UX-Day 08b — Action Feedback + Milestone Celebration — 2026-07-10 — ✅ DONE — 🎨 UI/UX ELEVATION
+Model: Opus. Branch `ux/08b-action-feedback`. Second increment of UX-08 — standardised optimistic/inline feedback + a tasteful milestone celebration, completing the CTA system. Self-audit focus **H (wins feel rewarding), F (confetti lazy + capped, no CLS), I (no regressions)**.
+
+Built (DONE):
+- **`ConfettiHost` + `fireConfetti()`** (`@vocaliq/ui`) — a lazy, imperative confetti burst: a module store (like the Toaster) drives a full-screen `<canvas>` burst (90 particles, gravity + rotation + fade, ~1.4s, rAF cleaned up), mounted once in `providers.tsx`. **Reduced/off motion → the host renders nothing** (no-op), so callers pair it with a success toast that always lands. Fire from anywhere via `fireConfetti()`.
+- **`celebrateMilestone(key, message, description?)`** (`lib/celebrate.ts`) — always toasts the win, and fires confetti **once per milestone key** (rate-limited via `localStorage: vq-milestones`) so real wins pop but repeats don't spam. For true milestones only (first agent published, first call, wallet top-up, plan upgrade).
+- **`useActionFeedback()`** (`lib/use-action-feedback.ts`) — the standard mutation-feedback hook: runs an async action, drives `pending` + `success` (wire straight into `<Button loading success>`), toasts the outcome (success/failure), and optionally fires a milestone celebration — so optimistic UI + inline success/failure motion is consistent across every CTA.
+- **Applied** — the calls "Place test call" CTA now uses `useActionFeedback`: `<Button loading={pending} success={success}>`, a success toast, and a **first-call milestone** (`first-call` → confetti + "First call placed! 🎉"). Replaced the ad-hoc inline success/error `<p>`s with the standardised toasts.
+- **kitchen-sink** — the `ButtonKit` magnetic CTA now fires confetti on click (off under reduced motion).
+
+Verification: **typecheck 12/12**, **lint 12/12**, **test** green (api 460, workers 42, db 7, provider-router 22, shared), **build 8/8** (64/64 pages) — **shared First Load JS still 177 kB** (confetti canvas is a client leaf mounted once; nothing renders until a burst fires). Live smoke: placing a test call shows spinner → checkmark, toasts "Call queued", and on the first-ever call bursts confetti; repeat calls toast without re-bursting; under `data-motion=off` the confetti is suppressed and the toast still carries the moment.
+
+**Decision:** confetti self-suppresses under reduced/off motion (host returns null) and milestones are rate-limited per key — tasteful, not gimmicky. `useActionFeedback` + `celebrateMilestone` are the reusable seams; broader adoption (publish, top-up, plan upgrade, invite) can drop in incrementally as those flows are touched.
+
+## Self-Audit — UX-08b (A–K)
+A. Correctness: ✅ — `run` sets pending→success/clears, toasts the right outcome, and celebrates only on success; milestone fires once per key; confetti bursts clean up after ~1.4s.
+B. Isolation: ✅ — pure UI/glue; no data/API/tenant change (wraps the existing mutation).
+C. Security: ✅ — no secrets; milestone keys are local-only.
+D. Cost: ✅ — no provider/LLM/DB path.
+E. Errors/obs: ✅ — `run` catches + toasts failures (returns undefined, no throw to caller); localStorage guarded; rAF cancelled on unmount.
+F. Performance (focus): ✅ — confetti is one capped canvas per burst, rAF-driven, removed after the burst; nothing renders idle; shared First Load JS unchanged (177 kB); fixed full-screen overlay → no CLS.
+G. Error handling: ✅ — failure path toasts the message + leaves the form usable; storage-absent degrades to always-celebrate-once-per-session.
+H. UI/reward (focus): ✅ — a real win (first call) now spins→checks→toasts→confetti; reduced-motion users still get the toast; the feel is celebratory but rate-limited.
+I. Regressions (focus): ✅ — the calls CTA behaves the same (now with nicer feedback); additive elsewhere; full suite + build green.
+J. Quality/docs: ✅ — hook + helpers + confetti documented; the reduced-motion/rate-limit decisions logged.
+K. Build/CI: ✅ — ui builds with `'use client'` preserved; typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
+
+UX-08 is complete: press/hover-sheen/loading/success button states + magnetic hero CTAs + copy ticks (08a), plus a standardised `useActionFeedback` and a lazy, rate-limited, reduced-motion-safe milestone celebration (08b) — every action now feels responsive and every real win is rewarded. DoD CONFIRMED. Next: UX-09 (animated data-viz & infographics kit).
