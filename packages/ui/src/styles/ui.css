@@ -170,3 +170,36 @@
 [data-motion="reduced"] .vq-skeleton {
   animation: none;
 }
+
+/* UX-03b — inputs + nav. */
+@keyframes vq-check-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes vq-slide-in-down {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes vq-accordion-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+@keyframes vq-accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
+}

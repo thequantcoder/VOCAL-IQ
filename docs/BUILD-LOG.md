@@ -3124,3 +3124,35 @@ J. Quality/docs: ✅ — each component has a doc comment; the two `biome-ignore
 K. Build/CI: ✅ — ui builds to `dist/` with `'use client'` preserved; typecheck/lint/test/build green; artifacts reverted before commit.
 
 VocalIQ now has a real, accessible component kit — badges/chips, callouts, empty-states, skeletons, progress/rings, avatars, and the full Radix overlay set (tooltip/popover/menu/dialog/alert/sheet) plus a motion-aware toast system — all token-driven and reduced-motion-aware, at zero shared-bundle cost. This is the primitive layer UX-04+ (voice motion, nav, dashboards, onboarding) composes from. DoD CONFIRMED. Next: UX-03b (form inputs + nav: Switch/Checkbox/Radio/Select/Segmented/Slider/Textarea/FormField/Tabs/Stepper/Accordion), then UX-04.
+
+## UX-Day 03b — Component Kit v1 (inputs + nav) — 2026-07-10 — ✅ DONE — 🎨 UI/UX ELEVATION
+Model: Opus. Branch `ux/03b-inputs-nav`. The second UX-03 increment — the form-control + navigation primitives that complete the kit (overlays/feedback/display landed in UX-03a). Self-audit focus **H (a11y: labels, roving focus, keyboard, reduced-motion) + I (no regressions)**.
+
+Built (DONE) — 12 new components in `packages/ui/src/components/`, all `'use client'` where interactive, token-driven, reduced-motion-aware, exported from `index.ts`:
+- **Inputs:** `Label` (Radix, `required` asterisk), `Switch` (spring thumb slide), `Checkbox` (draw-in tick via `stroke-dashoffset` + indeterminate), `RadioGroup`/`RadioGroupItem` (pop-in dot, roving focus), `Textarea` (Input-parity tokens + `invalid`), `Slider` (Radix, multi-thumb, primary range), `Select`/`SelectTrigger`/`SelectContent`/`SelectItem`/… (Radix Select — typeahead, portal, collision-aware, animated content), `SegmentedControl` (Radix ToggleGroup single-select + framer `layoutId` sliding pill), `FormField` (render-prop wiring `htmlFor`/`aria-describedby`/`aria-invalid` from a generated id, with error/hint + error-slide).
+- **Nav:** `Tabs`/`TabsList`/`TabsTrigger`/`TabsContent` (Radix Tabs + framer `layoutId` underline that slides to the active trigger), `Accordion`/`AccordionItem`/`AccordionTrigger`/`AccordionContent` (Radix, height animates via `--radix-accordion-content-height`, chevron rotates), `Stepper` (done/current/upcoming with a connector that fills as you advance).
+- **CSS:** UX-03b keyframes in `ui.css` — `vq-check-draw` (tick), `vq-slide-in-down` (error text), `vq-accordion-down`/`vq-accordion-up` (Radix height vars).
+- **kitchen-sink** `/dashboard/kitchen` — new `InputsKit` section wiring every control with live state (switch/checkbox/radio, FormField+Input+Textarea+Select, Slider, SegmentedControl, Tabs, Accordion, Stepper with Back/Next) for QA against the motion-level toggle.
+- **deps:** `@radix-ui/react-{switch,checkbox,radio-group,select,slider,tabs,accordion,label,toggle-group}` added to `packages/ui/package.json`.
+
+Verification: **typecheck 12/12**, **lint 12/12**, **test** green (api 460, workers 42, db 7, provider-router 22, shared), **build 8/8** (64/64 pages) — **First Load JS still 177 kB** (all Radix input/nav primitives + framer stay out of the shared bundle). Live smoke: the `InputsKit` gallery renders in both themes; switch/checkbox/radio animate their state; Select opens a keyboard-navigable portal; the SegmentedControl pill + Tabs underline slide via `layoutId`; the Accordion animates height; the Stepper advances — all neutralized under `data-motion=off`.
+
+**Bugs caught + fixed during the day:**
+- `exactOptionalPropertyTypes` rejected explicit-`undefined` props: `layoutId={animate ? id : undefined}` (segmented/tabs) → conditional spread `{...(animate ? { layoutId } : {})}`; FormField's `aria-*`/`required` → built a conditional props object + `required ?? false`.
+- Duplicate top-level `const STEPS` in the kitchen page (the UX-02 colour-steps tuple) collided with the onboarding steps → renamed the new one `ONBOARD_STEPS`.
+- **biome a11y** `noLabelWithoutControl` can't see Radix Checkbox/Radio (they render buttons, not `<input>`) → switched the demo from wrapping `<label>` to explicit `id`/`htmlFor` association (also better a11y).
+
+## Self-Audit — UX-03b (A–K)
+A. Correctness: ✅ — every control is controlled + updates state in the kitchen gallery; Select/Tabs/Accordion/Stepper transition correctly; indeterminate checkbox + multi-thumb slider supported.
+B. Isolation: ✅ — presentational library; no data/API/tenant surface.
+C. Security: ✅ — no secrets; no persisted input; Radix handles focus/keyboard safely.
+D. Cost: ✅ — no provider/LLM/DB path.
+E. Errors/obs: ✅ — pure UI; controlled components can't throw; gallery renders 0 errors.
+F. Performance: ✅ — First Load JS unchanged (177 kB); Select/overlays code-split; CSS keyframes + transform/height animations; framer `layoutId` only on tiny indicators.
+G. Error handling: ✅ — FormField surfaces `error` with `role="alert"` + `aria-invalid`; controls degrade (disabled states, empty select placeholder).
+H. UI/a11y (focus): ✅ — Radix gives labels/roving-focus/arrow-keys/typeahead across switch/checkbox/radio/select/slider/tabs/accordion; FormField wires `htmlFor`/`aria-describedby`/`aria-invalid`; every animation is reduced-motion-aware (killed under `data-motion=off`); decorative SVGs `aria-hidden`; focus rings on all controls.
+I. Regressions (focus): ✅ — purely additive (new files + additive index exports + one kitchen-sink section); existing screens untouched; full suite + build green.
+J. Quality/docs: ✅ — each component has a doc comment; the deviation (framer `layoutId` for indicators, justified) noted; kitchen-sink is the living QA surface.
+K. Build/CI: ✅ — ui builds to `dist/` with `'use client'` preserved; typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
+
+The component kit is now complete (~26 primitives): the full form-control set (label/switch/checkbox/radio/select/segmented/slider/textarea/form-field) + navigation (tabs/accordion/stepper), all accessible, animated, reduced-motion-aware, token-driven, at zero shared-bundle cost. Screens (nav redesign UX-06+, dashboards UX-09+, onboarding UX-14) now compose from a consistent vocabulary. DoD CONFIRMED. Next: UX-04 (signature voice-motion primitives — LiveWaveform, VoiceOrb, ConversationViz, TranscriptStream).

@@ -76,3 +76,34 @@ export {
   SheetDescription,
 } from './components/sheet';
 export { toast, Toaster, type ToastVariant, type ToastOptions } from './components/toast';
+
+// ── Component kit v1 — inputs + nav (UX-03b) ─────────────────────────────────
+export { Label } from './components/label';
+export { Switch } from './components/switch';
+export { Checkbox } from './components/checkbox';
+export { RadioGroup, RadioGroupItem } from './components/radio';
+export { Textarea, type TextareaProps } from './components/textarea';
+export { FormField } from './components/form-field';
+export { Slider } from './components/slider';
+export {
+  SegmentedControl,
+  type SegmentedOption,
+} from './components/segmented-control';
+export {
+  Select,
+  SelectValue,
+  SelectGroup,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectLabel,
+  SelectSeparator,
+} from './components/select';
+export { Tabs, TabsList, TabsTrigger, TabsContent } from './components/tabs';
+export {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from './components/accordion';
+export { Stepper, type Step } from './components/stepper';
