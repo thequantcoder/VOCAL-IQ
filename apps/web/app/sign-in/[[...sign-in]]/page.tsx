@@ -70,8 +70,8 @@ export default function SignInPage() {
               />
             </label>
             {error && <p className="text-sm text-vq-danger">{error}</p>}
-            <Button type="submit" disabled={busy}>
-              {busy ? 'Signing in…' : 'Sign in'}
+            <Button type="submit" loading={busy}>
+              Sign in
             </Button>
           </form>
           <p className="mt-4 text-center text-sm text-vq-text-lo">

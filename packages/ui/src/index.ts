@@ -6,10 +6,13 @@
 export { cn, tokens } from './lib/cn';
 export {
   Button,
+  buttonClasses,
   type ButtonProps,
   type ButtonSize,
   type ButtonVariant,
 } from './components/button';
+export { MagneticButton, type MagneticButtonProps } from './components/magnetic-button';
+export { CopyButton } from './components/copy-button';
 export {
   Card,
   CardContent,

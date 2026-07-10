@@ -248,3 +248,44 @@
     opacity: 0;
   }
 }
+
+/* ── Button interaction layer (UX-08) ────────────────────────────────────────
+   A subtle sheen sweeps across bold CTAs (primary/danger) on hover. Pure CSS, clipped by the button's
+   own overflow; disabled under reduced/off motion. The ripple + magnetic hover (JS-driven) live in
+   MagneticButton. */
+.vq-btn-sheen {
+  overflow: hidden;
+}
+.vq-btn-sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    110deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.22) 48%,
+    transparent 66%
+  );
+  transform: translateX(-130%);
+}
+.vq-btn-sheen:hover::after {
+  transform: translateX(130%);
+  transition: transform 620ms var(--ease-out-soft, ease);
+}
+[data-motion="off"] .vq-btn-sheen::after,
+[data-motion="reduced"] .vq-btn-sheen::after {
+  display: none;
+}
+
+/* Ripple (MagneticButton) — a circle scales + fades from the click point. */
+@keyframes vq-ripple {
+  from {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+  to {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}

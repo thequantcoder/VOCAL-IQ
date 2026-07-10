@@ -3332,3 +3332,33 @@ J. Quality/docs: ✅ — components documented; the builder opt-out + the icon-o
 K. Build/CI: ✅ — typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
 
 UX-07 is complete: a grouped, animated, role-aware sidebar with a sliding indicator + mobile drawer (07a), plus a keyboard-first ⌘K command palette and a contextual agent sub-nav (07b) — the ~50-item nav is now fast, scannable, and delightful for every role. DoD CONFIRMED. Next: UX-08 (CTA & button interaction system).
+
+## UX-Day 08a — CTA Interaction System (press / sheen / loading / success + magnetic + copy) — 2026-07-10 — ✅ DONE — 🎨 UI/UX ELEVATION
+Model: Opus. Branch `ux/08-button-system`. First increment of UX-08 — the reusable button/CTA interaction layer. The `useActionFeedback` helper + milestone-celebration confetti + broader CTA wiring are the 08b increment. Self-audit focus **H (actions feel responsive + rewarding), I (Button is used app-wide — zero regressions), F (no bundle/CLS cost)**.
+
+Built (DONE):
+- **`Button` extended** (`packages/ui/src/components/button.tsx`) — added `loading` (overlaid spinner, label hidden with width held, `disabled` + `aria-busy`) and `success` (a drawing checkmark before the label) states, plus a **hover sheen** sweep on the bold CTAs (primary/danger) via a `vq-btn-sheen` pseudo-element. **All pure CSS** (tailwind `animate-spin`, the `vq-check-draw` keyframe, and a new `vq-btn-sheen` sweep) — so `Button` stays a **non-client, server-safe** component with an unchanged public API (the ~everywhere import is untouched). Exposed `buttonClasses()` so the JS button shares identical styling.
+- **`MagneticButton`** (client) — a hero-CTA button with a magnetic pull toward the cursor (framer `useSpring`), a press scale (`whileTap`), and a **ripple** from the click point (new `vq-ripple` keyframe, clipped by the button). Reuses `buttonClasses`; degrades to a plain button under reduced/off motion. Typed off framer's `HTMLMotionProps` so prop spreading is exact-optional-safe.
+- **`CopyButton`** (client) — copy-to-clipboard with a tick micro-interaction (glyph → drawing checkmark for ~1.6s, `aria-label` announces "Copied"), optional inline label, silent fallback when the clipboard API is absent.
+- **CSS** (`ui.css`) — `vq-btn-sheen` sweep (disabled under reduced/off motion) + `vq-ripple`.
+- **Applied to real CTAs** — sign-in + sign-up submit buttons now use `loading`; the calls "Place test call" CTA uses `loading={isPending}` + `success={isSuccess}` (spinner → checkmark) instead of ad-hoc label swaps.
+- **kitchen-sink** `/dashboard/kitchen` — a `ButtonKit` section: variants (with sheen), an async publish button (click → spinner → checkmark), the magnetic ripple CTA, and a CopyButton.
+
+Verification: **typecheck 12/12**, **lint 12/12**, **test** green (api 460, workers 42, db 7, provider-router 22, shared), **build 8/8** (64/64 pages) — **shared First Load JS still 177 kB** (Button stays CSS-only + server-safe; MagneticButton is an opt-in client leaf). Live smoke: the async button spins then draws a check; hovering a primary CTA sweeps a sheen; the magnetic CTA pulls toward the cursor and ripples on click; the CopyButton ticks — all neutralized under `data-motion=off`.
+
+**Decision:** kept `Button` non-client (CSS-only states) to protect the app-wide import and SSR, and put the JS-driven delight (magnetic/ripple) in a separate opt-in `MagneticButton` for hero CTAs — so zero risk to the hundreds of existing Button call-sites. Deferred to **08b**: `useActionFeedback` (standardised optimistic + inline success/failure), the milestone confetti burst, and broader CTA adoption.
+
+## Self-Audit — UX-08a (A–K)
+A. Correctness: ✅ — loading hides the label + disables + sets aria-busy; success draws once; magnetic offset resets on leave; ripple cleans up after 600ms; copy resets after 1.6s.
+B. Isolation: ✅ — pure UI; no data/API/tenant surface.
+C. Security: ✅ — no secrets; CopyButton writes only the caller-provided string.
+D. Cost: ✅ — no provider/LLM/DB path.
+E. Errors/obs: ✅ — clipboard write is try/caught; timers cleared on ripple removal; 0 new runtime errors.
+F. Performance (focus): ✅ — Button states are CSS (no JS, no client boundary); shared First Load JS unchanged (177 kB); sheen/ripple are transform/opacity (no layout → no CLS).
+G. Error handling: ✅ — clipboard-absent falls back silently; disabled+loading prevents double-submit.
+H. UI/feel (focus): ✅ — press scale, hover sheen, spinner→checkmark, magnetic pull, ripple, copy-tick make actions feel responsive + rewarding; every effect is reduced-motion-aware.
+I. Regressions (focus): ✅ — `Button` API is additive (new optional props) and stays non-client; existing call-sites render identically; the 3 wired CTAs behave the same (loading/success now visual); full suite + build green.
+J. Quality/docs: ✅ — components documented; the non-client/CSS decision + the 08b deferral logged.
+K. Build/CI: ✅ — ui builds with `'use client'` preserved on the client components; typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
+
+Every action now has a responsive, rewarding feel — press, hover sheen, loading spinner, success checkmark, magnetic hero CTAs, and copy ticks — all reduced-motion-safe and at zero shared-bundle cost, with `Button` still server-safe app-wide. DoD (part 1) CONFIRMED. Next: UX-08b — `useActionFeedback` + milestone celebration confetti + broader CTA adoption.
