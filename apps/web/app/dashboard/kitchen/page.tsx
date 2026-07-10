@@ -77,6 +77,7 @@ import {
   TabsTrigger,
   Textarea,
   Tooltip,
+  fireConfetti,
   toast,
 } from '@vocaliq/ui';
 import {
@@ -578,10 +579,12 @@ function ButtonKit() {
 
         {/* Magnetic hero CTA + ripple. */}
         <div className="flex flex-wrap items-center gap-4">
-          <MagneticButton variant="primary" size="lg" onClick={() => toast.success('Boom')}>
-            <Sparkles size={16} /> Magnetic CTA
+          <MagneticButton variant="primary" size="lg" onClick={() => fireConfetti()}>
+            <Sparkles size={16} /> Celebrate 🎉
           </MagneticButton>
-          <span className="text-vq-text-lo text-xs">hover pulls + click ripples (hero only)</span>
+          <span className="text-vq-text-lo text-xs">
+            magnetic hover + ripple; click fires confetti (off under reduced motion)
+          </span>
         </div>
 
         {/* Copy micro-interaction. */}

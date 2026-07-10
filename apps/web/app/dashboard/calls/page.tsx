@@ -1,12 +1,13 @@
 'use client';
 
-import { AgentAvatar, Button, Card, CardContent, Input, cn } from '@vocaliq/ui';
+import { AgentAvatar, Button, Card, CardContent, Input } from '@vocaliq/ui';
 import { Crossfade } from '@vocaliq/ui/motion';
 import { PhoneOutgoing } from 'lucide-react';
 import { type FormEvent, type ReactNode, useState } from 'react';
 import { EmptyState, ErrorState, LoadingCard } from '../../../components/states';
 import { StatusBadge, formatDuration, formatUsd } from '../../../components/ui-bits';
 import { useAgents, useCalls, usePlaceTestCall } from '../../../lib/api';
+import { useActionFeedback } from '../../../lib/use-action-feedback';
 import { useViewTransitionRouter } from '../../../lib/view-transitions';
 
 /** A call link that navigates via the View Transitions API (shared-element morph) when supported. */
@@ -146,6 +147,7 @@ export default function CallsPage() {
 function PlaceTestCall() {
   const agents = useAgents();
   const place = usePlaceTestCall();
+  const { run, pending, success } = useActionFeedback();
   const [agentId, setAgentId] = useState('');
   const [to, setTo] = useState('');
 
@@ -153,12 +155,24 @@ function PlaceTestCall() {
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    await place.mutateAsync({
-      agentId: effectiveAgent,
-      to: to.trim(),
-      consentBasis: 'EXISTING_RELATIONSHIP',
-    });
-    setTo('');
+    // Standardised pending → success/failure feedback + a first-call celebration.
+    const result = await run(
+      () =>
+        place.mutateAsync({
+          agentId: effectiveAgent,
+          to: to.trim(),
+          consentBasis: 'EXISTING_RELATIONSHIP',
+        }),
+      {
+        success: 'Call queued — it’ll appear below.',
+        milestone: {
+          key: 'first-call',
+          message: 'First call placed! 🎉',
+          description: 'Watch it land in the list below.',
+        },
+      },
+    );
+    if (result) setTo('');
   }
 
   const noAgents = !agents.isLoading && (agents.data?.length ?? 0) === 0;
@@ -199,19 +213,13 @@ function PlaceTestCall() {
             type="submit"
             variant="primary"
             size="md"
-            loading={place.isPending}
-            success={place.isSuccess}
+            loading={pending}
+            success={success}
             disabled={noAgents || !to.trim() || !effectiveAgent}
           >
             <PhoneOutgoing size={16} /> Place test call
           </Button>
         </form>
-        {place.isError ? (
-          <p className={cn('mt-2 text-sm text-vq-danger')}>{(place.error as Error).message}</p>
-        ) : null}
-        {place.isSuccess ? (
-          <p className="mt-2 text-sm text-vq-success">Call queued — it’ll appear below.</p>
-        ) : null}
       </CardContent>
     </Card>
   );
