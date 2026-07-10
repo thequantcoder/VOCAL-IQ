@@ -3274,3 +3274,33 @@ J. Quality/docs: ✅ — every new primitive/hook/component documented; the "no 
 K. Build/CI: ✅ — ui builds with `'use client'` preserved; typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
 
 Navigating VocalIQ now reads as one continuous surface: route crossfades, a shared-element avatar morph on the calls→detail flow, skeleton→data handoff, and correct SR-announce/focus/scroll on every navigation — all reduced-motion-safe and CLS-free, with the View Transitions API as a feature-detected enhancement. DoD CONFIRMED. Next: UX-07 (sidebar & navigation micro-interactions).
+
+## UX-Day 07a — Grouped Animated Sidebar + Mobile Drawer — 2026-07-10 — ✅ DONE — 🎨 UI/UX ELEVATION
+Model: Opus. Branch `ux/07-sidebar-nav`. First increment of UX-07 — turns the flat ~50-item nav into a grouped, collapsible, animated system with a sliding active indicator and a real mobile drawer. The command palette (⌘K), contextual sub-nav, and desktop icon-only collapse are the UX-07b increment. Self-audit focus **H (delightful + scannable), A (grouping/active-state correct for all roles), I (no nav regressions)**.
+
+Built (DONE):
+- **`SidebarNav`** (`components/sidebar-nav.tsx`) — the ~50 destinations reorganised into 7 scannable, task-flow sections: **Build / Run / Analyze / Grow / Settings** + role-gated **Reseller / Admin**. Each section is a collapsible header (chevron rotates) wrapping the items in the `Collapse` primitive (spring-ish grid-rows, reduced-motion-safe). Overview is pinned above the groups.
+- **Sliding active indicator** — a single `layoutId` pill glides between active items (spring). To make framer *layout* animations actually run, the motion engine's LazyMotion feature set was upgraded `domAnimation → domMax` (`packages/ui/src/motion/provider.tsx`) — this also makes the UX-03 Tabs/SegmentedControl `layoutId` indicators animate. Verified the **shared First Load JS stays 177 kB** (layout code lands in the route/provider chunk, not shared-by-all). Under motion-off the pill renders statically (no `layoutId`).
+- **Persisted section state** — `useOpenSections` remembers each group's open/closed state per browser (`localStorage: vq-nav-sections`); a section defaults open when it holds the active route (SSR-safe: same initial state server + client, storage applied post-mount).
+- **Micro-interactions** — icon scales on hover (`group-hover:scale-110`), active item tints violet, `focus-visible` rings throughout; section headers highlight when they contain the active route.
+- **`MobileNav`** — a hamburger (`md:hidden`) that opens the grouped nav in a left `Sheet` drawer (Radix focus-trap + scroll-lock), closes on navigation, with its own `indicatorId` so the mobile pill doesn't fight the desktop one.
+- **Shell rewrite** (`dashboard-shell.tsx`) — desktop `<aside>` is now `hidden md:flex` + scrollable and renders `SidebarNav`; the header hosts the `MobileNav` hamburger on mobile. The old flat-nav arrays + `isActive` were removed (moved into `sidebar-nav.tsx`); grid widened to 240px.
+
+Verification: **typecheck 12/12**, **lint 12/12**, **test** green (api 460, workers 42, db 7, provider-router 22, shared), **build 8/8** (64/64 pages) — **shared First Load JS still 177 kB**. Live smoke: sections expand/collapse with the chevron, the violet pill slides between active items (and now the Tabs/Segmented indicators animate too), open state persists across reloads, role-gated Reseller/Admin sections appear only for those roles, and the mobile hamburger opens a focus-trapped drawer that closes on navigation — all reduced-motion-safe.
+
+**Decision:** upgraded LazyMotion to `domMax` (adds framer's layout-projection features) so `layoutId` sliding works — this is the correct fix and retroactively enables the earlier Tabs/SegmentedControl indicators; measured no shared-bundle regression (177 kB). Deferred to **UX-07b**: ⌘K command palette, contextual per-section sub-nav, and the desktop icon-only collapse.
+
+## Self-Audit — UX-07a (A–K)
+A. Correctness (focus): ✅ — active matching (exact vs prefix) preserved from the old shell; role gating filters Reseller/Admin groups; persisted open-state defaults to the active group; overview pinned.
+B. Isolation: ✅ — pure nav/presentation; no query/mutation/tenant change.
+C. Security: ✅ — role-gated groups still only *render* for matching memberships (server RBAC unchanged); no secrets.
+D. Cost: ✅ — no provider/LLM/DB path.
+E. Errors/obs: ✅ — localStorage reads/writes are try/caught; 0 new runtime errors.
+F. Performance: ✅ — shared First Load JS unchanged (177 kB) despite domMax; Collapse uses cheap grid-rows; the indicator is one shared element; no CLS.
+G. Error handling: ✅ — malformed/absent storage falls back to defaults; SSR-safe initial state (no hydration mismatch).
+H. UI/delight (focus): ✅ — 50 items are now scannable in 7 task-flow groups; the sliding pill + chevron + hover micro-interactions make the nav feel alive; mobile gets a proper drawer; reduced-motion-safe throughout.
+I. Regressions (focus): ✅ — every destination from the old flat nav is present (re-grouped, none dropped); active states + role visibility preserved; full suite + build green.
+J. Quality/docs: ✅ — components documented; the domMax decision + the 07b deferral logged; consistent motion-level gating.
+K. Build/CI: ✅ — ui builds with `'use client'` preserved; typecheck/lint/test/build green; artifacts reverted before commit.
+
+The nav is now a grouped, animated, role-aware system with a sliding active indicator and a real mobile drawer — 50 destinations made scannable and delightful. DoD (part 1) CONFIRMED. Next: UX-07b — ⌘K command palette + contextual sub-nav + desktop icon-only collapse.

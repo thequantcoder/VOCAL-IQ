@@ -1,6 +1,6 @@
 'use client';
 
-import { LazyMotion, MotionConfig, domAnimation } from 'framer-motion';
+import { LazyMotion, MotionConfig, domMax } from 'framer-motion';
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useState } from 'react';
 
 /**
@@ -61,7 +61,7 @@ export function MotionProvider({ children }: { children: ReactNode }) {
       {/* We control reduced/off in the primitives; keep framer's own auto-reduce off (`never`) so
           behaviour is deterministic across the level switch. */}
       <MotionConfig reducedMotion="never">
-        <LazyMotion features={domAnimation} strict>
+        <LazyMotion features={domMax} strict>
           {children}
         </LazyMotion>
       </MotionConfig>
