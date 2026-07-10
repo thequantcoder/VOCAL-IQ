@@ -107,3 +107,11 @@ export {
   AccordionContent,
 } from './components/accordion';
 export { Stepper, type Step } from './components/stepper';
+
+// ── Presence + atmosphere (UX-05) ────────────────────────────────────────────
+export { AgentAvatar, type AgentAvatarProps } from './components/agent-avatar';
+export {
+  AmbientBackground,
+  type AmbientBackgroundProps,
+} from './components/ambient-background';
+export { Illustration, type IllustrationName } from './components/illustrations';

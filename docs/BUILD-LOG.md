@@ -3189,3 +3189,31 @@ J. Quality/docs: ✅ — every primitive + hook has a doc comment; the canvas/re
 K. Build/CI: ✅ — ui builds to `dist/voice` with `'use client'` preserved; typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
 
 VocalIQ now has its signature motion vocabulary — an amplitude-reactive `LiveWaveform`, a stateful `VoiceOrb`, a turn-taking `ConversationViz`, a streaming `TranscriptStream`, and status indicators, all driven by one `useAgentState` machine and reduced-motion-safe, at zero shared-bundle cost. These are the pieces the redesigned hero, live-call console, and agent cards (UX-05+) build the "it's alive" feeling from. DoD CONFIRMED. Next: UX-05 (apply the voice-motion set to the live-call / agent surfaces).
+
+## UX-Day 05a — AI-Agent Avatars, Ambient Backgrounds & Illustration Set — 2026-07-10 — ✅ DONE — 🎨 UI/UX ELEVATION
+Model: Opus. Branch `ux/05a-avatars-ambient`. First increment of UX-05 (a 2-session day) — the reusable *presence + atmosphere* primitives in `@vocaliq/ui`. The second increment (UX-05b) wires them into real screens (agent lists/cards/desk, overview/auth headers, empty/error pages, live-call console). Self-audit focus **F (backgrounds lazy + capped, CWV holds) + H (agents have a face, screens have atmosphere) + I (no regressions)**.
+
+Built (DONE) — 3 new components in `packages/ui/src/components/`, exported from `index.ts`:
+- **`AgentAvatar`** — a procedural, deterministic "face" per agent: a brand-arc gradient disc (two hues seeded from the agent id via an FNV hash, so every agent looks distinct but stable) + a geometric "voice" motif (2–4 concentric arcs rotated by the seed). Optionally reacts to `useAgentState` (subtle listening drift, speaking pulse + `vq-live-ping` ring) and accepts a real image `src` (video-avatar agents, Day 92) with graceful fallback. Reduced-motion → static disc.
+- **`AmbientBackground`** — a GPU-cheap atmosphere layer: 3 large violet/cyan/indigo gradient blobs drifting on lissajous paths, rendered on a **quarter-res canvas** scaled up (free blur) with `lighter` compositing, plus an optional drifting waveform-particle layer. **Perf guards:** only animates while on-screen (IntersectionObserver start/stop), throttled rAF, DPR-independent quarter-res surface, and under reduced-motion paints **one static frame with no loop**; `cancelAnimationFrame` + observer + resize-listener all cleaned up on unmount. Absolutely-positioned + `aria-hidden`.
+- **`Illustration`** — a 6-scene on-brand SVG set (`no-agents`, `no-calls`, `no-leads`, `all-done`, `error-404`, `error-500`) built from the brand gradient + waveform/orb motif, each animating its motif on mount (bars grow / check draws / spark pops), killed under reduced-motion; labelled for AT. Composes with `<EmptyState icon={<Illustration/>}>`.
+- **kitchen-sink** `/dashboard/kitchen` — a `PresenceKit` section: 5 seeded avatars with a state SegmentedControl (idle/listening/speaking), a live `AmbientBackground` panel (particles on), the full illustration grid, and an illustrated empty state — all QA-able against the motion-level toggle.
+
+Verification: **typecheck 12/12**, **lint 12/12**, **test** green (api 460, workers 42, db 7, provider-router 22, shared), **build 8/8** (64/64 pages) — **First Load JS still 177 kB**. Only build warning is the pre-existing OpenTelemetry "critical dependency" from Sentry instrumentation (unrelated). Live smoke: avatars render distinctly per seed and pulse in the speaking state; the ambient canvas drifts and pauses when scrolled off-screen; illustrations draw on mount; all collapse to static under `data-motion=off`.
+
+**Notes / decisions:** AmbientBackground uses a quarter-res canvas + CSS blur (cheap, no per-pixel shader) and an IntersectionObserver so off-screen headers cost nothing — protecting Core Web Vitals. AgentAvatar supports a real-image slot via a plain `<img>` (the ui package has no `next/image`); it's a small avatar-sized URL, acceptable. biome fixes: dropped an invalid `noImgElement` suppression (biome has no such rule); justified `noAriaHiddenOnFocusable` on the decorative background canvas.
+
+## Self-Audit — UX-05a (A–K)
+A. Correctness: ✅ — the avatar hash is deterministic (stable look per seed); state reactions match `useAgentState`; illustration scenes + aria labels correct.
+B. Isolation: ✅ — presentational library; no data/API/tenant surface.
+C. Security: ✅ — no secrets; the avatar image `src` is caller-supplied (no injection surface beyond a URL in an `<img>`).
+D. Cost: ✅ — no provider/LLM/DB path.
+E. Errors/obs: ✅ — canvas ctx guarded; components render 0 errors in the gallery.
+F. Performance (focus): ✅ — ambient canvas is quarter-res + blurred (no shader), **animates only while visible** (IntersectionObserver), throttled rAF, **no loop under reduced-motion**, full cleanup on unmount; avatars/illustrations are static SVG with tiny mount tweens; shared bundle unchanged (177 kB); CWV budget holds.
+G. Error handling: ✅ — missing image → procedural face; unknown state → idle; blobs/particles bounded (3 blobs, 26 dots).
+H. UI/presence (focus): ✅ — agents now have a distinct, on-brand face that reacts to conversation; headers/empty states get atmosphere; the violet→cyan "live" language is consistent; all reduced-motion-aware + labelled.
+I. Regressions: ✅ — purely additive (3 new files + additive index exports + one kitchen-sink section); existing screens untouched; full suite + build green.
+J. Quality/docs: ✅ — every component has a doc comment; the quarter-res/IO perf decisions + the `<img>` note are logged; kitchen-sink is the living QA surface.
+K. Build/CI: ✅ — ui builds to `dist/` with `'use client'` preserved; typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
+
+VocalIQ now has presence + atmosphere primitives — procedural per-agent avatars, a lazy GPU-cheap ambient background, and an on-brand illustration set — all reduced-motion-aware and at zero shared-bundle cost. DoD (part 1) CONFIRMED. Next: UX-05b — apply these across agent lists/cards/desk, overview & auth headers, illustrated empty/error pages, and the live-call console (VoiceOrb + ConversationViz + TranscriptStream on real call views).
