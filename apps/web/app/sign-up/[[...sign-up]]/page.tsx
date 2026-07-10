@@ -1,6 +1,14 @@
 'use client';
 
-import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@vocaliq/ui';
+import {
+  AmbientBackground,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Input,
+} from '@vocaliq/ui';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
@@ -38,8 +46,9 @@ export default function SignUpPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
-      <Card>
+    <main className="relative flex min-h-screen flex-col justify-center overflow-hidden px-6 py-12">
+      <AmbientBackground intensity={0.5} particles />
+      <Card className="relative z-10 mx-auto w-full max-w-md">
         <CardHeader>
           <CardTitle>Create your VocalIQ account</CardTitle>
         </CardHeader>

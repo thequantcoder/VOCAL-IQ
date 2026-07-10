@@ -1,3 +1,4 @@
+import { Illustration } from '@vocaliq/ui';
 import Link from 'next/link';
 
 /**
@@ -7,7 +8,7 @@ import Link from 'next/link';
 export default function NotFound() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-vq-bg-base px-4 text-center">
-      <span className="inline-block h-8 w-2 rounded-vq-pill bg-vq-violet" aria-hidden />
+      <Illustration name="error-404" size={132} />
       <h1 className="font-display font-semibold text-2xl text-vq-text-hi">Page not found</h1>
       <p className="text-sm text-vq-text-lo">
         The page you're looking for doesn't exist or has moved.

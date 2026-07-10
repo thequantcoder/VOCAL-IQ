@@ -74,7 +74,11 @@ function LeadsWorkspace() {
       ) : leads.isError ? (
         <ErrorState message={(leads.error as Error).message} onRetry={() => leads.refetch()} />
       ) : !leads.data || leads.data.length === 0 ? (
-        <EmptyState title="No leads yet" hint="Leads appear here after calls are scored." />
+        <EmptyState
+          illustration="no-leads"
+          title="No leads yet"
+          hint="Leads appear here after calls are scored."
+        />
       ) : view === 'kanban' ? (
         <Kanban leads={leads.data} />
       ) : (

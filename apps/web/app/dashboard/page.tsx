@@ -1,6 +1,14 @@
 'use client';
 
-import { Button, Card, CardContent, CardHeader, CardTitle, Waveform } from '@vocaliq/ui';
+import {
+  AmbientBackground,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Waveform,
+} from '@vocaliq/ui';
 import { ArrowRight, Bot, PhoneCall } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
@@ -20,8 +28,9 @@ export default function OverviewPage() {
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-8">
-      <section className="overflow-hidden rounded-vq-card border border-vq-border bg-vq-bg-elevated">
-        <div className="flex flex-col gap-4 px-6 py-8 md:flex-row md:items-center md:justify-between">
+      <section className="relative overflow-hidden rounded-vq-card border border-vq-border bg-vq-bg-elevated">
+        <AmbientBackground intensity={0.4} particles />
+        <div className="relative z-10 flex flex-col gap-4 px-6 py-8 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-col gap-2">
             <h1 className="font-display font-semibold text-2xl text-vq-text-hi">
               Build a voice agent, place a call, see the transcript.

@@ -1,7 +1,16 @@
 'use client';
 
 import { languageLabel } from '@vocaliq/shared';
-import { Button, Card, CardContent, CardHeader, CardTitle, Waveform, cn } from '@vocaliq/ui';
+import {
+  AgentAvatar,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Waveform,
+  cn,
+} from '@vocaliq/ui';
 import { ArrowLeft, BookMarked, ClipboardCheck, Languages, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
@@ -76,6 +85,7 @@ export default function CallDetailPage() {
         <>
           <header className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
+              <AgentAvatar seed={data.agent.id} name={data.agent.name} size={40} />
               <h1 className="font-display font-semibold text-xl text-vq-text-hi">
                 {data.agent.name}
               </h1>

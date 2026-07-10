@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Card } from '@vocaliq/ui';
+import { AgentAvatar, Button, Card } from '@vocaliq/ui';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { EmptyState, ErrorState, LoadingCard } from '../../../components/states';
@@ -37,6 +37,7 @@ export default function AgentsPage() {
         <ErrorState message={(error as Error).message} onRetry={() => refetch()} />
       ) : !data || data.length === 0 ? (
         <EmptyState
+          illustration="no-agents"
           title="No agents yet"
           hint="Create your first prompt-based agent to place a test call."
           action={
@@ -52,12 +53,15 @@ export default function AgentsPage() {
           {data.map((agent) => (
             <li key={agent.id}>
               <Card className="flex flex-row items-center justify-between px-4 py-3">
-                <div className="flex flex-col gap-1">
-                  <span className="font-medium text-vq-text-hi">{agent.name}</span>
-                  <span className="text-vq-text-lo text-xs">
-                    {agent.type.toLowerCase()}
-                    {agent.languages.length ? ` · ${agent.languages.join(', ')}` : ''}
-                  </span>
+                <div className="flex items-center gap-3">
+                  <AgentAvatar seed={agent.id} name={agent.name} size={40} />
+                  <div className="flex flex-col gap-1">
+                    <span className="font-medium text-vq-text-hi">{agent.name}</span>
+                    <span className="text-vq-text-lo text-xs">
+                      {agent.type.toLowerCase()}
+                      {agent.languages.length ? ` · ${agent.languages.join(', ')}` : ''}
+                    </span>
+                  </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <StatusBadge status={agent.status} />

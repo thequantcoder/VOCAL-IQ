@@ -29,7 +29,11 @@ export default function CallsPage() {
       ) : calls.isError ? (
         <ErrorState message={(calls.error as Error).message} onRetry={() => calls.refetch()} />
       ) : !calls.data || calls.data.items.length === 0 ? (
-        <EmptyState title="No calls yet" hint="Place a test call above to see it here." />
+        <EmptyState
+          illustration="no-calls"
+          title="No calls yet"
+          hint="Place a test call above to see it here."
+        />
       ) : (
         <div className="overflow-hidden rounded-vq-card border border-vq-border">
           <table className="w-full text-sm">
