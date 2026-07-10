@@ -289,3 +289,12 @@
     opacity: 0;
   }
 }
+
+/* ── Data-viz draw-in (UX-09) ────────────────────────────────────────────────
+   Length-independent line draw: paths set pathLength=1 + stroke-dasharray/offset=1, then animate the
+   offset to 0. Killed under reduced/off motion by the motion-safe gate on the element. */
+@keyframes vq-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}

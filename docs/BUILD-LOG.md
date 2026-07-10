@@ -3391,3 +3391,35 @@ J. Quality/docs: ✅ — hook + helpers + confetti documented; the reduced-motio
 K. Build/CI: ✅ — ui builds with `'use client'` preserved; typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
 
 UX-08 is complete: press/hover-sheen/loading/success button states + magnetic hero CTAs + copy ticks (08a), plus a standardised `useActionFeedback` and a lazy, rate-limited, reduced-motion-safe milestone celebration (08b) — every action now feels responsive and every real win is rewarded. DoD CONFIRMED. Next: UX-09 (animated data-viz & infographics kit).
+
+## UX-Day 09a — Data-Viz Kit: Sparklines, Gauges, Meters, Stat Cards — 2026-07-10 — ✅ DONE — 🎨 UI/UX ELEVATION 🧠 OPUS
+Model: Opus. Branch `ux/09-dataviz`. First increment of UX-09 — the core animated infographic primitives (metric cards, gauges, sparklines, meters, trend deltas). The bigger charts (area/line/bar/donut) + heatmap + `DATAVIZ.md` are the 09b increment. Self-audit focus **H (numbers become meaningful + colorful), F (lazy/zero-dep, no bundle cost), A (geometry + threshold correctness)**.
+
+**Architecture decision (logged deviation):** the plan says "Charts (Recharts, themed)", but Recharts is **not installed** and the codebase already standardises on a **zero-dep SVG chart set** (`apps/web/components/charts.tsx`). Pulling in Recharts (~100 kB) would blow the shared bundle and contradict that choice. So the kit is built as **pure SVG/CSS** (themed to the UX-02 viz tokens, animated via the motion primitives), matching the existing approach and keeping First Load JS flat. Full Recharts adoption is explicitly NOT pursued.
+
+Built (DONE) — a new `@vocaliq/ui/charts` subpath (like `/motion`, `/voice`), so viz code stays off the shared bundle:
+- **`Sparkline`** — inline trend line (+ optional gradient area) with a length-independent `pathLength` draw-in (new `vq-draw` keyframe) + a trailing dot; themeable to any `--viz-n`.
+- **`RadialGauge`** — a 270° arc gauge (success rate / sentiment / health) that sweeps to the value (eased) and colours by threshold (danger < 45 ≤ warn < 75 ≤ success), or a fixed colour; centre slot for a custom label.
+- **`Meter`** (bullet) — linear "value vs limit" with zone colouring (primary → amber ≥85% → red ≥100%), an optional `target` tick, and a value caption; `role="meter"`.
+- **`TrendDelta`** — coloured ▲/▼/→ change vs last period, with `invert` for down-is-good metrics (cost/latency); tabular-nums.
+- **`StatCard` v2** — a KPI tile: `<AnimatedNumber>` count-up value, a trend delta, an inline sparkline, and a subtle **sentiment glow** (good → cyan/green wash, bad → amber) so a wall of numbers reads at a glance.
+- **`geometry.ts`** — pure `toPoints`/`linePath`/`areaPath` helpers (shared with the 09b charts).
+- **CSS** — `vq-draw` keyframe in `ui.css`.
+- **kitchen-sink** `/dashboard/kitchen` — a `DataVizKit` section: 3 sentiment stat cards (up/cost-down/failures), two radial gauges, meters (with target), trend deltas, and standalone sparklines — QA-able against the motion-level toggle.
+
+Verification: **typecheck 12/12**, **lint 12/12**, **test** green (api 460, workers 42, db 7, provider-router 22, shared), **build 8/8** (64/64 pages) — **shared First Load JS still 177 kB** (zero-dep SVG; the charts subpath loads only where used). Live smoke: sparklines draw in, gauges sweep + colour by threshold, meters fill + show the target tick, stat cards count up with the sentiment glow — all static under `data-motion=off`.
+
+## Self-Audit — UX-09a (A–K)
+A. Correctness (focus): ✅ — `toPoints` normalises against series min/max; gauge dash maths uses a 270° arc; threshold + zone colours are correct; `TrendDelta` invert flips good/bad; empty series render a blank svg (no NaN).
+B. Isolation: ✅ — presentational; no data/API/tenant surface (callers pass numbers).
+C. Security: ✅ — no secrets; no user input.
+D. Cost: ✅ — no provider/LLM/DB path.
+E. Errors/obs: ✅ — guards for empty data + zero max; render 0 errors in the gallery.
+F. Performance (focus): ✅ — pure SVG + CSS transitions (no charting lib, no canvas); **shared First Load JS unchanged (177 kB)**; the `/charts` subpath is code-split; draws are stroke-dashoffset (GPU), no layout thrash → no CLS.
+G. Error handling: ✅ — empty/degenerate inputs degrade gracefully; values clamped to range.
+H. UI/meaning (focus): ✅ — count-up + delta + sparkline + sentiment glow make each KPI legible + colorful; gauges/meters give instant context; AA on the viz tokens (both themes); reduced-motion → static.
+I. Regressions: ✅ — purely additive (new subpath + kitchen section + one keyframe); existing screens untouched; full suite + build green.
+J. Quality/docs: ✅ — every piece documented; the Recharts deviation logged; geometry helpers shared for 09b.
+K. Build/CI: ✅ — ui builds to `dist/charts` with `'use client'` preserved; typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
+
+VocalIQ now has a themed, animated, zero-dep infographic kit — sparklines, radial gauges, meters, trend deltas, and sentiment-aware stat cards — the building blocks the dashboard redesign (UX-10/11) composes from, at zero shared-bundle cost. DoD (part 1) CONFIRMED. Next: UX-09b — area/line/bar/donut charts + day×hour heatmap + sentiment ribbon + `DATAVIZ.md`.

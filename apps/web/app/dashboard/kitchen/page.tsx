@@ -80,6 +80,7 @@ import {
   fireConfetti,
   toast,
 } from '@vocaliq/ui';
+import { Meter, RadialGauge, Sparkline, StatCard, TrendDelta } from '@vocaliq/ui/charts';
 import {
   AnimatedNumber,
   Collapse,
@@ -144,6 +145,7 @@ export default function KitchenSinkPage() {
       <InputsKit />
       <VoiceMotionKit />
       <PresenceKit />
+      <DataVizKit />
 
       <Section title="Theme presets (contract · applied in UX-12)">
         <div className="flex flex-wrap gap-2">
@@ -534,6 +536,80 @@ const ONBOARD_STEPS = [
   { label: 'Number' },
   { label: 'Launch' },
 ];
+
+const SPARK_A = [4, 6, 5, 8, 7, 11, 9, 14, 13, 18];
+const SPARK_B = [20, 18, 19, 15, 16, 12, 13, 10, 11, 8];
+
+/** Data-viz kit (UX-09a) — sparklines, radial gauges, meters, trend deltas, animated stat cards. */
+function DataVizKit() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Data-viz &amp; infographics (UX-09)</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-6">
+        {/* Metric cards with count-up + delta + sparkline + sentiment glow. */}
+        <div className="grid gap-3 sm:grid-cols-3">
+          <StatCard
+            label="Calls today"
+            value={1284}
+            delta={12.4}
+            spark={SPARK_A}
+            sentiment="good"
+          />
+          <StatCard
+            label="Avg cost / call"
+            value={0.42}
+            format={(v) => `$${v.toFixed(2)}`}
+            delta={-6.1}
+            deltaInvert
+            spark={SPARK_B}
+            sentiment="good"
+          />
+          <StatCard
+            label="Failed calls"
+            value={37}
+            delta={8.3}
+            deltaInvert
+            spark={SPARK_A}
+            sentiment="bad"
+          />
+        </div>
+
+        <Separator />
+
+        {/* Gauges + meters. */}
+        <div className="flex flex-wrap items-center gap-8">
+          <div className="flex flex-col items-center gap-1">
+            <RadialGauge value={82} label="Success rate" />
+            <span className="text-vq-text-lo text-xs">Success rate</span>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <RadialGauge value={54} label="Sentiment" />
+            <span className="text-vq-text-lo text-xs">Positive sentiment</span>
+          </div>
+          <div className="flex min-w-56 flex-1 flex-col gap-3">
+            <Meter label="Minutes used" value={7400} max={10000} target={9000} />
+            <Meter label="Storage" value={46} max={50} />
+            <div className="flex items-center gap-3 text-sm">
+              <span className="text-vq-text-lo">vs last week</span>
+              <TrendDelta value={12.4} />
+              <TrendDelta value={-4.2} />
+              <TrendDelta value={-3.1} invert />
+            </div>
+          </div>
+        </div>
+
+        {/* Standalone sparklines. */}
+        <div className="flex flex-wrap items-center gap-4">
+          <Sparkline data={SPARK_A} label="Upward trend" />
+          <Sparkline data={SPARK_B} color="var(--viz-3)" label="Downward trend" />
+          <Sparkline data={SPARK_A} color="var(--viz-5)" area={false} label="Line only" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 /** Button interaction system (UX-08) — press/hover sheen/loading/success + magnetic CTA + copy. */
 function ButtonKit() {
