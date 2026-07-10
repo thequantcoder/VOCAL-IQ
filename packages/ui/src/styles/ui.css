@@ -74,3 +74,99 @@
   transform: scaleY(0.6);
   opacity: 0.85;
 }
+
+/* ── Component-kit motion (UX-03): Radix-driven enter/exit + skeleton shimmer ──
+ * Overlays/menus animate via data-[state=open|closed] using these keyframes; all
+ * are killed by [data-motion="off"] (see above) + prefers-reduced-motion. */
+@keyframes vq-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes vq-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes vq-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes vq-pop-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.96) translateY(4px);
+  }
+}
+@keyframes vq-slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes vq-slide-out-right {
+  from {
+    transform: none;
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes vq-slide-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes vq-slide-out-left {
+  from {
+    transform: none;
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+@keyframes vq-shimmer {
+  from {
+    background-position: -180% 0;
+  }
+  to {
+    background-position: 180% 0;
+  }
+}
+
+/* Skeleton shimmer surface. */
+.vq-skeleton {
+  background-image: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--text-lo) 8%, transparent) 25%,
+    color-mix(in oklab, var(--text-lo) 18%, transparent) 37%,
+    color-mix(in oklab, var(--text-lo) 8%, transparent) 63%
+  );
+  background-size: 200% 100%;
+  animation: vq-shimmer 1.4s ease-in-out infinite;
+}
+[data-motion="off"] .vq-skeleton,
+[data-motion="reduced"] .vq-skeleton {
+  animation: none;
+}
