@@ -1,7 +1,15 @@
 'use client';
 
 import { brandName, parseBranding } from '@vocaliq/shared';
-import { LogOut, Search } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@vocaliq/ui';
+import { LogOut, Palette, Search, UserRound } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
@@ -88,25 +96,39 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   );
 }
 
-/** The signed-in user's email + a sign-out control (replaces Clerk's UserButton). */
+/** The signed-in user's account menu — Appearance + sign out (replaces Clerk's UserButton). */
 function UserMenu() {
   const { user, signOut } = useAuth();
   const router = useRouter();
   return (
-    <div className="flex items-center gap-3">
-      {user?.email && (
-        <span className="hidden text-sm text-vq-text-lo sm:inline">{user.email}</span>
-      )}
-      <button
-        type="button"
-        onClick={() => {
-          signOut();
-          router.push('/sign-in');
-        }}
-        className="flex items-center gap-1 rounded-vq border border-vq-border px-2.5 py-1.5 text-sm text-vq-text-lo hover:text-vq-text-hi"
-      >
-        <LogOut size={15} aria-hidden /> Sign out
-      </button>
-    </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="flex items-center gap-2 rounded-vq border border-vq-border px-2.5 py-1.5 text-sm text-vq-text-lo transition-colors hover:border-vq-violet/50 hover:text-vq-text-hi focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vq-ring"
+        >
+          <UserRound size={15} aria-hidden />
+          {user?.email && <span className="hidden max-w-40 truncate sm:inline">{user.email}</span>}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        {user?.email && <DropdownMenuLabel>{user.email}</DropdownMenuLabel>}
+        <DropdownMenuItem asChild>
+          <Link href="/dashboard/settings/appearance">
+            <Palette size={15} /> Appearance
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          destructive
+          onSelect={() => {
+            signOut();
+            router.push('/sign-in');
+          }}
+        >
+          <LogOut size={15} /> Sign out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

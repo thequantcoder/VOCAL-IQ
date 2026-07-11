@@ -3656,3 +3656,35 @@ J. Quality/docs: ✅ — service/route/store/applier/boot all documented; the mi
 K. Build/CI: ✅ — migration applied; Prisma client regenerated; typecheck/lint/test/build green; artifacts reverted before commit.
 
 UX-12 is complete: a real, DB-persisted, per-user theme engine — presets + custom primary/secondary/accent + radius/density/motion/font, AA-guaranteed, instant-apply with **no FOUC**, synced to the server and resolved through the platform → reseller (lockable) → user hierarchy. DoD CONFIRMED. Next: UX-13 (appearance settings & live theme studio — the picker UI on top of this engine).
+
+## UX-Day 13 — Appearance Settings & Live Theme Studio — 2026-07-11 — ✅ DONE — 🎨 UI/UX ELEVATION
+Model: Opus. Branch `ux/13-theme-studio`. The UI for the UX-12 theme engine — a delightful Appearance page with a live preview. Self-audit focus **H (delightful + a11y), I (no regressions), A (controls map the engine)**.
+
+Built (DONE):
+- **Appearance page** `/dashboard/settings/appearance` (`page.tsx`) —
+  - **Preset gallery**: 8 animated (`Stagger`) cards, each a live mini-swatch (primary+accent) of the preset; clicking sets the preset + clears custom colours; the active one is ringed + checked.
+  - **Controls**: `SegmentedControl`s for **Mode** (light/dark/system → drives next-themes + persists `mode`), **Corners** (radius), **Density**, **Motion** (drives `useMotionLevel` + persists `motion`), **Font** — all from the shared enums, writing through `setUserTheme`.
+  - **Custom colours**: primary + accent pickers (native `<input type="color">` swatch + eyedropper + a mono hex `Input` with invalid-state), overriding the preset; a note explains contrast is auto-corrected.
+  - **Reset** button (`resetUserTheme`).
+- **Live preview panel** — a sticky mini-dashboard (`StatCard` + `RadialGauge` + `Sparkline` + primary/secondary `Button`s + `Waveform` + semantic `Badge`s) that **re-skins in real time** as you tweak (it reads the same `:root` tokens the applier writes — no scoped theming needed).
+- **Cross-tab sync** — the theme store now listens for the `storage` event, so changing the theme in one tab updates every other open tab (no re-POST).
+- **Discovery** — added **Appearance** to the Settings nav group (which also surfaces it in the **⌘K palette** via `flatNavItems`), and rebuilt the header **user menu** as a `DropdownMenu` (email · **Appearance** · Sign out).
+
+Verification: **typecheck 12/12**, **lint 12/12**, **test** green (api 463, shared 700, workers 42, db 7, provider-router 22), **build 8/8** (65/65 pages — the appearance route added) — **shared First Load JS still 177 kB**. Live smoke: picking a preset / dragging a colour / flipping mode/radius/density/motion re-skins the whole page (incl. the preview) instantly + persists to the DB (`/me/theme`), survives reload with no FOUC, and syncs across tabs; reachable from nav + ⌘K + the user menu.
+
+**Note:** the CSS wiring that makes **density**/**font** *visually* change spacing/typeface app-wide is still partial (the tokens/attributes are written + persisted; broader spacing/font plumbing rides a later polish pass). Mode/radius/motion/preset/custom-colours are fully effective. (An earlier local test blip was Docker being down — the DB-backed api tests can't run without Postgres; once restarted, all 463 passed. CI provides its own Postgres.)
+
+## Self-Audit — UX-13 (A–K)
+A. Correctness (focus): ✅ — every control maps a `ThemeConfig` field via `setUserTheme`; preset selection clears custom colours; the color field validates hex + shows an invalid state; reset clears to defaults.
+B. Isolation: ✅ — writes only the current user's theme (through the UX-12b per-user store + `/me/theme`); no tenant surface.
+C. Security: ✅ — no secrets; colours validated (hex regex + the server schema); persistence is the authed PUT.
+D. Cost: ✅ — no provider/LLM path.
+E. Errors/obs: ✅ — invalid hex flagged (not applied as a broken colour beyond the guardrail); storage/cross-tab reads guarded; 0 runtime errors.
+F. Performance: ✅ — shared First Load JS unchanged (177 kB); the preview re-skins via CSS-var changes (no re-render storm); appearance route is code-split.
+G. Error handling: ✅ — bad hex → invalid input state + the engine's contrast guardrail keeps text readable; reset always recovers.
+H. UI/delight (focus): ✅ — animated preset gallery with live swatches, a real-time preview, native colour pickers, segmented controls, and a proper user-menu dropdown — reachable from nav/⌘K/menu; reduced-motion-safe (Stagger/Reveal degrade).
+I. Regressions (focus): ✅ — additive page + nav entry; the user menu became a dropdown (same actions, now with Appearance); full suite + build green.
+J. Quality/docs: ✅ — components documented; the density/font partial-wiring noted; composes the shipped kits + the UX-12 engine.
+K. Build/CI: ✅ — typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
+
+The theme engine now has its face: a beautiful, animated Appearance page — preset gallery + custom colour pickers + radius/density/motion/mode/font controls + a real-time live preview — persisted to the account, synced across tabs, and reachable from the nav, the ⌘K palette, and the user menu. DoD CONFIRMED. Next: UX-14 (modern onboarding & product tour).
