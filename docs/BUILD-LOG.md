@@ -3629,3 +3629,30 @@ J. Quality/docs: ✅ — engine + store + applier documented; the no-FOUC + DB d
 K. Build/CI: ✅ — typecheck/lint/test/build green; dead `BrandingApplier` removed; artifacts reverted before commit.
 
 The theme engine's core is live: a pure, unit-tested colour engine (ramps + AA guardrail + resolution hierarchy) driving a runtime applier that re-skins the whole app instantly from a persisted per-user theme — presets switchable today via ⌘K. DoD (engine + apply) CONFIRMED. Next: UX-12b — DB `theme` field + `/me/theme` API + no-FOUC SSR inline + reseller `lockBranding`.
+
+## UX-Day 12b — Theme Persistence: DB + API + no-FOUC + reseller lock — 2026-07-10 — ✅ DONE — 🎨 UI/UX ELEVATION 🧠 OPUS
+Model: Opus. Branch `ux/12b-theme-persist`. Second increment of the theme engine — server persistence, no-flash boot, and the reseller lock flag, completing UX-12. The appearance-settings / theme-studio UI is UX-13. Self-audit focus **C (per-user data + isolation), A (round-trip correctness), I (reseller hierarchy unchanged), H (no-FOUC)**.
+
+Built (DONE):
+- **DB** (`packages/db`) — a nullable `theme Json?` on `User` (+ migration `20260710000000_ux12_user_theme`). It's a user preference (not tenant data) → no RLS. Applied to the local DB; Prisma client regenerated.
+- **API** (`apps/api/auth`) — `me()` now selects + returns the stored `theme` (validated via `parseThemeConfig`, `null` for fresh users); a new **`PUT /auth/me/theme`** route (JWT-protected) that validates + normalises the body (`setTheme`) and persists — invalid input is coerced to a valid config, never stored raw. **3 new real-Postgres tests** (fresh user → null; valid theme round-trips through `me()`; garbage input normalised). api suite **460 → 463**.
+- **Reseller lock** (`@vocaliq/shared/branding`) — added a `lockBranding` flag to the branding schema; `ThemeApplier` passes it into `resolveTheme`, so a reseller can pin brand colours while users keep radius/density/motion/mode/font (the resolution logic + `lockBranding` were unit-tested in 12a).
+- **Web sync** — `AuthUser` gains `theme`; `fetchMe` seeds the store via `hydrateUserTheme` (server → local, no re-POST); the theme store gains a registered **server persister** so user changes PUT to `/auth/me/theme` (fire-and-forget; localStorage stays the instant-apply source of truth, the server is the durable cross-device copy). `ThemeApplier` registers the persister (with the JWT) + caches the resolved CSS vars.
+- **No-FOUC** (`app/layout.tsx`) — a blocking inline `<head>` script replays the cached `vq-theme-vars` onto `:root` before first paint, so a persisted custom/preset theme never flashes the platform default; `ThemeApplier` refreshes the cache on every change. Fails silent.
+
+Verification: **typecheck 12/12**, **lint 12/12**, **test** green (api **463**, shared 700, workers 42, db 7, provider-router 22), **build 8/8** (64/64 pages) — **shared First Load JS still 177 kB**. Migration applied cleanly (54 migrations, the new one applied). Live smoke: change theme via ⌘K → it persists to the DB (PUT), survives a hard reload with **no flash of default** (inline boot paints the cached vars), and re-hydrates from the server on a fresh device/session.
+
+## Self-Audit — UX-12b (A–K)
+A. Correctness (focus): ✅ — `setTheme`/`me` round-trip verified against real Postgres; invalid input normalised (never stored raw); `null` for fresh users.
+B. Isolation: ✅ — `theme` is keyed to the authenticated `userId` (from the JWT); no tenant/cross-user surface; the PUT is `authMiddleware`-gated.
+C. Security (focus): ✅ — no secrets; body validated + normalised server-side via the shared schema before persisting; route requires a valid JWT; the no-FOUC script is static + self-authored (no user input → the `dangerouslySetInnerHTML` is justified).
+D. Cost: ✅ — no provider/LLM path; one tiny row update per theme change.
+E. Errors/obs: ✅ — bad theme → defaults (never a 500); PUT is fire-and-forget (a failed sync leaves the local theme intact); inline boot + storage reads are try/caught.
+F. Performance: ✅ — shared First Load JS unchanged (177 kB); one row update + one PUT per change; the boot script is a few hundred bytes; no runtime cost idle.
+G. Error handling: ✅ — offline/persist failure keeps the local theme; hydration skips a re-POST; migration is additive + nullable (safe for existing rows).
+H. UI/no-FOUC (focus): ✅ — the inline boot paints the persisted theme before hydration → no flash of default; the applier keeps the cache fresh.
+I. Regressions (focus): ✅ — reseller white-label still resolves (now with the optional lock); `me()`'s existing fields unchanged (theme is additive + optional on the web type); full suite + build green.
+J. Quality/docs: ✅ — service/route/store/applier/boot all documented; the migration comment explains the no-RLS rationale; the persister/hydration split explained.
+K. Build/CI: ✅ — migration applied; Prisma client regenerated; typecheck/lint/test/build green; artifacts reverted before commit.
+
+UX-12 is complete: a real, DB-persisted, per-user theme engine — presets + custom primary/secondary/accent + radius/density/motion/font, AA-guaranteed, instant-apply with **no FOUC**, synced to the server and resolved through the platform → reseller (lockable) → user hierarchy. DoD CONFIRMED. Next: UX-13 (appearance settings & live theme studio — the picker UI on top of this engine).

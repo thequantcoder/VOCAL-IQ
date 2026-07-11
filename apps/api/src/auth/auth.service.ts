@@ -1,4 +1,12 @@
-import { AuthError, MembershipStatus, Role, TenantType, ValidationError } from '@vocaliq/shared';
+import {
+  AuthError,
+  MembershipStatus,
+  Role,
+  TenantType,
+  type ThemeConfig,
+  ValidationError,
+  parseThemeConfig,
+} from '@vocaliq/shared';
 import { z } from 'zod';
 import type { PrismaService } from '../db/prisma.service';
 import { signToken } from './jwt';
@@ -33,6 +41,8 @@ export interface MeResult {
   name: string | null;
   imageUrl: string | null;
   memberships: { tenantId: string; role: string; status: string }[];
+  /** Per-user appearance theme (UX-12); null until the user customises. */
+  theme: ThemeConfig | null;
 }
 
 function slugify(base: string): string {
@@ -105,11 +115,11 @@ export class AuthService {
     return { token: signToken(user.id), userId: user.id };
   }
 
-  /** The authenticated user + their memberships (for the tenant switcher). */
+  /** The authenticated user + their memberships (for the tenant switcher) + their appearance theme. */
   async me(userId: string): Promise<MeResult> {
     const user = await this.db.admin.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, name: true, imageUrl: true },
+      select: { id: true, email: true, name: true, imageUrl: true, theme: true },
     });
     if (!user) throw new AuthError('User not found');
     const memberships = await this.db.admin.membership.findMany({
@@ -122,6 +132,17 @@ export class AuthService {
       name: user.name,
       imageUrl: user.imageUrl,
       memberships,
+      theme: user.theme == null ? null : parseThemeConfig(user.theme),
     };
+  }
+
+  /** Persist the user's appearance theme (UX-12). Validates + normalises before storing. */
+  async setTheme(userId: string, raw: unknown): Promise<ThemeConfig> {
+    const theme = parseThemeConfig(raw);
+    await this.db.admin.user.update({
+      where: { id: userId },
+      data: { theme },
+    });
+    return theme;
   }
 }
