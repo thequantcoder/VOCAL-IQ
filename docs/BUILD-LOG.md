@@ -3570,3 +3570,30 @@ J. Quality/docs: ✅ — components documented; the density-deferral noted; comp
 K. Build/CI: ✅ — typecheck/lint/test/build green; artifacts reverted before commit.
 
 The reseller portal is now an infographic-rich, margins-focused cockpit — KPIs, a margin gauge, a sub-tenant revenue-mix donut, and a per-client revenue-meter table — on the same RLS-scoped data. DoD (part 1) CONFIRMED. Next: UX-11b — super-admin platform-health overview (animated KPIs + trend) + tenants table + governance polish.
+
+## UX-Day 11b — Super-Admin Console Redesign — 2026-07-10 — ✅ DONE — 🎨 UI/UX ELEVATION
+Model: Opus. Branch `ux/11b-superadmin`. Final increment of UX-11 — the platform-owner console elevated with platform-health infographics, completing the reseller + super-admin redesigns. Self-audit focus **B (SUPER_ADMIN-gated data preserved), H (infographic + oversight-tuned), I (no regressions)**.
+
+Built (DONE) — `admin/page.tsx` (same `SUPER_ADMIN`-gated hooks):
+- **Platform overview** → the flat metric tiles became a staggered **KPI row** of `StatCard`s (Gross revenue, Provider cost, Total margin w/ margin-rate delta + good sentiment, Tenants) + a new **`DonutBreakdown` "tenant mix"** (active / trial / suspended, semantic colours, centre total) with a resellers/customers caption.
+- **Tenants table** → an animated **staggered** list where each `TenantRow` now leads with a seeded `AgentAvatar` (tenant identity) beside the name/type/status; the search + type filter, audited impersonation, and suspend/reactivate flows are untouched.
+- System health, launch-readiness, scale-out, and the tool hub are retained as-is (already dense/operational).
+
+Verification: **typecheck 12/12**, **lint 12/12**, **test** green (api 460, workers 42, db 7, provider-router 22, shared), **build 8/8** (64/64 pages) — **shared First Load JS still 177 kB** (viz code-split). Live smoke: the console shows count-up platform KPIs with a margin delta, a tenant-mix donut, and an animated tenants table with avatars + status pills; search/filter/impersonate/suspend all work — reduced-motion-safe.
+
+**Notes:** the spec's "calls / error-rate as animated KPIs + trend" aren't rendered — `PlatformOverview` exposes revenue/margin + a tenant-status breakdown only (no platform call volume or error-rate series), so I built the honest infographics the data supports (revenue KPIs + tenant-mix donut) rather than fabricating a trend. Density is applied as visual tightening (compact grids), consistent with 11a; the `--density` token → spacing wiring stays deferred to the theme engine (UX-12/13). Key-vault / governance / plan-builder deep polish was left to their own screens (this day focused the overview + tenants table, the highest-traffic super-admin surface).
+
+## Self-Audit — UX-11b (A–K)
+A. Correctness: ✅ — KPIs map `PlatformOverview` (cents→dollars, marginRate→delta); tenant-mix donut sums the active/trial/suspended counts; tenant rows seed avatars by id.
+B. Isolation (focus): ✅ — unchanged `SUPER_ADMIN`-gated endpoints; no new data path; impersonation stays audited (reason-prompted).
+C. Security: ✅ — no secrets; impersonation/suspend flows unchanged.
+D. Cost: ✅ — no provider/LLM/DB path.
+E. Errors/obs: ✅ — overview/tenants loading + error + empty states preserved; donut has a built-in empty state; 0 runtime errors.
+F. Performance: ✅ — shared First Load JS unchanged (177 kB); viz code-split; SVG donut + CSS stagger; no CLS.
+G. Error handling: ✅ — no-tenant-match + no-mix states handled; impersonation prompt validates the reason.
+H. UI/elevation (focus): ✅ — the console reads as a platform cockpit (count-up KPIs + margin delta + tenant-mix donut + animated tenants table) vs plain mono tiles; reduced-motion-safe.
+I. Regressions (focus): ✅ — same hooks/data; health/readiness/scale/tool-hub + search/filter/impersonate/suspend all preserved; full suite + build green.
+J. Quality/docs: ✅ — the data-limits (no calls/error-rate series) + density-deferral noted; composes the shipped kit.
+K. Build/CI: ✅ — typecheck/lint/test/build green; artifacts reverted before commit.
+
+UX-11 is complete: both the reseller portal (margin cockpit) and the super-admin console (platform cockpit) are now infographic-rich, animated, and role-tuned — on the same RLS/SUPER_ADMIN-gated data, reduced-motion-safe. DoD CONFIRMED. Next: UX-12 (theme engine — per-user, multi-theme, custom colors).

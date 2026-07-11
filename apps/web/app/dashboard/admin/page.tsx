@@ -1,6 +1,8 @@
 'use client';
 
-import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@vocaliq/ui';
+import { AgentAvatar, Button, Card, CardContent, CardHeader, CardTitle, Input } from '@vocaliq/ui';
+import { DonutBreakdown, StatCard } from '@vocaliq/ui/charts';
+import { Stagger, StaggerItem } from '@vocaliq/ui/motion';
 import {
   Activity,
   Building2,
@@ -145,44 +147,65 @@ function PlatformOverviewCards() {
     );
   if (!overview.data) return null;
   const o = overview.data;
+  const marginPct = Math.round(o.marginRate * 100);
+  const mix = [
+    { label: 'Active', value: o.tenants.active, color: 'var(--success)' },
+    { label: 'Trial', value: o.tenants.trial, color: 'var(--info)' },
+    { label: 'Suspended', value: o.tenants.suspended, color: 'var(--danger)' },
+  ].filter((s) => s.value > 0);
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <Metric label={`Gross revenue · ${period}`} value={formatUsd(o.grossRevenueCents / 100)} />
-      <Metric label="Provider cost" value={formatUsd(o.providerCostCents / 100)} />
-      <Metric label="Total margin" value={formatUsd(o.totalMarginCents / 100)} accent />
-      <Metric
-        label="Tenants"
-        value={`${o.tenants.total}`}
-        sub={`${o.tenants.resellers} resellers · ${o.tenants.active} active`}
-      />
+    <div className="flex flex-col gap-4">
+      <Stagger className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StaggerItem>
+          <StatCard
+            label={`Gross revenue · ${period}`}
+            value={o.grossRevenueCents / 100}
+            format={formatUsd}
+            sentiment="neutral"
+          />
+        </StaggerItem>
+        <StaggerItem>
+          <StatCard
+            label="Provider cost"
+            value={o.providerCostCents / 100}
+            format={formatUsd}
+            sentiment="neutral"
+          />
+        </StaggerItem>
+        <StaggerItem>
+          <StatCard
+            label="Total margin"
+            value={o.totalMarginCents / 100}
+            format={formatUsd}
+            delta={marginPct}
+            sentiment="good"
+          />
+        </StaggerItem>
+        <StaggerItem>
+          <StatCard
+            label="Tenants"
+            value={o.tenants.total}
+            icon={<Building2 size={15} />}
+            sentiment="neutral"
+          />
+        </StaggerItem>
+      </Stagger>
+
+      {mix.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Tenant mix</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <DonutBreakdown data={mix} centerLabel="Tenants" size={148} />
+            <p className="mt-2 text-vq-text-lo text-xs">
+              {o.tenants.resellers} resellers · {o.tenants.customers} customers
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
-  );
-}
-
-function Metric({
-  label,
-  value,
-  sub,
-  accent,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  accent?: boolean;
-}) {
-  return (
-    <Card>
-      <CardContent className="flex flex-col gap-1 py-3">
-        <span className="text-vq-text-lo text-xs">{label}</span>
-        <span
-          className={`font-mono font-semibold text-lg ${accent ? 'text-vq-success' : 'text-vq-text-hi'}`}
-        >
-          {value}
-        </span>
-        {sub && <span className="text-vq-text-lo text-xs">{sub}</span>}
-      </CardContent>
-    </Card>
   );
 }
 
@@ -327,11 +350,13 @@ function TenantManager() {
         ) : !tenants.data || tenants.data.items.length === 0 ? (
           <EmptyState title="No tenants match" hint="Try a different search or filter." />
         ) : (
-          <div className="flex flex-col divide-y divide-vq-border">
+          <Stagger className="flex flex-col divide-y divide-vq-border">
             {tenants.data.items.map((t) => (
-              <TenantRow key={t.id} tenant={t} />
+              <StaggerItem key={t.id}>
+                <TenantRow tenant={t} />
+              </StaggerItem>
             ))}
-          </div>
+          </Stagger>
         )}
       </CardContent>
     </Card>
@@ -364,7 +389,8 @@ function TenantRow({ tenant }: { tenant: AdminTenantRow }) {
   return (
     <div className="flex flex-col gap-1 py-2">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
+          <AgentAvatar seed={tenant.id} name={tenant.name} size={28} />
           <span className="font-medium text-sm text-vq-text-hi">{tenant.name}</span>
           <span className="text-vq-text-lo text-xs">{tenant.type.toLowerCase()}</span>
           <span
