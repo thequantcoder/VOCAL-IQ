@@ -1,6 +1,7 @@
 'use client';
 
-import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@vocaliq/ui';
+import { AgentAvatar, Button, Card, CardContent, CardHeader, CardTitle, Input } from '@vocaliq/ui';
+import { Stagger, StaggerItem } from '@vocaliq/ui/motion';
 import { Building2, Pause, Play, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { EmptyState, ErrorState, LoadingCard } from '../../../components/states';
@@ -44,11 +45,13 @@ export default function ResellerPage() {
           hint="Provision your first sub-tenant to get started."
         />
       ) : (
-        <div className="flex flex-col gap-3">
+        <Stagger className="flex flex-col gap-3">
           {subs.data.map((s) => (
-            <SubTenantRow key={s.id} sub={s} />
+            <StaggerItem key={s.id}>
+              <SubTenantRow sub={s} />
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       )}
     </div>
   );
@@ -58,24 +61,27 @@ function SubTenantRow({ sub }: { sub: SubTenant }) {
   const setStatus = useSetSubTenantStatus();
   const suspended = sub.status === 'SUSPENDED';
   return (
-    <Card>
+    <Card className="vq-lift transition-colors hover:border-vq-violet/40">
       <CardContent className="flex items-center justify-between py-3">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <span className={`font-medium ${suspended ? 'text-vq-text-lo' : 'text-vq-text-hi'}`}>
-              {sub.name}
-            </span>
-            <span
-              className={`rounded-vq-pill border px-2 py-0.5 text-xs ${
-                suspended
-                  ? 'border-vq-danger/40 text-vq-danger'
-                  : 'border-vq-success/40 text-vq-success'
-              }`}
-            >
-              {sub.status.toLowerCase()}
-            </span>
+        <div className="flex items-center gap-3">
+          <AgentAvatar seed={sub.id} name={sub.name} size={32} />
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <span className={`font-medium ${suspended ? 'text-vq-text-lo' : 'text-vq-text-hi'}`}>
+                {sub.name}
+              </span>
+              <span
+                className={`rounded-vq-pill border px-2 py-0.5 text-xs ${
+                  suspended
+                    ? 'border-vq-danger/40 text-vq-danger'
+                    : 'border-vq-success/40 text-vq-success'
+                }`}
+              >
+                {sub.status.toLowerCase()}
+              </span>
+            </div>
+            <span className="text-vq-text-lo text-xs">{sub.slug}</span>
           </div>
-          <span className="text-vq-text-lo text-xs">{sub.slug}</span>
         </div>
         {suspended ? (
           <Button

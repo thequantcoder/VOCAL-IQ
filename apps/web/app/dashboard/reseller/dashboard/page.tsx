@@ -1,12 +1,15 @@
 'use client';
 
-import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@vocaliq/ui';
+import { AgentAvatar, Button, Card, CardContent, CardHeader, CardTitle, Input } from '@vocaliq/ui';
+import { DonutBreakdown, Meter, RadialGauge, StatCard } from '@vocaliq/ui/charts';
+import { Stagger, StaggerItem } from '@vocaliq/ui/motion';
 import { ChevronRight, Percent, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 import { EmptyState, ErrorState, LoadingCard } from '../../../../components/states';
 import { formatUsd } from '../../../../components/ui-bits';
 import {
   type ResellerClientMargin,
+  type ResellerOverview,
   useResellerMarkup,
   useResellerOverview,
   useSetResellerMarkup,
@@ -59,21 +62,78 @@ export default function ResellerDashboardPage() {
           hint="Once your customers run calls, revenue and margin will roll up here."
         />
       ) : (
-        <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Metric label="Revenue" cents={overview.data.totalRevenueCents} />
-            <Metric label="Provider cost" cents={overview.data.totalCostCents} />
-            <Metric label="Margin" cents={overview.data.totalMarginCents} accent />
-            <MetricRaw
-              label="Margin rate"
-              value={`${(overview.data.marginRate * 100).toFixed(1)}%`}
-            />
-          </div>
-          <TopClients rows={overview.data.topClients} />
-        </>
+        <RevenueOverview data={overview.data} />
       )}
 
       <MarkupCard />
+    </div>
+  );
+}
+
+/** Revenue + margin infographics — KPI cards, a margin gauge, a sub-tenant mix donut, and the table. */
+function RevenueOverview({ data }: { data: ResellerOverview }) {
+  const marginPct = Math.round(data.marginRate * 100);
+  const mix = data.topClients.map((c) => ({
+    label: c.name ?? c.childTenantId.slice(0, 8),
+    value: c.revenueCents,
+  }));
+  return (
+    <div className="flex flex-col gap-5">
+      <Stagger className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StaggerItem>
+          <StatCard
+            label="Revenue"
+            value={data.totalRevenueCents / 100}
+            format={formatUsd}
+            sentiment="neutral"
+          />
+        </StaggerItem>
+        <StaggerItem>
+          <StatCard
+            label="Provider cost"
+            value={data.totalCostCents / 100}
+            format={formatUsd}
+            sentiment="neutral"
+          />
+        </StaggerItem>
+        <StaggerItem>
+          <StatCard
+            label="Margin"
+            value={data.totalMarginCents / 100}
+            format={formatUsd}
+            sentiment="good"
+          />
+        </StaggerItem>
+        <StaggerItem>
+          <StatCard
+            label="Margin rate"
+            value={marginPct}
+            format={(v) => `${Math.round(v)}%`}
+            sentiment={marginPct >= 30 ? 'good' : marginPct >= 15 ? 'neutral' : 'bad'}
+          />
+        </StaggerItem>
+      </Stagger>
+
+      <div className="grid gap-4 md:grid-cols-[auto_1fr]">
+        <Card className="flex flex-col items-center gap-2 py-5">
+          <RadialGauge value={marginPct} size={132} label="Margin rate" color="var(--success)" />
+          <span className="text-vq-text-lo text-xs">Margin rate</span>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Sub-tenant revenue mix</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {mix.length > 0 ? (
+              <DonutBreakdown data={mix} centerLabel="Revenue" format={(v) => formatUsd(v / 100)} />
+            ) : (
+              <p className="text-sm text-vq-text-lo">No client revenue this period.</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <TopClients rows={data.topClients} />
     </div>
   );
 }
@@ -92,43 +152,43 @@ function ScopeBanner() {
   );
 }
 
-function Metric({ label, cents, accent }: { label: string; cents: number; accent?: boolean }) {
-  return <MetricRaw label={label} value={formatUsd(cents / 100)} accent={accent} />;
-}
-
-function MetricRaw({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <Card>
-      <CardContent className="flex flex-col gap-1 py-3">
-        <span className="text-vq-text-lo text-xs">{label}</span>
-        <span
-          className={`font-mono font-semibold text-lg ${accent ? 'text-vq-success' : 'text-vq-text-hi'}`}
-        >
-          {value}
-        </span>
-      </CardContent>
-    </Card>
-  );
-}
-
 function TopClients({ rows }: { rows: ResellerClientMargin[] }) {
+  const top = Math.max(1, ...rows.map((c) => c.revenueCents));
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Top clients by revenue</CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col divide-y divide-vq-border">
-        {rows.map((c) => (
-          <div key={c.childTenantId} className="flex items-center justify-between py-2 text-sm">
-            <span className="text-vq-text-hi">{c.name ?? c.childTenantId.slice(0, 8)}</span>
-            <div className="flex items-center gap-6 font-mono">
-              <span className="text-vq-text-lo">{formatUsd(c.revenueCents / 100)}</span>
-              <span className="w-20 text-right text-vq-success">
-                +{formatUsd(c.marginCents / 100)}
-              </span>
-            </div>
-          </div>
-        ))}
+      <CardContent>
+        <Stagger className="flex flex-col divide-y divide-vq-border">
+          {rows.map((c) => {
+            const name = c.name ?? c.childTenantId.slice(0, 8);
+            return (
+              <StaggerItem key={c.childTenantId}>
+                <div className="flex items-center gap-3 py-2.5 text-sm">
+                  <AgentAvatar seed={c.childTenantId} name={name} size={28} />
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate text-vq-text-hi">{name}</span>
+                      <span className="shrink-0 font-mono text-vq-text-lo text-xs">
+                        {formatUsd(c.revenueCents / 100)}
+                      </span>
+                    </div>
+                    <Meter
+                      value={c.revenueCents}
+                      max={top}
+                      showValue={false}
+                      className="[&>div]:h-1.5"
+                    />
+                  </div>
+                  <span className="w-16 shrink-0 text-right font-mono text-success text-xs">
+                    +{formatUsd(c.marginCents / 100)}
+                  </span>
+                </div>
+              </StaggerItem>
+            );
+          })}
+        </Stagger>
       </CardContent>
     </Card>
   );
