@@ -16,10 +16,19 @@ export interface OnboardingState {
   useCase: UseCase | null;
   completed: boolean;
   dismissed: boolean;
+  /** Explicitly reopened (via "Restart onboarding") — shows the wizard even for existing workspaces.
+   * Not persisted (session-only). */
+  requested: boolean;
 }
 
 const KEY = 'vq-onboarding';
-const DEFAULT: OnboardingState = { step: 0, useCase: null, completed: false, dismissed: false };
+const DEFAULT: OnboardingState = {
+  step: 0,
+  useCase: null,
+  completed: false,
+  dismissed: false,
+  requested: false,
+};
 
 function read(): OnboardingState {
   if (typeof window === 'undefined') return DEFAULT;
@@ -37,7 +46,9 @@ const listeners = new Set<() => void>();
 function commit(next: OnboardingState) {
   current = next;
   try {
-    localStorage.setItem(KEY, JSON.stringify(current));
+    // `requested` is session-only — don't persist it.
+    const { requested: _drop, ...persisted } = current;
+    localStorage.setItem(KEY, JSON.stringify(persisted));
   } catch {
     /* storage unavailable — keep in-memory */
   }
@@ -52,9 +63,9 @@ export function setOnboarding(patch: Partial<OnboardingState>): void {
   commit({ ...current, ...patch });
 }
 
-/** Re-open the wizard (from a "Restart tour" trigger). */
+/** Re-open the wizard from anywhere (works even for an established workspace). */
 export function openOnboarding(): void {
-  commit({ ...current, dismissed: false, completed: false });
+  commit({ ...current, step: 0, dismissed: false, completed: false, requested: true });
 }
 
 export function useOnboarding(): OnboardingState {

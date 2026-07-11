@@ -60,7 +60,8 @@ export function OnboardingWizard() {
   const agents = useAgents();
 
   const isNew = !agents.isLoading && (agents.data?.length ?? 0) === 0;
-  const open = isNew && !state.completed && !state.dismissed;
+  // Auto-opens for a brand-new workspace; also opens when explicitly reopened via ⌘K (requested).
+  const open = (isNew || state.requested) && !state.completed && !state.dismissed;
 
   // Fire the "started" event once when the wizard first opens.
   useEffect(() => {
@@ -72,11 +73,11 @@ export function OnboardingWizard() {
     track('onboarding_step', { step });
   };
   const skip = () => {
-    setOnboarding({ dismissed: true });
+    setOnboarding({ dismissed: true, requested: false });
     track('onboarding_skipped', { step: state.step });
   };
   const finish = () => {
-    setOnboarding({ completed: true });
+    setOnboarding({ completed: true, requested: false });
     track('onboarding_completed');
     fireConfetti();
   };

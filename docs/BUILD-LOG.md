@@ -3715,3 +3715,30 @@ J. Quality/docs: ✅ — store + wizard documented; the local-persistence + iClo
 K. Build/CI: ✅ — typecheck/lint/test/build green; artifacts reverted before commit.
 
 New users now get a modern, resumable, illustrated 5-step wizard to first value — skippable, celebratory, per-user, and instrumented — without ever interrupting existing workspaces. DoD (wizard) CONFIRMED. Next: UX-14b — coachmark product tour + checklist v2 + 2/3-step micro-flows + onboarding empty states.
+
+## UX-Day 14b — Coachmark Tour + Checklist v2 — 2026-07-11 — ✅ DONE — 🎨 UI/UX ELEVATION
+Model: Opus. Branch `ux/14b-tour-checklist`. Second increment of UX-14 — the product tour + the upgraded checklist + reopen hooks, completing the onboarding surface. Self-audit focus **H (delight + clarity), C (per-user state), A (resumability), analytics fire**.
+
+Built (DONE):
+- **Coachmark product tour** (`components/tour.tsx`) — a reusable spotlight system: it highlights any element tagged `data-tour="<id>"` by cutting a "hole" in a dimmed backdrop (box-shadow spotlight) + a positioned tooltip with a **progress ("2 of 3") + dots**, Back/Next/Done, and Skip. **Resumable** (the last step persists per browser) + **dismissible** + marks itself **done** so it never nags; repositions on scroll/resize (scrolls the target into view), Esc closes. Fires PostHog (`tour_started/completed/dismissed`). Started from anywhere via `startTour()`. Wired `data-tour` targets in the shell (sidebar, ⌘K search, account menu) + mounted `<TourOverlay>` once.
+- **Checklist v2** (`onboarding-checklist.tsx`) — upgraded the Day-50 checklist with an **animated `CircularProgress` ring** (N/M in the centre), a **dismiss** control (persisted), the smart next-step hint in the header, and a **one-time confetti celebration** (`celebrateMilestone`) when the tenant crosses the finish line — all still derived from the real `computeOnboarding` signals.
+- **Reopen hooks** — ⌘K palette gains **"Take the product tour"** (`startTour`) and **"Restart onboarding"** (`openOnboarding`). The wizard now honours an explicit `requested` flag (session-only, not persisted) so **existing** workspaces — not just brand-new ones — can reopen it on demand.
+
+Verification: **typecheck 12/12**, **lint 12/12**, **test** green (api 463, shared 700, workers 42, db 7, provider-router 22), **build 8/8** (65/65 pages) — **shared First Load JS still 177 kB**. Live smoke: ⌘K → "Take the product tour" spotlights the sidebar → ⌘K button → account menu with a progress tooltip, resumes at the last step if closed, and marks done; the checklist shows the progress ring + dismiss + celebrates on completion; "Restart onboarding" reopens the wizard even with agents present. Reduced-motion-safe; a11y (Esc, focus targets, aria-labels).
+
+**Note:** the spec's 2/3-step *micro-flows* (publish-agent / go-live-on-a-channel) and the "watch 30s demo" onboarding empty-state are deferred — the tour + wizard + checklist deliver the core onboarding loop; the micro-flows are best wired into their specific screens (agent builder / channel setup) in a later polish pass, and the demo-empty-state can reuse the UX-04 voice-motion choreography. (One local build blip was again the iCloud `tsconfig` rewrite race → reverted + rebuilt → 8/8.)
+
+## Self-Audit — UX-14b (A–K)
+A. Correctness (focus): ✅ — tour targets resolve via `data-tour`, reposition on scroll/resize, and resume at the persisted index; checklist derives from real signals; the `requested` gate opens the wizard for established workspaces.
+B. Isolation: ✅ — per-browser local state; no tenant/cross-user surface.
+C. Security/per-user (focus): ✅ — no secrets; state local to the browser; analytics carry only step indices.
+D. Cost: ✅ — no provider/LLM/DB path.
+E. Errors/obs (focus): ✅ — tour/checklist events fire (no-op without a key); storage reads guarded; missing tour target degrades to a centred tooltip; 0 runtime errors.
+F. Performance: ✅ — shared First Load JS unchanged (177 kB); the tour renders nothing until started; the spotlight is a single positioned element; measure listeners cleaned up.
+G. Error handling: ✅ — no target → centred fallback; storage-unavailable keeps in-memory; a done tour/dismissed checklist never reopens (except via the explicit reopen actions).
+H. UI/delight (focus): ✅ — a real spotlight coachmark tour + a progress-ring checklist with a completion celebration + reopen affordances in ⌘K; reduced-motion-safe + keyboard/Esc.
+I. Regressions: ✅ — additive (new tour + checklist upgrade + palette actions + `data-tour` attrs + one mount); existing behaviour preserved; full suite + build green.
+J. Quality/docs: ✅ — tour + checklist documented; the micro-flow/demo deferral logged; the session-only `requested` flag explained.
+K. Build/CI: ✅ — typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
+
+UX-14 is complete: a resumable 5-step first-run wizard (14a) + a coachmark product tour, a progress-ring checklist v2 with a completion celebration, and reopen hooks in ⌘K (14b) — a modern, per-user, instrumented onboarding system that never interrupts established workspaces. DoD CONFIRMED. Next: UX-15 (delight, notifications & sound — optional).

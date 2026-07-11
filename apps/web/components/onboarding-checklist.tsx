@@ -1,53 +1,95 @@
 'use client';
 
 import { type OnboardingStep, computeOnboarding } from '@vocaliq/shared';
-import { Card, CardContent, CardHeader, CardTitle } from '@vocaliq/ui';
-import { ArrowRight, Check, PartyPopper } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CircularProgress } from '@vocaliq/ui';
+import { ArrowRight, Check, PartyPopper, X } from 'lucide-react';
 import Link from 'next/link';
-import { useCalls, useNumbers } from '../lib/api';
-import { useAgents } from '../lib/api';
+import { useEffect, useRef, useState } from 'react';
+import { useAgents, useCalls, useNumbers } from '../lib/api';
+import { celebrateMilestone } from '../lib/celebrate';
+
+const DISMISS_KEY = 'vq-checklist-dismissed';
 
 /**
- * Smart onboarding checklist (Day 50, DESIGN-SYSTEM §6). "First value fast": guides a new
- * tenant through create agent → connect number → test call → see results. Progress is derived
- * from real data (pure `computeOnboarding`); the card disappears once fully onboarded so it's
- * never in the way. Entrance is motion-polished + reduced-motion-safe (CSS `vq-reveal`).
+ * Smart onboarding checklist v2 (Day 50 → UX-14b). "First value fast": guides a new tenant through
+ * create agent → connect number → test call → see results, derived from real data (`computeOnboarding`).
+ * v2 adds an animated progress ring, a dismiss control, and a one-time confetti celebration when the
+ * tenant crosses the finish line. Reduced-motion-safe (the ring/entrance degrade).
  */
 export function OnboardingChecklist() {
   const agents = useAgents();
   const calls = useCalls();
   const numbers = useNumbers();
 
-  // Wait for the signals before deciding whether to show (avoids a flash for onboarded tenants).
-  if (agents.isLoading || calls.isLoading || numbers.isLoading) return null;
-
+  const loading = agents.isLoading || calls.isLoading || numbers.isLoading;
   const items = calls.data?.items ?? [];
-  const progress = computeOnboarding({
-    hasAgent: (agents.data?.length ?? 0) > 0,
-    hasNumber: (numbers.data?.owned.length ?? 0) > 0,
-    hasCall: items.length > 0,
-    hasResults: items.some((c) => c.status === 'COMPLETED'),
-  });
+  const progress = loading
+    ? null
+    : computeOnboarding({
+        hasAgent: (agents.data?.length ?? 0) > 0,
+        hasNumber: (numbers.data?.owned.length ?? 0) > 0,
+        hasCall: items.length > 0,
+        hasResults: items.some((c) => c.status === 'COMPLETED'),
+      });
+  const complete = progress?.complete ?? false;
 
-  if (progress.complete) return null;
+  const [dismissed, setDismissed] = useState(false);
+  useEffect(() => {
+    try {
+      setDismissed(localStorage.getItem(DISMISS_KEY) === '1');
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  // Celebrate crossing the finish line — once.
+  const celebrated = useRef(false);
+  useEffect(() => {
+    if (complete && !celebrated.current) {
+      celebrated.current = true;
+      celebrateMilestone(
+        'onboarding-complete',
+        "You're all set up! 🎉",
+        'Nice work — go place a call.',
+      );
+    }
+  }, [complete]);
+
+  if (loading || !progress || complete || dismissed) return null;
+
+  const dismiss = () => {
+    setDismissed(true);
+    try {
+      localStorage.setItem(DISMISS_KEY, '1');
+    } catch {
+      /* ignore */
+    }
+  };
 
   return (
     <Card className="vq-reveal overflow-hidden">
       <CardHeader className="flex-row items-center justify-between">
-        <CardTitle className="text-base">Get started with VocalIQ</CardTitle>
-        <span className="font-mono text-vq-text-lo text-xs">
-          {progress.completedCount}/{progress.totalCount} done
-        </span>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
-        {/* Progress bar */}
-        <div className="h-1.5 overflow-hidden rounded-vq-pill bg-vq-bg-base">
-          <div
-            className="vq-lift h-full rounded-vq-pill bg-vq-violet transition-[width] duration-[380ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
-            style={{ width: `${progress.percent}%` }}
-          />
+        <div className="flex items-center gap-3">
+          <CircularProgress value={progress.percent} size={40}>
+            {progress.completedCount}/{progress.totalCount}
+          </CircularProgress>
+          <div className="flex flex-col">
+            <CardTitle className="text-base">Get started with VocalIQ</CardTitle>
+            <span className="text-vq-text-lo text-xs">
+              {progress.nextStep?.hint ?? 'Almost there'}
+            </span>
+          </div>
         </div>
-
+        <button
+          type="button"
+          onClick={dismiss}
+          aria-label="Dismiss checklist"
+          className="grid size-7 place-items-center rounded-vq text-vq-text-lo transition-colors hover:bg-vq-bg-base hover:text-vq-text-hi focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vq-ring"
+        >
+          <X size={15} />
+        </button>
+      </CardHeader>
+      <CardContent>
         <ul className="vq-stagger flex flex-col gap-1.5">
           {progress.steps.map((step) => (
             <StepRow key={step.key} step={step} isNext={progress.nextStep?.key === step.key} />

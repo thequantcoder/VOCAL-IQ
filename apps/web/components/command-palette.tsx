@@ -4,8 +4,10 @@ import { THEME_PRESETS } from '@vocaliq/shared';
 import { cn } from '@vocaliq/ui';
 import { AnimatePresence, m, useMotionLevel } from '@vocaliq/ui/motion';
 import {
+  Compass,
   CornerDownLeft,
   Gauge,
+  ListChecks,
   Moon,
   Palette,
   PhoneOutgoing,
@@ -18,8 +20,10 @@ import { useTheme } from 'next-themes';
 import { useRouter } from 'next/navigation';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../lib/auth';
+import { openOnboarding } from '../lib/onboarding-store';
 import { setUserTheme, useUserTheme } from '../lib/theme-store';
 import { flatNavItems } from './sidebar-nav';
+import { startTour } from './tour';
 
 /** Fire from anywhere to open the palette (e.g. the header search button). */
 export function openCommandPalette() {
@@ -128,6 +132,28 @@ export function CommandPalette() {
           const next = THEME_PRESETS[(i + 1) % THEME_PRESETS.length];
           if (next) setUserTheme({ preset: next, colors: {} });
           close();
+        },
+      },
+      {
+        id: 'act-tour',
+        label: 'Take the product tour',
+        group: 'Actions',
+        icon: <Compass size={16} />,
+        keywords: 'coachmark guide walkthrough help',
+        run: () => {
+          close();
+          startTour();
+        },
+      },
+      {
+        id: 'act-onboarding',
+        label: 'Restart onboarding',
+        group: 'Actions',
+        icon: <ListChecks size={16} />,
+        keywords: 'setup wizard getting started',
+        run: () => {
+          close();
+          openOnboarding();
         },
       },
       {
