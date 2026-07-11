@@ -53,7 +53,7 @@ export default function WidgetPage() {
         <WebCallWidget agentId={config.agentId} agentName={config.name} />
       ) : (
         <div
-          className="h-40 w-full max-w-sm animate-pulse rounded-vq-card bg-vq-bg-elevated"
+          className="h-40 w-full max-w-sm animate-pulse rounded-vq-card bg-vq-bg-elevated motion-reduce:animate-none"
           aria-hidden
         />
       )}

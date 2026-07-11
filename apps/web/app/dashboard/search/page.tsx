@@ -56,7 +56,10 @@ export default function SearchPage() {
           onClick={() => reindex.mutate()}
           title="Index any transcripts not yet searchable"
         >
-          <RefreshCw size={14} className={reindex.isPending ? 'animate-spin' : ''} />
+          <RefreshCw
+            size={14}
+            className={reindex.isPending ? 'animate-spin motion-reduce:animate-none' : ''}
+          />
           {reindex.data ? `Indexed ${reindex.data.indexed}` : 'Reindex'}
         </Button>
       </div>

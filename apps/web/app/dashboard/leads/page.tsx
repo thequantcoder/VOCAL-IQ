@@ -154,6 +154,7 @@ function LeadTable({ leads }: { leads: LeadListItem[] }) {
     <Card>
       <CardContent className="p-0">
         <table className="w-full text-sm">
+          <caption className="sr-only">Leads</caption>
           <thead>
             <tr className="border-vq-border border-b text-left text-vq-text-lo">
               <th className="px-4 py-3 font-medium">Contact</th>

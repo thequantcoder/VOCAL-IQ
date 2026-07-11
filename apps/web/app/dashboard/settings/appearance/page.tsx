@@ -247,7 +247,10 @@ function ColorField({
     <div className="flex items-center gap-3">
       <span className="w-16 text-sm text-vq-text-hi">{label}</span>
       <label className="relative size-9 shrink-0 cursor-pointer overflow-hidden rounded-vq border border-vq-border">
-        <span className="absolute inset-0" style={{ background: valid ? value : '#888' }} />
+        <span
+          className="absolute inset-0"
+          style={{ background: valid ? value : 'var(--vq-border)' }}
+        />
         <input
           type="color"
           value={valid ? value : '#7c5cff'}

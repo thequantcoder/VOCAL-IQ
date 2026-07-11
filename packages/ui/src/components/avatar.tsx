@@ -56,7 +56,7 @@ export function Avatar({
           className={cn(
             'absolute right-0 bottom-0 block size-[28%] min-h-2 min-w-2 rounded-full ring-2 ring-vq-bg-base',
             statusColors[status],
-            status === 'live' && 'animate-pulse',
+            status === 'live' && 'animate-pulse motion-reduce:animate-none',
           )}
           aria-label={status}
         />

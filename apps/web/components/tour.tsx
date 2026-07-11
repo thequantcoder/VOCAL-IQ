@@ -206,7 +206,7 @@ export function TourOverlay() {
         initial={{ opacity: 0, y: placeBelow ? -6 : 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.18 }}
-        className="absolute w-[300px] rounded-vq-card border border-vq-border bg-vq-bg-overlay p-4 shadow-elev-3"
+        className="absolute w-[min(300px,calc(100vw-24px))] rounded-vq-card border border-vq-border bg-vq-bg-overlay p-4 shadow-elev-3"
         style={{ top: tipTop, left: tipLeft, transform: placeBelow ? 'none' : 'translateY(-100%)' }}
       >
         <div className="flex items-center justify-between">
