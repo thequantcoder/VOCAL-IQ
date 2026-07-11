@@ -83,3 +83,23 @@ provider-router 22) · build 8/8 (65/65 pages) · shared First Load JS 177 kB.**
 - [ ] `data-motion=off` (Appearance → Motion → Off) — nothing moves; all content still present.
 - [ ] Screen-reader spot check: nav landmarks, route announce, table captions, dialog labels.
 - [ ] Lighthouse on `/dashboard` + `/` — LCP < 2.5s, CLS < 0.1, INP < 200ms.
+
+---
+
+## Full render audit (post-release, super-admin)
+
+A headless Playwright pass (logged in as `admin@vocaliq.dev`, SUPER_ADMIN) visited **every** dashboard
+route and checked HTTP status + the ErrorBoundary marker + browser console/page errors:
+
+- **57 static routes** (every sidebar destination across user / reseller / super-admin) — **0 broken**.
+- **7 detail routes** — the 6 agent sub-pages (Chat / Builder / Learning / Memory / Guards / Tests) +
+  a call detail — **0 broken**; the agent **sub-nav** (6 tabs) renders on all except the immersive
+  Builder (opts out by design), and **back links** ("← Agents" / "← Calls") are present.
+- **Total: 64/64 route instances render cleanly** — no ErrorBoundary, no console/page errors, data
+  hooks resolve (real data from the demo tenant).
+
+### Root cause of the earlier "Something went wrong" screens
+Not a code bug — a **stale local dev server** (running for hours from pre-UX-07 code) whose default
+`.next` chunks were **evicted by iCloud**, so routes 500'd on demand. Fixed by restarting `next dev`
+against the iCloud-safe `.next.nosync` dir. Prevention: `NEXT_DIST_DIR=.next.nosync` is now in `.env`
+(local) and documented in `.env.example`.
