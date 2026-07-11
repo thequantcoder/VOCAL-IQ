@@ -8,6 +8,7 @@ import { ArrowRight, Bot, PhoneCall, PhoneOutgoing, Sparkles } from 'lucide-reac
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { OnboardingChecklist } from '../../components/onboarding-checklist';
+import { OnboardingWizard } from '../../components/onboarding-wizard';
 import { StatusBadge, formatUsd } from '../../components/ui-bits';
 import { type CallListItem, useAgents, useCalls } from '../../lib/api';
 
@@ -65,6 +66,9 @@ export default function OverviewPage() {
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-8">
+      {/* First-run onboarding wizard (auto-opens for a brand-new workspace). */}
+      <OnboardingWizard />
+
       {/* Hero band — ambient atmosphere + voice identity + greeting + CTAs. */}
       <Reveal>
         <section className="relative overflow-hidden rounded-vq-card border border-vq-border bg-vq-bg-elevated">
