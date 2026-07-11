@@ -12,16 +12,18 @@ const db = new PrismaService();
 const svc = new AuthService(db);
 const userIds: string[] = [];
 
+// Create the user directly (no register/token — keeps the test independent of APP_JWT_SECRET).
 async function makeUser(): Promise<string> {
   const email = `theme-${Math.random().toString(36).slice(2, 10)}@example.com`;
-  const { userId } = await svc.register({ email, password: 'password123', name: 'Theme Tester' });
-  userIds.push(userId);
-  return userId;
+  const user = await db.admin.user.create({
+    data: { email, name: 'Theme Tester' },
+    select: { id: true },
+  });
+  userIds.push(user.id);
+  return user.id;
 }
 
 afterAll(async () => {
-  // Membership → Tenant cleanup cascades are handled by the DB; remove the users we made.
-  await db.admin.membership.deleteMany({ where: { userId: { in: userIds } } });
   await db.admin.user.deleteMany({ where: { id: { in: userIds } } });
 });
 
