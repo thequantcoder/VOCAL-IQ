@@ -96,7 +96,11 @@ function ServerRow({ server }: { server: McpServer }) {
               disabled={discover.isPending}
               onClick={() => discover.mutate(server.id)}
             >
-              <RefreshCw size={14} className={discover.isPending ? 'animate-spin' : ''} /> Discover
+              <RefreshCw
+                size={14}
+                className={discover.isPending ? 'animate-spin motion-reduce:animate-none' : ''}
+              />{' '}
+              Discover
             </Button>
             <Button
               size="sm"

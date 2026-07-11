@@ -92,6 +92,7 @@ function ExperimentRow({ experiment }: { experiment: ExperimentListItem }) {
 
         {results.data && results.data.totalCalls > 0 && (
           <table className="w-full text-sm">
+            <caption className="sr-only">Experiment results</caption>
             <thead>
               <tr className="border-vq-border border-b text-left text-vq-text-lo text-xs">
                 <th className="py-2 font-medium">Variant</th>

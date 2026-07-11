@@ -147,7 +147,9 @@ function Tile({ label, value, pulse }: { label: string; value: string; pulse?: b
   return (
     <div className="flex flex-col gap-1 rounded-vq-card border border-vq-border bg-vq-bg-elevated px-4 py-3">
       <span className="flex items-center gap-1.5 text-vq-text-lo text-xs">
-        {pulse && <Activity size={12} className="animate-pulse text-vq-cyan" />}
+        {pulse && (
+          <Activity size={12} className="animate-pulse text-vq-cyan motion-reduce:animate-none" />
+        )}
         {label}
       </span>
       <span className="font-display font-semibold text-2xl text-vq-text-hi">{value}</span>

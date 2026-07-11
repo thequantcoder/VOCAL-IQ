@@ -3797,3 +3797,33 @@ J. Quality/docs: ✅ — sound engine + overlay documented; the micro-delight-ex
 K. Build/CI: ✅ — typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
 
 UX-15 is complete: a notification center + route-progress cue (15a) plus optional, off-by-default synthesised sound cues and a `?` keyboard-shortcuts overlay (15b) — the premium finishing layer, all opt-out-able and a11y/quiet-safe. DoD CONFIRMED. Next: UX-16 (pixel-perfect QA, accessibility & performance hardening — the final UX-day).
+
+## UX-Day 16 — Pixel-Perfect QA, Accessibility & Performance Hardening — 2026-07-11 — ✅ DONE — 🎨 UI/UX ELEVATION 🧠 OPUS
+Model: Opus. Branch `ux/16-qa-hardening`. The closing gate for the UI/UX Elevation program (UX-00 → UX-16) — a final a11y / reduced-motion / token / responsive sweep + docs + release tag. Self-audit focus **the full A–K across the program**.
+
+Done (DONE):
+- **Reduced-motion hardening** — audited for always-on Tailwind animations lacking a guard and added `motion-reduce:animate-none` to every one: the `AvatarStatus` "live" pulse (`@vocaliq/ui`), the analytics live-tile pulse, the RefreshCw button spinners (branding / mcp / search), and the landing + widget pulses. `[data-motion=off]`/`reduced` parity is now complete across the app.
+- **A11y fixes** — added `sr-only` `<caption>`s to the **leads** + **experiments** tables (screen-reader table context).
+- **Responsive fix** — the product-tour tooltip width now clamps to the viewport (`w-[min(300px,calc(100vw-24px))]`) so it never overflows on mobile.
+- **Token discipline** — the appearance color-field invalid fallback uses `var(--vq-border)` (was `#888`); a broad audit confirmed **no hard-coded hex for UI chrome** anywhere in web JSX/inline styles (only legit hex remains in canvas drawers + SVG chart gradients).
+- **Audit (agent-run)** — a full sweep for missing accessible names, unlabeled inputs, hard-coded colours, fixed widths, and missing empty/loading/error states came back essentially clean (the 4 nits above were the only findings; empty/loading/error handling verified clean across every list page).
+- **Docs** — new **`docs/UX-QA.md`** (the release QA gate + sweep results + manual checklist) and **`docs/UX-CONTRIBUTING.md`** ("how to add an animated, themed, accessible screen" — the contributor guide: compose-from-kit, tokens-not-hex, the motion seam, the four async states, a11y rules, infographics, the pre-PR gate).
+
+Verification: **typecheck 12/12**, **lint 12/12** (biome a11y green; only justified suppressions), **test** green (api 463, shared 700, workers 42, db 7, provider-router 22), **build 8/8** (65/65 pages) — **shared First Load JS 177 kB** (held flat across the entire 17-day program).
+
+**Program performance summary:** shared First Load JS stayed **177 kB** from UX-00 → UX-16 despite adding the motion engine, voice-motion set, presence/ambient, the full component + chart kits, the theme engine, onboarding, and the delight layer — because heavy/optional weight lives on code-split subpaths (`/motion` via LazyMotion domMax, `/voice` canvas, `/charts` zero-dep SVG), overlays render nothing until opened, charts are zero-dep SVG (no Recharts), and sound is synthesised Web Audio (no files). Animations are transform/opacity/height only (no CLS).
+
+## Self-Audit — UX-16 (A–K, program-wide)
+A. Correctness: ✅ — the fixes are additive + verified (captions render, tooltip clamps, guards apply); full suite green.
+B. Isolation: ✅ — no data/API/tenant changes this day.
+C. Security: ✅ — no secrets; no new surface; theme/notification/sound state stays per-browser + validated.
+D. Cost: ✅ — no provider/LLM/DB path touched.
+E. Errors/obs: ✅ — every list page handles loading/empty/error (verified); charts + feeds have empty states.
+F. Performance (focus): ✅ — shared First Load JS 177 kB flat; subpath code-split verified; no CLS; INP unaffected; zero-dep charts + synth sound + capped/gated canvases.
+G. Error handling: ✅ — degrade paths across theme/sound/tour/notifications are guarded (storage/Web-Audio/target-missing).
+H. UI/AA + polish (focus): ✅ — token-driven (AA-verified engine), reduced-motion complete, focus-trapped overlays + focus-visible rings + roving focus, table captions + labelled controls; pixel nits fixed.
+I. Regressions (focus): ✅ — additive hardening only; full suite + build green; nothing behavioural changed.
+J. Quality/docs (focus): ✅ — `UX-QA.md` (release gate) + `UX-CONTRIBUTING.md` (contributor guide) finalize the living docs alongside `DESIGN-SYSTEM.md` + `DATAVIZ.md`.
+K. Build/CI: ✅ — typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
+
+**The UI/UX Elevation program is complete (UX-00 → UX-16).** VocalIQ now has: a motion engine + signature voice-motion set; a full accessible component + chart kit; AI-agent presence + ambient atmosphere; page/route transitions; a grouped animated nav + ⌘K palette; a CTA interaction + celebration system; animated infographic dashboards for every role; a real per-user theme engine (presets + custom colours, AA-safe, DB-persisted, no-FOUC) with a live studio; modern onboarding (wizard + tour + checklist v2); a notification center + optional sound + shortcuts overlay; all reduced-motion-safe, AA, token-driven, and code-split at a flat 177 kB shared bundle. DoD CONFIRMED. **Next: tag the UI release `v1.3.0-ux`.**

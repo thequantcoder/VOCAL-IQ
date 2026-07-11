@@ -164,7 +164,11 @@ function DomainSection() {
                   disabled={refresh.isPending}
                   onClick={() => refresh.mutate()}
                 >
-                  <RefreshCw size={14} className={refresh.isPending ? 'animate-spin' : ''} /> Check
+                  <RefreshCw
+                    size={14}
+                    className={refresh.isPending ? 'animate-spin motion-reduce:animate-none' : ''}
+                  />{' '}
+                  Check
                 </Button>
                 <Button
                   size="sm"
