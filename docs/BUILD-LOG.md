@@ -3597,3 +3597,35 @@ J. Quality/docs: ✅ — the data-limits (no calls/error-rate series) + density-
 K. Build/CI: ✅ — typecheck/lint/test/build green; artifacts reverted before commit.
 
 UX-11 is complete: both the reseller portal (margin cockpit) and the super-admin console (platform cockpit) are now infographic-rich, animated, and role-tuned — on the same RLS/SUPER_ADMIN-gated data, reduced-motion-safe. DoD CONFIRMED. Next: UX-12 (theme engine — per-user, multi-theme, custom colors).
+
+## UX-Day 12a — Theme Engine Core (ramps, resolveTheme, runtime apply) — 2026-07-10 — ✅ DONE — 🎨 UI/UX ELEVATION 🧠 OPUS
+Model: Opus. Branch `ux/12-theme-engine`. First increment of the theme engine (a 2-session day) — the **pure colour engine + resolution + live runtime apply**. DB/API persistence + no-FOUC SSR inline + the reseller lock flag land in 12b; the settings/theme-studio UI is UX-13. Self-audit focus **H (AA in every theme), A (resolution + ramp correctness), C (per-user data), I (reseller branding hierarchy unchanged)**.
+
+Built (DONE):
+- **`@vocaliq/shared/theme-runtime.ts`** (pure, unit-tested) — the engine:
+  - Colour maths: `hexToRgb`/`rgbToHex`, HSL conversion, WCAG `luminance` + `contrastRatio`, and the AA guardrail `readableForeground(bg)` (prefers white, falls back to dark ink only when white wouldn't clear the 3:1 UI/large-text threshold — so text on any brand colour is always readable).
+  - `ramp(base)` — generates a full **50–900 scale** from any base colour (base kept exact at 500 so the brand hue is recognisable; other steps use fixed perceptual lightness targets + a saturation falloff → coherent, monotonic ramps for any user colour).
+  - `resolveTheme({ user, reseller, platformDefault })` — the **platform default → reseller white-label → per-user** hierarchy: base colours flow preset → reseller → user, unless the reseller sets `lockBranding` (reseller colours pinned; user keeps radius/density/motion/mode/font).
+  - `themeToCssVars(resolved)` — derives the full UX-02 token set: `--primary/secondary/accent-{50..900}` + AA `-fg`, `--radius`/`--radius-lg` (per radius choice), `--density`, and the legacy `--vq-violet`/`--vq-cyan` aliases.
+- **`theme-runtime.test.ts`** — 15 tests (colour maths, AA guardrail across every preset base, ramp shape + monotonicity, the full resolution hierarchy incl. lockBranding, css-var output). **shared suite: 700 pass.**
+- **Runtime apply (web):** `lib/theme-store.ts` — the per-user `ThemeConfig` persisted to `localStorage` behind a `useSyncExternalStore` module store (`getUserTheme`/`setUserTheme`/`resetUserTheme`/`useUserTheme`); `components/theme-applier.tsx` — resolves (folding the reseller's Day-52 branding colours into `resolveTheme`) + writes every derived CSS var on `:root` + `data-density`/`data-font` + the favicon. **`ThemeApplier` replaces the Day-52 `BrandingApplier`** (subsumes it — the orphaned file was deleted) in the dashboard shell.
+- **Instant apply demo:** the ⌘K command palette gains a **"Theme: <preset> → <next>"** action that cycles the 8 presets live (persisted), so preset switching works end-to-end today (the full picker is UX-13).
+
+Verification: **typecheck 12/12**, **lint 12/12**, **test** green (shared **700**, api 460, workers 42, db 7, provider-router 22), **build 8/8** (64/64 pages) — **shared First Load JS still 177 kB**. Live smoke: ⌘K → cycle theme repaints the whole app's primary/accent/scales instantly (both light + dark), radius/density vars update, and the choice persists across reloads; reseller branding still applies (folded into the resolve).
+
+**Note (no-FOUC):** the applier runs in `useEffect`, so a persisted non-default theme can briefly flash the default on first paint — the SSR/inline-critical-CSS fix is scheduled for 12b along with DB persistence + the reseller `lockBranding` flag.
+
+## Self-Audit — UX-12a (A–K)
+A. Correctness (focus): ✅ — 15 unit tests cover ramps (500 exact, monotonic), resolution order (preset→reseller→user, lock pins colour but keeps prefs), and css-var output; shared suite 700 green.
+B. Isolation: ✅ — the store is per-browser local; no cross-tenant surface (reseller colours come from the existing tenant-scoped branding hook).
+C. Security (focus): ✅ — no secrets; colours are validated hex (zod) via `parseThemeConfig`; storage reads are try/caught.
+D. Cost: ✅ — no provider/LLM/DB path (DB lands in 12b).
+E. Errors/obs: ✅ — malformed stored theme → defaults; storage-unavailable degrades to in-memory; applier can't throw.
+F. Performance: ✅ — pure maths + a single `:root` style write per change; shared First Load JS unchanged (177 kB); no runtime cost when idle.
+G. Error handling: ✅ — bad colours dropped by the schema; ramp handles 3- or 6-digit hex; contrast guardrail guarantees a readable fg.
+H. UI/AA (focus): ✅ — every derived `-fg` clears the 3:1 UI/large-text threshold (unit-verified across all preset bases); ramps are perceptually even; `cyan = live` accent semantics preserved (accent scale re-skins but semantics unchanged).
+I. Regressions (focus): ✅ — `ThemeApplier` subsumes `BrandingApplier` and still folds reseller branding via `resolveTheme` (hierarchy unchanged); default theme resolves to today's exact nebula look; full suite + build green.
+J. Quality/docs: ✅ — engine + store + applier documented; the no-FOUC + DB deferral to 12b logged; the readableForeground heuristic explained.
+K. Build/CI: ✅ — typecheck/lint/test/build green; dead `BrandingApplier` removed; artifacts reverted before commit.
+
+The theme engine's core is live: a pure, unit-tested colour engine (ramps + AA guardrail + resolution hierarchy) driving a runtime applier that re-skins the whole app instantly from a persisted per-user theme — presets switchable today via ⌘K. DoD (engine + apply) CONFIRMED. Next: UX-12b — DB `theme` field + `/me/theme` API + no-FOUC SSR inline + reseller `lockBranding`.
