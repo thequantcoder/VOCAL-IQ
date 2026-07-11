@@ -21,12 +21,14 @@ import {
   Input,
   SegmentedControl,
   Separator,
+  Switch,
   Waveform,
 } from '@vocaliq/ui';
 import { RadialGauge, Sparkline, StatCard } from '@vocaliq/ui/charts';
 import { Reveal, Stagger, StaggerItem, useMotionLevel } from '@vocaliq/ui/motion';
 import { Check, Palette, RotateCcw } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { setSoundEnabled, useSoundEnabled } from '../../../../lib/sound';
 import { resetUserTheme, setUserTheme, useUserTheme } from '../../../../lib/theme-store';
 
 const SPARK = [6, 9, 7, 12, 10, 15, 13, 19];
@@ -124,6 +126,7 @@ function PresetCard({ preset, active }: { preset: ThemePreset; active: boolean }
 function ModeAndControls({ theme }: { theme: ThemeConfig }) {
   const { setTheme: setMode } = useTheme();
   const { setLevel } = useMotionLevel();
+  const soundOn = useSoundEnabled();
   return (
     <Card>
       <CardHeader>
@@ -175,6 +178,17 @@ function ModeAndControls({ theme }: { theme: ThemeConfig }) {
             onValueChange={(v) => setUserTheme({ font: v as ThemeConfig['font'] })}
             options={FONTS.map((f) => ({ value: f, label: cap(f) }))}
           />
+        </Control>
+        <Control label="Sound effects">
+          <div className="flex items-center gap-2">
+            <Switch
+              id="sound-toggle"
+              checked={soundOn}
+              onCheckedChange={setSoundEnabled}
+              aria-label="Sound effects"
+            />
+            <span className="text-vq-text-lo text-xs">{soundOn ? 'On' : 'Off'}</span>
+          </div>
         </Control>
       </CardContent>
     </Card>
