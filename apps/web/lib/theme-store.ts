@@ -82,6 +82,18 @@ function subscribe(cb: () => void): () => void {
   return () => listeners.delete(cb);
 }
 
+// Cross-tab sync (UX-13): when another tab writes the theme, adopt it here (no re-persist to server).
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key !== KEY) return;
+    const next = parseThemeConfig(e.newValue ? JSON.parse(e.newValue) : {});
+    if (JSON.stringify(next) !== JSON.stringify(current)) {
+      current = next;
+      emit();
+    }
+  });
+}
+
 /** React hook — the current user theme, re-rendering on change. */
 export function useUserTheme(): ThemeConfig {
   return useSyncExternalStore(subscribe, getUserTheme, getUserTheme);

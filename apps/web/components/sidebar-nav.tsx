@@ -147,6 +147,7 @@ export const NAV_GROUPS: NavGroup[] = [
     id: 'settings',
     label: 'Settings',
     items: [
+      { href: '/dashboard/settings/appearance', label: 'Appearance', icon: Palette },
       { href: '/dashboard/settings/sso', label: 'SSO', icon: ShieldCheck },
       { href: '/dashboard/settings/compliance', label: 'Compliance', icon: ShieldAlert },
       { href: '/dashboard/settings/biometrics', label: 'Voice biometrics', icon: Fingerprint },
