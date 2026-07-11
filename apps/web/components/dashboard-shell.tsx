@@ -22,6 +22,7 @@ import { LocaleSwitcher } from './locale-switcher';
 import { RouteShell } from './route-shell';
 import { MobileNav, SidebarNav } from './sidebar-nav';
 import { ThemeApplier } from './theme-applier';
+import { TourOverlay } from './tour';
 
 /**
  * Dashboard app shell (DESIGN-SYSTEM §7): a grouped, animated sidebar on desktop (UX-07) that becomes
@@ -54,7 +55,10 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       {/* Apply the tenant's white-label theme (Day 52) across the whole shell. */}
       <ThemeApplier />
       {/* Desktop sidebar — grouped, animated, scrollable. Hidden on mobile (see the header hamburger). */}
-      <aside className="hidden flex-col gap-5 border-vq-border p-4 md:sticky md:top-0 md:flex md:h-screen md:overflow-y-auto md:border-r">
+      <aside
+        data-tour="sidebar"
+        className="hidden flex-col gap-5 border-vq-border p-4 md:sticky md:top-0 md:flex md:h-screen md:overflow-y-auto md:border-r"
+      >
         {brandMark}
         <SidebarNav isReseller={isReseller} isSuperAdmin={isSuperAdmin} />
       </aside>
@@ -65,6 +69,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           {/* Command palette trigger (⌘K) — search-first entry to nav + quick actions. */}
           <button
             type="button"
+            data-tour="search"
             onClick={openCommandPalette}
             className="flex items-center gap-2 rounded-vq border border-vq-border px-2.5 py-1.5 text-sm text-vq-text-lo transition-colors hover:border-vq-violet/50 hover:text-vq-text-hi focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vq-ring"
           >
@@ -90,8 +95,9 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         </main>
       </div>
 
-      {/* Global ⌘K command palette (mounted once). */}
+      {/* Global ⌘K command palette + product tour (mounted once). */}
       <CommandPalette />
+      <TourOverlay />
     </div>
   );
 }
@@ -105,6 +111,7 @@ function UserMenu() {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
+          data-tour="account"
           className="flex items-center gap-2 rounded-vq border border-vq-border px-2.5 py-1.5 text-sm text-vq-text-lo transition-colors hover:border-vq-violet/50 hover:text-vq-text-hi focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vq-ring"
         >
           <UserRound size={15} aria-hidden />
