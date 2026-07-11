@@ -3542,3 +3542,31 @@ J. Quality/docs: ✅ — helpers documented; the heatmap-not-applicable note log
 K. Build/CI: ✅ — typecheck/lint/test/build green; artifacts reverted before commit.
 
 UX-10 is complete: the whole **user** dashboard — Overview, Agents, Calls, Analytics, Wallet — is now an animated, colorful, infographic-rich, scannable set of surfaces built on the shipped motion/presence/viz kits, all on real data and reduced-motion-safe. DoD CONFIRMED. Next: UX-11 (reseller & super-admin dashboard redesigns).
+
+## UX-Day 11a — Reseller Dashboard Redesign — 2026-07-10 — ✅ DONE — 🎨 UI/UX ELEVATION
+Model: Opus. Branch `ux/11-reseller-admin`. First increment of UX-11 — the reseller portal (revenue/margin + sub-tenants) elevated with role-appropriate infographics, tuned to oversight + margins. Super-admin is the 11b increment. Self-audit focus **B (RLS scoping preserved), H (infographic + role-tuned), I (no regressions)**.
+
+Built (DONE):
+- **Reseller revenue dashboard** (`reseller/dashboard/page.tsx`) — the flat metric tiles + text client list → the viz kit: a staggered **KPI row** of `StatCard`s (Revenue, Provider cost, Margin — good sentiment, Margin rate — thresholded), a **margin `RadialGauge`** (success-coloured), a **sub-tenant revenue-mix `DonutBreakdown`** (centre total, per-client %), and an animated **top-clients table** where each row shows a seeded `AgentAvatar` (tenant identity mark), the revenue, a `Meter` of that client's revenue vs the top client, and the margin. Scope banner + period picker + markup card unchanged.
+- **Sub-tenants console** (`reseller/page.tsx`) — the provision/suspend list gets a **staggered entrance**, per-row seeded `AgentAvatar`, and hover **lift**; the create/suspend/reactivate flows are untouched.
+
+Both use only the existing RLS-scoped reseller hooks (`useResellerOverview`, `useSubTenants`) — a sibling reseller's data never reaches here.
+
+Verification: **typecheck 12/12**, **lint 12/12**, **test** green (api 460, workers 42, db 7, provider-router 22, shared), **build 8/8** (64/64 pages) — **shared First Load JS still 177 kB** (viz code-split). Live smoke: the reseller overview shows count-up KPIs, a margin gauge, a client-mix donut, and a per-client revenue-meter table; the sub-tenants list staggers in with avatars + lift — all reduced-motion-safe.
+
+**Note on density:** the spec's "cozy/compact density default" is applied as visual tightening here (compact KPI grid + denser rows) rather than wiring the UX-02 `--density` token into every component's spacing — that token→spacing plumbing is a theme-engine concern (UX-12/13) and is deferred there to avoid a broad, risky refactor now.
+
+## Self-Audit — UX-11a (A–K)
+A. Correctness: ✅ — KPIs/gauge/donut/meters map the real `ResellerOverview` (cents→dollars, marginRate→%); the revenue meter scales each client vs the top client; margin sentiment thresholds correct.
+B. Isolation (focus): ✅ — unchanged RLS-scoped hooks; no new data path; a reseller only ever sees their own rollup + sub-tenants.
+C. Security: ✅ — no secrets; the markup mutation is unchanged.
+D. Cost: ✅ — no provider/LLM/DB path.
+E. Errors/obs: ✅ — empty-period + no-client-revenue states handled; charts have built-in empty states; 0 runtime errors.
+F. Performance: ✅ — shared First Load JS unchanged (177 kB); viz code-split; SVG charts + CSS lift; no CLS.
+G. Error handling: ✅ — the create/suspend flows keep their pending/error handling; empty rollup shows the invite copy.
+H. UI/elevation (focus): ✅ — the reseller portal now reads as a margins-oversight cockpit (KPIs + gauge + mix donut + per-client meters) vs plain text; denser than the user dash, reduced-motion-safe.
+I. Regressions (focus): ✅ — same hooks/data; scope banner, markup, provision/suspend all preserved; full suite + build green.
+J. Quality/docs: ✅ — components documented; the density-deferral noted; composes the shipped kit.
+K. Build/CI: ✅ — typecheck/lint/test/build green; artifacts reverted before commit.
+
+The reseller portal is now an infographic-rich, margins-focused cockpit — KPIs, a margin gauge, a sub-tenant revenue-mix donut, and a per-client revenue-meter table — on the same RLS-scoped data. DoD (part 1) CONFIRMED. Next: UX-11b — super-admin platform-health overview (animated KPIs + trend) + tenants table + governance polish.
