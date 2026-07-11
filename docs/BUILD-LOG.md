@@ -3688,3 +3688,30 @@ J. Quality/docs: ✅ — components documented; the density/font partial-wiring 
 K. Build/CI: ✅ — typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
 
 The theme engine now has its face: a beautiful, animated Appearance page — preset gallery + custom colour pickers + radius/density/motion/mode/font controls + a real-time live preview — persisted to the account, synced across tabs, and reachable from the nav, the ⌘K palette, and the user menu. DoD CONFIRMED. Next: UX-14 (modern onboarding & product tour).
+
+## UX-Day 14a — First-Run Onboarding Wizard — 2026-07-11 — ✅ DONE — 🎨 UI/UX ELEVATION 🧠 OPUS
+Model: Opus. Branch `ux/14-onboarding`. First increment of UX-14 — the resumable, skippable 5-step first-run wizard. The coachmark tour, checklist v2, micro-flows, and onboarding empty states are the 14b increment. Self-audit focus **H (delight + clarity), C (per-user state), A (resumability), analytics fire**.
+
+Built (DONE):
+- **`lib/onboarding-store.ts`** — first-run state (`step`, `useCase`, `completed`, `dismissed`) persisted per browser (localStorage) behind a `useSyncExternalStore` module store, so the flow is **resumable** (leave to create an agent, come back to the same step) and **skippable**. Exposes `setOnboarding`/`openOnboarding`/`useOnboarding`.
+- **`components/onboarding-wizard.tsx`** — a focus-trapped `Dialog` wizard, **5 steps** (Welcome → Use-case → Create agent → Connect a channel → Done) with a `Stepper` progress, a per-step `Illustration` (UX-05), staggered motion (`Reveal`/`Stagger`), Back / Continue / Skip, use-case cards (sales/support/appointments/surveys) gating step 2, in-context CTAs (open builder / place test call) that let the user act then resume, and a **confetti** finish. Fires PostHog events (`onboarding_started` / `_step` / `_skipped` / `_completed`). It **auto-opens only for a genuinely new workspace** (no agents, not completed/dismissed), so existing tenants are never interrupted.
+- Mounted on the **overview** (`dashboard/page.tsx`).
+
+Verification: **typecheck 12/12**, **lint 12/12**, **test** green (api 463, shared 700, workers 42, db 7, provider-router 22), **build 8/8** (65/65 pages) — **shared First Load JS still 177 kB**. Live smoke (new workspace): the wizard opens on the overview, steps advance with illustrations + a progress stepper, use-case selection gates Continue, the CTAs deep-link (builder/calls) and the wizard resumes at the same step on return, Finish fires confetti + marks completed; Skip dismisses it for good; reduced-motion-safe + focus-trapped.
+
+**Note:** onboarding state persists per browser (localStorage), consistent with the motion/theme local stores; cross-device persistence (a DB field like `user.theme`) can follow if needed. A one-off local build blip was the known iCloud `tsconfig`/`next-env` rewrite race (reverted + rebuilt → 8/8). Analytics no-op cleanly when no PostHog key is set.
+
+## Self-Audit — UX-14a (A–K)
+A. Correctness (focus): ✅ — step index clamped; use-case gates step 2's Continue; resumability verified (store persists step/useCase across navigations); auto-open only when new + not completed/dismissed.
+B. Isolation: ✅ — per-browser local state; no tenant/cross-user surface.
+C. Security/per-user (focus): ✅ — no secrets; state is local to the user's browser; analytics events carry no PII beyond the step index.
+D. Cost: ✅ — no provider/LLM/DB path.
+E. Errors/obs (focus): ✅ — PostHog events fire (`started/step/skipped/completed`) + no-op without a key; storage reads guarded; 0 runtime errors.
+F. Performance: ✅ — shared First Load JS unchanged (177 kB); the wizard mounts nothing heavy until open (Dialog portal); mounted only on the overview.
+G. Error handling: ✅ — storage-unavailable keeps in-memory; a skipped/dismissed wizard never reopens; CTA navigation preserves the step.
+H. UI/delight (focus): ✅ — illustrated, staggered, stepper-tracked 5-step flow with use-case cards + confetti finish; focus-trapped + keyboard (Radix Dialog) + reduced-motion-safe.
+I. Regressions: ✅ — additive (new store + component + one mount); the existing checklist + overview untouched; full suite + build green.
+J. Quality/docs: ✅ — store + wizard documented; the local-persistence + iCloud-blip notes logged.
+K. Build/CI: ✅ — typecheck/lint/test/build green; artifacts reverted before commit.
+
+New users now get a modern, resumable, illustrated 5-step wizard to first value — skippable, celebratory, per-user, and instrumented — without ever interrupting existing workspaces. DoD (wizard) CONFIRMED. Next: UX-14b — coachmark product tour + checklist v2 + 2/3-step micro-flows + onboarding empty states.
