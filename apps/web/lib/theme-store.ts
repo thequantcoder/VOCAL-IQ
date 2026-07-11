@@ -25,8 +25,19 @@ function read(): ThemeConfig {
 let current: ThemeConfig = read();
 const listeners = new Set<() => void>();
 
+/** Server persister (registered by <ThemeSync> once auth + token are available). */
+let persister: ((theme: ThemeConfig) => void) | null = null;
+
 function emit() {
   for (const l of listeners) l();
+}
+
+function persistLocal() {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(current));
+  } catch {
+    /* storage unavailable — keep the in-memory value */
+  }
 }
 
 /** The current user theme (validated). */
@@ -34,18 +45,27 @@ export function getUserTheme(): ThemeConfig {
   return current;
 }
 
-/** Merge a patch into the user theme, persist it, and notify subscribers. */
+/** Register the server-persist function (user-initiated changes POST to the API). */
+export function registerThemePersister(fn: ((theme: ThemeConfig) => void) | null): void {
+  persister = fn;
+}
+
+/** User-initiated change: merge, persist locally + to the server, and notify. */
 export function setUserTheme(patch: Partial<ThemeConfig>): void {
   current = parseThemeConfig({ ...current, ...patch });
-  try {
-    localStorage.setItem(KEY, JSON.stringify(current));
-  } catch {
-    /* storage unavailable — keep the in-memory value */
-  }
+  persistLocal();
+  persister?.(current);
   emit();
 }
 
-/** Reset to the platform default theme. */
+/** Server → local hydration (on login): set + persist locally WITHOUT re-POSTing to the server. */
+export function hydrateUserTheme(raw: unknown): void {
+  current = parseThemeConfig(raw);
+  persistLocal();
+  emit();
+}
+
+/** Reset to the platform default theme (persists the reset to the server too). */
 export function resetUserTheme(): void {
   current = parseThemeConfig({});
   try {
@@ -53,6 +73,7 @@ export function resetUserTheme(): void {
   } catch {
     /* ignore */
   }
+  persister?.(current);
   emit();
 }
 

@@ -50,6 +50,13 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * No-FOUC theme paint (UX-12b): a blocking inline script that applies the previously-cached theme CSS
+ * vars on `:root` before first paint, so a persisted custom/preset theme never flashes the default.
+ * ThemeApplier refreshes the cache on every change; this just replays it. Fails silent.
+ */
+const THEME_BOOT = `try{var v=JSON.parse(localStorage.getItem('vq-theme-vars')||'{}');var r=document.documentElement;for(var k in v){r.style.setProperty(k,v[k])}}catch(e){}`;
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
@@ -57,6 +64,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       suppressHydrationWarning
       className={`${display.variable} ${sans.variable} ${mono.variable}`}
     >
+      <head>
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: static, self-authored no-FOUC boot script (no user input). */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
+      </head>
       <body>
         {/* Providers wraps the app with the self-hosted auth context (JWT), theming, and
             the data layer, so auth is available to every route. */}

@@ -21,6 +21,11 @@ export const brandingSchema = z.object({
   accentColor: hexColor.optional(),
   /** White-label: hide the "VocalIQ" platform identity for a reseller's customers. */
   hidePlatformName: z.boolean().default(false),
+  /**
+   * Pin brand colours (UX-12): when true, this tenant's users can't override the brand
+   * primary/accent — they may still change radius/density/motion/mode/font.
+   */
+  lockBranding: z.boolean().default(false),
 });
 export type Branding = z.infer<typeof brandingSchema>;
 

@@ -296,6 +296,7 @@ model User {
   authProviderId String?      @unique // legacy external auth id (was Clerk); null for self-hosted users
   imageUrl       String?
   mfaEnabled     Boolean      @default(false)
+  theme          Json? // per-user appearance theme (UX-12): preset + custom colours + radius/density/motion/font
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   memberships    Membership[]

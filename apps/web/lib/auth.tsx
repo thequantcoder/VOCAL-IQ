@@ -1,5 +1,6 @@
 'use client';
 
+import type { ThemeConfig } from '@vocaliq/shared';
 import {
   type ReactNode,
   createContext,
@@ -10,6 +11,7 @@ import {
   useState,
 } from 'react';
 import { messageFromError } from './api-error';
+import { hydrateUserTheme } from './theme-store';
 
 /**
  * Self-hosted auth context (replaces Clerk). The session JWT lives in a `vq_token` cookie
@@ -28,6 +30,8 @@ export interface AuthUser {
   name: string | null;
   imageUrl: string | null;
   memberships: { tenantId: string; role: string; status: string }[];
+  /** Per-user appearance theme (UX-12); null until customised. */
+  theme?: ThemeConfig | null;
 }
 
 export interface SignUpInput {
@@ -78,7 +82,10 @@ async function fetchMe(token: string): Promise<AuthUser> {
     headers: { authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error('Session expired');
-  return (await res.json()) as AuthUser;
+  const u = (await res.json()) as AuthUser;
+  // Seed the theme store from the server-persisted theme (no re-POST).
+  if (u.theme) hydrateUserTheme(u.theme);
+  return u;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {

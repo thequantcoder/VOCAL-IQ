@@ -29,5 +29,14 @@ export function authRoutes(auth: AuthService): Router {
     }),
   );
 
+  // Per-user appearance theme (UX-12) — validated + persisted server-side.
+  r.put(
+    '/me/theme',
+    authMiddleware,
+    ah(async (req, res) => {
+      res.json({ theme: await auth.setTheme(req.auth!.userId, req.body) });
+    }),
+  );
+
   return r;
 }
