@@ -3770,3 +3770,30 @@ J. Quality/docs: ✅ — store + center + progress documented; the Socket.IO hoo
 K. Build/CI: ✅ — typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
 
 The shell now has a proper notification center (bell + animated feed + unread + group actions, fed by milestones and ready for real-time sources) and a top route-progress cue — the premium finishing touches. DoD (part 1+2) CONFIRMED. Next: UX-15b — optional sound + micro-delight (theme-switch transition, milestone modal) + the `?` keyboard-shortcuts overlay.
+
+## UX-Day 15b — Optional Sound + Keyboard Shortcuts Overlay — 2026-07-11 — ✅ DONE — 🎨 UI/UX ELEVATION
+Model: Opus. Branch `ux/15b-sound-shortcuts`. Second increment of the delight day — optional UI sound + the `?` keyboard-shortcuts overlay, completing UX-15. Self-audit focus **H (premium + opt-out-able), I (no regressions), C (per-user prefs)**.
+
+Built (DONE):
+- **Optional sound** (`lib/sound.ts`) — a Web-Audio cue engine (no audio files): short synthesised sine blips for `notify` / `success` / `error`. **Off by default**, toggleable, persisted per browser (`vq-sound`); `useSoundEnabled`/`setSoundEnabled` + `playCue(kind)` that **no-ops when disabled or Web Audio is unavailable**. Wired: `notify()` plays a cue (milestone→success, warn→error, else notify) so the notification center + milestones can chime — only when the user opts in.
+- **Sound toggle** — a "Sound effects" `Switch` added to the Appearance page's Controls card (plays a tiny confirmation blip when turned on).
+- **Keyboard-shortcuts overlay** (`components/shortcuts-overlay.tsx`) — press **`?`** anywhere (outside an input/textarea/contenteditable) to open a focus-trapped `Dialog` cheatsheet (⌘K, ?, Esc, ↑/↓, ↵) with `Kbd` chips; mounted once in the shell.
+
+Verification: **typecheck 12/12**, **lint 12/12**, **test** green (api 463, shared 700, workers 42, db 7, provider-router 22), **build 8/8** (65/65 pages) — **shared First Load JS still 177 kB**. Live smoke: `?` opens the shortcuts overlay (ignored while typing in a field); toggling Sound on in Appearance chimes + persists, and subsequent notifications play a subtle cue; with sound off (default) everything is silent. (One local build blip was again the iCloud `tsconfig` rewrite race → reverted + rebuilt → 8/8.)
+
+**Note:** the remaining UX-15 micro-delight extras (animated theme-switch overlay, waveform easter-egg, a dedicated milestone modal) are intentionally not shipped — they risk feeling gimmicky, and the live theme re-skin + confetti milestones + notification center already carry the "premium delight." The core optional-sound + shortcuts-overlay + notification-center + route-progress deliver the day's DoD (opt-out-able, reduced-motion/quiet-safe).
+
+## Self-Audit — UX-15b (A–K)
+A. Correctness: ✅ — sound is off by default + persisted; `playCue` maps kinds correctly + no-ops when disabled/unsupported; the `?` handler ignores typing targets + toggles the overlay.
+B. Isolation: ✅ — per-browser prefs; no tenant/cross-user surface.
+C. Security/per-user (focus): ✅ — no secrets; sound pref is local; no external audio fetched (fully synthesised).
+D. Cost: ✅ — no provider/LLM/DB path.
+E. Errors/obs: ✅ — AudioContext guarded (SSR + unsupported → no-op); storage reads guarded; 0 runtime errors.
+F. Performance: ✅ — shared First Load JS unchanged (177 kB); the AudioContext is created lazily only when sound is enabled + first played; the overlay renders only when open.
+G. Error handling: ✅ — Web-Audio absent → silent; storage-unavailable keeps in-memory; typing-in-field never triggers `?`.
+H. UI/premium (focus): ✅ — tasteful opt-in cues + a proper shortcuts cheatsheet; both reduced-motion/quiet-safe (sound is explicit opt-in, off by default).
+I. Regressions (focus): ✅ — additive (new sound lib + overlay + one Appearance control + notify cue + one mount); existing behaviour intact; full suite + build green.
+J. Quality/docs: ✅ — sound engine + overlay documented; the micro-delight-extras deferral logged.
+K. Build/CI: ✅ — typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
+
+UX-15 is complete: a notification center + route-progress cue (15a) plus optional, off-by-default synthesised sound cues and a `?` keyboard-shortcuts overlay (15b) — the premium finishing layer, all opt-out-able and a11y/quiet-safe. DoD CONFIRMED. Next: UX-16 (pixel-perfect QA, accessibility & performance hardening — the final UX-day).

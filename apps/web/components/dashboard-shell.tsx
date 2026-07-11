@@ -22,6 +22,7 @@ import { LocaleSwitcher } from './locale-switcher';
 import { NotificationCenter } from './notification-center';
 import { RouteProgress } from './route-progress';
 import { RouteShell } from './route-shell';
+import { ShortcutsOverlay } from './shortcuts-overlay';
 import { MobileNav, SidebarNav } from './sidebar-nav';
 import { ThemeApplier } from './theme-applier';
 import { TourOverlay } from './tour';
@@ -100,9 +101,10 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         </main>
       </div>
 
-      {/* Global ⌘K command palette + product tour (mounted once). */}
+      {/* Global ⌘K command palette + product tour + shortcuts overlay (mounted once). */}
       <CommandPalette />
       <TourOverlay />
+      <ShortcutsOverlay />
     </div>
   );
 }

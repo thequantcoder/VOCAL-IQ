@@ -1,6 +1,7 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
+import { playCue } from './sound';
 
 /**
  * Notification center store (UX-15) — an in-app feed of noteworthy events (milestones, call finished,
@@ -66,6 +67,7 @@ export function notify(n: {
     ...(n.href ? { href: n.href } : {}),
   };
   commit([entry, ...items]);
+  playCue(entry.kind === 'warn' ? 'error' : entry.kind === 'milestone' ? 'success' : 'notify');
 }
 
 export function markAllRead(): void {
