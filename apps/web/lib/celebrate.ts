@@ -1,4 +1,5 @@
 import { fireConfetti, toast } from '@vocaliq/ui';
+import { notify } from './notifications';
 
 const MILESTONE_KEY = 'vq-milestones';
 
@@ -30,6 +31,8 @@ function markSeen(key: string) {
  */
 export function celebrateMilestone(key: string, message: string, description?: string) {
   toast.success(message, description ? { description } : undefined);
+  // Also drop it into the notification center (UX-15) so the moment is retrievable later.
+  notify({ title: message, kind: 'milestone', ...(description ? { description } : {}) });
   if (!seen().has(key)) {
     markSeen(key);
     fireConfetti();

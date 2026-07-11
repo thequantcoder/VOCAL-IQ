@@ -3742,3 +3742,31 @@ J. Quality/docs: ✅ — tour + checklist documented; the micro-flow/demo deferr
 K. Build/CI: ✅ — typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
 
 UX-14 is complete: a resumable 5-step first-run wizard (14a) + a coachmark product tour, a progress-ring checklist v2 with a completion celebration, and reopen hooks in ⌘K (14b) — a modern, per-user, instrumented onboarding system that never interrupts established workspaces. DoD CONFIRMED. Next: UX-15 (delight, notifications & sound — optional).
+
+## UX-Day 15a — Notification Center + Route Progress — 2026-07-11 — ✅ DONE — 🎨 UI/UX ELEVATION
+Model: Opus. Branch `ux/15-delight-sound`. First increment of the optional delight day — the in-app notification center + the top route-progress bar. Optional sound, micro-delight, and the keyboard-shortcuts overlay are the 15b increment. Self-audit focus **H (premium feel), I (no regressions), C (per-user state)**.
+
+Built (DONE):
+- **Notification store** (`lib/notifications.ts`) — an in-app feed behind a `useSyncExternalStore` module store (like the toast store), persisted per browser + capped at 40. `notify()` pushes an entry (title/description/kind/href); `markAllRead`/`dismissNotification`/`clearNotifications` manage it. Any real-time source (Socket.IO) can feed it via `notify()` — the documented hook point.
+- **Notification center** (`components/notification-center.tsx`) — a header **bell** with an unread badge that opens an animated `Popover` panel: kind-coloured dot rows (success/info/warn/milestone), relative timestamps, per-item dismiss, **Mark all read** + **Clear**, an illustrated "all caught up" empty state, and `AnimatePresence` enter/exit. Mounted in the shell header.
+- **Toasts route here** — `celebrateMilestone` now also `notify()`s (milestones land in the center, retrievable after the toast fades). The store is the seam for future call-finished / low-balance / agent-published events.
+- **Route progress bar** (`components/route-progress.tsx`) — a slim cyan bar pinned to the viewport top that plays a ~450ms fill-then-fade on each navigation (keyed on the pathname), for the premium "loading" cue. Off under reduced/off motion; mounted in the shell.
+
+Verification: **typecheck 12/12**, **lint 12/12**, **test** green (api 463, shared 700, workers 42, db 7, provider-router 22), **build 8/8** (65/65 pages) — **shared First Load JS still 177 kB**. Live smoke: the bell shows an unread count after a milestone fires; the panel lists items with dismiss/mark-read/clear + an empty state; navigating flashes the top cyan bar; all reduced-motion-safe.
+
+**Note:** the notification feed is currently fed by milestones (via `celebrateMilestone`); wiring the concrete real-time sources (call-finished, low-balance, agent-published) to `notify()` is a small follow-up once those events stream (Socket.IO). The route bar is a tasteful cue, not a real load meter (App-Router client nav is near-instant).
+
+## Self-Audit — UX-15a (A–K)
+A. Correctness: ✅ — unread derives from `read`; dismiss/clear/mark-read mutate correctly + persist; the feed caps at 40; the route bar fires only on real navigations (skips the initial mount).
+B. Isolation: ✅ — per-browser local feed; no tenant/cross-user surface.
+C. Security/per-user (focus): ✅ — no secrets; notifications are local to the browser; no PII beyond what the app already shows.
+D. Cost: ✅ — no provider/LLM/DB path.
+E. Errors/obs: ✅ — storage reads/writes guarded; the store can't throw; 0 runtime errors.
+F. Performance: ✅ — shared First Load JS unchanged (177 kB); the panel renders only when opened (Popover portal); the route bar unmounts when idle + cleans its timers.
+G. Error handling: ✅ — storage-unavailable keeps in-memory; empty feed shows the illustrated state; missing href → a plain (non-link) row.
+H. UI/premium (focus): ✅ — a real bell + animated panel with unread badges + group actions + empty state, plus a top progress cue — the shell feels more alive; reduced-motion-safe.
+I. Regressions (focus): ✅ — additive (new stores/components + one header slot + two mounts + the celebrate bridge); existing behaviour intact; full suite + build green.
+J. Quality/docs: ✅ — store + center + progress documented; the Socket.IO hook point + real-source deferral noted.
+K. Build/CI: ✅ — typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
+
+The shell now has a proper notification center (bell + animated feed + unread + group actions, fed by milestones and ready for real-time sources) and a top route-progress cue — the premium finishing touches. DoD (part 1+2) CONFIRMED. Next: UX-15b — optional sound + micro-delight (theme-switch transition, milestone modal) + the `?` keyboard-shortcuts overlay.

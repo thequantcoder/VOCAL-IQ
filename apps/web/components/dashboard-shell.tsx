@@ -19,6 +19,8 @@ import { useAuth } from '../lib/auth';
 import { CommandPalette, openCommandPalette } from './command-palette';
 import { ErrorBoundary } from './error-boundary';
 import { LocaleSwitcher } from './locale-switcher';
+import { NotificationCenter } from './notification-center';
+import { RouteProgress } from './route-progress';
 import { RouteShell } from './route-shell';
 import { MobileNav, SidebarNav } from './sidebar-nav';
 import { ThemeApplier } from './theme-applier';
@@ -54,6 +56,8 @@ export function DashboardShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-vq-bg-base text-vq-text-hi md:grid md:grid-cols-[240px_1fr]">
       {/* Apply the tenant's white-label theme (Day 52) across the whole shell. */}
       <ThemeApplier />
+      {/* Top route-progress bar (UX-15). */}
+      <RouteProgress />
       {/* Desktop sidebar — grouped, animated, scrollable. Hidden on mobile (see the header hamburger). */}
       <aside
         data-tour="sidebar"
@@ -79,8 +83,9 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               ⌘K
             </kbd>
           </button>
-          <div className="flex flex-1 items-center justify-end gap-3">
+          <div className="flex flex-1 items-center justify-end gap-2">
             <LocaleSwitcher />
+            <NotificationCenter />
             <ThemeToggle />
             <UserMenu />
           </div>
