@@ -8,12 +8,12 @@ import type { ReactNode } from 'react';
 import { ThemeToggle } from '../app/theme-toggle';
 import { useBranding } from '../lib/api';
 import { useAuth } from '../lib/auth';
-import { BrandingApplier } from './branding-applier';
 import { CommandPalette, openCommandPalette } from './command-palette';
 import { ErrorBoundary } from './error-boundary';
 import { LocaleSwitcher } from './locale-switcher';
 import { RouteShell } from './route-shell';
 import { MobileNav, SidebarNav } from './sidebar-nav';
+import { ThemeApplier } from './theme-applier';
 
 /**
  * Dashboard app shell (DESIGN-SYSTEM §7): a grouped, animated sidebar on desktop (UX-07) that becomes
@@ -44,7 +44,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-vq-bg-base text-vq-text-hi md:grid md:grid-cols-[240px_1fr]">
       {/* Apply the tenant's white-label theme (Day 52) across the whole shell. */}
-      <BrandingApplier />
+      <ThemeApplier />
       {/* Desktop sidebar — grouped, animated, scrollable. Hidden on mobile (see the header hamburger). */}
       <aside className="hidden flex-col gap-5 border-vq-border p-4 md:sticky md:top-0 md:flex md:h-screen md:overflow-y-auto md:border-r">
         {brandMark}

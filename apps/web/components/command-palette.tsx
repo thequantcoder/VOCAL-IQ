@@ -1,11 +1,13 @@
 'use client';
 
+import { THEME_PRESETS } from '@vocaliq/shared';
 import { cn } from '@vocaliq/ui';
 import { AnimatePresence, m, useMotionLevel } from '@vocaliq/ui/motion';
 import {
   CornerDownLeft,
   Gauge,
   Moon,
+  Palette,
   PhoneOutgoing,
   Plus,
   Search,
@@ -16,6 +18,7 @@ import { useTheme } from 'next-themes';
 import { useRouter } from 'next/navigation';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../lib/auth';
+import { setUserTheme, useUserTheme } from '../lib/theme-store';
 import { flatNavItems } from './sidebar-nav';
 
 /** Fire from anywhere to open the palette (e.g. the header search button). */
@@ -47,6 +50,7 @@ export function CommandPalette() {
   const { setTheme, resolvedTheme } = useTheme();
   const { user, signOut } = useAuth();
   const { animate, level, setLevel } = useMotionLevel();
+  const userTheme = useUserTheme();
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -110,6 +114,23 @@ export function CommandPalette() {
         },
       },
       {
+        id: 'act-theme-preset',
+        label: (() => {
+          const i = THEME_PRESETS.indexOf(userTheme.preset);
+          const next = THEME_PRESETS[(i + 1) % THEME_PRESETS.length];
+          return `Theme: ${userTheme.preset} → ${next}`;
+        })(),
+        group: 'Actions',
+        icon: <Palette size={16} />,
+        keywords: 'colour color preset nebula aurora sunset ocean grape forest mono contrast',
+        run: () => {
+          const i = THEME_PRESETS.indexOf(userTheme.preset);
+          const next = THEME_PRESETS[(i + 1) % THEME_PRESETS.length];
+          if (next) setUserTheme({ preset: next, colors: {} });
+          close();
+        },
+      },
+      {
         id: 'act-signout',
         label: 'Sign out',
         group: 'Actions',
@@ -144,6 +165,7 @@ export function CommandPalette() {
     resolvedTheme,
     level,
     setLevel,
+    userTheme,
     isReseller,
     isSuperAdmin,
   ]);
