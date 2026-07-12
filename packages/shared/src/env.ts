@@ -46,6 +46,9 @@ export const envSchema = z.object({
   TWILIO_ACCOUNT_SID: z.string().optional(),
   TWILIO_AUTH_TOKEN: z.string().optional(),
   TWILIO_PHONE_NUMBER: z.string().optional(),
+  // Telnyx (alternative carrier — number provisioning + Call Control telephony).
+  TELNYX_API_KEY: z.string().optional(),
+  TELNYX_CONNECTION_ID: z.string().optional(),
   LIVEKIT_URL: z.string().optional(),
   LIVEKIT_API_KEY: z.string().optional(),
   LIVEKIT_API_SECRET: z.string().optional(),

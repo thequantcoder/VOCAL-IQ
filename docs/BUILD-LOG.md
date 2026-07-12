@@ -3855,3 +3855,31 @@ J. Quality/docs: ✅ — doc comments on the service, routes, adapter, and the R
 K. Build/CI: ✅ — typecheck/lint/test + non-web builds green; web build delegated to CI (Linux, no iCloud); tsconfig/next-env artifacts reverted before commit.
 
 Phone-number provisioning is complete — VocalIQ can now search, buy, and release numbers through a provider-agnostic seam (Twilio live-ready, mock in dev), fully tenant-scoped + plan-limited + metered. DoD CONFIRMED. **Next: Telnyx telephony adapter (Step 2).**
+
+## Feature — Telnyx Telephony + Number Adapter (2nd carrier) — 2026-07-12 — ✅ DONE — 🧠 OPUS
+Model: Opus. Branch `feat/telnyx-adapter`. Makes "provider-agnostic by routing" (golden rule #2) real with a **second carrier**: Telnyx now sits behind the same router seams as Twilio for both number provisioning and telephony. Telnyx was previously only a `Provider` enum value + a routing-defaults placeholder + a SIP template; this adds working adapters.
+
+Done (DONE):
+- **`TelnyxNumberProvisioner`** (`packages/provider-router/adapters/telnyx.ts`, `implements NumberProvisioner`) — `searchAvailable` (`GET /v2/available_phone_numbers` with `filter[country_code]`/`[national_destination_code]`/`[phone_number_type]`/`[features]`/`[limit]`, normalising Telnyx lowercase features → VOICE/SMS/MMS and `cost_information.monthly_cost` → USD), `purchase` (`POST /v2/number_orders`; returns the phone-number resource id as the `providerSid` used for release), `release` (`DELETE /v2/phone_numbers/{id}`).
+- **`TelnyxTelephony`** (`implements TelephonyProvider`) — Call Control v2: `dial` (`POST /v2/calls` `{connection_id,to,from}` → `call_control_id`), `answer`/`transfer`/`hangup` (`POST /v2/calls/{ccid}/actions/*`). Endpoints confirmed against the official Telnyx docs (golden rule #15), not guessed.
+- **Fetch-based** (Bearer-auth `telnyxFetch` helper, mirrors the ElevenLabs adapter) — no new SDK dependency; non-2xx → `ProviderError` with the response body as cause; 204 handled.
+- **Wired into `NumbersService`** — `buildProvisioner` now falls back to `TelnyxNumberProvisioner` when `TELNYX_API_KEY` is set (Twilio still takes precedence). The bought `PhoneNumber` row + its `UsageRecord` are now attributed to the **provisioner's actual carrier** (new `carrier` getter) instead of a hardcoded Twilio — so a Telnyx-bought number reads as TELNYX. Mock path still attributes to Twilio.
+- **Env** — `TELNYX_API_KEY` + `TELNYX_CONNECTION_ID` added to the shared env schema + `.env.example` (Group B telephony).
+- **Tests** — `telnyx.test.ts` (8, fetch-mocked): search normalisation + filters + Bearer, order → provider SID, order-without-id → ProviderError, release DELETE, non-2xx → ProviderError, dial → call_control_id, dial-without-connection → ProviderError, transfer+hangup action paths.
+
+Verification: **typecheck 12/12**, **lint 12/12**, provider-router suite **30 passed / 1 skipped** (incl. 8 new), numbers.service **6/6** (carrier change verified — mock still Twilio). Live Telnyx calls/orders deferred until `TELNYX_API_KEY` is set (see gating note).
+
+## Self-Audit — Telnyx Adapter (A–K)
+A. Correctness: ✅ — every endpoint shape confirmed against Telnyx docs; 8 fetch-mocked tests cover search/order/release/dial/transfer/hangup + error paths.
+B. Isolation: ✅ — adapter is stateless/tenant-agnostic; all tenant scoping stays in NumbersService (`withTenant`, unchanged).
+C. Security: ✅ — API key read from env only, sent as Bearer; never logged; error `cause` truncates the response body to 500 chars.
+D. Cost: ✅ — adapter never bills (golden rule #4); NumbersService meters the purchase, now attributed to the real carrier.
+E. Errors/obs: ✅ — non-2xx and network errors both wrapped in `ProviderError` (code PROVIDER); order-missing-id and dial-missing-connection guarded.
+F. Performance: ✅ — one HTTP call per operation; search caps at `filter[limit]`.
+G. Error handling: ✅ — typed ProviderError throughout; 204/empty-body handled; JSON parse failures degrade to `{}`.
+H. UI/AA: n/a — no UI in this change (the existing phone-numbers page already renders the carrier via `provider`).
+I. Regressions: ✅ — additive (new adapter + one env branch + carrier getter); Twilio path unchanged and still precedent; full typecheck/lint/tests green.
+J. Quality/docs: ✅ — doc comments on both adapters + the fetch helper; BUILD-LOG + `.env.example` updated; Telnyx live-test gating recorded.
+K. Build/CI: ✅ — router builds, typecheck/lint/tests green; web unaffected.
+
+Telnyx is now a first-class carrier alongside Twilio — search/buy/release numbers and dial/transfer/hangup calls through one provider-agnostic seam, gated to Twilio-or-mock until `TELNYX_API_KEY` is set. DoD CONFIRMED. **Next: Step 3 — Competitor-Parity phase (turn COMPETITOR-FEATURE-ANALYSIS.md into day-by-day super-prompts, then build).**
