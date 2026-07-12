@@ -59,6 +59,12 @@ const OPERATIONS: OpenApiOperation[] = [
   { method: 'get', path: '/v1/agents', summary: 'List agents', scope: 'agents:read' },
   { method: 'get', path: '/v1/calls', summary: 'List calls', scope: 'calls:read' },
   { method: 'post', path: '/v1/calls', summary: 'Place an outbound call', scope: 'calls:write' },
+  {
+    method: 'post',
+    path: '/v1/calls/dial',
+    summary: 'Instant dial: auto-create/dedupe a lead from a phone number, then call it',
+    scope: 'calls:write',
+  },
   { method: 'get', path: '/v1/leads', summary: 'List leads', scope: 'leads:read' },
   {
     method: 'get',

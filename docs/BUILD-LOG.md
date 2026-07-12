@@ -3910,3 +3910,29 @@ J. Quality/docs: ✅ — doc comments on both adapters + the Plivo no-`+` normal
 K. Build/CI: ✅ — router builds, typecheck/lint/tests green; migration committed for CI to apply fresh on Linux.
 
 PARITY-01 complete — VocalIQ now routes across **3 carriers** (Twilio/Telnyx/Plivo) and **multi-model LLM via OpenRouter**, all config-not-code. DoD CONFIRMED. **Next: PARITY-02 — instant AI call endpoint (`POST /calls/dial`).**
+
+## PARITY-02 — Instant AI Call Endpoint (`POST /v1/calls/dial`) — 2026-07-12 — ✅ DONE — 🧠 OPUS
+Model: Opus. Branch `parity/02-instant-dial`. The "instant dial" primitive (COMPETITOR-FEATURE-ANALYSIS delta #4): a public-API endpoint that turns a bare phone number into a call — auto-creating/deduping a lead first. n8n + Form-to-Call (PARITY-04/05) build on this.
+
+Done (DONE):
+- **`InstantDialService`** (`apps/api/src/calls/instant-dial.service.ts`) — `instantDialSchema` (`to` E.164 + `agentId` + required `consentBasis` + optional `from`/`name`/`email`/`source`/`tags`/`fields`/`dynamicVars`). `dial()`: under `withTenant` (RLS) upsert a Contact by phone (dedupe: merge name/email/fields/tags onto an existing one, else create with `source: instant-dial`) + ensure exactly one Lead per contact, then delegate to `OutboundService.placeCall` — **reusing** the full vetted path (DNC + suppression + abuse gate + concurrency + rate caps + QUEUED Call row + dialer dispatch + metering). Returns `{ callId, status, leadId, contactId, consentBasis }`.
+- **Public route** — `POST /v1/calls/dial` (scope `calls:write`, API-key auth, per-key rate-limited) added to `v1.routes.ts`; wired through `composition.ts` + `main.ts`.
+- **OpenAPI** — the endpoint added to `buildOpenApiSpec` OPERATIONS so `/v1/openapi.json` (and PARITY-09's in-app reference) stays in sync.
+- **Tests** — `instant-dial.service.test.ts` (real DB, 4): auto-create Contact+Lead + QUEUED dispatch + field capture, dedupe on a 2nd dial (same contact + lead, no duplicates), reject missing consent basis, reject non-E.164.
+
+Verification: **typecheck 12/12**, **lint 12/12**, instant-dial **4/4** (real DB), public-api spec test **3/3**. Live dialing still gates to QUEUED via the existing dialer until a carrier/voice service is live.
+
+## Self-Audit — PARITY-02 (A–K)
+A. Correctness: ✅ — dedupe proven (2nd dial reuses contact+lead, no dupes); field merge verified; delegates to the already-tested outbound path.
+B. Isolation: ✅ — the contact/lead upsert runs under `withTenant`; placeCall re-scopes under its own `withTenant`; no admin/cross-tenant access.
+C. Security: ✅ — API-key auth + `calls:write` scope + per-key rate limit; inputs zod-validated; no secrets.
+D. Cost: ✅ — no new metered path; the reused placeCall/dialer path meters as before.
+E. Errors/obs: ✅ — typed ValidationError on bad input; DNC/abuse/rate rejections surface from placeCall (Forbidden/RateLimit).
+F. Performance: ✅ — one small upsert transaction + the existing placeCall; indexed `(tenantId, phone)` lookup for dedupe.
+G. Error handling: ✅ — required consent basis enforced (TCPA); non-E.164 rejected; DNC/suppression/abuse still block pre-dial.
+H. UI/AA: n/a — API-only.
+I. Regressions: ✅ — additive (new service + route + one OpenAPI entry); `POST /v1/calls` + OutboundService unchanged; full typecheck/lint/tests green.
+J. Quality/docs: ✅ — doc comments on the service + the reuse rationale; BUILD-LOG updated; OpenAPI kept in sync.
+K. Build/CI: ✅ — typecheck/lint/tests green.
+
+PARITY-02 complete — a single API call now creates/dedupes a lead and dials it, on the fully-vetted outbound path. DoD CONFIRMED. **Next: PARITY-03 — AI Form Builder.**

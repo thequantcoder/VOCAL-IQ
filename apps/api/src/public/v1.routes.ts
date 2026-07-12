@@ -5,6 +5,7 @@ import type { AnalyticsApiService } from '../analytics-api/analytics-api.service
 import { apiKeyAuth, requireScope } from '../api-keys/api-key.middleware';
 import type { ApiKeyService } from '../api-keys/api-key.service';
 import type { CallsReadService } from '../calls/calls-read.service';
+import type { InstantDialService } from '../calls/instant-dial.service';
 import type { OutboundService } from '../calls/outbound.service';
 import { ah } from '../http/async-handler';
 import type { LeadsService } from '../leads/leads.service';
@@ -20,6 +21,7 @@ export function v1Routes(deps: {
   agents: AgentsService;
   callsRead: CallsReadService;
   outbound: OutboundService;
+  instantDial: InstantDialService;
   leads: LeadsService;
   analyticsApi: AnalyticsApiService;
 }): Router {
@@ -62,6 +64,15 @@ export function v1Routes(deps: {
     requireScope('calls:write'),
     ah(async (req, res) => {
       res.status(201).json(await deps.outbound.placeCall(req.ctx!.tenantId, req.body));
+    }),
+  );
+
+  // Instant dial: create/dedupe a lead from a bare phone number, then dial it in one call.
+  r.post(
+    '/calls/dial',
+    requireScope('calls:write'),
+    ah(async (req, res) => {
+      res.status(201).json(await deps.instantDial.dial(req.ctx!.tenantId, req.body));
     }),
   );
 
