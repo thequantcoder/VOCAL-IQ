@@ -1,4 +1,8 @@
-import { type NumberProvisioner, TwilioNumberProvisioner } from '@vocaliq/provider-router';
+import {
+  type NumberProvisioner,
+  TelnyxNumberProvisioner,
+  TwilioNumberProvisioner,
+} from '@vocaliq/provider-router';
 import {
   type AvailableNumberDto,
   Capability,
@@ -22,10 +26,16 @@ function estimateMonthlyCostUsd(e164: string): number {
   return 1.5;
 }
 
-/** Build a live carrier provisioner from env, or null (→ mock catalogue in dev/CI). */
+/**
+ * Build a live carrier provisioner from env, or null (→ mock catalogue in dev/CI). Twilio takes
+ * precedence if both are configured; Telnyx is the alternative carrier. Adding another is one branch.
+ */
 function buildProvisioner(env: NodeJS.ProcessEnv): NumberProvisioner | null {
   if (env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN) {
     return new TwilioNumberProvisioner(env.TWILIO_ACCOUNT_SID, env.TWILIO_AUTH_TOKEN);
+  }
+  if (env.TELNYX_API_KEY) {
+    return new TelnyxNumberProvisioner(env.TELNYX_API_KEY);
   }
   return null;
 }
@@ -73,6 +83,11 @@ export class NumbersService {
     return this.provisioner !== null;
   }
 
+  /** The carrier a purchase/meter is attributed to (the mock path attributes to Twilio). */
+  private get carrier(): Provider {
+    return this.provisioner?.provider ?? Provider.TWILIO;
+  }
+
   /** Search the carrier (or the mock catalogue) for numbers available to buy. */
   async search(tenantId: string, input: NumberSearchInput): Promise<AvailableNumberDto[]> {
     let results: AvailableNumberDto[];
@@ -94,7 +109,7 @@ export class NumbersService {
       tx.usageRecord.create({
         data: {
           tenantId,
-          provider: Provider.TWILIO,
+          provider: this.carrier,
           capability: Capability.TELEPHONY,
           units: 1,
           costUsd: 0,
@@ -153,7 +168,7 @@ export class NumbersService {
       const created = await tx.phoneNumber.create({
         data: {
           tenantId,
-          provider: Provider.TWILIO,
+          provider: this.carrier,
           e164: input.e164,
           providerSid,
           capabilities,
@@ -166,7 +181,7 @@ export class NumbersService {
       await tx.usageRecord.create({
         data: {
           tenantId,
-          provider: Provider.TWILIO,
+          provider: this.carrier,
           capability: Capability.TELEPHONY,
           units: 1,
           costUsd,
