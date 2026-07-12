@@ -35,8 +35,11 @@ export type FormField = z.infer<typeof formFieldSchema>;
 
 export const formRoutingSchema = z.object({
   webhookUrl: z.string().url().optional(),
+  // If set, the webhook POST is HMAC-signed (X-VocalIQ-Signature + timestamp) so the receiver
+  // can verify authenticity + reject replays — matches the platform webhook scheme.
+  webhookSecret: z.string().min(8).max(200).optional(),
   sheetId: z.string().max(200).optional(),
-  triggerAgentId: z.string().uuid().optional(), // call the submitter after submission
+  triggerAgentId: z.string().uuid().optional(), // Form-to-Call: dial the submitter after submission
 });
 export type FormRouting = z.infer<typeof formRoutingSchema>;
 

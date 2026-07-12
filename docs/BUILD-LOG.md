@@ -3936,3 +3936,29 @@ J. Quality/docs: ✅ — doc comments on the service + the reuse rationale; BUIL
 K. Build/CI: ✅ — typecheck/lint/tests green.
 
 PARITY-02 complete — a single API call now creates/dedupes a lead and dials it, on the fully-vetted outbound path. DoD CONFIRMED. **Next: PARITY-03 — AI Form Builder.**
+
+## PARITY-03/04 — Form Builder (already Day-37) + Form-to-Call ★ + signed webhooks — 2026-07-12 — ✅ DONE — 🧠 OPUS
+Model: Opus. Branch `parity/04-form-to-call`. **Finding:** the "AI Form Builder" (COMPETITOR delta #2) was **already delivered by Day 37** — `Form`/`FormSubmission` models (RLS), typed-field + config validation with formula-injection-safe sanitisation (`escapeForSheet`), authenticated CRUD, a `/dashboard/forms` UI, the hosted `/f/[id]` page, and a gated Google-Sheets sink. So PARITY-03 needed no rebuild (golden rule #6). This day lands the two true residuals + the flagship **Form-to-Call** (delta #1).
+
+Done (DONE):
+- **Form-to-Call ★** — the `formRoutingSchema.triggerAgentId` field existed but was unhandled. `FormsService.submit()` now, after persisting Contact+Lead+Submission + routing, dials the submitter when `triggerAgentId` is set **and** the submission carried a phone — via a new optional `FormDialPort` wired in composition to `OutboundService.placeCall` (the fully-vetted path: DNC + suppression + abuse + concurrency + rate + QUEUED Call + metering). The submission is the lawful basis → `consentBasis: SOFT_OPT_IN`. Best-effort: a dial failure never loses the captured lead.
+- **HMAC-signed form webhooks** — `formRoutingSchema` gains `webhookSecret`; when set, the routing POST is signed (`X-VocalIQ-Signature` = `sha256(hmac(secret, "<ts>.<body>"))` + `X-VocalIQ-Timestamp` + `X-VocalIQ-Event: form.submitted`) reusing the platform `signWebhook` — matching competitors' signed-webhook + replay-protection claim.
+- **Tests** — `forms.service.test.ts` extended (7 total): Form-to-Call dials on a phone submission (agent + phone + contactId asserted), does NOT dial without a phone, and the webhook secret is passed through for signing.
+- **Deferred (noted):** an in-call FORM builder *node* (the agent driving a form mid-call) — a builder nicety beyond the hosted form + Form-to-Call; slotted as a later follow-up. An `AutomationRun` log for triggered calls folds into PARITY-10 (no such model yet).
+
+Verification: **typecheck 12/12**, **lint 12/12**, forms.service **7/7** (real DB). Live dialing gates to QUEUED via the existing dialer until a carrier/voice service is live.
+
+## Self-Audit — PARITY-04 (A–K)
+A. Correctness: ✅ — Form-to-Call fires only with triggerAgentId + a phone; verified dial args + the no-phone skip; HMAC secret passed through.
+B. Isolation: ✅ — submit() stays RLS-scoped (`withTenant`); the dial port routes through `placeCall` (own `withTenant`); no cross-tenant access.
+C. Security: ✅ — webhook HMAC-signed + timestamped (replay-safe) when a secret is set; secret stored in the form's routing JSON (tenant-scoped), never logged; submissions still sanitised + formula-escaped.
+D. Cost: ✅ — the triggered call runs the existing metered outbound path; no new unmetered path.
+E. Errors/obs: ✅ — Form-to-Call + webhook are best-effort (try/catch) so a bad agent/URL never fails the capture; the submission is still stored.
+F. Performance: ✅ — one extra fire-and-forget dial after the submission tx; no added queries on the hot path.
+G. Error handling: ✅ — a dial that hits DNC/abuse/rate caps throws inside placeCall and is swallowed (lead kept); consent basis enforced (SOFT_OPT_IN).
+H. UI/AA: n/a — no new UI (existing `/dashboard/forms` + `/f/[id]` unchanged; a signing-secret field is a future form-editor enhancement).
+I. Regressions: ✅ — additive (`webhookSecret` optional; dial port optional; WebhookSink gains an optional 3rd arg — existing spies/callers unaffected); Day-37 forms behaviour intact; full typecheck/lint/tests green.
+J. Quality/docs: ✅ — doc comments on the dial port + HMAC signing + the SOFT_OPT_IN rationale; PARITY-INDEX corrected to record the Day-37 delivery; deferred FORM node noted.
+K. Build/CI: ✅ — typecheck/lint/tests green.
+
+Form-to-Call — the owner's flagship parity feature — is live: a form submission with a phone number auto-dials the submitter on the vetted outbound path, and form webhooks are now HMAC-signed. DoD CONFIRMED. **Next: PARITY-05 — n8n connector + workflow templates.**

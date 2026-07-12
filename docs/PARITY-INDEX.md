@@ -8,8 +8,8 @@
 |---|----------|-------|--------------|-------|-------|
 | 01 | `PARITY-01-plivo-openrouter.md` | #6 | no | Opus | Plivo telephony + OpenRouter LLM adapters (mirror Telnyx). Quick win — 3rd carrier + multi-LLM. |
 | 02 | `PARITY-02-instant-dial-api.md` | #4 | no | Opus | `POST /calls/dial` one-shot endpoint (auto-creates lead). Prereq for n8n. |
-| 03 | `PARITY-03-ai-form-builder.md` | #2 | no | Opus | In-flow AI Form Builder node + field validation + form→endpoint routing + Sheets auto-header. Foundational. |
-| 04 | `PARITY-04-form-to-call.md` | #1 ★ | no | Opus | Form-to-Call automation: form submit → create lead → dial agent within seconds. User favourite; depends on 02+03. |
+| 03 | `PARITY-03-ai-form-builder.md` | #2 | no | Opus | **Mostly delivered by Day 37** (Form/FormSubmission models, typed-field validation + formula-injection-safe sanitisation, authenticated CRUD, `/dashboard/forms` UI, hosted `/f/[id]` page, gated Sheets sync). Residual: HMAC-signed webhook routing (landed in 04) + an optional in-call FORM builder node (deferred follow-up). |
+| 04 | `PARITY-04-form-to-call.md` | #1 ★ | no | Opus | Form-to-Call: form submit → dial the submitter within seconds (wires the already-defined `routing.triggerAgentId` → the vetted outbound path) **+ HMAC-signed form webhooks**. User favourite; built on 02. |
 | 05 | `PARITY-05-n8n-connector.md` | #3 | (n8n instance) | Opus | First-class n8n connector + ready-made workflow templates (instant-dial, form-to-call). Depends on 02+04. |
 | 06 | `PARITY-06-slack-connector.md` | #5 | Slack app | Sonnet | Slack connector: per-event notifications, channel select. |
 | 07 | `PARITY-07-broadcast-announcements.md` | #7 | no | Sonnet | Super-admin → platform-wide broadcast announcements (uses `Notification`). |

@@ -154,7 +154,18 @@ export function createServices() {
   const benchmarking = new BenchmarkingService(db);
   const analyticsApi = new AnalyticsApiService(db);
   const analyticsExport = new AnalyticsExportService(db, analyticsApi);
-  const forms = new FormsService(db);
+  // Form-to-Call: a form submission with a phone + triggerAgentId dials the submitter on the vetted
+  // outbound path. The submission is the lawful basis (SOFT_OPT_IN). Best-effort inside FormsService.
+  const forms = new FormsService(db, undefined, undefined, undefined, (tid, input) =>
+    outbound
+      .placeCall(tid, {
+        agentId: input.agentId,
+        to: input.to,
+        contactId: input.contactId,
+        consentBasis: 'SOFT_OPT_IN',
+      })
+      .then((r) => ({ callId: r.callId })),
+  );
   const integrations = new IntegrationsService(db);
   const leads = new LeadsService(db);
   const memory = new MemoryService(db);

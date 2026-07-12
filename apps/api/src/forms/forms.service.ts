@@ -10,6 +10,7 @@ import {
   validateSubmission,
 } from '@vocaliq/shared';
 import { PrismaService } from '../db/prisma.service';
+import { signWebhook } from '../webhooks/webhook-sign';
 import { RateLimiter } from '../widget/rate-limiter';
 
 /** Explicit DTOs so the public API type never leaks Prisma runtime types (TS2742). */
@@ -47,20 +48,37 @@ export interface SheetSink {
 }
 export const noopSheetSink: SheetSink = { append: async () => {} };
 
-/** A webhook delivery port — default posts JSON with global fetch (self-hosted, no vendor). */
+/**
+ * A webhook delivery port — default posts JSON with global fetch (self-hosted, no vendor). When a
+ * `secret` is given the body is HMAC-signed (`X-VocalIQ-Signature` + timestamp), matching the
+ * platform webhook scheme so receivers can verify authenticity + reject replays.
+ */
 export interface WebhookSink {
-  post(url: string, payload: unknown): Promise<void>;
+  post(url: string, payload: unknown, secret?: string): Promise<void>;
 }
 export const fetchWebhookSink: WebhookSink = {
-  post: async (url, payload) => {
-    await fetch(url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(5000),
-    });
+  post: async (url, payload, secret) => {
+    const body = JSON.stringify(payload);
+    const headers: Record<string, string> = { 'content-type': 'application/json' };
+    if (secret) {
+      const timestampSec = Math.floor(Date.now() / 1000);
+      headers['X-VocalIQ-Event'] = 'form.submitted';
+      headers['X-VocalIQ-Timestamp'] = String(timestampSec);
+      headers['X-VocalIQ-Signature'] = signWebhook(secret, body, timestampSec);
+    }
+    await fetch(url, { method: 'POST', headers, body, signal: AbortSignal.timeout(5000) });
   },
 };
+
+/**
+ * Form-to-Call port: when a form has `routing.triggerAgentId`, a submission with a phone number
+ * dials the submitter via this port (wired to the vetted outbound path in composition). Optional +
+ * best-effort — a dial failure never loses the captured lead.
+ */
+export type FormDialPort = (
+  tenantId: string,
+  input: { agentId: string; to: string; contactId: string },
+) => Promise<{ callId: string }>;
 
 const FORM_SELECT = {
   id: true,
@@ -112,6 +130,8 @@ export class FormsService {
     private readonly sheets: SheetSink = noopSheetSink,
     private readonly webhook: WebhookSink = fetchWebhookSink,
     limiter?: RateLimiter,
+    /** Optional Form-to-Call port (wired to the vetted outbound dial path in composition). */
+    private readonly dial?: FormDialPort,
   ) {
     // ≤10 submissions per caller (ip+form) per minute — abuse guard on the public route.
     this.limiter = limiter ?? new RateLimiter(10, 60_000);
@@ -248,7 +268,7 @@ export class FormsService {
     const tenantId = form.tenantId;
     const identity = extractIdentity(fields, cleaned);
 
-    const submissionId = await this.db.withTenant(tenantId, async (tx) => {
+    const { submissionId, contactId } = await this.db.withTenant(tenantId, async (tx) => {
       const contact = await tx.contact.create({
         data: {
           tenantId,
@@ -267,7 +287,7 @@ export class FormsService {
         data: { tenantId, formId, contactId: contact.id, values: cleaned },
         select: { id: true },
       });
-      return submission.id;
+      return { submissionId: submission.id, contactId: contact.id };
     });
 
     // Routing is best-effort and MUST NOT fail the submission (self-audit E).
@@ -281,6 +301,16 @@ export class FormsService {
         .catch(() => {});
     }
 
+    // Form-to-Call: if the form triggers a call + the submitter left a phone, dial them on the
+    // vetted outbound path. Best-effort — a dial failure never loses the captured lead.
+    if (routing.triggerAgentId && identity.phone && this.dial) {
+      await this.dial(tenantId, {
+        agentId: routing.triggerAgentId,
+        to: identity.phone,
+        contactId,
+      }).catch(() => {});
+    }
+
     return { ok: true, submissionId };
   }
 
@@ -289,7 +319,7 @@ export class FormsService {
     let delivered = false;
     if (routing.webhookUrl) {
       try {
-        await this.webhook.post(routing.webhookUrl, cleaned);
+        await this.webhook.post(routing.webhookUrl, cleaned, routing.webhookSecret);
         delivered = true;
       } catch {
         // swallow — a bad webhook never loses the captured lead
