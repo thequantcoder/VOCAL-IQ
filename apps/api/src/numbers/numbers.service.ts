@@ -1,5 +1,6 @@
 import {
   type NumberProvisioner,
+  PlivoNumberProvisioner,
   TelnyxNumberProvisioner,
   TwilioNumberProvisioner,
 } from '@vocaliq/provider-router';
@@ -28,7 +29,7 @@ function estimateMonthlyCostUsd(e164: string): number {
 
 /**
  * Build a live carrier provisioner from env, or null (→ mock catalogue in dev/CI). Twilio takes
- * precedence if both are configured; Telnyx is the alternative carrier. Adding another is one branch.
+ * precedence, then Telnyx, then Plivo — each carrier is one branch (golden rule #2).
  */
 function buildProvisioner(env: NodeJS.ProcessEnv): NumberProvisioner | null {
   if (env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN) {
@@ -36,6 +37,9 @@ function buildProvisioner(env: NodeJS.ProcessEnv): NumberProvisioner | null {
   }
   if (env.TELNYX_API_KEY) {
     return new TelnyxNumberProvisioner(env.TELNYX_API_KEY);
+  }
+  if (env.PLIVO_AUTH_ID && env.PLIVO_AUTH_TOKEN) {
+    return new PlivoNumberProvisioner(env.PLIVO_AUTH_ID, env.PLIVO_AUTH_TOKEN);
   }
   return null;
 }

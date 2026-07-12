@@ -14,6 +14,8 @@ export { ElevenLabsTTS } from './adapters/elevenlabs.js';
 export { DeepgramSTT } from './adapters/deepgram.js';
 export { TwilioTelephony, TwilioNumberProvisioner } from './adapters/twilio.js';
 export { TelnyxTelephony, TelnyxNumberProvisioner } from './adapters/telnyx.js';
+export { PlivoTelephony, PlivoNumberProvisioner } from './adapters/plivo.js';
+export { OpenRouterLLM } from './adapters/openrouter.js';
 export { LiveKitMedia } from './adapters/livekit.js';
 
 // ── Typed message + completion contracts ──────────────────────────────────────

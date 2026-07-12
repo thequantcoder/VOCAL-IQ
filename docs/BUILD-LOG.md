@@ -3883,3 +3883,30 @@ J. Quality/docs: ✅ — doc comments on both adapters + the fetch helper; BUILD
 K. Build/CI: ✅ — router builds, typecheck/lint/tests green; web unaffected.
 
 Telnyx is now a first-class carrier alongside Twilio — search/buy/release numbers and dial/transfer/hangup calls through one provider-agnostic seam, gated to Twilio-or-mock until `TELNYX_API_KEY` is set. DoD CONFIRMED. **Next: Step 3 — Competitor-Parity phase (turn COMPETITOR-FEATURE-ANALYSIS.md into day-by-day super-prompts, then build).**
+
+## PARITY-01 — Plivo Telephony/Number + OpenRouter LLM Adapters — 2026-07-12 — ✅ DONE — 🧠 OPUS
+Model: Opus. Branch `parity/01-plivo-openrouter`. First build of the Competitor-Parity phase (`docs/PARITY-INDEX.md`). Adds a **3rd telephony carrier (Plivo)** and a **multi-model LLM provider (OpenRouter)** behind the existing router seams — proving "adding a provider is a config change" (golden rule #2). Covers COMPETITOR-FEATURE-ANALYSIS delta #6.
+
+Done (DONE):
+- **`PlivoNumberProvisioner` + `PlivoTelephony`** (`packages/provider-router/adapters/plivo.ts`) — fetch-based Basic auth. Numbers: `GET /v1/Account/{id}/PhoneNumber/` (search, normalising Plivo's no-`+` numbers → E.164, `monthly_rental_rate` → USD, voice/sms/mms flags → caps), `POST .../PhoneNumber/{number}/` (rent; providerSid = the E.164 since Plivo releases by number), `DELETE .../Number/{number}/` (release). Telephony: Voice API `POST .../Call/` (dial with `answer_url` → `request_uuid`), `POST .../Call/{uuid}/` (transfer legs/aleg_url), `DELETE .../Call/{uuid}/` (hangup). Endpoints confirmed against Plivo docs (golden rule #15).
+- **`OpenRouterLLM`** (`adapters/openrouter.ts`) — reuses the `openai` SDK pointed at `https://openrouter.ai/api/v1` (OpenAI-compatible), namespaced default model `openai/gpt-4o-mini`, optional attribution headers; `embed` throws a typed ProviderError (no embeddings). No new dependency.
+- **Router wiring** — `Provider.PLIVO` added to the shared + Prisma enums (migration `20260712120000_provider_plivo`, `ALTER TYPE ... ADD VALUE`); `NumbersService.buildProvisioner` now falls back Twilio → Telnyx → **Plivo**; the `defaultFactories` LLM map + `providerForModel` (a `/` in the model → OpenRouter) register OpenRouter; `key-resolver` maps `OPENROUTER` → `OPENROUTER_API_KEY`.
+- **Env** — `PLIVO_AUTH_ID`/`PLIVO_AUTH_TOKEN` + `OPENROUTER_API_KEY` in the shared schema + `.env.example`.
+- **Tests** — `plivo.test.ts` (7, fetch-mocked: search/buy/release/dial/transfer/hangup + non-2xx + Basic auth + E.164 normalisation) and `openrouter.test.ts` (2: contract + embed-throws).
+
+Verification: **typecheck 12/12** (web needed one retry — an OOM/SIGKILL flake, not a type error; passes standalone), **lint 12/12**, provider-router suite **39 passed / 1 skipped** (incl. 9 new), numbers.service **6/6** (carrier fallback intact). PLIVO enum applied to local DB + client regenerated (Node 20 + materialised effect). Live Plivo/OpenRouter use gated until keys set.
+
+## Self-Audit — PARITY-01 (A–K)
+A. Correctness: ✅ — every Plivo endpoint shape confirmed vs docs; 9 mocked tests cover the happy + error paths + E.164 normalisation; OpenRouter reuses the proven OpenAI-SDK completion mapping.
+B. Isolation: ✅ — adapters are stateless/tenant-agnostic; tenant scoping stays in NumbersService (`withTenant`) + RouterService meter — unchanged.
+C. Security: ✅ — Plivo Basic auth + OpenRouter Bearer built from env only, never logged; error `cause` truncates the response body to 500 chars.
+D. Cost: ✅ — adapters never bill (golden rule #4); NumbersService meters the Plivo purchase to `Provider.PLIVO` via the `carrier` getter; RouterService meters OpenRouter completions.
+E. Errors/obs: ✅ — non-2xx + network errors wrapped in `ProviderError` (code PROVIDER); dial-missing-answerUrl + order-missing-uuid guarded; OpenRouter embed throws typed.
+F. Performance: ✅ — one HTTP call per op; search caps at the requested limit client-side.
+G. Error handling: ✅ — typed ProviderError throughout; 204/empty-body handled; JSON parse failures degrade to `{}`.
+H. UI/AA: n/a — no UI (the phone-numbers page already renders the carrier via `provider`; PLIVO shows through unchanged).
+I. Regressions: ✅ — additive (2 adapters + 2 env branches + 1 factory entry + 1 enum value); Twilio/Telnyx + OpenAI/Anthropic paths unchanged; full typecheck/lint/tests green.
+J. Quality/docs: ✅ — doc comments on both adapters + the Plivo no-`+` normalisation + the OpenRouter namespacing; BUILD-LOG + `.env.example` updated; Plivo/OpenRouter live-test gating noted.
+K. Build/CI: ✅ — router builds, typecheck/lint/tests green; migration committed for CI to apply fresh on Linux.
+
+PARITY-01 complete — VocalIQ now routes across **3 carriers** (Twilio/Telnyx/Plivo) and **multi-model LLM via OpenRouter**, all config-not-code. DoD CONFIRMED. **Next: PARITY-02 — instant AI call endpoint (`POST /calls/dial`).**

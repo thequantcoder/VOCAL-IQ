@@ -1,6 +1,7 @@
 import { Capability, Provider, ProviderError } from '@vocaliq/shared';
 import { AnthropicLLM } from './adapters/anthropic.js';
 import { OpenAILLM } from './adapters/openai.js';
+import { OpenRouterLLM } from './adapters/openrouter.js';
 import type {
   CompletionOptions,
   CompletionResult,
@@ -51,12 +52,15 @@ function defaultFactories(): Partial<Record<Provider, LLMFactory>> {
   return {
     [Provider.OPENAI]: (k) => new OpenAILLM(k),
     [Provider.ANTHROPIC]: (k) => new AnthropicLLM(k),
+    [Provider.OPENROUTER]: (k) => new OpenRouterLLM(k),
   };
 }
 
 /** Map a model id to its provider so a tenant model preference picks the right adapter. */
 function providerForModel(model: string | undefined): Provider | undefined {
   if (!model) return undefined;
+  // OpenRouter models are namespaced (e.g. `openai/gpt-4o-mini`, `anthropic/claude-3.5-sonnet`).
+  if (model.includes('/')) return Provider.OPENROUTER;
   if (model.startsWith('claude')) return Provider.ANTHROPIC;
   if (model.startsWith('gpt') || model.startsWith('text-embedding')) return Provider.OPENAI;
   return undefined;
