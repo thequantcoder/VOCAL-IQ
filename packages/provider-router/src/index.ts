@@ -12,7 +12,7 @@ export { OpenAILLM } from './adapters/openai.js';
 export { AnthropicLLM } from './adapters/anthropic.js';
 export { ElevenLabsTTS } from './adapters/elevenlabs.js';
 export { DeepgramSTT } from './adapters/deepgram.js';
-export { TwilioTelephony } from './adapters/twilio.js';
+export { TwilioTelephony, TwilioNumberProvisioner } from './adapters/twilio.js';
 export { LiveKitMedia } from './adapters/livekit.js';
 
 // ── Typed message + completion contracts ──────────────────────────────────────
@@ -166,4 +166,47 @@ export interface MediaProvider {
   readonly provider: Provider;
   createRoom(name: string): Promise<{ room: string }>;
   token(room: string, identity: string): Promise<string>;
+}
+
+// ── Number provisioning ────────────────────────────────────────────────────────
+
+/** A number available to purchase at a carrier (search result). */
+export interface AvailableNumber {
+  e164: string;
+  friendlyName: string;
+  locality?: string;
+  region?: string;
+  country: string;
+  /** 'VOICE' | 'SMS' | 'MMS'. */
+  capabilities: string[];
+  /** Estimated recurring monthly cost, USD (carriers don't always return this in search). */
+  monthlyCostUsd: number;
+}
+
+export interface NumberSearchParams {
+  country: string;
+  areaCode?: string;
+  contains?: string;
+  smsEnabled?: boolean;
+  voiceEnabled?: boolean;
+  limit: number;
+}
+
+/** A number just purchased at the carrier (the provider SID lets us release it later). */
+export interface PurchasedNumber {
+  providerSid: string;
+  e164: string;
+  capabilities: string[];
+}
+
+/**
+ * Phone-number provisioning at a carrier (search / buy / release). Kept behind this abstraction so a
+ * new carrier (Telnyx, Vonage, …) is a config change, not a rewrite (golden rule #2). Cost is metered
+ * by the caller (golden rule #4) — the adapter never bills.
+ */
+export interface NumberProvisioner {
+  readonly provider: Provider;
+  searchAvailable(params: NumberSearchParams): Promise<AvailableNumber[]>;
+  purchase(e164: string): Promise<PurchasedNumber>;
+  release(providerSid: string): Promise<void>;
 }

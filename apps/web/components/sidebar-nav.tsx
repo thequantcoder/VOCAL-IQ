@@ -19,6 +19,7 @@ import {
   Flag,
   FlaskConical,
   Gauge,
+  Hash,
   Headphones,
   KeyRound,
   Languages,
@@ -101,6 +102,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Run',
     items: [
       { href: '/dashboard/calls', label: 'Calls', icon: PhoneCall },
+      { href: '/dashboard/phone-numbers', label: 'Phone numbers', icon: Hash },
       { href: '/dashboard/desk', label: 'Agent Desk', icon: Headphones },
       { href: '/dashboard/copilot', label: 'Live Co-Pilot', icon: Swords },
       { href: '/dashboard/campaigns', label: 'Campaigns', icon: Megaphone },

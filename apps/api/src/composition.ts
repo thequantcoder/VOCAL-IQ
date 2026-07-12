@@ -62,6 +62,7 @@ import { MemoryService } from './memory/memory.service';
 import { MessagingService } from './messaging/messaging.service';
 import { buildSenders } from './messaging/senders';
 import { CustomModelsService, buildFineTuneProvider } from './models/custom-models.service';
+import { NumbersService } from './numbers/numbers.service';
 import { OpsService } from './ops/ops.service';
 import {
   PaymentsService,
@@ -130,6 +131,7 @@ export function createServices() {
   const apiKeys = new ApiKeyService(db);
   const webhooks = new WebhookService(db);
   const opsToolkit = new OpsService(db, entitlements);
+  const numbers = new NumbersService(db, entitlements);
   const reseller = new ResellerService(db);
   const wallet = new WalletService(db);
   const superAdmin = new SuperAdminService(db);
@@ -300,6 +302,7 @@ export function createServices() {
     apiKeys,
     webhooks,
     opsToolkit,
+    numbers,
     reseller,
     whitelabel,
     wallet,
