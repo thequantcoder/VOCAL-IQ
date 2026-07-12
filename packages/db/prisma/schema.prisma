@@ -841,6 +841,7 @@ model PhoneNumber {
   tenant          Tenant?           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   provider        Provider
   e164            String            @unique
+  providerSid     String? // carrier resource id (e.g. Twilio IncomingPhoneNumber SID) — lets us release it
   capabilities    String[]          @default([])
   assignedAgentId String?           @db.Uuid
   assignedAgent   Agent?            @relation(fields: [assignedAgentId], references: [id], onDelete: SetNull)

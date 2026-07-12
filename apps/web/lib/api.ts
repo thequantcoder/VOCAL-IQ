@@ -1,7 +1,14 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { DialerConfig, EmotionPolicy } from '@vocaliq/shared';
+import type {
+  AvailableNumberDto,
+  DialerConfig,
+  EmotionPolicy,
+  NumberBuyInput,
+  NumberSearchInput,
+  OwnedNumberDto,
+} from '@vocaliq/shared';
 import { messageFromError } from './api-error';
 import { useAuth } from './auth';
 
@@ -4549,3 +4556,63 @@ export const ADVANCED_FEATURE_LABELS: Record<string, { label: string; heavy: boo
   videoAvatar: { label: 'Video avatar agents', heavy: true },
   voiceBiometrics: { label: 'Voice biometrics', heavy: true },
 };
+
+// ── Phone-number provisioning ─────────────────────────────────────────────────
+
+export interface OwnedNumbersResult {
+  live: boolean;
+  items: OwnedNumberDto[];
+}
+export interface SearchNumbersResult {
+  live: boolean;
+  items: AvailableNumberDto[];
+}
+
+/** The tenant's owned numbers (pool + purchased). */
+export function useOwnedNumbers() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['numbers'],
+    queryFn: () => apiFetch<OwnedNumbersResult>(getToken, '/numbers'),
+  });
+}
+
+/** On-demand carrier search (mutation — it meters + can hit the carrier). */
+export function useSearchNumbers() {
+  const { getToken } = useAuth();
+  return useMutation({
+    mutationFn: (params: Partial<NumberSearchInput>) => {
+      const q = new URLSearchParams(
+        Object.entries(params)
+          .filter(([, v]) => v !== undefined && v !== '')
+          .map(([k, v]) => [k, String(v)]),
+      ).toString();
+      return apiFetch<SearchNumbersResult>(getToken, `/numbers/search${q ? `?${q}` : ''}`);
+    },
+  });
+}
+
+/** Buy a number into the tenant's pool. */
+export function useBuyNumber() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: NumberBuyInput) =>
+      apiFetch<OwnedNumberDto>(getToken, '/numbers/buy', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['numbers'] }),
+  });
+}
+
+/** Release a number back to the carrier. */
+export function useReleaseNumber() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ released: true }>(getToken, `/numbers/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['numbers'] }),
+  });
+}

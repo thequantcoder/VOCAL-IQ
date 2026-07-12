@@ -3827,3 +3827,31 @@ J. Quality/docs (focus): ✅ — `UX-QA.md` (release gate) + `UX-CONTRIBUTING.md
 K. Build/CI: ✅ — typecheck/lint/test/build green; artifacts reverted + dup files cleaned before commit.
 
 **The UI/UX Elevation program is complete (UX-00 → UX-16).** VocalIQ now has: a motion engine + signature voice-motion set; a full accessible component + chart kit; AI-agent presence + ambient atmosphere; page/route transitions; a grouped animated nav + ⌘K palette; a CTA interaction + celebration system; animated infographic dashboards for every role; a real per-user theme engine (presets + custom colours, AA-safe, DB-persisted, no-FOUC) with a live studio; modern onboarding (wizard + tour + checklist v2); a notification center + optional sound + shortcuts overlay; all reduced-motion-safe, AA, token-driven, and code-split at a flat 177 kB shared bundle. DoD CONFIRMED. **Next: tag the UI release `v1.3.0-ux`.**
+
+## Feature — Phone-Number Provisioning (Twilio search / buy / release) — 2026-07-12 — ✅ DONE — 🧠 OPUS
+Model: Opus. Branch `feat/number-provisioning`. Fills the "buy a number" gap: tenants can search a carrier's catalogue, buy a number into their pool, and release it — provider-agnostic behind the router's new `NumberProvisioner` seam, gated to a mock catalogue when no carrier credentials are set. Sits *on top of* the existing `PhoneNumber` pool (the ops toolkit still owns KYC + assignment); this only adds provisioning.
+
+Done (DONE):
+- **Provider seam** (`packages/provider-router`) — new `NumberProvisioner` interface (`searchAvailable` / `purchase` / `release`) + `AvailableNumber` / `NumberSearchParams` / `PurchasedNumber` types, and a `TwilioNumberProvisioner` adapter (Twilio `availablePhoneNumbers().local.list`, `incomingPhoneNumbers.create`, `.remove`) with per-country monthly-cost table. Adding another carrier is a new adapter + one map entry — no service change.
+- **Schema** — one additive column `PhoneNumber.providerSid` (carrier resource id, so a purchased number can be released). Migration `20260712000000_number_provisioning`. No new table (extends the pool).
+- **Shared contracts** (`packages/shared/phone-numbers.ts`) — `numberSearchSchema` (country/areaCode/contains/sms+voice/limit) + `numberBuySchema` (E.164 + optional agentId) + `AvailableNumberDto` / `OwnedNumberDto`. Zod-validated at the boundary.
+- **API** (`apps/api/src/numbers`) — `NumbersService` (search → mock or live, listOwned, buy, release) + `numbersRoutes` (`GET /numbers`, `GET /numbers/search`, `POST /numbers/buy`, `DELETE /numbers/:id`). Reads open to members; buy/release gated to `CONFIG_WRITERS`. Every path is tenant-scoped via `withTenant` (RLS), plan-limited (`canAssignNumber` vs `numberLimit`), globally-unique-checked (admin read of the e164 unique index), and **metered** (a `UsageRecord` on both search and buy).
+- **Web** (`apps/web`) — `/dashboard/phone-numbers` page (search form → results with per-number cost + capabilities + demo badge, buy, owned-number list with release-confirm), `useOwnedNumbers` / `useSearchNumbers` / `useBuyNumber` / `useReleaseNumber` hooks, and a "Phone numbers" nav entry under the Run group. Live/Demo badge reflects whether a carrier is configured.
+- **Tests** — `numbers.service.test.ts` (real Postgres + RLS, 6/6): not-live-without-creds, mock catalogue, buy → PURCHASED + metered + listed, duplicate rejected, plan number-limit enforced, release removes.
+
+Verification: **typecheck 12/12**, **lint 12/12** (biome a11y green), **tests** green (numbers 6/6 on real DB), other package builds (api/shared/router/db/workers) green. Web build validated on CI (local web build flaked on transient iCloud file-eviction of `next`/`effect` internals — an environment issue fixed by `brctl download`, not a code fault; the same eviction had blocked `prisma generate` all session).
+
+## Self-Audit — Phone-Number Provisioning (A–K)
+A. Correctness: ✅ — search/buy/list/release proven end-to-end on real DB (6/6); mock + live paths both covered; cost estimate by E.164 prefix.
+B. Isolation: ✅ — every read/write goes through `withTenant` (RLS); the only admin use is a read of the global e164 unique index for the cross-tenant "already in use" check; release deletes within the tenant scope (fixed from an initial admin-delete that RLS correctly blocked).
+C. Security: ✅ — no secrets in code (carrier creds read from env at construction); buy/release RBAC-gated to CONFIG_WRITERS; all inputs Zod-validated; provider errors wrapped (`ProviderError`), no internals leaked.
+D. Cost: ✅ — a `UsageRecord` is written on search (costUsd 0) and on buy (first-month recurring), attributed to the tenant, byok=false — no unmetered path.
+E. Errors/obs: ✅ — NotFound/Forbidden/Validation typed errors; carrier failures wrapped; web surfaces loading/empty/error states.
+F. Performance: ✅ — search caps at the requested limit; list is a single indexed query; no N+1.
+G. Error handling: ✅ — dup e164 rejected pre-purchase; plan-limit enforced pre-purchase; release no-ops the carrier call on mock/pool numbers (no providerSid).
+H. UI/AA: ✅ — labelled inputs (htmlFor/id), token-driven, Crossfade + empty/loading/error states, release confirm, Live/Demo badge; reduced-motion-safe (uses the shared motion kit).
+I. Regressions: ✅ — additive (new module + one column + one nav entry); ops pool/KYC path untouched; full typecheck/lint/tests green.
+J. Quality/docs: ✅ — doc comments on the service, routes, adapter, and the RLS-delete rationale; BUILD-LOG updated; the iCloud/`brctl` env note recorded.
+K. Build/CI: ✅ — typecheck/lint/test + non-web builds green; web build delegated to CI (Linux, no iCloud); tsconfig/next-env artifacts reverted before commit.
+
+Phone-number provisioning is complete — VocalIQ can now search, buy, and release numbers through a provider-agnostic seam (Twilio live-ready, mock in dev), fully tenant-scoped + plan-limited + metered. DoD CONFIRMED. **Next: Telnyx telephony adapter (Step 2).**
