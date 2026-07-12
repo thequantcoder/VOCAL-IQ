@@ -28,6 +28,7 @@ import {
 import { CallbacksService } from './callbacks/callbacks.service';
 import { CallsReadService } from './calls/calls-read.service';
 import { PendingDialer } from './calls/dialer';
+import { InstantDialService } from './calls/instant-dial.service';
 import { OutboundService } from './calls/outbound.service';
 import { CampaignsService } from './campaigns/campaigns.service';
 import { ChatService } from './chat/chat.service';
@@ -124,6 +125,7 @@ export function createServices() {
   const transcription = new TranscriptionService(db);
   const abuse = new AbuseService(db);
   const outbound = new OutboundService(db, new PendingDialer(), (tid) => abuse.assess(tid));
+  const instantDial = new InstantDialService(db, outbound);
 
   const cost = new CostService(db);
   const analytics = new AnalyticsService(db);
@@ -296,6 +298,7 @@ export function createServices() {
     callsRead,
     transcription,
     outbound,
+    instantDial,
     cost,
     analytics,
     chat,

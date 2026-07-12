@@ -236,6 +236,7 @@ function bootstrap(): void {
       agents: s.agents,
       callsRead: s.callsRead,
       outbound: s.outbound,
+      instantDial: s.instantDial,
       leads: s.leads,
       analyticsApi: s.analyticsApi,
     }),
