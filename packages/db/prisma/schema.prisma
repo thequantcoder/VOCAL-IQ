@@ -59,6 +59,7 @@ enum Provider {
   ASSEMBLYAI
   TWILIO
   TELNYX
+  PLIVO
   LIVEKIT
 }
 

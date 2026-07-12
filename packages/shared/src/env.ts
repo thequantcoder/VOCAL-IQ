@@ -49,6 +49,9 @@ export const envSchema = z.object({
   // Telnyx (alternative carrier — number provisioning + Call Control telephony).
   TELNYX_API_KEY: z.string().optional(),
   TELNYX_CONNECTION_ID: z.string().optional(),
+  // Plivo (alternative carrier — number provisioning + Voice API telephony).
+  PLIVO_AUTH_ID: z.string().optional(),
+  PLIVO_AUTH_TOKEN: z.string().optional(),
   LIVEKIT_URL: z.string().optional(),
   LIVEKIT_API_KEY: z.string().optional(),
   LIVEKIT_API_SECRET: z.string().optional(),
@@ -56,6 +59,7 @@ export const envSchema = z.object({
   // ── AI providers (STT/TTS/LLM/embeddings) ───────────────────────────────────
   OPENAI_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
+  OPENROUTER_API_KEY: z.string().optional(),
   DEEPGRAM_API_KEY: z.string().optional(),
   ELEVENLABS_API_KEY: z.string().optional(),
 

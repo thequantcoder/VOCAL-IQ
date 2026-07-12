@@ -8,6 +8,7 @@ import type { KeyPoolService } from '../keypool/keypool.service';
 const PLATFORM_ENV: Partial<Record<Provider, string>> = {
   [Provider.OPENAI]: 'OPENAI_API_KEY',
   [Provider.ANTHROPIC]: 'ANTHROPIC_API_KEY',
+  [Provider.OPENROUTER]: 'OPENROUTER_API_KEY',
   [Provider.DEEPGRAM]: 'DEEPGRAM_API_KEY',
   [Provider.ELEVENLABS]: 'ELEVENLABS_API_KEY',
 };

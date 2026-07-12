@@ -67,6 +67,7 @@ export const Provider = {
   ASSEMBLYAI: 'ASSEMBLYAI',
   TWILIO: 'TWILIO',
   TELNYX: 'TELNYX',
+  PLIVO: 'PLIVO',
   LIVEKIT: 'LIVEKIT',
 } as const;
 export type Provider = (typeof Provider)[keyof typeof Provider];
