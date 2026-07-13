@@ -4616,3 +4616,35 @@ export function useReleaseNumber() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['numbers'] }),
   });
 }
+
+// ── Slack notifications (PARITY-06) ──────────────────────────────────────────
+export interface SlackConfig {
+  webhookUrl: string | null;
+  connected: boolean;
+  events: Partial<Record<'call.completed' | 'call.failed' | 'lead.created', boolean>>;
+}
+
+export function useSlackConfig() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['slack'],
+    queryFn: () => apiFetch<SlackConfig>(getToken, '/slack'),
+  });
+}
+
+export function useSaveSlack() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { webhookUrl?: string; events?: SlackConfig['events'] }) =>
+      apiFetch<SlackConfig>(getToken, '/slack', { method: 'PUT', body: JSON.stringify(body) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['slack'] }),
+  });
+}
+
+export function useTestSlack() {
+  const { getToken } = useAuth();
+  return useMutation({
+    mutationFn: () => apiFetch<{ delivered: boolean }>(getToken, '/slack/test', { method: 'POST' }),
+  });
+}

@@ -76,6 +76,7 @@ import { scaleRoutes } from './scale/scale.routes';
 import { searchRoutes } from './search/search.routes';
 import { sentimentRoutes } from './sentiment/sentiment.routes';
 import { sipRoutes } from './sip/sip.routes';
+import { slackRoutes } from './slack/slack.routes';
 import { squadsRoutes } from './squads/squads.routes';
 import { scimRoutes, ssoAdminRoutes, ssoPublicRoutes } from './sso/sso.routes';
 import { superAdminRoutes } from './superadmin/superadmin.routes';
@@ -186,6 +187,7 @@ function bootstrap(): void {
   app.use('/automations', automationsRoutes(s.automations, s.tenants));
   app.use('/api-keys', apiKeyRoutes(s.apiKeys, s.tenants));
   app.use('/webhooks', webhookRoutes(s.webhooks, s.tenants));
+  app.use('/slack', slackRoutes(s.slack, s.tenants));
   app.use('/ops', opsRoutes(s.opsToolkit, s.tenants));
   app.use('/numbers', numbersRoutes(s.numbers, s.tenants));
   app.use('/reseller', resellerRoutes(s.reseller, s.tenants));

@@ -1,18 +1,108 @@
 'use client';
 
 import { Button, Card, CardContent, Input, cn } from '@vocaliq/ui';
-import { CheckCircle2, Plug, Ticket, Trash2, Users } from 'lucide-react';
-import { useState } from 'react';
+import { CheckCircle2, Plug, Slack, Ticket, Trash2, Users } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { EmptyState, ErrorState, LoadingCard } from '../../../components/states';
 import {
   type ConnectorCatalogItem,
   type IntegrationDto,
+  type SlackConfig,
   useConnectIntegration,
   useDisconnectIntegration,
   useIntegrationCatalog,
   useIntegrations,
+  useSaveSlack,
+  useSlackConfig,
   useTestIntegration,
+  useTestSlack,
 } from '../../../lib/api';
+
+const SLACK_EVENTS: { key: keyof SlackConfig['events']; label: string }[] = [
+  { key: 'call.completed', label: 'Call completed' },
+  { key: 'call.failed', label: 'Call failed' },
+  { key: 'lead.created', label: 'New lead created' },
+];
+
+/**
+ * Slack per-event notifications: paste a Slack Incoming Webhook URL, toggle which events post, and
+ * send a test. The URL is masked once saved (write-only, like other credentials).
+ */
+function SlackNotifications() {
+  const cfg = useSlackConfig();
+  const save = useSaveSlack();
+  const test = useTestSlack();
+  const [url, setUrl] = useState('');
+  const [events, setEvents] = useState<SlackConfig['events']>({});
+
+  useEffect(() => {
+    if (cfg.data) setEvents(cfg.data.events ?? {});
+  }, [cfg.data]);
+
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-3 py-4">
+        <div className="flex items-center justify-between">
+          <p className="flex items-center gap-2 font-medium text-vq-text-hi">
+            <Slack size={16} /> Slack notifications
+          </p>
+          {cfg.data?.connected && (
+            <span className="flex items-center gap-1 rounded-vq-pill border border-vq-success/40 bg-vq-success/10 px-2 py-0.5 text-[11px] text-vq-success">
+              <CheckCircle2 size={12} /> connected
+            </span>
+          )}
+        </div>
+        <p className="text-sm text-vq-text-lo">
+          Post per-event messages to a Slack channel via an Incoming Webhook URL.
+        </p>
+        <Input
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder={cfg.data?.webhookUrl ?? 'https://hooks.slack.com/services/...'}
+          aria-label="Slack incoming webhook URL"
+        />
+        <div className="flex flex-wrap gap-3">
+          {SLACK_EVENTS.map((ev) => (
+            <label key={ev.key} className="flex items-center gap-1.5 text-sm text-vq-text-hi">
+              <input
+                type="checkbox"
+                checked={events[ev.key] !== false}
+                onChange={(e) => setEvents((prev) => ({ ...prev, [ev.key]: e.target.checked }))}
+              />
+              {ev.label}
+            </label>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="primary"
+            size="sm"
+            loading={save.isPending}
+            onClick={() =>
+              save.mutate({ ...(url.trim() ? { webhookUrl: url.trim() } : {}), events })
+            }
+          >
+            Save
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            loading={test.isPending}
+            disabled={!cfg.data?.connected}
+            onClick={() => test.mutate()}
+          >
+            Send test
+          </Button>
+          {test.data && (
+            <span className="text-vq-text-lo text-xs">
+              {test.data.delivered ? 'Test sent ✓' : 'Delivery failed'}
+            </span>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 const inputCls =
   'w-full rounded-vq border border-vq-border bg-vq-bg-base px-3 py-2 text-sm text-vq-text-hi focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vq-ring';
@@ -41,8 +131,11 @@ export default function IntegrationsPage() {
         </p>
       </div>
 
+      <SlackNotifications />
+
       {connecting && <ConnectForm connector={connecting} onDone={() => setConnecting(null)} />}
 
+      <h2 className="font-display font-semibold text-lg text-vq-text-hi">CRM & Helpdesk</h2>
       {catalog.isLoading ? (
         <LoadingCard rows={4} />
       ) : catalog.isError ? (
