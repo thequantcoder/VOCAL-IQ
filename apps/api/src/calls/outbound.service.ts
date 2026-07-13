@@ -11,6 +11,7 @@ import {
 } from '@vocaliq/shared';
 import { z } from 'zod';
 import type { PrismaService } from '../db/prisma.service';
+import type { WebhookEmitter } from '../webhooks/webhook-emitter';
 import type { Dialer } from './dialer';
 
 /** E.164: leading +, country digit 1-9, up to 15 total digits. */
@@ -74,6 +75,8 @@ export class OutboundService {
     private readonly abuseGate?: (
       tenantId: string,
     ) => Promise<{ action: string; reasons: string[] }>,
+    /** Optional webhook emitter: fires call.completed/call.failed when a call reaches disposition. */
+    private readonly emit?: WebhookEmitter,
   ) {}
 
   /**
@@ -187,7 +190,7 @@ export class OutboundService {
       throw new ValidationError('Disposition status must be terminal');
     }
 
-    return this.db.withTenant(tenantId, async (tx) => {
+    const result = await this.db.withTenant(tenantId, async (tx) => {
       const existing = await tx.call.findFirst({ where: { id: callId }, select: { id: true } });
       if (!existing) throw new NotFoundError('Call not found');
       return tx.call.update({
@@ -203,5 +206,18 @@ export class OutboundService {
         select: { id: true, status: true, disposition: true, costBreakdown: true },
       });
     });
+
+    // Fire the completion webhook (best-effort — delivery never affects closing the call).
+    if (this.emit) {
+      const event = status === CallStatus.FAILED ? 'call.failed' : 'call.completed';
+      await this.emit(tenantId, event, {
+        callId,
+        status,
+        disposition,
+        ...(durationSec != null ? { durationSec } : {}),
+      }).catch(() => {});
+    }
+
+    return result;
   }
 }

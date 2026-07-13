@@ -55,6 +55,7 @@ export * from './marketplace.js';
 export * from './mcp.js';
 export * from './memory.js';
 export * from './messaging.js';
+export * from './n8n-templates.js';
 export * from './multilingual.js';
 export * from './onboarding.js';
 export * from './outcome-billing.js';

@@ -95,6 +95,7 @@ import { RoutingDefaultsService } from './vault/routing-defaults.service';
 import { VaultService } from './vault/vault.service';
 import { VoicesService, elevenLabsCloner } from './voices/voices.service';
 import { WalletService } from './wallet/wallet.service';
+import type { WebhookEmitter } from './webhooks/webhook-emitter';
 import { WebhookService } from './webhooks/webhook.service';
 import { buildCloudflareClient } from './whitelabel/cloudflare';
 import { WhiteLabelService } from './whitelabel/whitelabel.service';
@@ -124,14 +125,22 @@ export function createServices() {
   const callsRead = new CallsReadService(db);
   const transcription = new TranscriptionService(db);
   const abuse = new AbuseService(db);
-  const outbound = new OutboundService(db, new PendingDialer(), (tid) => abuse.assess(tid));
-  const instantDial = new InstantDialService(db, outbound);
+  // Webhook emitter (built early so call/lead services can fire triggers). Best-effort delivery.
+  const webhooks = new WebhookService(db);
+  const emitWebhook: WebhookEmitter = (tid, event, payload) =>
+    webhooks.deliver(tid, event, payload);
+  const outbound = new OutboundService(
+    db,
+    new PendingDialer(),
+    (tid) => abuse.assess(tid),
+    emitWebhook,
+  );
+  const instantDial = new InstantDialService(db, outbound, emitWebhook);
 
   const cost = new CostService(db);
   const analytics = new AnalyticsService(db);
   const chat = new ChatService(db);
   const apiKeys = new ApiKeyService(db);
-  const webhooks = new WebhookService(db);
   const opsToolkit = new OpsService(db, entitlements);
   const numbers = new NumbersService(db, entitlements);
   const reseller = new ResellerService(db);

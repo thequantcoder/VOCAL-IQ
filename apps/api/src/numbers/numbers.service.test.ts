@@ -14,11 +14,26 @@ const db = new PrismaService();
 // Force the mock path (no carrier creds) regardless of the ambient env.
 const svc = new NumbersService(db, new EntitlementsService(db), {} as NodeJS.ProcessEnv);
 
-const C1 = '00000000-0000-0000-0000-000000000003';
+// A DEDICATED tenant so this test's PhoneNumber count (the plan-limit assertion) is deterministic
+// and never polluted by other tests that create numbers on the shared seed customer tenant under
+// parallel load. is_in_subtree(T, T) is true, so RLS allows T's own self-scoped queries.
+const C1 = '00000000-0000-0000-0000-0000000d0001';
 let planId: string;
 let subId: string;
 
 beforeAll(async () => {
+  await db.admin.tenant.upsert({
+    where: { id: C1 },
+    create: {
+      id: C1,
+      type: 'CUSTOMER',
+      name: 'Numbers Test Tenant',
+      slug: 'numbers-test-tenant',
+      status: 'TRIAL',
+      parentTenantId: '00000000-0000-0000-0000-000000000002', // under the demo reseller
+    },
+    update: {},
+  });
   const plan = await db.admin.plan.create({
     data: { tenantId: C1, name: 'Numbers Test Plan', numberLimit: 2, agentLimit: 50 },
     select: { id: true },
@@ -32,10 +47,12 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  // T is dedicated to this test, so a tenant-wide clean-up is safe here.
   await db.admin.phoneNumber.deleteMany({ where: { tenantId: C1 } });
   await db.admin.usageRecord.deleteMany({ where: { tenantId: C1 } });
   await db.admin.subscription.deleteMany({ where: { id: subId } });
   await db.admin.plan.deleteMany({ where: { id: planId } });
+  await db.admin.tenant.deleteMany({ where: { id: C1 } });
 });
 
 describe('NumbersService (mock carrier)', () => {

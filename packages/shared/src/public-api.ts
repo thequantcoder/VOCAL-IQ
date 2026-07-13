@@ -65,6 +65,12 @@ const OPERATIONS: OpenApiOperation[] = [
     summary: 'Instant dial: auto-create/dedupe a lead from a phone number, then call it',
     scope: 'calls:write',
   },
+  {
+    method: 'get',
+    path: '/v1/n8n/templates',
+    summary: 'Importable n8n workflow templates + webhook event catalog',
+    scope: 'agents:read',
+  },
   { method: 'get', path: '/v1/leads', summary: 'List leads', scope: 'leads:read' },
   {
     method: 'get',

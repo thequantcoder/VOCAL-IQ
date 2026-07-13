@@ -152,6 +152,20 @@ describe('OutboundService.recordDisposition', () => {
     expect((updated.costBreakdown as Record<string, number>).total).toBeCloseTo(0.02, 6);
   });
 
+  it('emits call.completed (and call.failed) webhook events on disposition', async () => {
+    const emitted: string[] = [];
+    const emit = async (_t: string, event: string) => void emitted.push(event);
+    const service = new OutboundService(db, new FakeDialer(), undefined, emit);
+
+    const a = await service.placeCall(C1, { ...base, contactId: CONTACT_OK });
+    await service.recordDisposition(C1, a.callId, { disposition: 'x', status: 'COMPLETED' });
+    const b = await service.placeCall(C1, { ...base, contactId: CONTACT_OK });
+    await service.recordDisposition(C1, b.callId, { disposition: 'x', status: 'FAILED' });
+
+    expect(emitted).toContain('call.completed');
+    expect(emitted).toContain('call.failed');
+  });
+
   it('rejects a non-terminal status', async () => {
     const { service } = svc();
     const { callId } = await service.placeCall(C1, base);
