@@ -3992,3 +3992,31 @@ J. Quality/docs: ✅ — doc comments on the emitter port, templates, and the di
 K. Build/CI: ✅ — typecheck/lint green; full non-live suite green.
 
 PARITY-05 complete — VocalIQ's webhook triggers now actually fire (`call.completed`/`call.failed`/`lead.created`), and users can import ready-made n8n workflows to reach 400+ apps with zero custom code. DoD CONFIRMED. **Next: PARITY-06 — Slack connector.**
+
+## PARITY-06 — Slack Connector (per-event notifications) — 2026-07-13 — ⚡ SONNET→OPUS
+Model: Opus. Branch `parity/06-slack-connector`. COMPETITOR delta #5. Slack is a *notification* connector (unlike the CRM-shaped Day-40 framework), so it's a self-contained module that reuses the domain events wired in PARITY-05.
+
+Done (DONE):
+- **`SlackService`** (`apps/api/src/slack`) — config stored in the tenant `settings` JSON (RLS-scoped, the established disclosure/residency pattern — no migration). `getConfig` (webhook URL **masked**), `setConfig` (validates a real `hooks.slack.com` incoming-webhook URL + per-event toggles), `notify(tenantId, event, payload)` (posts a formatted message best-effort only when the event is enabled; safe no-op when unconfigured), `test` (sends a "connected" message). HTTP injected for offline tests.
+- **Shared** (`slack.ts`) — `SLACK_EVENTS` (`call.completed`/`call.failed`/`lead.created`), `slackSettingsSchema`, `slackEventEnabled` (default-ON unless explicitly off; deny without a URL), `maskSlackUrl`, `formatSlackMessage` (mrkdwn blocks).
+- **Fan-out** — the composition domain-event emitter (PARITY-05) now dispatches to **both** registered webhooks AND Slack (`Promise.allSettled`, both best-effort) for the Slack-relevant events.
+- **Routes** — `GET /slack` (config, masked), `PUT /slack` + `POST /slack/test` (config writers). Mounted in main.
+- **Web** — a "Slack notifications" card on `/dashboard/integrations` (webhook URL input, per-event checkboxes, Save + Send-test) above the CRM grid.
+- **Tests** — `slack.test.ts` (shared, 4: mask, URL validation, enabled-logic, formatting) + `slack.service.test.ts` (api real-DB, 4: no-op unconfigured, save+mask+per-event notify, test message, rejects non-Slack URL).
+
+Verification: **typecheck 12/12**, **lint 12/12**, Slack tests 8/8. Live Slack delivery works as soon as a tenant pastes a real incoming-webhook URL (no platform credential needed — the URL *is* the credential).
+
+## Self-Audit — PARITY-06 (A–K)
+A. Correctness: ✅ — per-event toggle honoured (default-on, explicit-off), notify posts only when enabled, formatting verified; config round-trips with a masked URL.
+B. Isolation: ✅ — config in the tenant's own `settings` via `withTenant`; notify loads + posts per tenant; no cross-tenant path.
+C. Security: ✅ — only a `hooks.slack.com` URL accepted (SSRF-narrowed); URL masked on read (never echoed in full); write/test gated to config writers; no secret logged.
+D. Cost: ✅ — no provider/metered path; Slack posts are free best-effort HTTP to the tenant's channel.
+E. Errors/obs: ✅ — notify + test wrapped (try/catch → `{delivered:false}`); a Slack outage never affects the call/lead operation (fan-out is `allSettled`).
+F. Performance: ✅ — one POST per enabled event; config is a single tenant read.
+G. Error handling: ✅ — invalid URL rejected with a typed ValidationError; test requires a URL first.
+H. UI/AA: ✅ — labelled input + checkboxes, masked-URL placeholder, connected badge, Save/Test with loading + result; token-driven, reduced-motion-safe.
+I. Regressions: ✅ — additive (new module + routes + a settings sub-key + one dashboard card; emitter fan-out extended); existing webhook path unchanged; typecheck/lint/tests green.
+J. Quality/docs: ✅ — doc comments on the service, schema, fan-out, and the URL-is-the-credential rationale; BUILD-LOG updated.
+K. Build/CI: ✅ — typecheck/lint/tests green.
+
+PARITY-06 complete — tenants get native per-event Slack notifications (call completed/failed, new lead) with a one-paste incoming-webhook setup + per-event toggles + a test button. DoD CONFIRMED. **Next: PARITY-07 — platform-wide broadcast announcements.**

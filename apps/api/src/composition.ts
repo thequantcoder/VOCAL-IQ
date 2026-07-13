@@ -1,4 +1,4 @@
-import { buildTranslationPrompt } from '@vocaliq/shared';
+import { SLACK_EVENTS, type SlackEvent, buildTranslationPrompt } from '@vocaliq/shared';
 import { AbuseService } from './abuse/abuse.service';
 import { AgentsService } from './agents/agents.service';
 import { AnalyticsApiService } from './analytics-api/analytics-api.service';
@@ -82,6 +82,7 @@ import { ScaleService } from './scale/scale.service';
 import { SearchService } from './search/search.service';
 import { SentimentService } from './sentiment/sentiment.service';
 import { SipService } from './sip/sip.service';
+import { SlackService } from './slack/slack.service';
 import { SquadsService } from './squads/squads.service';
 import { buildSsoProvider } from './sso/sso-provider';
 import { SsoService } from './sso/sso.service';
@@ -125,17 +126,24 @@ export function createServices() {
   const callsRead = new CallsReadService(db);
   const transcription = new TranscriptionService(db);
   const abuse = new AbuseService(db);
-  // Webhook emitter (built early so call/lead services can fire triggers). Best-effort delivery.
+  // Domain-event emitter (built early so call/lead services can fire triggers). Fans out to
+  // registered webhooks AND Slack notifications — both best-effort (never breaks the operation).
   const webhooks = new WebhookService(db);
-  const emitWebhook: WebhookEmitter = (tid, event, payload) =>
-    webhooks.deliver(tid, event, payload);
+  const slack = new SlackService(db);
+  const emitDomainEvent: WebhookEmitter = async (tid, event, payload) => {
+    const tasks: Promise<unknown>[] = [webhooks.deliver(tid, event, payload)];
+    if ((SLACK_EVENTS as readonly string[]).includes(event)) {
+      tasks.push(slack.notify(tid, event as SlackEvent, payload));
+    }
+    await Promise.allSettled(tasks);
+  };
   const outbound = new OutboundService(
     db,
     new PendingDialer(),
     (tid) => abuse.assess(tid),
-    emitWebhook,
+    emitDomainEvent,
   );
-  const instantDial = new InstantDialService(db, outbound, emitWebhook);
+  const instantDial = new InstantDialService(db, outbound, emitDomainEvent);
 
   const cost = new CostService(db);
   const analytics = new AnalyticsService(db);
@@ -324,6 +332,7 @@ export function createServices() {
     chat,
     apiKeys,
     webhooks,
+    slack,
     opsToolkit,
     numbers,
     reseller,
