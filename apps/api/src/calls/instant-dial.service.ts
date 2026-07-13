@@ -1,6 +1,7 @@
 import { ValidationError } from '@vocaliq/shared';
 import { z } from 'zod';
 import type { PrismaService } from '../db/prisma.service';
+import type { WebhookEmitter } from '../webhooks/webhook-emitter';
 import { CONSENT_BASES, type OutboundService } from './outbound.service';
 
 /** E.164: leading +, country digit 1-9, up to 15 total digits (matches the outbound schema). */
@@ -46,6 +47,8 @@ export class InstantDialService {
   constructor(
     private readonly db: PrismaService,
     private readonly outbound: OutboundService,
+    /** Optional webhook emitter: fires lead.created for a newly-created lead. */
+    private readonly emit?: WebhookEmitter,
   ) {}
 
   async dial(tenantId: string, input: unknown): Promise<InstantDialResult> {
@@ -56,7 +59,7 @@ export class InstantDialService {
     const data = parsed.data;
 
     // ── Upsert Contact + Lead by phone (dedupe) under RLS ──────────────────────────
-    const { contactId, leadId } = await this.db.withTenant(tenantId, async (tx) => {
+    const { contactId, leadId, leadCreated } = await this.db.withTenant(tenantId, async (tx) => {
       const existing = await tx.contact.findFirst({
         where: { phone: data.to },
         select: { id: true, fields: true, tags: true },
@@ -97,6 +100,7 @@ export class InstantDialService {
       // Ensure a single Lead per contact (dedupe): reuse if present, else create.
       const lead = await tx.lead.findFirst({ where: { contactId: cId }, select: { id: true } });
       let lId: string;
+      let leadCreated = false;
       if (lead) {
         if (data.dynamicVars) {
           await tx.lead.update({ where: { id: lead.id }, data: { dynamicVars: data.dynamicVars } });
@@ -112,9 +116,17 @@ export class InstantDialService {
           select: { id: true },
         });
         lId = createdLead.id;
+        leadCreated = true;
       }
-      return { contactId: cId, leadId: lId };
+      return { contactId: cId, leadId: lId, leadCreated };
     });
+
+    // Fire lead.created for a genuinely new lead (best-effort — never fails the dial).
+    if (leadCreated && this.emit) {
+      await this.emit(tenantId, 'lead.created', { leadId, contactId, phone: data.to }).catch(
+        () => {},
+      );
+    }
 
     // ── Dispatch via the vetted outbound path (gates + Call row + dial + metering) ──
     const call = await this.outbound.placeCall(tenantId, {

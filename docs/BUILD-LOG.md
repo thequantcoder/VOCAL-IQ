@@ -3962,3 +3962,33 @@ J. Quality/docs: ✅ — doc comments on the dial port + HMAC signing + the SOFT
 K. Build/CI: ✅ — typecheck/lint/tests green.
 
 Form-to-Call — the owner's flagship parity feature — is live: a form submission with a phone number auto-dials the submitter on the vetted outbound path, and form webhooks are now HMAC-signed. DoD CONFIRMED. **Next: PARITY-05 — n8n connector + workflow templates.**
+
+## PARITY-05 — n8n Connector: webhook triggers wired + importable templates — 2026-07-13 — ✅ DONE — 🧠 OPUS
+Model: Opus. Branch `parity/05-n8n-connector`. COMPETITOR delta #3 (400+ apps via n8n + importable templates). **Finding:** the platform's `WebhookService.deliver()` was fully built + tested (Day 48) but **never called by any business logic** — so the trigger events (`call.completed`, `lead.created`, …) didn't actually fire. This day makes the webhook system functional (benefits ALL consumers, not just n8n) and ships importable n8n workflows.
+
+Done (DONE):
+- **Wired the triggers** via a new optional `WebhookEmitter` port (services depend on the port, not `WebhookService` — best-effort, testable, never breaks the operation):
+  - `call.completed` / `call.failed` — emitted from `OutboundService.recordDisposition` (the #1 automation trigger: "when a call finishes, do X").
+  - `lead.created` — emitted from `InstantDialService.dial` for a genuinely-new lead.
+  - Composition builds the emitter as `(tid,event,payload) => WebhookService.deliver(...)` and injects it into both services (moved the `webhooks` construction earlier).
+- **Importable n8n templates** (`packages/shared/n8n-templates.ts`, `buildN8nTemplates(baseUrl)`): 3 valid n8n workflow docs — **instant-dial** (Manual/HTTP → `POST /v1/calls/dial`), **form-to-call** (n8n Webhook → dial), **call-completed** (VocalIQ webhook → extract) — API key left as a `<YOUR_API_KEY>` placeholder (never a real secret).
+- **Discovery endpoint** — `GET /v1/n8n/templates` (API-key auth, `agents:read`) returns `{ apiBaseUrl, webhookEvents, templates }`; added to `buildOpenApiSpec`.
+- **Tests** — `n8n-templates.test.ts` (valid workflows, base-URL substituted, no embedded secret), + emit assertions in `instant-dial.service.test.ts` (lead.created) and `outbound.service.test.ts` (call.completed + call.failed).
+- **Test-isolation fix (I introduced in #133):** `numbers.service.test.ts` was doing `phoneNumber.deleteMany({ tenantId: C1 })` on the *shared seed tenant*, and its plan-limit `count()` was polluted by parallel PhoneNumber tests (reputation) — causing non-deterministic full-suite failures. Moved it to a **dedicated tenant** (`is_in_subtree(T,T)` = true) so its count is deterministic and it never clobbers others' rows.
+
+Verification: **typecheck 12/12**, **lint 12/12**, n8n-templates + public-api tests pass, emit tests pass. Full api suite **477 pass** (the previously-flaky numbers/reputation tests now pass deterministically; the sole remaining local failure is `router.service.live.test.ts` — a credential-gated live-LLM test that `describe.skip`s without keys and only ran/hung locally on a stale key; CI-safe).
+
+## Self-Audit — PARITY-05 (A–K)
+A. Correctness: ✅ — emit fires with the right event + payload (verified: call.completed/failed on disposition, lead.created on new lead); templates are valid n8n docs with the base URL substituted.
+B. Isolation: ✅ — the emitter delivers via `WebhookService` (tenant-scoped `withTenant`); the discovery route is API-key + tenant scoped; numbers-test isolation bug fixed (dedicated tenant).
+C. Security: ✅ — webhook payloads HMAC-signed by WebhookService; templates ship NO real API key (placeholder + a test asserting no `vq_live_` leaks); discovery route requires a scope.
+D. Cost: ✅ — no new provider/metered path; emits are best-effort HTTP to the tenant's own endpoints.
+E. Errors/obs: ✅ — every emit is `.catch(()=>{})` — a webhook failure never affects closing a call or creating a lead; WebhookService already retries + dead-letters (audited).
+F. Performance: ✅ — one fire-and-forget deliver after the operation; discovery builds static JSON.
+G. Error handling: ✅ — best-effort throughout; the emitter is optional so services run identically without it.
+H. UI/AA: n/a — API + templates only (a dashboard n8n card can reuse the discovery endpoint later).
+I. Regressions: ✅ — additive (optional emitter param on 2 services; new route + shared module); existing behaviour unchanged; typecheck/lint/tests green; a latent flaky test made deterministic.
+J. Quality/docs: ✅ — doc comments on the emitter port, templates, and the discovery route; BUILD-LOG records the "webhooks were built-but-unwired" finding + the test-isolation fix.
+K. Build/CI: ✅ — typecheck/lint green; full non-live suite green.
+
+PARITY-05 complete — VocalIQ's webhook triggers now actually fire (`call.completed`/`call.failed`/`lead.created`), and users can import ready-made n8n workflows to reach 400+ apps with zero custom code. DoD CONFIRMED. **Next: PARITY-06 — Slack connector.**

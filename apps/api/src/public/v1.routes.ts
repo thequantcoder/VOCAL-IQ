@@ -1,4 +1,10 @@
-import { analyticsQuerySchema, buildOpenApiSpec, hasScope } from '@vocaliq/shared';
+import {
+  WEBHOOK_EVENTS,
+  analyticsQuerySchema,
+  buildN8nTemplates,
+  buildOpenApiSpec,
+  hasScope,
+} from '@vocaliq/shared';
 import { Router } from 'express';
 import type { AgentsService } from '../agents/agents.service';
 import type { AnalyticsApiService } from '../analytics-api/analytics-api.service';
@@ -73,6 +79,21 @@ export function v1Routes(deps: {
     requireScope('calls:write'),
     ah(async (req, res) => {
       res.status(201).json(await deps.instantDial.dial(req.ctx!.tenantId, req.body));
+    }),
+  );
+
+  // n8n discovery: importable workflow templates + the webhook event catalog + this API's base URL.
+  // Lets a user wire VocalIQ into n8n's 400+ apps with zero custom code.
+  r.get(
+    '/n8n/templates',
+    requireScope('agents:read'),
+    ah(async (_req, res) => {
+      const baseUrl = process.env.PUBLIC_API_URL ?? 'https://your-vocaliq-domain';
+      res.json({
+        apiBaseUrl: baseUrl,
+        webhookEvents: WEBHOOK_EVENTS,
+        templates: buildN8nTemplates(baseUrl),
+      });
     }),
   );
 

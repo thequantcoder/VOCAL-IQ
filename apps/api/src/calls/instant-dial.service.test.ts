@@ -44,8 +44,12 @@ afterAll(async () => {
 });
 
 function svc(dialer: Dialer = new FakeDialer()) {
-  const outbound = new OutboundService(db, dialer);
-  return { service: new InstantDialService(db, outbound), dialer };
+  const emitted: { event: string; payload: Record<string, unknown> }[] = [];
+  const emit = async (_t: string, event: string, payload: Record<string, unknown>) => {
+    emitted.push({ event, payload });
+  };
+  const outbound = new OutboundService(db, dialer, undefined, emit);
+  return { service: new InstantDialService(db, outbound, emit), dialer, emitted };
 }
 
 describe('InstantDialService.dial', () => {
@@ -69,6 +73,13 @@ describe('InstantDialService.dial', () => {
     // The vetted outbound path dispatched the call to the dialer.
     expect((dialer as FakeDialer).dispatched).toHaveLength(1);
     expect((dialer as FakeDialer).dispatched[0]!.to).toBe(TO);
+  });
+
+  it('emits a lead.created webhook event for a newly-created lead', async () => {
+    const { service, emitted } = svc();
+    await service.dial(C1, base);
+    expect(emitted.map((e) => e.event)).toContain('lead.created');
+    expect(emitted.find((e) => e.event === 'lead.created')?.payload.phone).toBe(TO);
   });
 
   it('reuses the existing Contact + Lead on a second dial to the same number (dedupe)', async () => {
