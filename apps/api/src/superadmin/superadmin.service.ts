@@ -2,6 +2,8 @@ import type { Prisma, TenantStatus } from '@vocaliq/db';
 import {
   type AnnouncementAudience,
   type AnnouncementInput,
+  type CreatePromoCodeInput,
+  type GrantCreditInput,
   NotFoundError,
   type PlatformOverview,
   type ServiceHealth,
@@ -11,6 +13,7 @@ import {
 } from '@vocaliq/shared';
 import { signImpersonationToken } from '../auth/jwt';
 import type { PrismaService } from '../db/prisma.service';
+import type { WalletService } from '../wallet/wallet.service';
 
 /**
  * Super-admin control plane (Day 55) — the platform owner's view ACROSS all tenants. Every read
@@ -66,6 +69,7 @@ export interface ImpersonationGrant {
 export class SuperAdminService {
   constructor(
     private readonly db: PrismaService,
+    private readonly wallet: WalletService,
     private readonly queueDepthProbe: QueueDepthProbe = async () => 0,
   ) {}
 
@@ -361,6 +365,52 @@ export class SuperAdminService {
       await this.db.admin.notification.createMany({ data: rows(alive.map((t) => t.id)) });
       return alive.length;
     }
+  }
+
+  // ── Promotional / bonus credits (PARITY-08) — audited operator actions ───────
+
+  /** Grant bonus credits to any tenant (audited). Spent before paid credits; never cash. */
+  async grantTenantCredit(
+    actorUserId: string,
+    actorTenantId: string,
+    tenantId: string,
+    input: GrantCreditInput,
+  ): Promise<{ id: string; amountCents: number; remainingCents: number }> {
+    const grant = await this.wallet.grantCredit(tenantId, input, { createdBy: actorUserId });
+    await this.audit(actorTenantId, actorUserId, 'superadmin.credit.granted', tenantId, {
+      grantId: grant.id,
+      kind: input.kind,
+      amountCents: input.amountCents,
+      source: input.source,
+    });
+    return grant;
+  }
+
+  /** Revoke a credit grant so its remaining balance can no longer be spent (audited). */
+  async revokeTenantGrant(
+    actorUserId: string,
+    actorTenantId: string,
+    grantId: string,
+  ): Promise<{ id: string }> {
+    const res = await this.wallet.revokeGrant(grantId);
+    await this.audit(actorTenantId, actorUserId, 'superadmin.credit.revoked', grantId, {});
+    return res;
+  }
+
+  /** Create a redeemable promo code (audited). */
+  async createPromoCode(
+    actorUserId: string,
+    actorTenantId: string,
+    input: CreatePromoCodeInput,
+  ): Promise<{ id: string; code: string }> {
+    const pc = await this.wallet.createPromoCode(input, { createdBy: actorUserId });
+    await this.audit(actorTenantId, actorUserId, 'superadmin.promo_code.created', pc.id, {
+      code: pc.code,
+      kind: input.kind,
+      amountCents: input.amountCents,
+      maxRedemptions: input.maxRedemptions ?? null,
+    });
+    return pc;
   }
 
   private async audit(

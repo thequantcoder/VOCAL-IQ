@@ -4048,3 +4048,38 @@ J. Quality/docs: ✅ — doc comments on `resolveAudience`/`broadcastAnnouncemen
 K. Build/CI: ✅ — typecheck/lint green; touched-area tests green (real-DB suite runs in CI).
 
 PARITY-07 complete — a super-admin can broadcast targeted, severity-tagged announcements that every targeted tenant sees + dismisses in-app; RBAC + audit + tenant-visibility all correct. DoD CONFIRMED. **Next: PARITY-08 — promotional / bonus credits.**
+
+## PARITY-08 — Promotional / Bonus Credits (wallet) — 2026-07-14 — ✅ DONE — 🧠 OPUS
+Model: Opus. Branch `parity/08-promo-credits`. COMPETITOR delta #8. Money-critical: promo/bonus grants spent BEFORE paid credits, expiring, never cash, with exact attribution. Plugged into the single wallet-`debit` chokepoint so every metered/purchase path gets promo-first automatically.
+
+Key design decisions (BUILD-LOG per §13):
+- **New `CreditGrant` pool, kept off the paid balance.** Rather than reuse the vestigial-on-the-charge-path `Wallet.bonusCents` (which is the separate, unwired Day-49 `ops.drain` mechanism — left untouched), promo credits are their own tenant-scoped `CreditGrant` rows (kind PROMO/BONUS/REFERRAL/MANUAL, remainingCents, expiresAt?, revokedAt?, promoCodeId?). The invariant `Wallet.balanceCents = Σ WalletLedger.amountCents` is **preserved**: a debit records only the PAID portion as `amountCents` and the promo portion in a new `WalletLedger.promoCents` column (per-charge attribution).
+- **Spend-order inside the existing atomic debit.** In one tx: lock active grants `FOR UPDATE` (soonest-expiry first), allocate promo via the pure `allocatePromoCredits` (shared, unit-tested), append the ledger barrier (unique key — a replay still aborts before any mutation since only a `FOR UPDATE` lock precedes it), decrement the grants, then conditionally decrement the paid remainder (0-rows → overdraw → rollback of the WHOLE charge). Concurrent debits serialise on the grant + wallet rows, so promo can't be double-spent and balance can't over-draw.
+- **`PromoCode` is platform-global** (no tenantId; RLS-enabled-no-policy so only the owner client reaches it). Redemption is one owner-client tx with the code row `FOR UPDATE` — enforces `maxRedemptions` (global) race-safely and `perTenantLimit` by counting the tenant's existing grants; creates a PROMO grant inheriting the code's expiry.
+- **RLS + app-layer guard (golden rule #1):** `CreditGrant` gets the standard `tenant_isolation` policy, BUT `activePromoCents`/`listGrants` additionally filter `tenantId` explicitly — a reseller's OWN wallet must not include its sub-tenants' grants (RLS `is_in_subtree` would otherwise surface descendants). Caught by a test that a reseller (R1) sees 0 promo from its child (C1).
+
+Done (DONE):
+- **db**: migration `20260714000000_parity08_promo_credits` — `GrantKind` enum, `CreditGrant` (+ tenant_isolation RLS), platform-global `PromoCode` (RLS-no-policy), `WalletLedger.promoCents`.
+- **shared** (`credits.ts`): `allocatePromoCredits` (pure spend-order), `isGrantActive`, `normalizePromoCode`, `grantCreditInputSchema` / `redeemPromoInputSchema` / `createPromoCodeInputSchema`.
+- **api** (`WalletService`): promo-before-paid `debit` (returns `promoCents`/`paidCents`), `activePromoCents`, `listGrants`, `grantCredit`, `revokeGrant`, `redeemPromoCode`, `createPromoCode`; `getBalance` now exposes `promoCents`. `SuperAdminService` gains audited `grantTenantCredit` / `revokeTenantGrant` / `createPromoCode` (wallet injected). Routes: super-admin `POST /tenants/:id/grant-credit`, `/grants/:id/revoke`, `/promo-codes` (SUPER_ADMIN-gated + audited); tenant `GET /wallet/grants`, `POST /wallet/redeem` (config-writers).
+- **web**: wallet page shows promo balance + a redemption box + a grants list with expiry/status; a super-admin **Credits & promos** page (grant + promo-code forms) linked from the admin ToolHub.
+- **tests**: shared `credits.test.ts` (9 — allocation spend-order, active-guard, normalise); wallet `+10` (promo-before-paid + ledger split, promo-only no-overdraw, expiry/revoke excluded, expiry ordering, replay no-double-spend, tenant scope, promo codes: per-tenant limit + global cap + unknown/expired).
+
+Scope note (deferred follow-up): **reseller-portal-initiated grants** are not in this PR — a super-admin can already grant to any tenant (incl. resellers' sub-tenants), and the reseller service has no audit infra yet. Tracked for a later reseller-portal pass.
+
+Verification: **typecheck 12/12**, **lint 12/12**, **full api suite 493/493** (3× consecutive green — a pre-existing cross-file margin-cleanup race that my added wallet tests widened was fixed by scoping the wallet suite's `resellerMargin` cleanup to its own period). Local Docker Postgres (5434) + migrate:deploy for this session.
+
+## Self-Audit — PARITY-08 (A–K)
+A. Correctness: ✅ — spend-order proven (promo drained before paid, soonest-expiry first, partial + promo-only + over-amount cases); ledger splits paid vs promo; `balanceCents = Σ amountCents` still holds; replay never double-spends a grant.
+B. Isolation: ✅ — `CreditGrant` RLS `tenant_isolation` + explicit `tenantId` app-guard so a reseller's wallet excludes sub-tenant grants (tested); `PromoCode` reachable only via the owner client (RLS-no-policy); redemption + grant writes are tenant-correct.
+C. Security: ✅ — grant/revoke/promo-code creation SUPER_ADMIN-gated + audited; redemption is config-writer-gated; all inputs Zod-validated ($100k cap, code charset, positive ints); no secret involved; promo codes case-normalised, uniqueness DB-enforced.
+D. Cost/attribution: ✅ — every charge records promo vs paid (`promoCents` on the ledger + `DebitResult.promoCents/paidCents`), so promo-funded usage is separable; reseller margin math unchanged; no unmetered path added.
+E. Errors/obs: ✅ — invalid/expired/over-cap redemptions throw typed ValidationErrors; revoke of a missing grant → NotFound; insufficient balance still hard-stops + rolls back the whole charge (promo included).
+F. Performance: ✅ — debit adds one indexed `FOR UPDATE` select + N (usually 0–1) grant decrements; `activePromoCents` is one indexed aggregate; redemption is one locked-row tx.
+G. Error handling: ✅ — `maxRedemptions` (global, FOR UPDATE) + `perTenantLimit` (count) abuse caps enforced race-safely; expiry + revoke exclusion enforced in SQL + the active query.
+H. UI/AA: ✅ — wallet promo card (redeem box, grants list w/ status/expiry) + super-admin grant/promo forms; labelled fields, disabled-until-valid, success/error messaging; token-driven.
+I. Regressions: ✅ — additive (new tables/columns/methods/routes/pages); `debit` change preserves the idempotency-barrier ordering + no-overdraw guarantee (existing wallet tests + full suite green); `bonusCents`/`ops.drain` untouched.
+J. Quality/docs: ✅ — doc comments on the debit spend-order, the pure allocator, RLS/PromoCode rationale, and the reseller app-guard; migration commented; BUILD-LOG records the design decisions + deferred reseller path.
+K. Build/CI: ✅ — typecheck/lint green; full api suite 493/493 stable ×3.
+
+PARITY-08 complete — tenants get promotional/bonus credits (admin grants + redeemable promo codes) that are spent before paid balance, expire, are audited, and keep cost attribution exact. DoD CONFIRMED. **Next: PARITY-09 — in-app interactive API reference.**

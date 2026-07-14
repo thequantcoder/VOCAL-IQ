@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { verifyJwtToken } from '../auth/jwt';
 import { PrismaService } from '../db/prisma.service';
 import { TenantService } from '../tenancy/tenant.service';
+import { WalletService } from '../wallet/wallet.service';
 import { SuperAdminService } from './superadmin.service';
 
 /**
@@ -11,7 +12,7 @@ import { SuperAdminService } from './superadmin.service';
  */
 
 const db = new PrismaService();
-const svc = new SuperAdminService(db);
+const svc = new SuperAdminService(db, new WalletService(db));
 const tenants = new TenantService(db);
 
 const PLATFORM = '00000000-0000-0000-0000-000000000001';

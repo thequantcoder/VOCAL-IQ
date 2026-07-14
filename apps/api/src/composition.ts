@@ -153,7 +153,7 @@ export function createServices() {
   const numbers = new NumbersService(db, entitlements);
   const reseller = new ResellerService(db);
   const wallet = new WalletService(db);
-  const superAdmin = new SuperAdminService(db);
+  const superAdmin = new SuperAdminService(db, wallet);
   // Custom-domain SSL via Cloudflare for SaaS is gated on env; branding works without it.
   const whitelabel = new WhiteLabelService(db, buildCloudflareClient(process.env));
   const embedder = openAiEmbedder(process.env.OPENAI_API_KEY ?? '');

@@ -284,6 +284,7 @@ model Tenant {
   automations         Automation[]
   apiKeys             ApiKey[]
   walletLedger        WalletLedger[]
+  creditGrants        CreditGrant[]
 
   @@index([parentTenantId])
   @@index([type])
@@ -1097,7 +1098,8 @@ model WalletLedger {
   id             String   @id @default(uuid()) @db.Uuid
   tenantId       String   @db.Uuid
   tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  amountCents    Int // positive = credit, negative = debit
+  amountCents    Int // PAID portion moved (positive = credit, negative = debit); balance = sum of these
+  promoCents     Int      @default(0) // promo/bonus portion of this charge (funded from CreditGrants, not balance)
   currency       String   @default("USD")
   reason         String
   idempotencyKey String
@@ -1108,6 +1110,60 @@ model WalletLedger {
   @@unique([tenantId, idempotencyKey])
   @@index([tenantId])
   @@index([tenantId, createdAt])
+}
+
+// How a credit grant was funded (PARITY-08). All are spent BEFORE paid balance and never withdraw
+// as cash: PROMO (a redeemed promo code), BONUS (signup/perk), REFERRAL, MANUAL (an operator grant).
+enum GrantKind {
+  PROMO
+  BONUS
+  REFERRAL
+  MANUAL
+}
+
+// Promotional / bonus credits (PARITY-08). A grant is a pool of credits that is consumed before the
+// paid `Wallet.balanceCents`, can expire, and never pays out as cash. `remainingCents` is decremented
+// (race-safe, FOR UPDATE) as usage is charged; `revokedAt` stops it being spent. Tenant-scoped (RLS).
+model CreditGrant {
+  id            String     @id @default(uuid()) @db.Uuid
+  tenantId      String     @db.Uuid
+  tenant        Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  kind          GrantKind
+  source        String // human label: "signup-bonus", "promo:LAUNCH50", "manual: goodwill"…
+  amountCents   Int // original grant size
+  remainingCents Int // unspent balance (0 ≤ remaining ≤ amount); drained before paid credits
+  currency      String     @default("USD")
+  expiresAt     DateTime? // null = never expires
+  revokedAt     DateTime? // set → excluded from spend + reporting
+  createdBy     String?    @db.Uuid // operator (super-admin / reseller) who granted it, if any
+  promoCode     PromoCode? @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+  promoCodeId   String?    @db.Uuid
+  createdAt     DateTime   @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, remainingCents])
+  @@index([promoCodeId])
+}
+
+// A redeemable promo code (PARITY-08) — platform-global (no tenantId; accessed via the owner client).
+// Redemption creates a tenant CreditGrant. Abuse-guarded by `maxRedemptions` (global cap) and
+// `perTenantLimit` (default 1). `redeemedCount` is incremented race-safely on redemption.
+model PromoCode {
+  id             String        @id @default(uuid()) @db.Uuid
+  code           String        @unique
+  kind           GrantKind     @default(PROMO)
+  amountCents    Int
+  currency       String        @default("USD")
+  maxRedemptions Int? // null = unlimited (subject to perTenantLimit)
+  perTenantLimit Int           @default(1)
+  redeemedCount  Int           @default(0)
+  expiresAt      DateTime?
+  active         Boolean       @default(true)
+  createdBy      String?       @db.Uuid
+  createdAt      DateTime      @default(now())
+  grants         CreditGrant[]
+
+  @@index([code])
 }
 
 // One record per metered provider call. Timescale hypertable (see RLS/extra SQL);
