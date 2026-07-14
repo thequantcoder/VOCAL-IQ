@@ -11,6 +11,7 @@ export * from './coaching.js';
 export * from './constants.js';
 export * from './conversation-intel.js';
 export * from './copilot.js';
+export * from './credits.js';
 export * from './custom-models.js';
 export * from './developer-app.js';
 export * from './dialer.js';

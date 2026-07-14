@@ -2,6 +2,8 @@ import {
   Role,
   ValidationError,
   announcementInputSchema,
+  createPromoCodeInputSchema,
+  grantCreditInputSchema,
   impersonateInputSchema,
   tenantSearchSchema,
 } from '@vocaliq/shared';
@@ -102,6 +104,49 @@ export function superAdminRoutes(admin: SuperAdminService, tenants: TenantServic
         throw new ValidationError(parsed.error.issues[0]?.message ?? 'Invalid announcement');
       }
       res.json(await admin.broadcastAnnouncement(req.ctx!.userId, req.ctx!.tenantId, parsed.data));
+    }),
+  );
+
+  // Promotional / bonus credits (PARITY-08) — grant to a tenant, revoke a grant, create a promo code.
+  r.post(
+    '/tenants/:id/grant-credit',
+    ah(async (req, res) => {
+      const parsed = grantCreditInputSchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw new ValidationError(parsed.error.issues[0]?.message ?? 'Invalid grant');
+      }
+      res.json(
+        await admin.grantTenantCredit(
+          req.ctx!.userId,
+          req.ctx!.tenantId,
+          req.params.id as string,
+          parsed.data,
+        ),
+      );
+    }),
+  );
+
+  r.post(
+    '/grants/:grantId/revoke',
+    ah(async (req, res) => {
+      res.json(
+        await admin.revokeTenantGrant(
+          req.ctx!.userId,
+          req.ctx!.tenantId,
+          req.params.grantId as string,
+        ),
+      );
+    }),
+  );
+
+  r.post(
+    '/promo-codes',
+    ah(async (req, res) => {
+      const parsed = createPromoCodeInputSchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw new ValidationError(parsed.error.issues[0]?.message ?? 'Invalid promo code');
+      }
+      res.json(await admin.createPromoCode(req.ctx!.userId, req.ctx!.tenantId, parsed.data));
     }),
   );
 

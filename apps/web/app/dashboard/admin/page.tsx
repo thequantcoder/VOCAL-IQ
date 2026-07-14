@@ -6,6 +6,7 @@ import { Stagger, StaggerItem } from '@vocaliq/ui/motion';
 import {
   Activity,
   Building2,
+  CreditCard,
   Flag,
   KeyRound,
   Layers,
@@ -289,6 +290,12 @@ const TOOLS = [
     label: 'Announcements',
     icon: Megaphone,
     hint: 'Broadcast to tenants',
+  },
+  {
+    href: '/dashboard/admin/credits',
+    label: 'Credits & promos',
+    icon: CreditCard,
+    hint: 'Grants + promo codes',
   },
 ] as const;
 

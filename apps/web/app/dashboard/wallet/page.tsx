@@ -2,7 +2,7 @@
 
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@vocaliq/ui';
 import { Meter, Sparkline } from '@vocaliq/ui/charts';
-import { CheckCircle2, Lock, Plus, Sparkles, Wallet } from 'lucide-react';
+import { CheckCircle2, Gift, Lock, Plus, Sparkles, Ticket, Wallet } from 'lucide-react';
 import { useState } from 'react';
 import { ErrorState, LoadingCard } from '../../../components/states';
 import { formatUsd } from '../../../components/ui-bits';
@@ -10,12 +10,15 @@ import {
   ADVANCED_FEATURE_LABELS,
   type BudgetStatus,
   type CallListItem,
+  type CreditGrant,
   useBudget,
   useCalls,
   useMarginReconcile,
+  useRedeemPromo,
   useSubscription,
   useTopUp,
   useWalletDetail,
+  useWalletGrants,
 } from '../../../lib/api';
 
 /** Recent daily spend (billable) over the last `n` days, from the calls feed. */
@@ -66,6 +69,11 @@ export default function WalletPage() {
                   {formatUsd(wallet.data.balanceCents / 100)}
                 </span>
                 <span className="text-vq-text-lo text-xs">
+                  {wallet.data.promoCents > 0 && (
+                    <span className="text-vq-brand">
+                      +{formatUsd(wallet.data.promoCents / 100)} promo ·{' '}
+                    </span>
+                  )}
                   {formatUsd(wallet.data.bonusCents / 100)} bonus · {wallet.data.currency}
                 </span>
               </div>
@@ -89,11 +97,120 @@ export default function WalletPage() {
           </Card>
           {budget.data && <UsageCard budget={budget.data} />}
           <TopUpCard />
+          <PromoCard />
           <MarginCard />
         </>
       ) : null}
       <AdvancedTierCard />
     </div>
+  );
+}
+
+/** Promo / bonus credits (PARITY-08): redeem a code + list active/spent grants with expiry. */
+function PromoCard() {
+  const grants = useWalletGrants();
+  const redeem = useRedeemPromo();
+  const [code, setCode] = useState('');
+  const [msg, setMsg] = useState<string | null>(null);
+
+  function onRedeem() {
+    setMsg(null);
+    const c = code.trim();
+    if (!c) return;
+    redeem.mutate(c, {
+      onSuccess: (r) => {
+        setMsg(`Added ${formatUsd(r.amountCents / 100)} in promo credits ✓`);
+        setCode('');
+      },
+    });
+  }
+
+  const rows = grants.data ?? [];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Gift size={16} /> Promotional credits
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-2">
+            <Ticket size={15} className="text-vq-text-lo" />
+            <Input
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="Enter a promo code"
+              className="flex-1"
+              onKeyDown={(e) => e.key === 'Enter' && onRedeem()}
+            />
+            <Button
+              size="sm"
+              disabled={redeem.isPending || !code.trim()}
+              onClick={onRedeem}
+              loading={redeem.isPending}
+            >
+              Redeem
+            </Button>
+          </div>
+          {msg && <span className="text-vq-success text-xs">{msg}</span>}
+          {redeem.isError && (
+            <span className="text-vq-danger text-xs">{(redeem.error as Error).message}</span>
+          )}
+          <p className="text-vq-text-lo text-xs">
+            Promo credits are spent before your paid balance and never expire unless noted.
+          </p>
+        </div>
+
+        {rows.length > 0 && (
+          <ul className="flex flex-col divide-y divide-vq-border">
+            {rows.map((g) => (
+              <GrantRow key={g.id} grant={g} />
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function GrantRow({ grant }: { grant: CreditGrant }) {
+  const expired = grant.expiresAt != null && new Date(grant.expiresAt).getTime() <= Date.now();
+  const inactive = grant.revokedAt != null || expired || grant.remainingCents <= 0;
+  const status = grant.revokedAt
+    ? 'revoked'
+    : expired
+      ? 'expired'
+      : grant.remainingCents <= 0
+        ? 'spent'
+        : 'active';
+
+  return (
+    <li className="flex items-center justify-between py-2 text-sm">
+      <div className="flex flex-col">
+        <span className={inactive ? 'text-vq-text-lo line-through' : 'text-vq-text-hi'}>
+          {formatUsd(grant.remainingCents / 100)}{' '}
+          <span className="text-vq-text-lo text-xs">
+            of {formatUsd(grant.amountCents / 100)} · {grant.source}
+          </span>
+        </span>
+        {grant.expiresAt && (
+          <span className="text-vq-text-lo text-[0.7rem]">
+            {expired ? 'expired' : 'expires'} {new Date(grant.expiresAt).toLocaleDateString()}
+          </span>
+        )}
+      </div>
+      <span
+        className={`rounded-vq-pill border px-2 py-0.5 text-[0.7rem] ${
+          status === 'active'
+            ? 'border-vq-success/40 text-vq-success'
+            : 'border-vq-border text-vq-text-lo'
+        }`}
+      >
+        {status}
+      </span>
+    </li>
   );
 }
 

@@ -2115,6 +2115,8 @@ export function useRemoveDomain() {
 export interface WalletDetail {
   balanceCents: number;
   bonusCents: number;
+  /** Promotional / bonus credits from active grants — spent before paid balance (PARITY-08). */
+  promoCents: number;
   currency: string;
   ledgerSumCents: number;
   reconciled: boolean;
@@ -2153,6 +2155,87 @@ export function useMarginReconcile(period: string) {
     queryKey: ['wallet', 'reconcile', period],
     queryFn: () => apiFetch<PeriodMargin>(getToken, `/wallet/reconcile?period=${period}`),
     enabled: /^\d{4}-\d{2}$/.test(period),
+  });
+}
+
+// ── Promotional / bonus credits (PARITY-08) ─────────────────────────────────────
+
+export type GrantKind = 'PROMO' | 'BONUS' | 'REFERRAL' | 'MANUAL';
+
+export interface CreditGrant {
+  id: string;
+  kind: GrantKind;
+  source: string;
+  amountCents: number;
+  remainingCents: number;
+  currency: string;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+}
+
+export function useWalletGrants() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['wallet-grants'],
+    queryFn: () => apiFetch<CreditGrant[]>(getToken, '/wallet/grants'),
+  });
+}
+
+/** Redeem a promo code → creates a promo grant on the current tenant's wallet. */
+export function useRedeemPromo() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (code: string) =>
+      apiFetch<{ grantId: string; amountCents: number }>(getToken, '/wallet/redeem', {
+        method: 'POST',
+        body: JSON.stringify({ code }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['wallet-grants'] });
+      qc.invalidateQueries({ queryKey: ['wallet-detail'] });
+    },
+  });
+}
+
+/** Super-admin: grant bonus credits to a tenant. */
+export function useGrantCredit() {
+  const { getToken } = useAuth();
+  return useMutation({
+    mutationFn: (vars: {
+      tenantId: string;
+      kind: GrantKind;
+      amountCents: number;
+      source: string;
+      expiresAt?: string;
+    }) => {
+      const { tenantId, ...body } = vars;
+      return apiFetch<{ id: string; amountCents: number; remainingCents: number }>(
+        getToken,
+        `/admin/superadmin/tenants/${tenantId}/grant-credit`,
+        { method: 'POST', body: JSON.stringify(body) },
+      );
+    },
+  });
+}
+
+/** Super-admin: create a redeemable promo code. */
+export function useCreatePromoCode() {
+  const { getToken } = useAuth();
+  return useMutation({
+    mutationFn: (vars: {
+      code: string;
+      kind: GrantKind;
+      amountCents: number;
+      maxRedemptions?: number;
+      perTenantLimit?: number;
+      expiresAt?: string;
+    }) =>
+      apiFetch<{ id: string; code: string }>(getToken, '/admin/superadmin/promo-codes', {
+        method: 'POST',
+        body: JSON.stringify(vars),
+      }),
   });
 }
 

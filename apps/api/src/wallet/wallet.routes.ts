@@ -1,4 +1,4 @@
-import { ValidationError } from '@vocaliq/shared';
+import { ValidationError, redeemPromoInputSchema } from '@vocaliq/shared';
 import { Router } from 'express';
 import { z } from 'zod';
 import { ah } from '../http/async-handler';
@@ -57,6 +57,24 @@ export function walletRoutes(wallet: WalletService, tenants: TenantService): Rou
       const parsed = reconcileQuery.safeParse(req.query);
       if (!parsed.success) throw new ValidationError('A period (YYYY-MM) is required');
       res.json(await wallet.reconcile(req.ctx!.tenantId, parsed.data.period));
+    }),
+  );
+
+  // Promotional / bonus credits (PARITY-08): list the tenant's grants + redeem a promo code.
+  r.get(
+    '/grants',
+    ah(async (req, res) => {
+      res.json(await wallet.listGrants(req.ctx!.tenantId));
+    }),
+  );
+
+  r.post(
+    '/redeem',
+    requireRoles(...CONFIG_WRITERS),
+    ah(async (req, res) => {
+      const parsed = redeemPromoInputSchema.safeParse(req.body);
+      if (!parsed.success) throw new ValidationError('A promo code is required');
+      res.json(await wallet.redeemPromoCode(req.ctx!.tenantId, parsed.data.code));
     }),
   );
 
