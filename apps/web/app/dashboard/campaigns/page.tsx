@@ -2,7 +2,7 @@
 
 import type { DialerConfig, DialerMode } from '@vocaliq/shared';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@vocaliq/ui';
-import { Gauge, Megaphone, Pause, Play, Plus, Upload } from 'lucide-react';
+import { Gauge, Megaphone, Pause, Play, Plus, RotateCcw, Upload } from 'lucide-react';
 import { useState } from 'react';
 import { EmptyState, ErrorState, LoadingCard } from '../../../components/states';
 import {
@@ -13,6 +13,7 @@ import {
   useCampaigns,
   useCreateCampaign,
   useImportContacts,
+  useRetryFailedCampaign,
   useSetCampaignDialer,
   useSetCampaignStatus,
 } from '../../../lib/api';
@@ -75,9 +76,11 @@ export default function CampaignsPage() {
 function CampaignRow({ campaign }: { campaign: CampaignListItem }) {
   const monitor = useCampaignMonitor(campaign.id);
   const setStatus = useSetCampaignStatus();
+  const retryFailed = useRetryFailedCampaign(campaign.id);
   const [importing, setImporting] = useState(false);
   const [dialing, setDialing] = useState(false);
   const running = campaign.status === 'RUNNING';
+  const failedCount = monitor.data?.byStatus.FAILED ?? 0;
 
   return (
     <Card>
@@ -116,7 +119,7 @@ function CampaignRow({ campaign }: { campaign: CampaignListItem }) {
         </div>
 
         {monitor.data && monitor.data.total > 0 && (
-          <div className="flex flex-wrap gap-2 text-xs">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
             {Object.entries(monitor.data.byStatus).map(([status, count]) => (
               <span
                 key={status}
@@ -125,6 +128,16 @@ function CampaignRow({ campaign }: { campaign: CampaignListItem }) {
                 {status.toLowerCase()}: {count}
               </span>
             ))}
+            {failedCount > 0 && (
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={retryFailed.isPending}
+                onClick={() => retryFailed.mutate()}
+              >
+                <RotateCcw size={13} /> Retry {failedCount} failed
+              </Button>
+            )}
           </div>
         )}
 

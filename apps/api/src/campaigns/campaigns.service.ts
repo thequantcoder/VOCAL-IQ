@@ -307,4 +307,24 @@ export class CampaignsService {
       return { total, byStatus };
     });
   }
+
+  /**
+   * Re-queue a campaign's FAILED contacts (PARITY-10 retry knob): flip them back to RETRY so the
+   * scheduler re-dials them (it picks up PENDING + RETRY). Tenant-scoped; returns how many were
+   * re-queued so the UI can confirm.
+   */
+  async retryFailed(tenantId: string, campaignId: string): Promise<{ requeued: number }> {
+    return this.db.withTenant(tenantId, async (tx) => {
+      const campaign = await tx.campaign.findFirst({
+        where: { id: campaignId },
+        select: { id: true },
+      });
+      if (!campaign) throw new NotFoundError('Campaign not found');
+      const res = await tx.campaignContact.updateMany({
+        where: { campaignId, status: CampaignContactStatus.FAILED },
+        data: { status: CampaignContactStatus.RETRY },
+      });
+      return { requeued: res.count };
+    });
+  }
 }
