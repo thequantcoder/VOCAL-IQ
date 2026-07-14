@@ -214,7 +214,7 @@ function bootstrap(): void {
   app.get('/u/:token', unsubscribeHandler(s.email));
   app.use('/reputation', reputationRoutes(s.reputation, s.tenants));
   app.use('/fraud', fraudRoutes(s.fraud, s.tenants));
-  app.use('/admin/superadmin', superAdminRoutes(s.superAdmin, s.tenants));
+  app.use('/admin/superadmin', superAdminRoutes(s.superAdmin, s.tenants, s.update));
   app.use('/admin/sso', ssoAdminRoutes(s.sso, s.tenants));
   app.use('/auth/sso', ssoPublicRoutes(s.sso));
   app.use('/scim/v2', scimRoutes(s.sso));

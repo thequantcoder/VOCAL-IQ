@@ -65,3 +65,63 @@ cd apps/voice && python -m venv .venv && . .venv/bin/activate && pip install -e 
    get free TLS with `certbot --nginx`, then `nginx -t && systemctl reload nginx`.
 
 That's it — a fully self-hosted, self-owned VocalIQ with no per-seat SaaS bills.
+
+## First-run setup
+
+1. **Admin user** — the first user to sign up on a fresh install is the platform super-admin.
+   (Or seed one: the `prisma/seed.ts` seed creates a platform tenant + super-admin for local dev.)
+2. **Branding (white-label)** — as the super-admin, open **Dashboard → Settings → Appearance** (and
+   **Branding**) to set your product name, logo, and colour tokens; resellers can theme their own
+   sub-tenants. Custom domains are optional (set `CLOUDFLARE_SAAS_ZONE_ID` for automated SSL, or point
+   your own DNS + Nginx). No code changes needed — theming is data-driven (Day 52).
+3. **BYOK** — each tenant adds its own provider keys under **Developers / Integrations**, or you set
+   platform-wide keys in `.env`. Nothing is hard-wired to a vendor.
+
+## Versioning & "Check for Updates"
+
+VocalIQ ships a `VERSION` file at the repo root — the single source of truth. Bake it into the build
+so the running app knows its version:
+
+```bash
+export APP_VERSION=$(cat VERSION)   # do this before `pnpm build` / when starting the api
+```
+
+Set `UPDATE_MANIFEST_URL` (see `.env.example`) to a published release manifest — e.g. the
+`infra/releases.json` served from GitHub Releases / raw GitHub. The super-admin console shows a
+**Version** card that fetches the manifest and reports **up to date / update available** (with release
+notes + a changelog link). It is **read-only and never auto-applies** — upgrades are always a
+deliberate operator action. On hosted SaaS just leave `UPDATE_MANIFEST_URL` unset (the card shows
+"couldn't check").
+
+The published manifest (`infra/releases.json`) looks like:
+
+```json
+{ "latest": "1.2.0", "minCompatible": "1.0.0", "releasedAt": "2026-08-01",
+  "notes": "…", "url": "https://github.com/thequantcoder/VOCAL-IQ/releases" }
+```
+
+If your installed version is **below `minCompatible`**, upgrade in steps (the card warns you).
+
+## Upgrading
+
+1. **Back up first** (see below).
+2. `git fetch && git checkout <new-tag>` (or pull the new release), then `pnpm install && pnpm build`.
+3. `pnpm --filter @vocaliq/db exec prisma migrate deploy` (migrations are additive + ordered).
+4. `export APP_VERSION=$(cat VERSION)` and restart: `pm2 restart all`.
+5. Re-run the Python venv install in `apps/voice` if that changed.
+
+## Backup & restore
+
+- **Database** (the important one): `pg_dump -Fc vocaliq > vocaliq-$(date +%F).dump`; restore with
+  `pg_restore -d vocaliq --clean vocaliq-YYYY-MM-DD.dump`.
+- **Recordings / files**: back up your object store (R2/S3) bucket per its own tooling.
+- **Secrets**: keep your `.env` (and any KMS master key) in your secrets manager — **never** in git.
+
+## Shipping a clean build (no secrets)
+
+The distributable must contain **zero** secrets (only `.env.example`). A release guard enforces this —
+run it before packaging:
+
+```bash
+node scripts/check-no-secrets.mjs   # fails if a real .env is tracked or a live key is committed
+```

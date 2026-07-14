@@ -94,6 +94,7 @@ import { TranscriptionService } from './transcription/transcription.service';
 import { TranslationService } from './translation/translation.service';
 import { RoutingDefaultsService } from './vault/routing-defaults.service';
 import { VaultService } from './vault/vault.service';
+import { UpdateService, resolveAppVersion } from './version/update.service';
 import { VoicesService, elevenLabsCloner } from './voices/voices.service';
 import { WalletService } from './wallet/wallet.service';
 import type { WebhookEmitter } from './webhooks/webhook-emitter';
@@ -154,6 +155,12 @@ export function createServices() {
   const reseller = new ResellerService(db);
   const wallet = new WalletService(db);
   const superAdmin = new SuperAdminService(db, wallet);
+  // Self-host "Check for Updates" (PARITY-11): APP_VERSION is baked at build (from the VERSION file);
+  // UPDATE_MANIFEST_URL points at the published releases.json. Read-only — never auto-applies.
+  const update = new UpdateService(
+    resolveAppVersion(process.env, '1.1.0'),
+    process.env.UPDATE_MANIFEST_URL,
+  );
   // Custom-domain SSL via Cloudflare for SaaS is gated on env; branding works without it.
   const whitelabel = new WhiteLabelService(db, buildCloudflareClient(process.env));
   const embedder = openAiEmbedder(process.env.OPENAI_API_KEY ?? '');
@@ -339,6 +346,7 @@ export function createServices() {
     whitelabel,
     wallet,
     superAdmin,
+    update,
     rag,
     search,
     qa,

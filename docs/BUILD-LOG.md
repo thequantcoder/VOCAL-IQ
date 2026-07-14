@@ -4141,3 +4141,35 @@ J. Quality/docs: ✅ — doc comment on retryFailed; BUILD-LOG gives the honest 
 K. Build/CI: ✅ — typecheck/lint green; full api suite 496/496.
 
 PARITY-10 complete — the campaign retry knob (the genuine remaining gap) is shipped; the other four "enhance" items were already substantially delivered by the base build, with three minor follow-ups tracked. DoD CONFIRMED (per the day's explicit split allowance). **Next: PARITY-11 — self-hosted installer + update checker.**
+
+## PARITY-11 — Self-Hosted White-Label Build + "Check for Updates" — 2026-07-14 — ✅ DONE — 🧠 OPUS
+Model: Opus. Branch `parity/11-selfhost-installer`. COMPETITOR delta #10 — the packaging day that **closes the Competitor-Parity phase**. Gives a self-host buyer a documented install path, white-label branding, and an in-app "Check for Updates" — with ZERO secrets in the distributable.
+
+Done (DONE):
+- **Versioning source of truth** — a root `VERSION` file (`1.1.0`), baked into the running app via `APP_VERSION` at build (`export APP_VERSION=$(cat VERSION)`).
+- **Pure version core** (`shared/version.ts`): `parseSemver` (numeric, ignores `v` + pre-release), `compareSemver`, `computeUpdateStatus(current, manifest)` → `{ updateAvailable, belowMinCompatible, reachable, notes, url }` — never throws.
+- **Check-for-Updates** (`UpdateService`, HTTP injected): reads the installed version + fetches `UPDATE_MANIFEST_URL` (a published `releases.json`), compares, and returns the status. **Read-only — never auto-applies** (safe by default; it only reports + links the changelog). Fetch/parse failure or no URL → `reachable:false` (hosted SaaS unaffected — the console just shows "couldn't check"). Route `GET /admin/superadmin/updates` (SUPER_ADMIN-gated).
+- **Web** — a **Version** card on the super-admin console: installed vs latest, an up-to-date / update-available / couldn't-check badge, release notes, a below-min-compatible warning, and a changelog link.
+- **Release manifest template** — `infra/releases.json` (latest / minCompatible / releasedAt / notes / url), meant to be served from GitHub Releases (raw URL wired as the `.env.example` default).
+- **No-secrets guard** — `scripts/check-no-secrets.mjs`: reads the git index (what would ship), fails if a real `.env` is tracked or any shippable file contains a live-secret-shaped value (sk-/vq_live_/AKIA/xox*/PEM), skipping `.env.example`, docs, tests, and fixtures. Passed on the full repo (1035 files).
+- **Docs** — expanded `docs/SELF-HOSTING.md`: first-run setup (admin user, **branding/white-label** via Day-52 theming, BYOK), versioning + Check-for-Updates, upgrade steps, backup/restore, and the no-secrets release guard. `.env.example` gained `APP_VERSION` + `UPDATE_MANIFEST_URL` (with guidance).
+- **Tests** — shared `version.test` (parse/compare/status incl. below-min + unreachable); api `update.service.test` (available/up-to-date/fetch-throws/no-URL/malformed/non-2xx + `resolveAppVersion`).
+
+Install path: the existing `infra/docker-compose.yml` (Postgres/Redis/LiveKit) + `.env.example` + `prisma migrate deploy` + seed + PM2/Nginx — already documented in SELF-HOSTING.md (production Dockerfiles for the app tiers are a later packaging refinement; the run path is complete).
+
+Verification: **typecheck 12/12**, **lint 12/12**, **shared suite 727/727** (incl. version), **full api suite 503/503** (incl. update service, +7), **no-secrets check ✓ (1035 files)**.
+
+## Self-Audit — PARITY-11 (A–K)
+A. Correctness: ✅ — semver compare is numeric (1.10 > 1.9), update/up-to-date/below-min/unreachable all covered by tests; the UI badge maps each state.
+B. Isolation: n/a tenant-data — the updates endpoint is platform-level + SUPER_ADMIN-gated; it reads only the version + a public manifest.
+C. Security: ✅ — ZERO secrets in the distributable, enforced by `check-no-secrets.mjs` (git-index scan) which passes; the update check is read-only (no auto-apply, no code execution); SUPER_ADMIN-gated.
+D. Cost: ✅ — no provider/metered path (a manifest GET).
+E. Errors/obs: ✅ — fetch timeout (5s) + try/catch → `reachable:false`; malformed/non-2xx manifests ignored; never throws into the console.
+F. Performance: ✅ — one cached (60s stale) manifest GET.
+G. Error handling: ✅ — graceful degradation everywhere (no URL, network down, bad JSON, missing `latest`).
+H. UI/AA: ✅ — Version card with a clear status badge, notes, changelog link, and a "set UPDATE_MANIFEST_URL" hint; token-driven.
+I. Regressions: ✅ — additive (new module + one route param + one web card + docs/env/script); **hosted SaaS unaffected** (no manifest URL → benign "couldn't check"); full suites green.
+J. Quality/docs: ✅ — SELF-HOSTING.md now covers install/branding/updates/upgrade/backup/no-secrets; doc comments throughout; BUILD-LOG records the packaging scope (Dockerfiles deferred).
+K. Build/CI: ✅ — typecheck/lint green; shared 727 + api 503; no-secrets guard green.
+
+PARITY-11 complete — self-hosters get a documented install + white-label branding + a safe, read-only "Check for Updates", with a no-secrets release guard. DoD CONFIRMED. **🎉 Competitor-Parity phase COMPLETE — VocalIQ is now a strict superset of IntelliCall AI + AgentLabs AI. Recommend tagging a `v1.1.0` parity release.**
