@@ -101,4 +101,39 @@ describe('CampaignsService', () => {
       svc.create(C1, { name: 'Bad', agentId: '00000000-0000-0000-0000-0000000000ff' }),
     ).rejects.toSatisfy(isAppError);
   });
+
+  it('re-queues FAILED contacts to RETRY (PARITY-10 retry knob)', async () => {
+    const agentId = await makeAgent();
+    const campaign = await svc.create(C1, { name: 'Retry', agentId });
+    createdCampaigns.push(campaign.id);
+
+    // Enroll 3 contacts: 2 FAILED, 1 COMPLETED (must be left alone).
+    const mk = async (phone: string, status: string) => {
+      const c = await db.admin.contact.create({
+        data: { tenantId: C1, phone },
+        select: { id: true },
+      });
+      createdContacts.push(c.id);
+      await db.admin.campaignContact.create({
+        data: { tenantId: C1, campaignId: campaign.id, contactId: c.id, status },
+      });
+    };
+    await mk('+14155550201', 'FAILED');
+    await mk('+14155550202', 'FAILED');
+    await mk('+14155550203', 'COMPLETED');
+
+    const res = await svc.retryFailed(C1, campaign.id);
+    expect(res.requeued).toBe(2);
+
+    const monitor = await svc.monitor(C1, campaign.id);
+    expect(monitor.byStatus.RETRY).toBe(2); // the two failed → RETRY
+    expect(monitor.byStatus.COMPLETED).toBe(1); // untouched
+    expect(monitor.byStatus.FAILED).toBeUndefined();
+  });
+
+  it('rejects retrying a non-existent campaign', async () => {
+    await expect(svc.retryFailed(C1, '00000000-0000-0000-0000-0000000000fe')).rejects.toSatisfy(
+      isAppError,
+    );
+  });
 });

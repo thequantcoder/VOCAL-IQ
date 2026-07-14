@@ -563,6 +563,17 @@ export function useCampaignMonitor(id: string) {
   });
 }
 
+/** Re-queue a campaign's FAILED contacts for another attempt (PARITY-10). */
+export function useRetryFailedCampaign(id: string) {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<{ requeued: number }>(getToken, `/campaigns/${id}/retry-failed`, { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['campaigns', id, 'monitor'] }),
+  });
+}
+
 export function useCreateCampaign() {
   const { getToken } = useAuth();
   const qc = useQueryClient();

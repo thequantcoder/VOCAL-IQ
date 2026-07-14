@@ -40,6 +40,15 @@ export function campaignsRoutes(campaigns: CampaignsService, tenants: TenantServ
     }),
   );
 
+  // Re-queue FAILED contacts for another attempt (PARITY-10 retry knob).
+  r.post(
+    '/:id/retry-failed',
+    requireRoles(...CONFIG_WRITERS),
+    ah(async (req, res) => {
+      res.json(await campaigns.retryFailed(req.ctx!.tenantId, req.params.id as string));
+    }),
+  );
+
   r.post(
     '/',
     requireRoles(...CONFIG_WRITERS),
