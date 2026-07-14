@@ -1,4 +1,7 @@
+import type { Prisma, TenantStatus } from '@vocaliq/db';
 import {
+  type AnnouncementAudience,
+  type AnnouncementInput,
   NotFoundError,
   type PlatformOverview,
   type ServiceHealth,
@@ -269,6 +272,68 @@ export class SuperAdminService {
       take: Math.min(limit, 500),
       select: AUDIT_SELECT,
     });
+  }
+
+  /**
+   * Resolve an announcement audience to concrete tenant ids (owner client — the platform sees the
+   * whole tree). The platform tenant itself is always excluded; only ACTIVE/TRIAL tenants are targeted.
+   */
+  private async resolveAudience(audience: AnnouncementAudience): Promise<string[]> {
+    const liveStatuses: TenantStatus[] = ['ACTIVE', 'TRIAL'];
+    if (audience.scope === 'tenants') return audience.tenantIds;
+
+    if (audience.scope === 'plan') {
+      const subs = await this.db.admin.subscription.findMany({
+        where: { planId: audience.planId, status: 'ACTIVE' },
+        select: { tenantId: true },
+      });
+      return [...new Set(subs.map((s) => s.tenantId))];
+    }
+
+    const where: Prisma.TenantWhereInput = { status: { in: liveStatuses } };
+    if (audience.scope === 'customers') {
+      where.type = 'CUSTOMER';
+    } else if (audience.scope === 'reseller') {
+      where.OR = [{ id: audience.resellerId }, { parentTenantId: audience.resellerId }];
+    } else {
+      // 'all' — every non-platform tenant.
+      where.type = { not: 'PLATFORM' };
+    }
+
+    const rows = await this.db.admin.tenant.findMany({ where, select: { id: true } });
+    return rows.map((t) => t.id);
+  }
+
+  /**
+   * Publish a platform-wide announcement: resolve the audience, drop one broadcast Notification per
+   * target tenant (owner client), and write an AuditLog of the cross-tenant fan-out. Tenants read
+   * their own via the RLS-scoped notifications endpoint.
+   */
+  async broadcastAnnouncement(
+    actorUserId: string,
+    actorTenantId: string,
+    input: AnnouncementInput,
+  ): Promise<{ sent: number }> {
+    const tenantIds = await this.resolveAudience(input.audience);
+    if (tenantIds.length > 0) {
+      await this.db.admin.notification.createMany({
+        data: tenantIds.map((tenantId) => ({
+          tenantId,
+          channel: 'broadcast',
+          payload: {
+            type: 'broadcast',
+            severity: input.severity,
+            message: input.message,
+          } as object,
+        })),
+      });
+    }
+    await this.audit(actorTenantId, actorUserId, 'superadmin.announcement.sent', null, {
+      audience: input.audience,
+      severity: input.severity,
+      sent: tenantIds.length,
+    });
+    return { sent: tenantIds.length };
   }
 
   private async audit(

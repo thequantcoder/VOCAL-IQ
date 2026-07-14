@@ -42,7 +42,6 @@ export function RouteShell({ children }: { children: ReactNode }) {
   return (
     <>
       <p ref={liveRef} aria-live="assertive" role="status" className="sr-only" />
-      {/* biome-ignore lint/a11y/noNoninteractiveTabindex: programmatic focus target for route-change a11y. */}
       <div ref={mainRef} tabIndex={-1} className="outline-none">
         <RouteTransition routeKey={pathname}>{children}</RouteTransition>
       </div>

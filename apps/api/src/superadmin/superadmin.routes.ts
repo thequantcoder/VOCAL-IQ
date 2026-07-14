@@ -1,4 +1,10 @@
-import { Role, ValidationError, impersonateInputSchema, tenantSearchSchema } from '@vocaliq/shared';
+import {
+  Role,
+  ValidationError,
+  announcementInputSchema,
+  impersonateInputSchema,
+  tenantSearchSchema,
+} from '@vocaliq/shared';
 import { Router } from 'express';
 import { z } from 'zod';
 import { ah } from '../http/async-handler';
@@ -84,6 +90,18 @@ export function superAdminRoutes(admin: SuperAdminService, tenants: TenantServic
     ah(async (req, res) => {
       const tenantId = z.string().uuid().safeParse(req.query.tenantId);
       res.json(await admin.listAudit(tenantId.success ? tenantId.data : undefined));
+    }),
+  );
+
+  // Publish a platform-wide announcement to a targeted audience (audited fan-out).
+  r.post(
+    '/announcements',
+    ah(async (req, res) => {
+      const parsed = announcementInputSchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw new ValidationError(parsed.error.issues[0]?.message ?? 'Invalid announcement');
+      }
+      res.json(await admin.broadcastAnnouncement(req.ctx!.userId, req.ctx!.tenantId, parsed.data));
     }),
   );
 

@@ -63,8 +63,9 @@ beforeAll(async () => {
 afterAll(async () => {
   await db.admin.resellerMargin.deleteMany({ where: { resellerTenantId: R1, period: PERIOD } });
   await db.admin.auditLog.deleteMany({
-    where: { tenantId: { in: [C1, OUTSIDER_TENANT] }, actorUserId: SUPER_ADMIN },
+    where: { tenantId: { in: [C1, OUTSIDER_TENANT, PLATFORM] }, actorUserId: SUPER_ADMIN },
   });
+  // Deleting OUTSIDER_TENANT cascades its broadcast notifications.
   await db.admin.membership.deleteMany({ where: { tenantId: OUTSIDER_TENANT } });
   await db.admin.tenant.deleteMany({ where: { id: OUTSIDER_TENANT } });
   await db.admin.user.deleteMany({ where: { id: OUTSIDER_USER } });
@@ -106,6 +107,45 @@ describe('SuperAdminService.setTenantStatus (audited)', () => {
 
     const audits = await svc.listAudit(C1);
     expect(audits.some((a) => a.action === 'superadmin.tenant.status')).toBe(true);
+  });
+});
+
+describe('SuperAdminService.broadcastAnnouncement (targeted + audited)', () => {
+  it('drops a broadcast notification to the targeted tenant and audits the fan-out', async () => {
+    const res = await svc.broadcastAnnouncement(SUPER_ADMIN, PLATFORM, {
+      audience: { scope: 'tenants', tenantIds: [OUTSIDER_TENANT] },
+      message: 'Scheduled maintenance tonight',
+      severity: 'warning',
+    });
+    expect(res.sent).toBe(1);
+
+    const notif = await db.admin.notification.findFirst({
+      where: { tenantId: OUTSIDER_TENANT, channel: 'broadcast' },
+      select: { payload: true },
+    });
+    const payload = notif?.payload as { type?: string; severity?: string; message?: string };
+    expect(payload?.type).toBe('broadcast');
+    expect(payload?.severity).toBe('warning');
+    expect(payload?.message).toContain('maintenance');
+
+    const audits = await svc.listAudit(PLATFORM);
+    expect(audits.some((a) => a.action === 'superadmin.announcement.sent')).toBe(true);
+  });
+
+  it('resolves the "customers" audience to real customer tenants (includes the seed customer)', async () => {
+    // Uses the OUTSIDER (a CUSTOMER) so we can assert resolution without asserting on shared C1 state.
+    const res = await svc.broadcastAnnouncement(SUPER_ADMIN, PLATFORM, {
+      audience: { scope: 'customers' },
+      message: 'New feature available',
+      severity: 'info',
+    });
+    expect(res.sent).toBeGreaterThanOrEqual(1);
+    const notif = await db.admin.notification.findFirst({
+      where: { tenantId: OUTSIDER_TENANT, channel: 'broadcast' },
+    });
+    expect(notif).toBeTruthy();
+    // Clean the broadcast notifications this test created on the shared seed customer.
+    await db.admin.notification.deleteMany({ where: { tenantId: C1, channel: 'broadcast' } });
   });
 });
 

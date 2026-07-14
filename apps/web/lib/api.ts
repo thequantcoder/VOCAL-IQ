@@ -4648,3 +4648,53 @@ export function useTestSlack() {
     mutationFn: () => apiFetch<{ delivered: boolean }>(getToken, '/slack/test', { method: 'POST' }),
   });
 }
+
+// ── Broadcast announcements (PARITY-07) ──────────────────────────────────────
+export type AnnouncementAudienceInput =
+  | { scope: 'all' }
+  | { scope: 'customers' }
+  | { scope: 'reseller'; resellerId: string }
+  | { scope: 'plan'; planId: string }
+  | { scope: 'tenants'; tenantIds: string[] };
+
+export function useSendAnnouncement() {
+  const { getToken } = useAuth();
+  return useMutation({
+    mutationFn: (body: {
+      audience: AnnouncementAudienceInput;
+      message: string;
+      severity?: 'info' | 'success' | 'warning' | 'critical';
+    }) =>
+      apiFetch<{ sent: number }>(getToken, '/admin/superadmin/announcements', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+  });
+}
+
+export interface ServerNotification {
+  id: string;
+  channel: string;
+  payload: { type?: string; message?: string; severity?: string };
+  readAt: string | null;
+  createdAt: string;
+}
+
+export function useServerNotifications() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['server-notifications'],
+    queryFn: () => apiFetch<ServerNotification[]>(getToken, '/ops/notifications'),
+    refetchInterval: 60_000,
+  });
+}
+
+export function useMarkNotificationRead() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<ServerNotification>(getToken, `/ops/notifications/${id}/read`, { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['server-notifications'] }),
+  });
+}

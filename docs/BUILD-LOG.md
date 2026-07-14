@@ -4020,3 +4020,29 @@ J. Quality/docs: ✅ — doc comments on the service, schema, fan-out, and the U
 K. Build/CI: ✅ — typecheck/lint/tests green.
 
 PARITY-06 complete — tenants get native per-event Slack notifications (call completed/failed, new lead) with a one-paste incoming-webhook setup + per-event toggles + a test button. DoD CONFIRMED. **Next: PARITY-07 — platform-wide broadcast announcements.**
+
+## PARITY-07 — Broadcast / Platform-Wide Announcements — 2026-07-14 — ✅ DONE — ⚡ SONNET
+Model: Opus. Branch `parity/07-broadcast`. COMPETITOR delta #7. Lets a super-admin publish a platform-wide announcement (maintenance/feature/outage) to a targeted audience; every targeted tenant sees it in its notification center and can mark it read. **Design decision:** rather than a new `Announcement` table, reuse the existing `Notification` model (`channel:'broadcast'`, payload `{type,severity,message}`) — the super-prompt explicitly allowed a "join-on-read view", and the tenant-side read path (`/ops/notifications`, RLS-scoped) + mark-read already existed (Day 55/ops). This keeps it migration-free and leverages the audited cross-tenant admin client.
+
+Done (DONE):
+- **Shared** (`superadmin.ts`): `ANNOUNCEMENT_SEVERITIES` (info/success/warning/critical), `announcementAudienceSchema` (discriminated union: `all` / `customers` / `reseller`+resellerId / `plan`+planId / `tenants`+ids[1..1000]), `announcementInputSchema` (audience + message ≤500 + severity).
+- **API** (`SuperAdminService`): `resolveAudience()` (owner client — resolves scope → concrete tenant ids; excludes PLATFORM; only ACTIVE/TRIAL; `plan` via ACTIVE subscriptions, `reseller` = reseller + sub-tenants) and `broadcastAnnouncement()` (fan-out one broadcast `Notification` per target via the admin client + an `AuditLog` of the cross-tenant fan-out). Route `POST /admin/superadmin/announcements` — SUPER_ADMIN-gated (router-level `requireRoles`), Zod-validated.
+- **Web**: super-admin composer at `/dashboard/admin/announcements` (audience picker, severity, 500-char message, "Sent to N tenant(s)"), an **Announcements card added to the admin ToolHub** (closes the nav gap — was URL-only), and the **notification-center** now merges RLS-scoped broadcasts (megaphone marker + severity dot + "Mark read" → PATCHes `readAt`). `lib/api.ts`: `useSendAnnouncement`, `useServerNotifications`, `useMarkNotificationRead`.
+- **Tests**: `superadmin.service.test.ts` +2 — targeted fan-out drops a broadcast Notification to the right tenant + audits it; `customers` audience resolves to real customer tenants. Cleanup extended (PLATFORM audit rows; broadcast notifications on the shared seed customer).
+
+Verification: **typecheck 12/12**, **lint 12/12** (4 pre-existing warnings, none in touched files), **superadmin.service.test 9/9**, **ops.service.test 7/7** (tenant-side notifications path). Ran against local Docker Postgres (port 5434; brought the container up + `migrate:deploy` + seed for this session). Manual trace: composer → `POST /admin/superadmin/announcements` (403 for non-super-admin via router guard) → fan-out → each targeted tenant's `GET /ops/notifications` (RLS) returns the broadcast → "Mark read" flips `readAt`.
+
+## Self-Audit — PARITY-07 (A–K)
+A. Correctness: ✅ — audience resolves per scope (verified `tenants` + `customers`), fan-out writes one Notification/tenant with the right payload, audit recorded; mark-read persists `readAt`.
+B. Isolation: ✅ — the ONE legitimate cross-tenant write (super-admin fan-out) uses the admin client and is audited; tenant READ is RLS-scoped (`withTenant` in `listNotifications`), so a tenant only ever sees its own broadcasts. PLATFORM tenant excluded from every audience.
+C. Security/RBAC: ✅ — publish route is SUPER_ADMIN-gated at the router level (deny-by-default `requireRoles`); input Zod-validated (message ≤500, uuid audience ids); no secret involved.
+D. Cost: ✅ — no provider/metered path (in-app notifications only).
+E. Errors/obs: ✅ — invalid input → typed ValidationError; empty audience → `{sent:0}` (no rows written, still audited); fan-out uses `createMany`.
+F. Performance: ✅ — one audience query + one `createMany`; tenant read is a single indexed `findMany take:100`.
+G. Error handling: ✅ — safeParse on the route; audience resolution handles all 5 scopes exhaustively (discriminated union).
+H. UI/AA: ✅ — composer is keyboard-operable (labelled controls, char counter, disabled-until-valid); notification-center broadcast rows have a megaphone marker, severity dot, mark-read button with focus ring; token-driven, reduced-motion-safe. Admin ToolHub link added.
+I. Regressions: ✅ — additive (new schemas + one service method + one route + one page + notification-center merge + nav card); existing Notification/ops paths unchanged; typecheck/lint/tests green. Removed one now-unneeded biome-ignore in route-shell.
+J. Quality/docs: ✅ — doc comments on `resolveAudience`/`broadcastAnnouncement`/audience schema/BroadcastRow; BUILD-LOG records the reuse-Notification design decision.
+K. Build/CI: ✅ — typecheck/lint green; touched-area tests green (real-DB suite runs in CI).
+
+PARITY-07 complete — a super-admin can broadcast targeted, severity-tagged announcements that every targeted tenant sees + dismisses in-app; RBAC + audit + tenant-visibility all correct. DoD CONFIRMED. **Next: PARITY-08 — promotional / bonus credits.**
