@@ -73,7 +73,7 @@
 
 | Feature | Role | Type |
 |---|---|---|
-| campaigns module | Bulk outbound calling campaigns (schedule, queue, retry). | 🏠 Native |
+| campaigns module | Bulk outbound calling campaigns (schedule, queue, live status counts, retry failed). | 🏠 Native |
 | leads module | Lead capture, list, workspace. | 🏠 Native |
 | callbacks | Scheduled callback booking + auto-dial. | 🏠 Native |
 | appointments | Appointment booking (Google Calendar 2-way sync — gated). | 🔀 Hybrid |
@@ -128,7 +128,7 @@
 | billing module | Subscriptions, plan tiers, invoices. | 🔌 3rd-party (Stripe, gated) |
 | payments | Wallet top-up, payment flows. | 🔌 3rd-party (Stripe) |
 | wallet module | Prepaid credits balance (managed minutes). | 🏠 Native |
-| Promo/bonus credits (parity) | Wallet mein promotional credits. (⏳ abhi banana baaki) | 🏠 Native |
+| Promo/bonus credits (parity) | Wallet mein promo/bonus credits — admin grants + redeemable promo codes; paid balance se pehle spend, expire ho sakte hain. | 🏠 Native |
 | keypool | Managed provider keys ka pool (BYOK vs managed). | 🏠 Native |
 
 ---
@@ -166,11 +166,12 @@
 | Feature | Role | Type |
 |---|---|---|
 | superadmin module | Platform-level admin (saare tenants dekhna/manage). | 🏠 Native |
-| Broadcast announcements (parity) | Super-admin → sabhi tenants ko announcement. (🔄 in-progress) | 🏠 Native |
+| Broadcast announcements (parity) | Super-admin → sabhi tenants ko targeted announcement (severity + notification center). | 🏠 Native |
 | public module | Public metered REST API (customers ke liye). | 🏠 Native |
 | api-keys | API keys create/manage + scopes. | 🏠 Native |
 | developer-apps | OAuth developer apps register karna. | 🏠 Native |
-| In-app API reference (parity) | Dashboard mein live API explorer. (⏳ baaki) | 🏠 Native |
+| In-app API reference (parity) | Dashboard mein live API explorer — copy-ready curl + "Try it". | 🏠 Native |
+| Check-for-Updates (parity) | Self-host version check — installed vs latest release, read-only (auto-apply nahi). | 🏠 Native |
 | sdk package | Public SDK (customers integrate kar sakein). | 🏠 Native |
 | ops module | Ops toolkit (support/maintenance tasks). | 🏠 Native |
 | desk module | Agent Desk — human live call takeover. | 🏠 Native |
@@ -211,16 +212,23 @@
 
 ---
 
-## 📝 Status Summary — kya bacha hai (Competitor-Parity phase)
+## 📝 Status Summary — Competitor-Parity phase ✅ COMPLETE
 
-Base build (Day 00–95) **poora** hai. Sirf yeh parity features baaki:
+Base build (Day 00–95) **poora** hai, aur **Competitor-Parity phase bhi ab complete** hai — VocalIQ ab IntelliCall AI + AgentLabs AI ka strict **superset** hai.
 
 | Item | Status |
 |---|---|
-| PARITY-07 Broadcast announcements | 🔄 in-progress (uncommitted) |
-| PARITY-08 Promo/bonus credits | ⏳ baaki |
-| PARITY-09 In-app API reference | ⏳ baaki |
-| PARITY-10 Enhancements batch (5 UI/export items) | ⏳ baaki |
-| PARITY-11 Self-host installer + update checker | ⏳ baaki |
+| PARITY-01 Plivo + OpenRouter adapters | ✅ merged (#136) |
+| PARITY-02 Instant-dial API | ✅ merged (#137) |
+| PARITY-03 AI Form Builder | ✅ (Day-37 delivered) |
+| PARITY-04 Form-to-Call | ✅ merged (#138) |
+| PARITY-05 n8n connector | ✅ merged (#139) |
+| PARITY-06 Slack connector | ✅ merged (#140) |
+| PARITY-07 Broadcast announcements | ✅ merged (#142) |
+| PARITY-08 Promo/bonus credits | ✅ merged (#143) |
+| PARITY-09 In-app API reference | ✅ merged (#144) |
+| PARITY-10 Campaign retry (enhancements batch) | ✅ merged (#145) |
+| PARITY-11 Self-host installer + update checker | ✅ merged (#146) |
 
+**Tracked follow-ups (PARITY-10, minor):** unified notification matrix, analytics PDF + trend tiles, per-run manual retry.
 **Live test pending (real keys chahiye):** Twilio, Stripe, SIP, Google Calendar/Sheets, voice biometrics, avatar, messaging channels.
