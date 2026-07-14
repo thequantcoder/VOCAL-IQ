@@ -93,6 +93,7 @@ export * from './theme.js';
 export * from './theme-runtime.js';
 export * from './translation.js';
 export * from './usage.js';
+export * from './version.js';
 export * from './wallet.js';
 export * from './voice.js';
 export * from './workflow.js';

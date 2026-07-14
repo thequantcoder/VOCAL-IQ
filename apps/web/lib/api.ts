@@ -2897,6 +2897,28 @@ export function useLaunchReadiness() {
   });
 }
 
+// ── Self-host: Check for Updates (PARITY-11) ────────────────────────────────────
+
+export interface UpdateStatus {
+  current: string;
+  latest: string | null;
+  updateAvailable: boolean;
+  belowMinCompatible: boolean;
+  notes?: string;
+  url?: string;
+  releasedAt?: string;
+  reachable: boolean;
+}
+
+export function useUpdateStatus() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['admin', 'updates'],
+    queryFn: () => apiFetch<UpdateStatus>(getToken, '/admin/superadmin/updates'),
+    staleTime: 60_000,
+  });
+}
+
 // ── Agent Desk (Day 67) ─────────────────────────────────────────────────────────
 
 export interface DeskQueue {

@@ -14,6 +14,7 @@ import { authMiddleware } from '../http/auth.middleware';
 import { requireRoles } from '../http/roles.middleware';
 import { tenantMiddleware } from '../http/tenant.middleware';
 import type { TenantService } from '../tenancy/tenant.service';
+import type { UpdateService } from '../version/update.service';
 import type { SuperAdminService } from './superadmin.service';
 
 const periodQuery = z.object({ period: z.string().regex(/^\d{4}-\d{2}$/) });
@@ -23,9 +24,22 @@ const periodQuery = z.object({ period: z.string().regex(/^\d{4}-\d{2}$/) });
  * the single audited door to the cross-tenant, owner-client reads in SuperAdminService. Tenant
  * status changes + impersonation grants are written to the audit log by the service.
  */
-export function superAdminRoutes(admin: SuperAdminService, tenants: TenantService): Router {
+export function superAdminRoutes(
+  admin: SuperAdminService,
+  tenants: TenantService,
+  update: UpdateService,
+): Router {
   const r = Router();
   r.use(authMiddleware, tenantMiddleware(tenants), requireRoles(Role.SUPER_ADMIN));
+
+  // Self-host "Check for Updates" (PARITY-11): compare the installed version to the release manifest.
+  // Read-only — reports + links the changelog, never auto-applies.
+  r.get(
+    '/updates',
+    ah(async (_req, res) => {
+      res.json(await update.check());
+    }),
+  );
 
   r.get(
     '/tenants',

@@ -7,6 +7,7 @@ import {
   Activity,
   Building2,
   CreditCard,
+  Download,
   Flag,
   KeyRound,
   Layers,
@@ -33,6 +34,7 @@ import {
   useLaunchReadiness,
   useScaleStatus,
   useSetAdminTenantStatus,
+  useUpdateStatus,
 } from '../../../lib/api';
 
 function currentPeriod(): string {
@@ -61,9 +63,70 @@ export default function SuperAdminPage() {
       <SystemHealthCard />
       <ReadinessCard />
       <ScaleCard />
+      <VersionCard />
       <ToolHub />
       <TenantManager />
     </div>
+  );
+}
+
+/** Self-host version + "Check for Updates" (PARITY-11) — reports only, never auto-applies. */
+function VersionCard() {
+  const status = useUpdateStatus();
+  if (!status.data) return null;
+  const s = status.data;
+  const badge = !s.reachable
+    ? { label: "couldn't check", cls: 'border-vq-border text-vq-text-lo' }
+    : s.updateAvailable
+      ? { label: 'update available', cls: 'border-vq-warn/40 text-vq-warn' }
+      : { label: 'up to date', cls: 'border-vq-success/40 text-vq-success' };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between text-base">
+          <span className="flex items-center gap-2">
+            <Download size={16} /> Version
+          </span>
+          <span className={`rounded-vq-pill border px-2 py-0.5 text-xs ${badge.cls}`}>
+            {badge.label}
+          </span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-1.5 text-sm">
+        <div className="flex items-center gap-4">
+          <Kv label="Installed" value={s.current} />
+          {s.latest && <Kv label="Latest" value={s.latest} />}
+        </div>
+        {s.updateAvailable && (
+          <>
+            {s.belowMinCompatible && (
+              <p className="text-vq-warn text-xs">
+                Your version is below the minimum for a direct upgrade — upgrade in steps (see
+                notes).
+              </p>
+            )}
+            {s.notes && <p className="text-vq-text-lo text-xs">{s.notes}</p>}
+            {s.url && (
+              <a
+                href={s.url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-vq-violet text-xs underline"
+              >
+                View changelog & upgrade steps →
+              </a>
+            )}
+          </>
+        )}
+        {!s.reachable && (
+          <p className="text-vq-text-lo text-xs">
+            No release manifest configured/reachable — set <code>UPDATE_MANIFEST_URL</code> to
+            enable update checks.
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
