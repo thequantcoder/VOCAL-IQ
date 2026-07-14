@@ -9,6 +9,7 @@ import {
   Flag,
   KeyRound,
   Layers,
+  Megaphone,
   Pause,
   Play,
   Rocket,
@@ -282,6 +283,12 @@ const TOOLS = [
     label: 'Fraud & abuse',
     icon: ShieldAlert,
     hint: 'Auto-flagged tenants',
+  },
+  {
+    href: '/dashboard/admin/announcements',
+    label: 'Announcements',
+    icon: Megaphone,
+    hint: 'Broadcast to tenants',
   },
 ] as const;
 

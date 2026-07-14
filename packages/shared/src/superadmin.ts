@@ -131,3 +131,29 @@ function band(value: number, degradedAt: number, downAt: number): HealthStatus {
   if (value >= degradedAt) return 'degraded';
   return 'ok';
 }
+
+// ── Platform-wide broadcast announcements (PARITY-07) ────────────────────────
+
+export const ANNOUNCEMENT_SEVERITIES = ['info', 'success', 'warning', 'critical'] as const;
+export type AnnouncementSeverity = (typeof ANNOUNCEMENT_SEVERITIES)[number];
+
+/**
+ * Who a super-admin announcement targets. `all` = every non-platform tenant; `customers` = only
+ * CUSTOMER tenants; `reseller` = a reseller + its sub-tenants; `plan` = tenants on a given plan;
+ * `tenants` = an explicit list. Resolution to concrete tenant ids happens server-side (owner client).
+ */
+export const announcementAudienceSchema = z.discriminatedUnion('scope', [
+  z.object({ scope: z.literal('all') }),
+  z.object({ scope: z.literal('customers') }),
+  z.object({ scope: z.literal('reseller'), resellerId: z.string().uuid() }),
+  z.object({ scope: z.literal('plan'), planId: z.string().uuid() }),
+  z.object({ scope: z.literal('tenants'), tenantIds: z.array(z.string().uuid()).min(1).max(1000) }),
+]);
+export type AnnouncementAudience = z.infer<typeof announcementAudienceSchema>;
+
+export const announcementInputSchema = z.object({
+  audience: announcementAudienceSchema,
+  message: z.string().trim().min(1).max(500),
+  severity: z.enum(ANNOUNCEMENT_SEVERITIES).default('info'),
+});
+export type AnnouncementInput = z.infer<typeof announcementInputSchema>;

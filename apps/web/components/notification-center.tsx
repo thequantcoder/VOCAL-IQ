@@ -2,8 +2,13 @@
 
 import { Illustration, Popover, PopoverContent, PopoverTrigger, cn } from '@vocaliq/ui';
 import { AnimatePresence, m, useMotionLevel } from '@vocaliq/ui/motion';
-import { Bell, X } from 'lucide-react';
+import { Bell, Megaphone, X } from 'lucide-react';
 import Link from 'next/link';
+import {
+  type ServerNotification,
+  useMarkNotificationRead,
+  useServerNotifications,
+} from '../lib/api';
 import {
   type AppNotification,
   type NotificationKind,
@@ -18,6 +23,14 @@ const DOT: Record<NotificationKind, string> = {
   info: 'bg-info',
   warn: 'bg-warn',
   milestone: 'bg-primary-500',
+};
+
+/** Severity → dot colour for platform broadcast announcements (PARITY-07). */
+const BROADCAST_DOT: Record<string, string> = {
+  info: 'bg-info',
+  success: 'bg-success',
+  warning: 'bg-warn',
+  critical: 'bg-danger',
 };
 
 /** Relative time, coarse (m/h/d) — good enough for a feed, no dep. */
@@ -37,7 +50,13 @@ function ago(ts: number): string {
 export function NotificationCenter() {
   const items = useNotifications();
   const { animate } = useMotionLevel();
-  const unread = items.filter((n) => !n.read).length;
+  // Platform broadcasts (super-admin announcements) are server-scoped (RLS) and merge into the feed.
+  // Filter to the broadcast channel — other server notifications (e.g. low-balance) aren't announcements.
+  const { data: serverNotifs = [] } = useServerNotifications();
+  const broadcasts = serverNotifs.filter((n) => n.channel === 'broadcast');
+  const markServerRead = useMarkNotificationRead();
+  const unread = items.filter((n) => !n.read).length + broadcasts.filter((n) => !n.readAt).length;
+  const isEmpty = items.length === 0 && broadcasts.length === 0;
 
   return (
     <Popover>
@@ -80,13 +99,22 @@ export function NotificationCenter() {
         </div>
 
         <div className="max-h-[60vh] overflow-y-auto">
-          {items.length === 0 ? (
+          {isEmpty ? (
             <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
               <Illustration name="all-done" size={84} />
               <span className="text-sm text-vq-text-lo">You're all caught up.</span>
             </div>
           ) : (
             <ul className="flex flex-col">
+              {broadcasts.map((n) => (
+                <li key={n.id}>
+                  <BroadcastRow
+                    n={n}
+                    onRead={() => markServerRead.mutate(n.id)}
+                    marking={markServerRead.isPending}
+                  />
+                </li>
+              ))}
               <AnimatePresence initial={false}>
                 {items.map((n) => (
                   <m.li
@@ -142,6 +170,49 @@ function NotificationRow({ n }: { n: AppNotification }) {
       ) : (
         body
       )}
+    </div>
+  );
+}
+
+/**
+ * A platform broadcast announcement (PARITY-07). Rendered with a megaphone marker and severity dot;
+ * unread rows offer a mark-read action that PATCHes `readAt` server-side (RLS-scoped to the tenant).
+ */
+function BroadcastRow({
+  n,
+  onRead,
+  marking,
+}: {
+  n: ServerNotification;
+  onRead: () => void;
+  marking: boolean;
+}) {
+  const unread = !n.readAt;
+  const severity = n.payload.severity ?? 'info';
+  return (
+    <div className="border-vq-border border-b last:border-b-0">
+      <div
+        className={cn('flex items-start gap-2.5 px-3 py-2.5', unread && 'bg-primary-500/[0.04]')}
+      >
+        <Megaphone size={15} className="mt-0.5 shrink-0 text-vq-text-lo" aria-hidden />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="text-sm text-vq-text-hi">{n.payload.message ?? 'Announcement'}</span>
+          <span className="mt-0.5 flex items-center gap-1.5 text-[0.7rem] text-vq-text-lo">
+            <span className={cn('size-1.5 rounded-full', BROADCAST_DOT[severity] ?? 'bg-info')} />
+            {ago(new Date(n.createdAt).getTime())}
+          </span>
+        </div>
+        {unread && (
+          <button
+            type="button"
+            onClick={onRead}
+            disabled={marking}
+            className="shrink-0 rounded-vq-sm px-1.5 py-0.5 text-[0.7rem] text-vq-text-lo hover:text-vq-text-hi focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vq-ring disabled:opacity-50"
+          >
+            Mark read
+          </button>
+        )}
+      </div>
     </div>
   );
 }

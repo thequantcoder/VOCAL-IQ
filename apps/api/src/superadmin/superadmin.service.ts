@@ -1,4 +1,7 @@
+import type { Prisma, TenantStatus } from '@vocaliq/db';
 import {
+  type AnnouncementAudience,
+  type AnnouncementInput,
   NotFoundError,
   type PlatformOverview,
   type ServiceHealth,
@@ -20,6 +23,10 @@ import type { PrismaService } from '../db/prisma.service';
 /** A probe for the combined worker-queue backlog (BullMQ). Injected so the API has no hard Redis
  *  dependency; defaults to 0 (unknown → treated as no visible backlog, surfaced as such). */
 export type QueueDepthProbe = () => Promise<number>;
+
+/** Prisma P2003 = a foreign-key constraint violation (e.g. a referenced tenant no longer exists). */
+const isForeignKeyViolation = (err: unknown): boolean =>
+  typeof err === 'object' && err !== null && (err as { code?: string }).code === 'P2003';
 
 export interface TenantListRow {
   id: string;
@@ -269,6 +276,91 @@ export class SuperAdminService {
       take: Math.min(limit, 500),
       select: AUDIT_SELECT,
     });
+  }
+
+  /**
+   * Resolve an announcement audience to concrete tenant ids (owner client — the platform sees the
+   * whole tree). The platform tenant itself is always excluded; only ACTIVE/TRIAL tenants are targeted.
+   * Public so the composer can preview reach and so audience resolution stays unit-testable without
+   * doing a broad fan-out.
+   */
+  async resolveAudienceTenantIds(audience: AnnouncementAudience): Promise<string[]> {
+    const liveStatuses: TenantStatus[] = ['ACTIVE', 'TRIAL'];
+    if (audience.scope === 'tenants') return audience.tenantIds;
+
+    if (audience.scope === 'plan') {
+      const subs = await this.db.admin.subscription.findMany({
+        where: { planId: audience.planId, status: 'ACTIVE' },
+        select: { tenantId: true },
+      });
+      return [...new Set(subs.map((s) => s.tenantId))];
+    }
+
+    const where: Prisma.TenantWhereInput = { status: { in: liveStatuses } };
+    if (audience.scope === 'customers') {
+      where.type = 'CUSTOMER';
+    } else if (audience.scope === 'reseller') {
+      where.OR = [{ id: audience.resellerId }, { parentTenantId: audience.resellerId }];
+    } else {
+      // 'all' — every non-platform tenant.
+      where.type = { not: 'PLATFORM' };
+    }
+
+    const rows = await this.db.admin.tenant.findMany({ where, select: { id: true } });
+    return rows.map((t) => t.id);
+  }
+
+  /**
+   * Publish a platform-wide announcement: resolve the audience, drop one broadcast Notification per
+   * target tenant (owner client), and write an AuditLog of the cross-tenant fan-out. Tenants read
+   * their own via the RLS-scoped notifications endpoint.
+   */
+  async broadcastAnnouncement(
+    actorUserId: string,
+    actorTenantId: string,
+    input: AnnouncementInput,
+  ): Promise<{ sent: number }> {
+    const tenantIds = await this.resolveAudienceTenantIds(input.audience);
+    const sent = await this.fanOutBroadcast(tenantIds, input);
+    await this.audit(actorTenantId, actorUserId, 'superadmin.announcement.sent', null, {
+      audience: input.audience,
+      severity: input.severity,
+      sent,
+    });
+    return { sent };
+  }
+
+  /**
+   * Fan a broadcast out to the resolved tenants (one Notification each). Resilient to a target tenant
+   * that is hard-deleted between resolve and insert: a broad broadcast must not fail because a single
+   * target vanished, so on a foreign-key violation we re-filter to still-existing tenants and retry
+   * once. Returns the number of notifications actually written (what the audit records).
+   */
+  private async fanOutBroadcast(tenantIds: string[], input: AnnouncementInput): Promise<number> {
+    if (tenantIds.length === 0) return 0;
+    const rows = (ids: string[]) =>
+      ids.map((tenantId) => ({
+        tenantId,
+        channel: 'broadcast',
+        payload: {
+          type: 'broadcast',
+          severity: input.severity,
+          message: input.message,
+        } as object,
+      }));
+    try {
+      await this.db.admin.notification.createMany({ data: rows(tenantIds) });
+      return tenantIds.length;
+    } catch (err) {
+      if (!isForeignKeyViolation(err)) throw err;
+      const alive = await this.db.admin.tenant.findMany({
+        where: { id: { in: tenantIds } },
+        select: { id: true },
+      });
+      if (alive.length === 0) return 0;
+      await this.db.admin.notification.createMany({ data: rows(alive.map((t) => t.id)) });
+      return alive.length;
+    }
   }
 
   private async audit(
