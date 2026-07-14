@@ -1,7 +1,8 @@
 'use client';
 
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@vocaliq/ui';
-import { Copy, KeyRound, Plus, Trash2, Webhook } from 'lucide-react';
+import { Copy, KeyRound, Plus, Terminal, Trash2, Webhook } from 'lucide-react';
+import Link from 'next/link';
 import { useState } from 'react';
 import { EmptyState, ErrorState, LoadingCard } from '../../../components/states';
 import {
@@ -41,6 +42,18 @@ export default function DevelopersPage() {
           , and the <code>@vocaliq/sdk</code> TypeScript client.
         </p>
       </div>
+
+      <Link
+        href="/dashboard/developers/api"
+        className="flex items-center justify-between rounded-vq border border-vq-border px-4 py-3 transition-colors hover:border-vq-brand/50"
+      >
+        <span className="flex items-center gap-2 text-sm text-vq-text-hi">
+          <Terminal size={16} className="text-vq-brand" /> Interactive API reference
+        </span>
+        <span className="text-vq-text-lo text-xs">
+          copy-ready curl + live “Try it” for every endpoint →
+        </span>
+      </Link>
 
       <ApiKeysSection />
       <WebhooksSection />

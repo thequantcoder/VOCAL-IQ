@@ -4083,3 +4083,29 @@ J. Quality/docs: ✅ — doc comments on the debit spend-order, the pure allocat
 K. Build/CI: ✅ — typecheck/lint green; full api suite 493/493 stable ×3.
 
 PARITY-08 complete — tenants get promotional/bonus credits (admin grants + redeemable promo codes) that are spent before paid balance, expire, are audited, and keep cost attribution exact. DoD CONFIRMED. **Next: PARITY-09 — in-app interactive API reference.**
+
+## PARITY-09 — In-Dashboard Interactive API Reference — 2026-07-14 — ✅ DONE — ⚡ SONNET
+Model: Opus. Branch `parity/09-api-reference`. COMPETITOR delta #9. An in-app API reference: every public endpoint documented with copy-ready curl (base URL + a key the user pastes) and a guarded live "Try it" — so developers integrate without leaving the app.
+
+Done (DONE):
+- **Single source of truth** — extended the existing `packages/shared/public-api.ts` `OPERATIONS` list (already the source for `/v1/openapi.json`) into a richer `ApiOperation` (group, params, bodyExample) so the served spec AND the in-dashboard reference are generated from one place and can't drift. `buildOpenApiSpec` now also emits `parameters` + `requestBody` examples.
+- **Reference model + pure curl builder** (shared): `apiReferenceGroups()` (grouped, ordered), `apiOperations()`, and `buildCurl({baseUrl, apiKey?, method, path, query?, body?})` — pure + web-safe, drops empty query values, and uses a `$VOCALIQ_API_KEY` placeholder when no key is given (never bakes a secret into shipped HTML — self-audit C).
+- **Web** `/dashboard/developers/api` — key input (type=password, component-state only, never persisted), base URL shown, endpoints grouped (Identity/Agents/Calls/Leads/Analytics/Automation) with method badge + path + scope + param docs, an editable JSON body for POSTs, a copy-curl block, and a **guarded live "Try it"** that fetches the real API with the pasted Bearer key and renders the status + JSON. Linked from the developers page. Auth + scope + rate-limit are enforced server-side by the public API itself.
+- **Spec-in-sync tests** — shared `public-api.test.ts` (+5: groups cover every op, every op is in the spec, parity endpoints present, curl GET/POST/placeholder+query); api `v1.routes.test.ts` (new) parses `v1.routes.ts` for every mounted `r.get/post('/x')` and asserts each has an OpenAPI entry — so adding a route without documenting it fails CI.
+
+Verification: **typecheck 12/12**, **lint 12/12**, shared `public-api` **10/10**, api sync test **1/1**, **full api suite 494/494** (2× consecutive green; a `disclosure.service.test` flake observed once is a *pre-existing* cross-file race on the shared C1 `tenant.settings` — unrelated to this change, which touches no settings/disclosure code — and passed on re-run). No admin creds needed.
+
+## Self-Audit — PARITY-09 (A–K)
+A. Correctness: ✅ — reference is generated from the same `OPERATIONS` as the served spec; the sync test fails if a mounted route is undocumented; buildCurl output verified (GET/POST/query/placeholder).
+B. Isolation: n/a data-path — the "Try it" call carries the user's API key, which the public API resolves to its own tenant (RLS) server-side; the reference page renders static shared metadata only.
+C. Security: ✅ — no secret embedded in shipped HTML; the key is user-pasted, `type=password`, `autoComplete=off`, kept only in component state, never persisted/logged; curl uses a `$VOCALIQ_API_KEY` placeholder when empty; live calls are auth+scope+rate-limit-gated by the API itself.
+D. Cost: ✅ — a "Try it" is a normal metered/rate-limited public-API call; no new unmetered path.
+E. Errors/obs: ✅ — fetch wrapped (network/CORS → inline error); non-JSON responses shown raw; the HTTP status is surfaced (colour-coded).
+F. Performance: ✅ — reference is static client render; one fetch per "Try it".
+G. Error handling: ✅ — invalid JSON body falls back to the example for curl; empty key disables "Try it".
+H. UI/AA: ✅ — labelled key input, keyboard-operable, method/scope pills, copy affordance with feedback, responsive; token-driven, reduced-motion-safe.
+I. Regressions: ✅ — additive; `buildOpenApiSpec` output stays a superset (added tags/parameters/requestBody); existing public-api tests still pass.
+J. Quality/docs: ✅ — doc comments on the operation source-of-truth, buildCurl security posture, and the sync-test rationale; BUILD-LOG notes the pre-existing disclosure flake.
+K. Build/CI: ✅ — typecheck/lint green; full api suite 494/494.
+
+PARITY-09 complete — developers get an in-dashboard interactive API reference (grouped endpoints, copy-ready curl, guarded live "Try it") that stays in sync with the routes via a CI test. DoD CONFIRMED. **Next: PARITY-10 — enhancements batch.**
