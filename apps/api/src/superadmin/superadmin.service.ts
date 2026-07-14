@@ -24,6 +24,10 @@ import type { PrismaService } from '../db/prisma.service';
  *  dependency; defaults to 0 (unknown → treated as no visible backlog, surfaced as such). */
 export type QueueDepthProbe = () => Promise<number>;
 
+/** Prisma P2003 = a foreign-key constraint violation (e.g. a referenced tenant no longer exists). */
+const isForeignKeyViolation = (err: unknown): boolean =>
+  typeof err === 'object' && err !== null && (err as { code?: string }).code === 'P2003';
+
 export interface TenantListRow {
   id: string;
   name: string;
@@ -277,8 +281,10 @@ export class SuperAdminService {
   /**
    * Resolve an announcement audience to concrete tenant ids (owner client — the platform sees the
    * whole tree). The platform tenant itself is always excluded; only ACTIVE/TRIAL tenants are targeted.
+   * Public so the composer can preview reach and so audience resolution stays unit-testable without
+   * doing a broad fan-out.
    */
-  private async resolveAudience(audience: AnnouncementAudience): Promise<string[]> {
+  async resolveAudienceTenantIds(audience: AnnouncementAudience): Promise<string[]> {
     const liveStatuses: TenantStatus[] = ['ACTIVE', 'TRIAL'];
     if (audience.scope === 'tenants') return audience.tenantIds;
 
@@ -314,26 +320,47 @@ export class SuperAdminService {
     actorTenantId: string,
     input: AnnouncementInput,
   ): Promise<{ sent: number }> {
-    const tenantIds = await this.resolveAudience(input.audience);
-    if (tenantIds.length > 0) {
-      await this.db.admin.notification.createMany({
-        data: tenantIds.map((tenantId) => ({
-          tenantId,
-          channel: 'broadcast',
-          payload: {
-            type: 'broadcast',
-            severity: input.severity,
-            message: input.message,
-          } as object,
-        })),
-      });
-    }
+    const tenantIds = await this.resolveAudienceTenantIds(input.audience);
+    const sent = await this.fanOutBroadcast(tenantIds, input);
     await this.audit(actorTenantId, actorUserId, 'superadmin.announcement.sent', null, {
       audience: input.audience,
       severity: input.severity,
-      sent: tenantIds.length,
+      sent,
     });
-    return { sent: tenantIds.length };
+    return { sent };
+  }
+
+  /**
+   * Fan a broadcast out to the resolved tenants (one Notification each). Resilient to a target tenant
+   * that is hard-deleted between resolve and insert: a broad broadcast must not fail because a single
+   * target vanished, so on a foreign-key violation we re-filter to still-existing tenants and retry
+   * once. Returns the number of notifications actually written (what the audit records).
+   */
+  private async fanOutBroadcast(tenantIds: string[], input: AnnouncementInput): Promise<number> {
+    if (tenantIds.length === 0) return 0;
+    const rows = (ids: string[]) =>
+      ids.map((tenantId) => ({
+        tenantId,
+        channel: 'broadcast',
+        payload: {
+          type: 'broadcast',
+          severity: input.severity,
+          message: input.message,
+        } as object,
+      }));
+    try {
+      await this.db.admin.notification.createMany({ data: rows(tenantIds) });
+      return tenantIds.length;
+    } catch (err) {
+      if (!isForeignKeyViolation(err)) throw err;
+      const alive = await this.db.admin.tenant.findMany({
+        where: { id: { in: tenantIds } },
+        select: { id: true },
+      });
+      if (alive.length === 0) return 0;
+      await this.db.admin.notification.createMany({ data: rows(alive.map((t) => t.id)) });
+      return alive.length;
+    }
   }
 
   private async audit(

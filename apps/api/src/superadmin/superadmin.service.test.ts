@@ -132,20 +132,14 @@ describe('SuperAdminService.broadcastAnnouncement (targeted + audited)', () => {
     expect(audits.some((a) => a.action === 'superadmin.announcement.sent')).toBe(true);
   });
 
-  it('resolves the "customers" audience to real customer tenants (includes the seed customer)', async () => {
-    // Uses the OUTSIDER (a CUSTOMER) so we can assert resolution without asserting on shared C1 state.
-    const res = await svc.broadcastAnnouncement(SUPER_ADMIN, PLATFORM, {
-      audience: { scope: 'customers' },
-      message: 'New feature available',
-      severity: 'info',
-    });
-    expect(res.sent).toBeGreaterThanOrEqual(1);
-    const notif = await db.admin.notification.findFirst({
-      where: { tenantId: OUTSIDER_TENANT, channel: 'broadcast' },
-    });
-    expect(notif).toBeTruthy();
-    // Clean the broadcast notifications this test created on the shared seed customer.
-    await db.admin.notification.deleteMany({ where: { tenantId: C1, channel: 'broadcast' } });
+  it('resolves the "customers" audience to CUSTOMER tenants and excludes PLATFORM', async () => {
+    // Assert audience RESOLUTION (a SELECT) rather than a broad fan-out: the full suite churns other
+    // suites' customer tenants in parallel, so inserting for the global customers set would race a
+    // concurrent tenant delete (FK). OUTSIDER is a CUSTOMER (TRIAL) owned by this suite, so it is a
+    // deterministic member; PLATFORM must never be targeted.
+    const ids = await svc.resolveAudienceTenantIds({ scope: 'customers' });
+    expect(ids).toContain(OUTSIDER_TENANT);
+    expect(ids).not.toContain(PLATFORM);
   });
 });
 
