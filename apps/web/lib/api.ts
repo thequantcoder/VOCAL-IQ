@@ -4131,6 +4131,32 @@ export function useDownloadExport() {
     },
   });
 }
+/** Download the historical analytics summary as a server-generated PDF (FOLLOWUP). */
+export function useDownloadAnalyticsPdf() {
+  const { getToken } = useAuth();
+  return useMutation({
+    mutationFn: async (params: { from: string; to: string; agentId?: string }) => {
+      const qs = new URLSearchParams({
+        from: params.from,
+        to: params.to,
+        ...(params.agentId ? { agentId: params.agentId } : {}),
+      });
+      const token = await getToken();
+      const res = await fetch(`${API_URL}/analytics/historical.pdf?${qs.toString()}`, {
+        headers: token ? { authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error('PDF export failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `vocaliq-analytics-${params.from}_${params.to}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    },
+  });
+}
+
 export function useExportSchedules() {
   const { getToken } = useAuth();
   return useQuery({
