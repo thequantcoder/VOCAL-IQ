@@ -168,6 +168,45 @@ describe('Observability — runs + steps (self-audit A)', () => {
   });
 });
 
+describe('Manual retry of a failed run (FOLLOWUP)', () => {
+  it('starts a FRESH run with the original event and leaves the failed run intact', async () => {
+    // Fire a run, then force it FAILED (as the worker would on an error).
+    const original = await svc.trigger(T1, wfId, { event: 'call_ended', disposition: 'BOOKED' });
+    await db.admin.workflowRun.update({
+      where: { id: original.id },
+      data: { status: 'failed', error: 'boom', finishedAt: new Date() },
+    });
+
+    const before = queue.enqueued.length;
+    const retried = await svc.retryRun(T1, original.id);
+    expect(retried.id).not.toBe(original.id); // a new run
+    expect(retried.status).toBe('running');
+    expect(queue.enqueued).toContain(retried.id); // re-enqueued
+    expect(queue.enqueued.length).toBe(before + 1);
+
+    // The original failed run is untouched (audit trail preserved).
+    const still = await db.admin.workflowRun.findUnique({
+      where: { id: original.id },
+      select: { status: true },
+    });
+    expect(still?.status).toBe('failed');
+  });
+
+  it('refuses to retry a non-failed run', async () => {
+    const running = await svc.trigger(T1, wfId, { event: 'call_ended', disposition: 'BOOKED' });
+    await expect(svc.retryRun(T1, running.id)).rejects.toSatisfy(
+      (e) => isAppError(e) && e.code === 'VALIDATION',
+    );
+  });
+
+  it('cannot retry a foreign tenant’s run (RLS → NotFound)', async () => {
+    const t1Runs = await svc.runsFor(T1, wfId);
+    await expect(svc.retryRun(T2, t1Runs[0]!.id)).rejects.toSatisfy(
+      (e) => isAppError(e) && e.code === 'NOT_FOUND',
+    );
+  });
+});
+
 describe('Isolation (self-audit B)', () => {
   it('a tenant never sees another tenant’s workflows, runs, or steps', async () => {
     // T2 has no workflows.

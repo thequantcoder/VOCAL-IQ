@@ -4173,3 +4173,10 @@ J. Quality/docs: ✅ — SELF-HOSTING.md now covers install/branding/updates/upg
 K. Build/CI: ✅ — typecheck/lint green; shared 727 + api 503; no-secrets guard green.
 
 PARITY-11 complete — self-hosters get a documented install + white-label branding + a safe, read-only "Check for Updates", with a no-secrets release guard. DoD CONFIRMED. **🎉 Competitor-Parity phase COMPLETE — VocalIQ is now a strict superset of IntelliCall AI + AgentLabs AI. Recommend tagging a `v1.1.0` parity release.**
+
+---
+
+## Parity follow-ups (the 3 deferred PARITY-10 items) — 2026-07-15
+
+### FOLLOWUP-1 — Workflow run manual retry — ✅ DONE
+`WorkflowsService.retryRun(tenantId, runId)` — starts a FRESH run of the same workflow using the failed run's original trigger event (from its `context.event`); the failed run + its steps stay intact for the audit trail. RLS-scoped (foreign run → NotFound), only a `failed` run is retryable. Route `POST /workflows/runs/:runId/retry` (config-writers). Web: a "Retry" button on each failed row of the `WorkflowRunsPanel` (restructured so it isn't nested inside the row's toggle button). Tests +3 (fresh run + re-enqueue + original preserved; refuses non-failed; foreign-tenant NotFound). typecheck/lint 12/12; full api suite **506/506**.
