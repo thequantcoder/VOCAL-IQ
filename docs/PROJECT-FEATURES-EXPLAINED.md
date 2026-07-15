@@ -88,7 +88,7 @@
 
 | Feature | Role | Type |
 |---|---|---|
-| analytics + analytics-api | Call dashboards, metrics, trends. | 🏠 Native |
+| analytics + analytics-api | Call dashboards, metrics, weekly trend tiles, CSV + PDF export. | 🏠 Native |
 | intel module | Post-call intelligence — summary, key points nikalna. | 🔀 Hybrid (LLM) |
 | sentiment | Caller ka mood/sentiment analysis. | 🔀 Hybrid (LLM) |
 | qa module | Automatic call quality scoring (rubric-based). | 🔀 Hybrid (LLM) |
@@ -111,8 +111,9 @@
 | messaging module | Multi-channel: WhatsApp, SMS, Telegram, RCS. | 🔌 3rd-party (gated) |
 | Slack connector (parity) | Per-event notifications Slack channel mein. | 🔌 3rd-party |
 | n8n connector (parity) | 400+ apps se connect + ready workflow templates. | 🔌 3rd-party |
-| workflows module | Automation workflow builder/execution. | 🏠 Native |
+| workflows module | Automation workflow builder/execution + run-logs + failed-run retry. | 🏠 Native |
 | automations | Event → action rules (executors). | 🏠 Native |
+| Notification matrix (followup) | Per-tenant event×channel grid — kaunsa event kaunse channel (webhook/Slack) ko notify kare. | 🏠 Native |
 | marketplace | Integrations/automations marketplace. | 🏠 Native |
 | mcp module | Model Context Protocol — external tools agent ko dena. | 🏠 Native (open standard) |
 | avatars | Video avatar (HeyGen/D-ID/Tavus) — gated, voice fallback. | 🔌 3rd-party (gated) |
@@ -230,5 +231,5 @@ Base build (Day 00–95) **poora** hai, aur **Competitor-Parity phase bhi ab com
 | PARITY-10 Campaign retry (enhancements batch) | ✅ merged (#145) |
 | PARITY-11 Self-host installer + update checker | ✅ merged (#146) |
 
-**Tracked follow-ups (PARITY-10, minor):** unified notification matrix, analytics PDF + trend tiles, per-run manual retry.
+**PARITY-10 follow-ups — ✅ all shipped:** workflow failed-run retry (#148), analytics trend tiles + PDF export (#149), unified notification matrix (#150).
 **Live test pending (real keys chahiye):** Twilio, Stripe, SIP, Google Calendar/Sheets, voice biometrics, avatar, messaging channels.
