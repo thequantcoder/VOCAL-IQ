@@ -5,6 +5,7 @@ import { Collapse, m, useMotionLevel } from '@vocaliq/ui/motion';
 import {
   Activity,
   BarChart3,
+  Bell,
   Blocks,
   Bot,
   BrainCircuit,
@@ -150,6 +151,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Settings',
     items: [
       { href: '/dashboard/settings/appearance', label: 'Appearance', icon: Palette },
+      { href: '/dashboard/settings/notifications', label: 'Notifications', icon: Bell },
       { href: '/dashboard/settings/sso', label: 'SSO', icon: ShieldCheck },
       { href: '/dashboard/settings/compliance', label: 'Compliance', icon: ShieldAlert },
       { href: '/dashboard/settings/biometrics', label: 'Voice biometrics', icon: Fingerprint },

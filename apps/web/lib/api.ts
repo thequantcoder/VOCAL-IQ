@@ -4802,6 +4802,30 @@ export function useTestSlack() {
   });
 }
 
+// ── Notification preferences matrix (FOLLOWUP) ──────────────────────────────────
+export type NotificationPrefs = Record<string, boolean>;
+
+export function useNotificationPrefs() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['notification-prefs'],
+    queryFn: () => apiFetch<NotificationPrefs>(getToken, '/notifications/preferences'),
+  });
+}
+
+export function useSetNotificationPrefs() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (prefs: NotificationPrefs) =>
+      apiFetch<NotificationPrefs>(getToken, '/notifications/preferences', {
+        method: 'PUT',
+        body: JSON.stringify(prefs),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notification-prefs'] }),
+  });
+}
+
 // ── Broadcast announcements (PARITY-07) ──────────────────────────────────────
 export type AnnouncementAudienceInput =
   | { scope: 'all' }

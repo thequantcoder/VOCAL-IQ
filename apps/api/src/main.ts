@@ -60,6 +60,7 @@ import {
   whatsappWebhookHandler,
 } from './messaging/messaging.routes';
 import { customModelsRoutes } from './models/custom-models.routes';
+import { notificationPrefsRoutes } from './notifications/notification-prefs.routes';
 import { numbersRoutes } from './numbers/numbers.routes';
 import { initSentry, shutdownObservability } from './observability';
 import { opsRoutes } from './ops/ops.routes';
@@ -188,6 +189,7 @@ function bootstrap(): void {
   app.use('/api-keys', apiKeyRoutes(s.apiKeys, s.tenants));
   app.use('/webhooks', webhookRoutes(s.webhooks, s.tenants));
   app.use('/slack', slackRoutes(s.slack, s.tenants));
+  app.use('/notifications', notificationPrefsRoutes(s.notificationPrefs, s.tenants));
   app.use('/ops', opsRoutes(s.opsToolkit, s.tenants));
   app.use('/numbers', numbersRoutes(s.numbers, s.tenants));
   app.use('/reseller', resellerRoutes(s.reseller, s.tenants));
