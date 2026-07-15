@@ -1,4 +1,9 @@
-import { SLACK_EVENTS, type SlackEvent, buildTranslationPrompt } from '@vocaliq/shared';
+import {
+  SLACK_EVENTS,
+  type SlackEvent,
+  buildTranslationPrompt,
+  isNotificationEnabled,
+} from '@vocaliq/shared';
 import { AbuseService } from './abuse/abuse.service';
 import { AgentsService } from './agents/agents.service';
 import { AnalyticsApiService } from './analytics-api/analytics-api.service';
@@ -63,6 +68,7 @@ import { MemoryService } from './memory/memory.service';
 import { MessagingService } from './messaging/messaging.service';
 import { buildSenders } from './messaging/senders';
 import { CustomModelsService, buildFineTuneProvider } from './models/custom-models.service';
+import { NotificationPrefsService } from './notifications/notification-prefs.service';
 import { NumbersService } from './numbers/numbers.service';
 import { OpsService } from './ops/ops.service';
 import {
@@ -131,9 +137,18 @@ export function createServices() {
   // registered webhooks AND Slack notifications — both best-effort (never breaks the operation).
   const webhooks = new WebhookService(db);
   const slack = new SlackService(db);
+  const notificationPrefs = new NotificationPrefsService(db);
   const emitDomainEvent: WebhookEmitter = async (tid, event, payload) => {
-    const tasks: Promise<unknown>[] = [webhooks.deliver(tid, event, payload)];
-    if ((SLACK_EVENTS as readonly string[]).includes(event)) {
+    // The per-tenant notification matrix gates each channel (default ON; fail-open if the read fails).
+    const prefs = await notificationPrefs.getPrefs(tid).catch(() => ({}));
+    const tasks: Promise<unknown>[] = [];
+    if (isNotificationEnabled(prefs, event, 'webhook')) {
+      tasks.push(webhooks.deliver(tid, event, payload));
+    }
+    if (
+      (SLACK_EVENTS as readonly string[]).includes(event) &&
+      isNotificationEnabled(prefs, event, 'slack')
+    ) {
       tasks.push(slack.notify(tid, event as SlackEvent, payload));
     }
     await Promise.allSettled(tasks);
@@ -340,6 +355,7 @@ export function createServices() {
     apiKeys,
     webhooks,
     slack,
+    notificationPrefs,
     opsToolkit,
     numbers,
     reseller,

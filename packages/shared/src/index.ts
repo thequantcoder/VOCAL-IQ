@@ -9,6 +9,7 @@ export * from './biometrics.js';
 export * from './phase6-features.js';
 export * from './coaching.js';
 export * from './analytics-trend.js';
+export * from './notification-prefs.js';
 export * from './constants.js';
 export * from './conversation-intel.js';
 export * from './copilot.js';
