@@ -1,8 +1,9 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@vocaliq/ui';
+import { windowedTrend } from '@vocaliq/shared';
+import { Button, Card, CardContent, CardHeader, CardTitle } from '@vocaliq/ui';
 import { AreaTrend, DonutBreakdown, SentimentRibbon, StatCard } from '@vocaliq/ui/charts';
-import { Activity, AlertTriangle, BarChart3 } from 'lucide-react';
+import { Activity, AlertTriangle, BarChart3, FileDown } from 'lucide-react';
 import { type ReactNode, useMemo, useState } from 'react';
 import { RatioBar } from '../../../components/charts';
 import { EmptyState, ErrorState, LoadingCard } from '../../../components/states';
@@ -13,6 +14,7 @@ import {
   type LiveSnapshot,
   useAgents,
   useBudget,
+  useDownloadAnalyticsPdf,
   useHistoricalAnalytics,
   useLiveAnalytics,
 } from '../../../lib/api';
@@ -39,6 +41,7 @@ export default function AnalyticsPage() {
   const agents = useAgents();
   const live = useLiveAnalytics();
   const budget = useBudget();
+  const pdf = useDownloadAnalyticsPdf();
   // `to` is inclusive in the UI; the API range is [from, to), so push the end out a day.
   const toExclusive = useMemo(() => daysAgoPlus(to), [to]);
   const historical = useHistoricalAnalytics({
@@ -98,6 +101,17 @@ export default function AnalyticsPage() {
             ))}
           </select>
         </Field>
+        <div className="ml-auto">
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={pdf.isPending}
+            disabled={!historical.data || historical.data.totalCalls === 0}
+            onClick={() => pdf.mutate({ from, to: toExclusive, ...(agentId ? { agentId } : {}) })}
+          >
+            <FileDown size={14} /> PDF
+          </Button>
+        </div>
       </div>
 
       {historical.isLoading ? (
@@ -178,6 +192,42 @@ function BudgetBanner({ budget }: { budget: BudgetStatus }) {
   );
 }
 
+/** Weekly trend tiles: last-7-days total + the delta vs the prior 7 days (FOLLOWUP). */
+function TrendTiles({ data }: { data: HistoricalAnalytics }) {
+  const tiles = [
+    {
+      label: 'Calls · last 7d',
+      t: windowedTrend(data.callsByDay, 7),
+      fmt: (n: number) => String(Math.round(n)),
+    },
+    { label: 'Cost · last 7d', t: windowedTrend(data.costByDay, 7), fmt: formatUsd },
+  ];
+  if (tiles.every((x) => x.t.recent === 0)) return null;
+
+  return (
+    <section className="grid gap-3 sm:grid-cols-2">
+      {tiles.map((x) => (
+        <div
+          key={x.label}
+          className="flex flex-col gap-1 rounded-vq-card border border-vq-border bg-vq-bg-elevated px-4 py-3"
+        >
+          <span className="text-vq-text-lo text-xs">{x.label}</span>
+          <div className="flex items-baseline gap-2">
+            <span className="font-display font-semibold text-2xl text-vq-text-hi">
+              {x.fmt(x.t.recent)}
+            </span>
+            {x.t.deltaPct !== null && (
+              <span className="text-vq-text-lo text-xs">
+                {x.t.deltaPct >= 0 ? '▲' : '▼'} {Math.abs(x.t.deltaPct)}% vs prior 7d
+              </span>
+            )}
+          </div>
+        </div>
+      ))}
+    </section>
+  );
+}
+
 function Historical({ data }: { data: HistoricalAnalytics }) {
   const outcomes = Object.entries(data.outcomes)
     .map(([label, value]) => ({ label, value }))
@@ -210,6 +260,8 @@ function Historical({ data }: { data: HistoricalAnalytics }) {
           sentiment={data.dropOffRate <= 0.15 ? 'good' : 'bad'}
         />
       </section>
+
+      <TrendTiles data={data} />
 
       <div className="grid gap-4 md:grid-cols-2">
         <ChartCard title="Calls per day">
