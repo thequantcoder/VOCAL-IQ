@@ -103,6 +103,15 @@ export function workflowsRoutes(workflows: WorkflowsService, tenants: TenantServ
     ),
   );
 
+  // Manually retry a FAILED run (starts a fresh run with the original event; the failed run stays).
+  r.post(
+    '/runs/:runId/retry',
+    requireRoles(...CONFIG_WRITERS),
+    ah(async (req, res) =>
+      res.status(201).json(await workflows.retryRun(req.ctx!.tenantId, req.params.runId as string)),
+    ),
+  );
+
   // ── firing ────────────────────────────────────────────────────────────────────
   r.post(
     '/:id/trigger',

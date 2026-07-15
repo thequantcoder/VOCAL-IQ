@@ -3972,6 +3972,17 @@ export function useTriggerWorkflow(id: string) {
   });
 }
 
+/** Retry a FAILED run — starts a fresh run with the original event (FOLLOWUP). */
+export function useRetryWorkflowRun(workflowId: string) {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (runId: string) =>
+      apiFetch<WorkflowRun>(getToken, `/workflows/runs/${runId}/retry`, { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['workflow-runs', workflowId] }),
+  });
+}
+
 // ── Analytics benchmarking (Day 86) ───────────────────────────────────────────
 
 export interface BenchmarkSettings {

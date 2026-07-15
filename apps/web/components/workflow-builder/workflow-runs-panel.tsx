@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useWorkflowRuns, useWorkflowSteps } from '../../lib/api';
+import { useRetryWorkflowRun, useWorkflowRuns, useWorkflowSteps } from '../../lib/api';
 
 const RUN_COLOR: Record<string, string> = {
   running: 'text-vq-cyan',
@@ -20,6 +20,7 @@ const STEP_COLOR: Record<string, string> = {
 /** Run history + per-step logs for a workflow (observability — self-audit F). */
 export function WorkflowRunsPanel({ workflowId }: { workflowId: string }) {
   const runs = useWorkflowRuns(workflowId);
+  const retry = useRetryWorkflowRun(workflowId);
   const [openRun, setOpenRun] = useState<string | null>(null);
   const steps = useWorkflowSteps(openRun);
 
@@ -36,19 +37,31 @@ export function WorkflowRunsPanel({ workflowId }: { workflowId: string }) {
         <div className="flex flex-col gap-1">
           {runs.data.map((run) => (
             <div key={run.id} className="flex flex-col">
-              <button
-                type="button"
-                className="flex items-center justify-between gap-2 rounded-vq px-1 py-1 text-left text-xs hover:bg-vq-bg-base"
-                onClick={() => setOpenRun((cur) => (cur === run.id ? null : run.id))}
-              >
-                <span className={RUN_COLOR[run.status] ?? 'text-vq-text-lo'}>
-                  ● {run.status}
-                  {run.error ? ` — ${run.error}` : ''}
-                </span>
-                <span className="text-vq-text-lo">
-                  {run.stepCount} steps · {new Date(run.startedAt).toLocaleTimeString()}
-                </span>
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  className="flex flex-1 items-center justify-between gap-2 rounded-vq px-1 py-1 text-left text-xs hover:bg-vq-bg-base"
+                  onClick={() => setOpenRun((cur) => (cur === run.id ? null : run.id))}
+                >
+                  <span className={RUN_COLOR[run.status] ?? 'text-vq-text-lo'}>
+                    ● {run.status}
+                    {run.error ? ` — ${run.error}` : ''}
+                  </span>
+                  <span className="text-vq-text-lo">
+                    {run.stepCount} steps · {new Date(run.startedAt).toLocaleTimeString()}
+                  </span>
+                </button>
+                {run.status === 'failed' && (
+                  <button
+                    type="button"
+                    disabled={retry.isPending}
+                    onClick={() => retry.mutate(run.id)}
+                    className="shrink-0 rounded-vq px-1.5 py-1 text-vq-cyan text-xs hover:bg-vq-bg-base disabled:opacity-50"
+                  >
+                    Retry
+                  </button>
+                )}
+              </div>
               {openRun === run.id && (
                 <div className="ml-3 flex flex-col gap-0.5 border-vq-border border-l py-1 pl-2">
                   {steps.isLoading ? (

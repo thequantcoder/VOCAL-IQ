@@ -227,6 +227,25 @@ export class WorkflowsService {
     return { matched: runIds.length, runIds };
   }
 
+  /**
+   * Manually retry a FAILED run: start a FRESH run of the same workflow with the run's original
+   * trigger event (the failed run + its steps are left intact for the audit trail). RLS-scoped, so a
+   * foreign run yields NotFound. Only a `failed` run can be retried.
+   */
+  async retryRun(tenantId: string, runId: string) {
+    const failed = await this.db.withTenant(tenantId, (tx) =>
+      tx.workflowRun.findFirst({
+        where: { id: runId },
+        select: { id: true, workflowId: true, status: true, context: true },
+      }),
+    );
+    if (!failed) throw new NotFoundError('Run not found');
+    if (failed.status !== 'failed') throw new ValidationError('Only a failed run can be retried');
+    const event = (failed.context as { event?: WorkflowDispatchEvent } | null)?.event;
+    if (!event) throw new ValidationError('This run has no recorded trigger event to retry');
+    return this.startRun(tenantId, failed.workflowId, event);
+  }
+
   /** Create the run row (status running) + enqueue it for the worker. */
   private async startRun(tenantId: string, workflowId: string, event: WorkflowDispatchEvent) {
     const run = await this.db.withTenant(tenantId, (tx) =>
