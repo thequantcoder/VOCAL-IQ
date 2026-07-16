@@ -15,6 +15,15 @@ export { DeepgramSTT } from './adapters/deepgram.js';
 export { TwilioTelephony, TwilioNumberProvisioner } from './adapters/twilio.js';
 export { TelnyxTelephony, TelnyxNumberProvisioner } from './adapters/telnyx.js';
 export { PlivoTelephony, PlivoNumberProvisioner } from './adapters/plivo.js';
+export {
+  WhatsAppCallingTelephony,
+  whatsappErrorCode,
+  WHATSAPP_NO_PERMISSION_CODE,
+  WHATSAPP_GRAPH_VERSION,
+  type WaCallPermission,
+  type WaPlaceCallInput,
+  type WaSession,
+} from './adapters/whatsapp-calling.js';
 export { OpenRouterLLM } from './adapters/openrouter.js';
 export { LiveKitMedia } from './adapters/livekit.js';
 
