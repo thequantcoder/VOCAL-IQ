@@ -15,7 +15,13 @@ const T = '00000000-0000-0000-0000-0000ff30a001';
 beforeAll(async () => {
   await db.admin.tenant.upsert({
     where: { id: T },
-    create: { id: T, type: 'CUSTOMER', name: 'wac-settings', slug: `wac-settings-${Date.now()}`, parentTenantId: PLATFORM },
+    create: {
+      id: T,
+      type: 'CUSTOMER',
+      name: 'wac-settings',
+      slug: `wac-settings-${Date.now()}`,
+      parentTenantId: PLATFORM,
+    },
     update: {},
   });
 });
@@ -52,7 +58,10 @@ describe('WhatsAppCallSettingsService', () => {
     expect(got.hours.timezone).toBe('America/New_York');
 
     const t = await db.admin.tenant.findUnique({ where: { id: T }, select: { settings: true } });
-    const s = t?.settings as { slack?: { webhookUrl?: string }; whatsappCalling?: { enabled?: boolean } };
+    const s = t?.settings as {
+      slack?: { webhookUrl?: string };
+      whatsappCalling?: { enabled?: boolean };
+    };
     expect(s.slack?.webhookUrl).toBe('https://hooks.slack.com/x'); // preserved
     expect(s.whatsappCalling?.enabled).toBe(true);
   });
