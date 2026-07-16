@@ -4230,3 +4230,32 @@ J. Quality/docs: ✅ — doc comments + plan §refs on every method; pricing PLA
 K. Build/CI: ✅ — typecheck/lint 12/12; provider-router + shared suites green.
 
 WAC-01 complete — WhatsApp is a router-level calling carrier (config, not code, to use). **Next: WAC-02 — the Meta `calls` webhook + signaling service** (offline-buildable; live verification waits on the WAC-00 test creds).
+
+### WAC-02 — Meta `calls` webhook + call-signaling service — 2026-07-16 — ✅ DONE — 🧠 OPUS
+Model: Opus. Branch `wac/02-webhook-signaling`. The WhatsApp calling **control plane**: receive Meta's calling webhooks on the existing HMAC-verified WABA seam, tenant-scope them, drive the inbound handshake via the WAC-01 adapter, and persist the lifecycle — idempotent by WACID, RLS-scoped, no media (that's WAC-03).
+
+**Design decision (deviation from the WAC-02 super-prompt, per §13):** instead of adding WhatsApp fields onto `Call` (whose `agentId` is REQUIRED, but the `connect` webhook fires BEFORE agent routing / WAC-04), a dedicated **`WhatsAppCall`** lifecycle model tracks the WhatsApp-specific state + payloads and will link to the unified `Call` (with agent/transcript/cost) once the agent answers in WAC-04. Cleaner + doesn't touch the required `Call.agentId`.
+
+Done (DONE):
+- **db** migration `20260716010000_whatsapp_calls` — `CallChannel` gains `WHATSAPP` (shared const + Prisma enum kept in sync, like Provider in WAC-01); new `WhatsAppCall` (waCallId, direction, status, from/to, waUserId, ctaPayload/deeplinkPayload, permissionStatus, callId→Call, errorCode, timings) + `WhatsAppCallEvent` (append-only webhook audit) — both with `tenant_isolation` RLS + Tenant back-relations.
+- **`WhatsAppCallingService`** (`apps/api/src/whatsapp-calling/`) — `onConnect` (idempotent upsert `connecting` + audit; inbound: ask the injected `WaMediaControl` for an SDP answer → adapter `preAccept`+`accept` → `accepted`; **gated** to `connecting` when media/creds absent), `onStatus`, `onTerminate` (status/duration/error + media teardown), `onPermissionReply`, `onAccountEvent` (settings/restriction), operator `reject`/`terminate`. Adapter + media are **injected** (`WaAdapterResolver`, `WaMediaControl`) → offline-testable; `PendingWaMediaControl` is the WAC-02 media stub.
+- **Webhook dispatch** (`whatsapp-calling.webhooks.ts`) — parses `field:"calls"` connect/terminate, call-type `statuses`, `call_permission_reply` interactives, and `account_settings_update`/`account_update`, mapping to the service. Wired into the **existing** `whatsappWebhookHandler` (extra optional param) AFTER the messaging loop, **best-effort** (never fails the 200 to Meta); reuses `verifyMetaSignature` + the URL `:tenantId` (no cross-tenant lookup).
+- **Composition + main** — `WhatsAppCallingService` built with an env-managed adapter resolver (null → gated) + `PendingWaMediaControl`; passed to both WhatsApp webhook routes.
+- **Tests** (`whatsapp-calling.service.test.ts`, real-DB + RLS, 4): gated connect → `connecting` + **idempotent by WACID** (replay → 1 row, 2 audit events) + `cta_payload` captured; media-present → adapter `preAccept`/`accept` + `accepted`; terminate → status/duration/`endedAt`; **tenant isolation** (a sibling tenant sees none under RLS).
+
+Verification: **typecheck 12/12, lint 12/12, full api suite 514/514** (+4). Applied the migration to local Postgres (5434) + regenerated the client. (Live webhook verification waits on the WAC-00 test creds + tunnel — the code is gated + offline-proven.)
+
+## Self-Audit — WAC-02 (A–K)
+A. Correctness: ✅ — connect/terminate/status/permission/settings parsed to the plan §A.3–A.6 shapes; idempotent upsert by WACID (tested); accept only when a media answer + adapter exist.
+B. Isolation: ✅ — tenant from the webhook URL; every read/write via `withTenant` (RLS); new tables `tenant_isolation`; a sibling tenant sees no WhatsApp calls (tested).
+C. Security: ✅ — reuses `verifyMetaSignature` (HMAC fail-closed) on the shared seam; SDP/payloads treated as untrusted; no token/SDP logged; dispatch is best-effort + never leaks internals.
+D. Cost: n/a this slice — metering is WAC-06 (the lifecycle + duration are persisted here for it).
+E. Errors/obs: ✅ — dispatch `.catch(()=>{})` so a calling-parse error never fails the messaging 200; every webhook audited to `WhatsAppCallEvent`; gated path is explicit.
+F. Performance: ✅ — one upsert + one insert per event; indexed by `(tenantId, waCallId)`.
+G. Error handling: ✅ — media/adapter absence → `connecting` (no crash); malformed payload skipped (missing `id` → continue).
+H. UI/AA: n/a — control plane (UI is WAC-04/07).
+I. Regressions: ✅ — additive; the tricky `CallChannel` enum synced across shared + Prisma + migration; messaging handler extension is a best-effort tail call (message/status handling unchanged); full suite green.
+J. Quality/docs: ✅ — doc comments + plan §refs; the `WhatsAppCall`-vs-`Call` design decision recorded here (§13).
+K. Build/CI: ✅ — typecheck/lint 12/12; api 514/514.
+
+WAC-02 complete — the WhatsApp calling control plane receives + drives + persists the call lifecycle (media stubbed). **Next: WAC-03 — the voice-service WebRTC media bridge** (the SDP answer that turns `connecting` into a live AI conversation).

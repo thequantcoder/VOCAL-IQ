@@ -119,6 +119,7 @@ export const CallChannel = {
   PSTN: 'PSTN',
   WEB: 'WEB',
   SIP: 'SIP',
+  WHATSAPP: 'WHATSAPP',
 } as const;
 export type CallChannel = (typeof CallChannel)[keyof typeof CallChannel];
 
