@@ -106,6 +106,7 @@ import { VoicesService, elevenLabsCloner } from './voices/voices.service';
 import { WalletService } from './wallet/wallet.service';
 import type { WebhookEmitter } from './webhooks/webhook-emitter';
 import { WebhookService } from './webhooks/webhook.service';
+import { WhatsAppCallSettingsService } from './whatsapp-calling/whatsapp-call-settings.service';
 import {
   type WaAdapterResolver,
   WhatsAppCallingService,
@@ -230,6 +231,7 @@ export function createServices() {
     waCallingAdapterFor,
     new PendingWaMediaControl(),
   );
+  const whatsappCallSettings = new WhatsAppCallSettingsService(db, waCallingAdapterFor);
   // Cross-channel automations reuse the messaging + integration subsystems as action executors.
   const automations = new AutomationsService(
     db,
@@ -393,6 +395,7 @@ export function createServices() {
     mcp,
     messaging,
     whatsappCalling,
+    whatsappCallSettings,
     automations,
     sip,
     experiments,

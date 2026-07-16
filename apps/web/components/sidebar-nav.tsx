@@ -35,6 +35,7 @@ import {
   Mic,
   Palette,
   PhoneCall,
+  PhoneIncoming,
   PhoneOutgoing,
   Plug,
   Search,
@@ -152,6 +153,11 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/dashboard/settings/appearance', label: 'Appearance', icon: Palette },
       { href: '/dashboard/settings/notifications', label: 'Notifications', icon: Bell },
+      {
+        href: '/dashboard/settings/whatsapp-calling',
+        label: 'WhatsApp Calling',
+        icon: PhoneIncoming,
+      },
       { href: '/dashboard/settings/sso', label: 'SSO', icon: ShieldCheck },
       { href: '/dashboard/settings/compliance', label: 'Compliance', icon: ShieldAlert },
       { href: '/dashboard/settings/biometrics', label: 'Voice biometrics', icon: Fingerprint },

@@ -89,6 +89,7 @@ import { vaultRoutes } from './vault/vault.routes';
 import { voicesRoutes } from './voices/voices.routes';
 import { walletRoutes } from './wallet/wallet.routes';
 import { webhookRoutes } from './webhooks/webhook.routes';
+import { whatsAppCallingRoutes } from './whatsapp-calling/whatsapp-calling.routes';
 import { whitelabelResolveHandler, whitelabelRoutes } from './whitelabel/whitelabel.routes';
 import { widgetRoutes } from './widget/widget.routes';
 import { workflowsRoutes } from './workflows/workflows.routes';
@@ -193,6 +194,7 @@ function bootstrap(): void {
   app.use('/webhooks', webhookRoutes(s.webhooks, s.tenants));
   app.use('/slack', slackRoutes(s.slack, s.tenants));
   app.use('/notifications', notificationPrefsRoutes(s.notificationPrefs, s.tenants));
+  app.use('/whatsapp-calling', whatsAppCallingRoutes(s.whatsappCallSettings, s.tenants));
   app.use('/ops', opsRoutes(s.opsToolkit, s.tenants));
   app.use('/numbers', numbersRoutes(s.numbers, s.tenants));
   app.use('/reseller', resellerRoutes(s.reseller, s.tenants));

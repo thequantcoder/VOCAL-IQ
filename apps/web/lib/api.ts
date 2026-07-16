@@ -8,6 +8,7 @@ import type {
   NumberBuyInput,
   NumberSearchInput,
   OwnedNumberDto,
+  WhatsappCallSettings,
 } from '@vocaliq/shared';
 import { messageFromError } from './api-error';
 import { useAuth } from './auth';
@@ -4823,6 +4824,29 @@ export function useSetNotificationPrefs() {
         body: JSON.stringify(prefs),
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['notification-prefs'] }),
+  });
+}
+
+// ── WhatsApp Business Calling — settings (WAC-05) ────────────────────────────────
+
+export function useWhatsappCallSettings() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['whatsapp-call-settings'],
+    queryFn: () => apiFetch<WhatsappCallSettings>(getToken, '/whatsapp-calling/settings'),
+  });
+}
+
+export function useSaveWhatsappCallSettings() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (settings: WhatsappCallSettings) =>
+      apiFetch<WhatsappCallSettings>(getToken, '/whatsapp-calling/settings', {
+        method: 'PUT',
+        body: JSON.stringify(settings),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['whatsapp-call-settings'] }),
   });
 }
 
