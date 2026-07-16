@@ -4285,3 +4285,31 @@ J. Quality/docs: ✅ — doc comments + plan §A.7 refs; build-order deviation (
 K. Build/CI: ✅ — web typecheck + biome clean; shared + api suites fully green locally.
 
 WAC-05 complete — tenants can now configure *when/how* their WhatsApp line takes calls, synced to Meta. **Next offline slices: WAC-06 (per-call cost metering) → WAC-07 (calls dashboard + click-to-call link generator).** Gated on the admin's WAC-00 test creds + tunnel: WAC-03 (WebRTC media bridge), WAC-04 (inbound GA).
+
+### WAC-06 — Per-call cost metering + monthly volume tiers for WhatsApp calls — 2026-07-17 — ✅ DONE — 🧠 OPUS
+Model: Opus. Branch `wac/06-cost-metering`. 💰 Money-critical (golden rule #4): attribute the true cost of **every** WhatsApp call — inbound = $0 but logged, outbound = per-country per-minute (6-s pulses, only-if-answered, monthly-volume-tiered) — so no calling path ships unmetered. Offline-buildable: hooks into WAC-02's `onTerminate` (already built) using WAC-01's pricing; live media (WAC-03/04) not required.
+
+**Design decision (deviation from the WAC-06 super-prompt, §13):** the super-prompt sketched a per-call `wallet.chargeCall(...)` debit. But the ACTUAL codebase meters **calls** to `UsageRecord` (via the router's `UsageMeter`) and does **not** per-call debit the wallet — `chargeCall` is wired only by **outcome** billing; call cost + reseller margin + invoicing roll up from `UsageRecord` (`cost.service.ts` aggregates by provider/capability; `usage-reporter` reports to Stripe). So WhatsApp meters to `UsageRecord` (provider=`WHATSAPP`, capability=`telephony`) exactly like PSTN telephony — consistent (golden rule #6), and it flows into all existing cost/analytics/reseller views for free. A divergent per-call WhatsApp wallet debit would have been the inconsistency. (Also: WhatsApp calls have no linked `Call` UUID until WAC-04, and `chargeCall` hard-requires one.)
+
+Done (DONE):
+- **db** migration `20260717000000_whatsapp_call_metering` — `WhatsAppCall` gains `costUsd`/`billedCountry`/`billedAt` (the `billedAt` idempotency guard); new **`WhatsAppCallVolume`** (`tenantId`,`period`,`billedSeconds`, unique `(tenantId,period)`) with `tenant_isolation` RLS + Tenant back-relation — the running monthly outbound-seconds total that drives tier0→tier1 selection, resets naturally per calendar month.
+- **provider-router** `whatsappDestinationCountry(e164)` — coarse E.164 dial-code → ISO-2 resolver (longest-prefix, only the rate-carded countries; unmapped/blank → `DEFAULT`) so outbound picks the right per-country band. (Pricing itself — `whatsappCallCostUsd`, pulses, tiers — was WAC-01.)
+- **`WhatsAppCallCostService`** (`implements WaCallMeter`) — `meterTerminated(tenantId, waCallId)`: reads the lifecycle row → **atomically CLAIMS** it (`updateMany where billedAt:null` → now; count 0 ⇒ already/concurrently metered, no-op) → computes direction (USER_INITIATED=inbound $0, else outbound), destination country + this-month tier (volume BEFORE the call), `costUsd` → writes the `UsageRecord` → accrues `WhatsAppCallVolume` (pulse-rounded billed seconds) → stamps `costUsd`/`billedCountry`. All in one `withTenant` tx (RLS + atomic idempotency). `WaCallMeter` seam + `NoopWaCallMeter` keep WAC-02 offline; wired into `WhatsAppCallingService.onTerminate` (defaulted 4th ctor arg) + composition (`new WhatsAppCallCostService(db)`).
+- **Tests** — provider-router `whatsappDestinationCountry` (US/GB/IN/BR/ID + DEFAULT/blank, 2 cases). api `whatsapp-call-cost.service.test.ts` (real DB + RLS, 4, one tenant per scenario so volume can't cross-contaminate): inbound logged at $0 (+ no volume accrual); outbound 56 s→10 pulses→$0.01 + volume=60 s + `billedCountry='US'` + **sibling tenant sees nothing (RLS)**; **replayed Terminate → exactly 1 UsageRecord + volume accrued once**; **tier boundary** (seed volume past the 50k-min band → next call bills tier1 $0.008).
+
+Verification: **full typecheck 12/12 (incl. workers), biome lint clean (api + provider-router), provider-router 52/52, full api suite 521/521** (+4). Migration applied to local Postgres (5434) + client regenerated.
+
+## Self-Audit — WAC-06 (A–K)
+A. Correctness: ✅ — 6-s pulse rounding + only-if-answered (0 s ⇒ $0) + inbound-free + tier-from-prior-volume all unit-tested; `whatsappCallCostUsd` is the WAC-01 pure fn.
+B. Isolation: ✅ — every read/write via `withTenant` (RLS); new `WhatsAppCallVolume` has `tenant_isolation`; sibling-tenant-sees-nothing asserted.
+C. Security: ✅ — no secrets/tokens touched; no PII logged; cost path is pure arithmetic over persisted lifecycle fields.
+D. Cost (focus): ✅ — **no unmetered WhatsApp path** — every terminate writes a `UsageRecord` (inbound $0, outbound metered); pricing/pulse/tier math tested; rolls into existing cost/analytics/reseller rollups (same model as PSTN).
+E. Errors/obs: ✅ — meter runs after the lifecycle row commits, so a failure never loses the terminate; a webhook retry safely re-meters (idempotent) → single record.
+F. Performance: ✅ — one findUnique + one conditional update + (outbound) one volume upsert + one insert; indexed by `(tenantId, waCallId)` / `(tenantId, period)`.
+G. Error handling: ✅ — missing row / already-billed / lost-claim all early-return cleanly; missing duration ⇒ 0 s ⇒ $0 (unanswered outbound not charged).
+H. UI/AA: n/a — backend metering; the cost surfaces in existing dashboards; the dedicated WhatsApp tile is WAC-07.
+I. Regressions: ✅ — additive; `WaCallMeter` defaulted to no-op keeps WAC-02's 4 tests green; schema changes additive; full suite 521/521.
+J. Quality/docs: ✅ — doc comments + the `UsageRecord`-vs-`chargeCall` design decision recorded here (§13).
+K. Build/CI: ✅ — typecheck 12/12; lint clean; provider-router + api suites fully green locally.
+
+WAC-06 complete — every WhatsApp call is cost-attributed (inbound free, outbound per-country pulse+tier metered) through the same `UsageRecord` engine as PSTN. **Next: WAC-07 — the WhatsApp calls dashboard + click-to-call / wa.me deep-link generator** (surfaces these costs + minutes-this-month/tier tile). Gated on WAC-00 creds: WAC-03/04.

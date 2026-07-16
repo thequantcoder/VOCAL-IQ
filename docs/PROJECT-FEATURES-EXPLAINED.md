@@ -48,6 +48,9 @@
 | numbers module | Phone number search/buy/release (Twilio + Telnyx). | 🔀 Hybrid |
 | reputation | Caller ID reputation / STIR-SHAKEN — spam-flag se bachaav. | 🔀 Hybrid |
 | widget | Website pe "call us" web widget (browser se voice call). | 🔀 Hybrid (LiveKit) |
+| WhatsApp Calling — adapter + control plane (WAC-01/02) | WhatsApp par AI agent voice call — Meta ka calling API router-seam ke peeche; webhook lifecycle idempotent + HMAC-verified. | 🔌 3rd-party (Meta, gated) |
+| WhatsApp Calling — settings (WAC-05) | Business hours, call-button visibility, callback permission, voicemail — sab Meta se sync. | 🔀 Hybrid |
+| WhatsApp Calling — cost metering (WAC-06) | Har WhatsApp call ka cost attribute — inbound free, outbound per-country 6-s pulse + monthly tier. | 🏠 Native |
 
 ---
 
