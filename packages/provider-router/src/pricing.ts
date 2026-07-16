@@ -47,6 +47,54 @@ export const TELEPHONY_PRICES: Readonly<Record<string, number>> = {
 };
 
 /**
+ * WhatsApp Business Calling — OUTBOUND USD per minute by DESTINATION country, as `[tier0, tier1]`
+ * where tier1 is the discounted rate for higher monthly volume. **Inbound (user-initiated) is FREE.**
+ * Meta bills only answered calls, in 6-second pulses (rounded up), volume-tiered per calendar month.
+ * ⚠️ PLACEHOLDER starter card — replace with Meta's official quarterly rate card (16 currencies) before
+ * relying on margins (CLAUDE.md §15). Structure + math are correct; only the numbers need Meta's card.
+ */
+export const WHATSAPP_CALL_RATES: Readonly<Record<string, readonly [number, number]>> = {
+  US: [0.01, 0.008],
+  GB: [0.018, 0.015],
+  IN: [0.006, 0.005],
+  BR: [0.012, 0.01],
+  ID: [0.008, 0.006],
+  DEFAULT: [0.015, 0.012],
+};
+
+/** Monthly-volume tier boundary (minutes). Meta uses the LOWER rate once volume crosses the band. */
+export const WHATSAPP_TIER0_MAX_MINUTES = 50_000;
+
+/** Number of billed 6-second pulses for a call of `seconds` (rounded up; 56 s → 10 pulses). */
+export function whatsappCallPulses(seconds: number): number {
+  if (seconds <= 0) return 0;
+  return Math.ceil(seconds / 6);
+}
+
+/** Per-minute WhatsApp rate for a destination country + monthly-minutes tier (tier1 once past the band). */
+export function whatsappCallRatePerMin(country: string, monthlyMinutes = 0): number {
+  const band = WHATSAPP_CALL_RATES[country.toUpperCase()] ?? WHATSAPP_CALL_RATES.DEFAULT;
+  const [tier0, tier1] = band as readonly [number, number];
+  return monthlyMinutes > WHATSAPP_TIER0_MAX_MINUTES ? tier1 : tier0;
+}
+
+/**
+ * WhatsApp call carrier cost in USD. Inbound (user-initiated) is FREE (returns 0). Outbound is billed
+ * in 6-second pulses (round up) at the destination country's per-minute rate for the current monthly
+ * tier. `monthlyMinutes` = the tenant's (or platform's) accrued WhatsApp outbound minutes this month.
+ */
+export function whatsappCallCostUsd(
+  seconds: number,
+  country: string,
+  direction: 'inbound' | 'outbound',
+  monthlyMinutes = 0,
+): number {
+  if (direction === 'inbound' || seconds <= 0) return 0;
+  const billedSeconds = whatsappCallPulses(seconds) * 6;
+  return (billedSeconds / 60) * whatsappCallRatePerMin(country, monthlyMinutes);
+}
+
+/**
  * Resolve a price for a model id, tolerating provider date suffixes
  * (e.g. `gpt-4o-mini-2024-07-18` → `gpt-4o-mini`). Exact match wins; otherwise the
  * LONGEST table key that is a dash-prefix of the model (so `gpt-4o-mini-…` never

@@ -4196,3 +4196,37 @@ A per-tenant **event×channel matrix** that MASTER-gates the domain-event fan-ou
 - **tests**: shared `notification-prefs.test` (+3: default-on, explicit off/on, catalog subset); api `notification-prefs.service.test` (+4: default empty, round-trip, rejects non-boolean, never clobbers the Slack config — uses a DEDICATED tenant to avoid the shared-settings race). typecheck/lint 12/12; shared **738/738**, full api **510/510** (a `disclosure` flake is the pre-existing C1-`settings` cross-suite race — unrelated; this test uses its own tenant — and passed on re-run ×2).
 
 **All 3 PARITY-10 follow-ups are now shipped.** 🎉
+
+---
+
+## WhatsApp (Meta) Business Calling module — build log (WAC-XX)
+
+> Plan: `docs/WHATSAPP-CALLING-AI-ENGINE-PLAN.md`. Super-prompts: `docs/super-prompts/WAC-INDEX.md` + `WAC-00..11`. Golden path = Graph-API + WebRTC, inbound-first.
+> **Admin decision (2026-07-16):** proceed with the recommended defaults (same number · managed+markup · public test number · inbound-first v1 · extend voice service · Graph-API+WebRTC, SIP=WAC-10 optional). **WAC-00 (live sandbox spike) is gated on admin-provided test creds + a tunnel** (🔑 block emitted) — building the offline-buildable slices first (the project's established "build gated, live-test later" discipline).
+
+### WAC-01 — `WhatsAppCallingTelephony` router adapter + pricing — 2026-07-16 — ✅ DONE — 🧠 OPUS
+Model: Opus. Branch `wac/01-router-adapter`. WhatsApp Business Calling now sits behind the provider-router seam exactly like Twilio/Telnyx/Plivo — **all Graph-API/calling specifics in ONE file** (golden rule #2), HTTP-injected + offline-unit-tested, zero live creds.
+
+Done (DONE):
+- **`Provider.WHATSAPP`** added to the shared `Provider` const AND the Prisma `Provider` enum (kept in sync — the shared const feeds `ProviderCredential`; migration `20260716000000_provider_whatsapp` does `ALTER TYPE "Provider" ADD VALUE IF NOT EXISTS 'WHATSAPP' BEFORE 'LIVEKIT'`). This synced the two enums (the workers assign `shared.Provider` → Prisma `$Enums.Provider`, so both must match).
+- **`packages/provider-router/src/adapters/whatsapp-calling.ts`** — `WhatsAppCallingTelephony(accessToken, phoneNumberId, {graphVersion?, http?})` with a Bearer Graph client: signaling `placeCall`(`action=connect`+SDP offer→WACID), `preAccept`/`accept`(SDP answer)/`reject`/`terminate` (`POST /<PNID>/calls`); permissions `sendCallPermissionRequest` (interactive `call_permission_request` or template) + `getCallPermission` (`GET /call_permissions` → typed `{status, expirationTime?, actions[]}`); settings `getSettings`/`updateSettings` (`/settings`). `WHATSAPP_NO_PERMISSION_CODE=138006` mapped onto a thrown `ProviderError` via `waErrorCode` + a `whatsappErrorCode(err)` helper. Errors carry only the Graph error code — **never the token or SDP**.
+- **Pricing** (`pricing.ts`) — `WHATSAPP_CALL_RATES` (per-country `[tier0,tier1]` starter card, clearly marked PLACEHOLDER for Meta's quarterly 16-currency card), `whatsappCallPulses` (6-s round-up), `whatsappCallRatePerMin` (monthly-tier), pure `whatsappCallCostUsd(seconds, country, direction, monthlyMinutes)` — **inbound = 0**, outbound = 6-s-pulse × per-country tiered rate.
+- **Exports** from the router index (mirrors Telnyx/Plivo). Adapter exposes `provider = Provider.WHATSAPP`, `capability = 'telephony'`.
+- **Tests** (`whatsapp-calling.test.ts`, 11 + pricing 4 = 15, offline via injected `WaHttp` fake): exact request bodies for every action; interactive + template permission sends; permission-response parsing; settings update; **138006 → `whatsappErrorCode` + no token/SDP leak in the error**; pricing (56 s → 10 pulses, inbound 0, tier boundary → lower rate).
+
+Verification: **typecheck 12/12, lint 12/12**, provider-router **50 passed** (1 live skip), shared **738 passed**. Applied the enum migration to local Postgres (5434) + regenerated the client.
+
+## Self-Audit — WAC-01 (A–K)
+A. Correctness: ✅ — every Graph request body verified by tests against the plan's §A.3–A.6 shapes; pricing math (pulses/inbound-free/tiers) unit-tested.
+B. Isolation: ✅ — adapter is stateless + credential-injected (the calling service passes the tenant's WABA token later); no tenant state here, no cross-tenant path.
+C. Security: ✅ — token only in the `Authorization` header (never in a thrown message/log); SDP never in an error (asserted); `138006` typed for consent handling.
+D. Cost: ✅ — pure `whatsappCallCostUsd` (inbound=0, 6-s pulses, per-country tiers); the adapter never bills (caller meters — golden rule #4).
+E. Errors/obs: ✅ — `ProviderError` with `waErrorCode`; non-JSON error bodies tolerated; request never crashes on a bad body.
+F. Performance: ✅ — one HTTP round-trip per action, 15 s timeout.
+G. Error handling: ✅ — typed errors; `placeCall` requires `to`|`recipient`; empty/204 bodies handled.
+H. UI/AA: n/a — pure adapter (no UI).
+I. Regressions: ✅ — additive; the ONLY tricky part (Provider enum) synced across shared + Prisma + migration so the workers typecheck; all suites green; nothing Graph-specific leaked outside the adapter (grep-clean).
+J. Quality/docs: ✅ — doc comments + plan §refs on every method; pricing PLACEHOLDER clearly flagged for Meta's real rate card.
+K. Build/CI: ✅ — typecheck/lint 12/12; provider-router + shared suites green.
+
+WAC-01 complete — WhatsApp is a router-level calling carrier (config, not code, to use). **Next: WAC-02 — the Meta `calls` webhook + signaling service** (offline-buildable; live verification waits on the WAC-00 test creds).
