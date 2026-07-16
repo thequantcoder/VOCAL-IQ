@@ -287,8 +287,9 @@ model Tenant {
   apiKeys             ApiKey[]
   walletLedger        WalletLedger[]
   creditGrants        CreditGrant[]
-  whatsappCalls       WhatsAppCall[]
-  whatsappCallEvents  WhatsAppCallEvent[]
+  whatsappCalls        WhatsAppCall[]
+  whatsappCallEvents   WhatsAppCallEvent[]
+  whatsappCallVolumes  WhatsAppCallVolume[]
 
   @@index([parentTenantId])
   @@index([type])
@@ -946,11 +947,32 @@ model WhatsAppCall {
   startedAt        DateTime?
   endedAt          DateTime?
   durationSec      Int?
+  // Cost metering (WAC-06): set once, atomically, when the terminated call is metered.
+  costUsd          Float? // WhatsApp carrier cost (inbound = 0; outbound = per-country pulse×tier)
+  billedCountry    String? // ISO-2 destination used for the outbound rate (audit)
+  billedAt         DateTime? // idempotency guard — non-null ⇒ already metered (never double-charge)
   createdAt        DateTime  @default(now())
 
   @@unique([tenantId, waCallId])
   @@index([tenantId])
   @@index([tenantId, status])
+}
+
+// Monthly WhatsApp OUTBOUND volume per tenant (WAC-06) — drives the volume-tier rate selection.
+// Meta bills business-initiated calls at a lower per-minute rate once monthly volume crosses a band;
+// this running total (billed 6-s-pulse seconds, this calendar month) picks tier0 vs tier1. Keyed by
+// (tenant, period) so it resets naturally each month. Tenant-scoped (RLS).
+model WhatsAppCallVolume {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @db.Uuid
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  period        String // YYYY-MM
+  billedSeconds Int      @default(0) // cumulative outbound billed seconds this month (pulse-rounded)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([tenantId, period])
+  @@index([tenantId])
 }
 
 // Append-only audit of every WhatsApp calling webhook (WAC-02) — for replay/debug + idempotency.

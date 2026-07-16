@@ -1,6 +1,11 @@
 import { Provider, isAppError } from '@vocaliq/shared';
 import { describe, expect, it } from 'vitest';
-import { whatsappCallCostUsd, whatsappCallPulses, whatsappCallRatePerMin } from '../pricing.js';
+import {
+  whatsappCallCostUsd,
+  whatsappCallPulses,
+  whatsappCallRatePerMin,
+  whatsappDestinationCountry,
+} from '../pricing.js';
 import {
   WHATSAPP_NO_PERMISSION_CODE,
   type WaHttp,
@@ -183,5 +188,21 @@ describe('WhatsApp call pricing', () => {
   it('crosses to the lower (tier1) rate past the monthly band', () => {
     expect(whatsappCallRatePerMin('US', 10_000)).toBe(0.01); // tier0
     expect(whatsappCallRatePerMin('US', 60_000)).toBe(0.008); // tier1
+  });
+});
+
+describe('whatsappDestinationCountry', () => {
+  it('maps E.164 (any format) to the rate-carded ISO-2, longest-prefix wins', () => {
+    expect(whatsappDestinationCountry('+1 415 555 0134')).toBe('US');
+    expect(whatsappDestinationCountry('+44 20 7946 0000')).toBe('GB');
+    expect(whatsappDestinationCountry('919820098200')).toBe('IN');
+    expect(whatsappDestinationCountry('+55 11 91234-5678')).toBe('BR');
+    expect(whatsappDestinationCountry('+62-812-3456-789')).toBe('ID');
+  });
+
+  it('falls back to DEFAULT for unmapped or blank numbers', () => {
+    expect(whatsappDestinationCountry('+81 3 1234 5678')).toBe('DEFAULT'); // JP not carded
+    expect(whatsappDestinationCountry('')).toBe('DEFAULT');
+    expect(whatsappDestinationCountry('abc')).toBe('DEFAULT');
   });
 });

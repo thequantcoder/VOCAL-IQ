@@ -65,6 +65,33 @@ export const WHATSAPP_CALL_RATES: Readonly<Record<string, readonly [number, numb
 /** Monthly-volume tier boundary (minutes). Meta uses the LOWER rate once volume crosses the band. */
 export const WHATSAPP_TIER0_MAX_MINUTES = 50_000;
 
+/**
+ * E.164 calling-code → ISO-2 prefixes for the destinations we rate-card (longest-prefix wins). Only the
+ * countries with an explicit `WHATSAPP_CALL_RATES` entry need mapping — everything else falls to DEFAULT.
+ * Ordered longest-first so `+1` (US) never shadows a longer code. ⚠️ Extend alongside the rate card.
+ */
+const WHATSAPP_DIAL_CODES: ReadonlyArray<readonly [string, string]> = [
+  ['55', 'BR'],
+  ['62', 'ID'],
+  ['91', 'IN'],
+  ['44', 'GB'],
+  ['1', 'US'],
+];
+
+/**
+ * Resolve the destination country (ISO-2) for a WhatsApp OUTBOUND call from the callee's E.164 number,
+ * so we pick the right per-country rate. Unknown / unmapped / blank → `'DEFAULT'` (the fallback band).
+ * This is a coarse rate-routing helper, NOT full number validation (that's the provider's job).
+ */
+export function whatsappDestinationCountry(e164: string): string {
+  const digits = (e164 ?? '').replace(/[^\d]/g, '');
+  if (!digits) return 'DEFAULT';
+  for (const [code, iso] of WHATSAPP_DIAL_CODES) {
+    if (digits.startsWith(code)) return iso;
+  }
+  return 'DEFAULT';
+}
+
 /** Number of billed 6-second pulses for a call of `seconds` (rounded up; 56 s → 10 pulses). */
 export function whatsappCallPulses(seconds: number): number {
   if (seconds <= 0) return 0;

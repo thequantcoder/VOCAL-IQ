@@ -106,6 +106,7 @@ import { VoicesService, elevenLabsCloner } from './voices/voices.service';
 import { WalletService } from './wallet/wallet.service';
 import type { WebhookEmitter } from './webhooks/webhook-emitter';
 import { WebhookService } from './webhooks/webhook.service';
+import { WhatsAppCallCostService } from './whatsapp-calling/whatsapp-call-cost.service';
 import { WhatsAppCallSettingsService } from './whatsapp-calling/whatsapp-call-settings.service';
 import {
   type WaAdapterResolver,
@@ -230,6 +231,7 @@ export function createServices() {
     db,
     waCallingAdapterFor,
     new PendingWaMediaControl(),
+    new WhatsAppCallCostService(db), // WAC-06: meter carrier cost on terminate
   );
   const whatsappCallSettings = new WhatsAppCallSettingsService(db, waCallingAdapterFor);
   // Cross-channel automations reuse the messaging + integration subsystems as action executors.

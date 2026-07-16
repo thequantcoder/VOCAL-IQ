@@ -1,5 +1,6 @@
 import type { WhatsAppCallingTelephony } from '@vocaliq/provider-router';
 import type { PrismaService } from '../db/prisma.service';
+import { NoopWaCallMeter, type WaCallMeter } from './whatsapp-call-cost.service';
 import type { WaMediaControl } from './whatsapp-media-control';
 
 /**
@@ -49,6 +50,8 @@ export class WhatsAppCallingService {
     private readonly db: PrismaService,
     private readonly adapterFor: WaAdapterResolver,
     private readonly media: WaMediaControl,
+    /** Cost metering (WAC-06). Defaults to a no-op so the WAC-02 control-plane tests stay offline. */
+    private readonly meter: WaCallMeter = new NoopWaCallMeter(),
   ) {}
 
   /** Idempotent upsert of the WhatsApp call row + an append-only event, all in the tenant's RLS scope. */
@@ -121,6 +124,9 @@ export class WhatsAppCallingService {
       ...(input.errorCode !== undefined ? { errorCode: input.errorCode } : {}),
     });
     await this.media.endCall(input.waCallId).catch(() => {});
+    // Meter the call cost (golden rule #4). Runs after the lifecycle row is persisted (with duration);
+    // idempotent by `billedAt`, so a webhook retry safely re-meters to a single UsageRecord.
+    await this.meter.meterTerminated(tenantId, input.waCallId);
   }
 
   /** A user's permission accept/reject reply (persistence of the grant itself is WAC-08). */
