@@ -4259,3 +4259,29 @@ J. Quality/docs: ✅ — doc comments + plan §refs; the `WhatsAppCall`-vs-`Call
 K. Build/CI: ✅ — typecheck/lint 12/12; api 514/514.
 
 WAC-02 complete — the WhatsApp calling control plane receives + drives + persists the call lifecycle (media stubbed). **Next: WAC-03 — the voice-service WebRTC media bridge** (the SDP answer that turns `connecting` into a live AI conversation).
+
+### WAC-05 — Call settings + business-hours + voicemail config (+ dashboard UI) — 2026-07-17 — ✅ DONE — 🧠 OPUS
+Model: Opus. Branch `wac/05-call-settings`. **Build-order note (§11):** WAC-03 (WebRTC media bridge) + WAC-04 (inbound GA) are **gated on the WAC-00 live test creds + tunnel**, so — following the project's "build the offline-buildable slices first" discipline — I jumped ahead to the offline slices. WAC-05 is the tenant-facing control surface: *when* and *how* the WhatsApp line accepts calls (call button, callback permission, codecs, business hours, voicemail), validated locally and **synced to Meta on save**.
+
+Done (DONE):
+- **shared** `whatsapp-call-settings.ts` — `whatsappCallSettingsSchema` (enabled, `callIconVisibility` DEFAULT/DISABLE_ALL, `restrictToCountries`, `callbackPermission`, `additionalCodecs` PCMA/PCMU, `hours{enabled,timezone,weekly[{dayOfWeek,openTime,closeTime}],holidays}`, `voicemail{enabled,triggers,timeoutSeconds,announcementMediaId}`) + `parseWhatsappCallSettings` (enforces the cross-field rules: **≤2 blocks/day**, voicemail-needs-a-trigger), `isWithinWhatsappCallHours(settings, now)` (Intl timezone-aware; renamed from `isWithinCallingHours` to avoid the ai-disclosure export collision), `toGraphCalling(s)` (maps to Meta's snake_case `calling` settings shape per plan §A.7). `WA_DAYS` exported. Test 8/8.
+- **api** `whatsapp-call-settings.service.ts` — `get` (reads `tenant.settings.whatsappCalling` via `safeParse` → defaults when unset), `set` (validate → **sync to Meta FIRST** via `adapter.updateSettings(toGraphCalling)`; when the adapter is gated/null it's local-only → then store back **merged** into `settings` so Slack/notification-prefs keys are never clobbered). Adapter injected (`WaAdapterResolver`) → offline-testable. Test 3/3 (defaults; round-trip + preserves other keys; rejects >2 blocks/day).
+- **api routes** `whatsapp-calling.routes.ts` — `GET /whatsapp-calling/settings` (read) + `PUT` (config-writers only via `requireRole`); mounted in `main.ts`; wired through `composition.ts` (`whatsappCallSettings` service with the env-managed adapter resolver).
+- **web** `/dashboard/settings/whatsapp-calling` — a clean settings surface (`packages/ui` + tenant tokens + a11y): enable toggle, call-button visibility, auto-callback-permission, G.711-interop toggle; a **business-hours editor** (restrict switch → timezone Input + add/remove weekly day+open/close blocks, capped) and a **voicemail** card (enable → ring-timeout). Draft state seeded from the query, `Save` with loading + `Saved ✓` / inline error; loading/error states. Sidebar nav link added (`PhoneIncoming`, Settings group).
+
+Verification: **web typecheck ✅, biome lint ✅ (0 errors), shared 746/746, full api suite 517/517.** (Live Meta settings-sync verification waits on the WAC-00 test creds — the sync path is gated + offline-proven; get/set/validation/merge all exercised against real Postgres + RLS.)
+
+## Self-Audit — WAC-05 (A–K)
+A. Correctness: ✅ — schema + cross-field rules (≤2 blocks/day, voicemail-trigger) tested; `toGraphCalling` maps to the plan §A.7 Meta shape; hours-open check is timezone-aware (Intl).
+B. Isolation: ✅ — get/set both `withTenant` (RLS); settings live on the tenant row; round-trip test asserts a sibling key (`slack`) is preserved (read-modify-write is merge, not overwrite).
+C. Security: ✅ — PUT gated to config-writers (`requireRole`); Meta sync uses the injected adapter (BYOK/managed token never logged); input Zod-validated at the boundary; no secret echoed.
+D. Cost: n/a — settings slice (no provider call bills minutes; per-call metering is WAC-06).
+E. Errors/obs: ✅ — invalid config → typed `AppError` (tested `isAppError`); Meta-sync failure surfaces before the local write (no divergence where Meta rejects but we stored).
+F. Performance: ✅ — one row read + one update per save; no N+1.
+G. Error handling: ✅ — gated adapter (null) → local-only save, no crash; malformed stored settings → `safeParse` falls back to defaults.
+H. UI/AA: ✅ — labels associated (`htmlFor`/native controls), keyboard-reachable Switches/Button, reduced-motion-safe (Button spinner honours `motion-reduce`), loading/error/saved states, tenant design tokens.
+I. Regressions: ✅ — additive; `isWithinCallingHours` rename avoided the ai-disclosure export collision (TS2308); shared 746/746 + api 517/517 green; no existing file behaviour changed.
+J. Quality/docs: ✅ — doc comments + plan §A.7 refs; build-order deviation (05 before 03/04) recorded above (§11/§13).
+K. Build/CI: ✅ — web typecheck + biome clean; shared + api suites fully green locally.
+
+WAC-05 complete — tenants can now configure *when/how* their WhatsApp line takes calls, synced to Meta. **Next offline slices: WAC-06 (per-call cost metering) → WAC-07 (calls dashboard + click-to-call link generator).** Gated on the admin's WAC-00 test creds + tunnel: WAC-03 (WebRTC media bridge), WAC-04 (inbound GA).
