@@ -101,6 +101,7 @@ enum CallChannel {
   PSTN
   WEB
   SIP
+  WHATSAPP
 }
 
 enum CallStatus {
@@ -286,6 +287,8 @@ model Tenant {
   apiKeys             ApiKey[]
   walletLedger        WalletLedger[]
   creditGrants        CreditGrant[]
+  whatsappCalls       WhatsAppCall[]
+  whatsappCallEvents  WhatsAppCallEvent[]
 
   @@index([parentTenantId])
   @@index([type])
@@ -919,6 +922,48 @@ model Call {
   @@index([tenantId, createdAt])
   @@index([agentId])
   @@index([experimentId, variant])
+}
+
+// WhatsApp (Meta) Business Calling — the lifecycle record for a WhatsApp voice call (WAC-02). Kept
+// separate from `Call` because the WhatsApp `connect` webhook arrives BEFORE agent routing (Call
+// requires an agentId), so this row tracks the WhatsApp-specific lifecycle + payloads and links to
+// the unified `Call` (with agent/transcript/cost) once the agent answers (WAC-04). Tenant-scoped (RLS).
+model WhatsAppCall {
+  id               String    @id @default(uuid()) @db.Uuid
+  tenantId         String    @db.Uuid
+  tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  waCallId         String // Meta WhatsApp call id (WACID)
+  direction        String // USER_INITIATED | BUSINESS_INITIATED
+  status           String    @default("connecting") // connecting|ringing|accepted|rejected|completed|failed
+  fromNumber       String?
+  toNumber         String?
+  waUserId         String? // business-scoped user id (BSUID)
+  ctaPayload       String? // from a call button (context for the AI agent)
+  deeplinkPayload  String? // from a wa.me/call deep link
+  permissionStatus String?
+  callId           String?   @db.Uuid // link to the unified Call once the agent answers (WAC-04)
+  errorCode        Int? // Meta calling error code on failure
+  startedAt        DateTime?
+  endedAt          DateTime?
+  durationSec      Int?
+  createdAt        DateTime  @default(now())
+
+  @@unique([tenantId, waCallId])
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+// Append-only audit of every WhatsApp calling webhook (WAC-02) — for replay/debug + idempotency.
+model WhatsAppCallEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  waCallId  String
+  event     String // connect|status|terminate|permission_reply|settings_update|restriction
+  payload   Json     @default("{}")
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, waCallId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

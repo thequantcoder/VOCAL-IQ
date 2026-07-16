@@ -118,11 +118,14 @@ function bootstrap(): void {
   // Messaging webhooks (Day 44): WhatsApp needs the RAW body (HMAC-SHA256 over it); Twilio
   // needs URL-encoded params (signature is over URL + sorted params). Register before the
   // JSON parser. Per-tenant path so inbound routes to the right tenant.
-  app.get('/public/messaging/whatsapp/:tenantId', whatsappWebhookHandler(s.messaging));
+  app.get(
+    '/public/messaging/whatsapp/:tenantId',
+    whatsappWebhookHandler(s.messaging, s.whatsappCalling),
+  );
   app.post(
     '/public/messaging/whatsapp/:tenantId',
     express.raw({ type: '*/*' }),
-    whatsappWebhookHandler(s.messaging),
+    whatsappWebhookHandler(s.messaging, s.whatsappCalling),
   );
   app.post(
     '/public/messaging/twilio/:tenantId',

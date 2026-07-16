@@ -13,6 +13,8 @@ import { requireRoles } from '../http/roles.middleware';
 import { tenantMiddleware } from '../http/tenant.middleware';
 import { CONFIG_WRITERS } from '../tenancy/roles';
 import type { TenantService } from '../tenancy/tenant.service';
+import type { WhatsAppCallingService } from '../whatsapp-calling/whatsapp-calling.service';
+import { dispatchWhatsAppCallingWebhook } from '../whatsapp-calling/whatsapp-calling.webhooks';
 import type { MessagingService } from './messaging.service';
 import {
   verifyMetaSignature,
@@ -150,7 +152,10 @@ export function twilioWebhookHandler(messaging: MessagingService) {
  * messages / status. Gated: 503 when `WHATSAPP_APP_SECRET` is unset. RAW body required — mount
  * with `express.raw` (see main.ts).
  */
-export function whatsappWebhookHandler(messaging: MessagingService) {
+export function whatsappWebhookHandler(
+  messaging: MessagingService,
+  whatsappCalling?: WhatsAppCallingService,
+) {
   return ah(async (req: Request, res: Response) => {
     if (req.method === 'GET') {
       const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN;
@@ -186,6 +191,12 @@ export function whatsappWebhookHandler(messaging: MessagingService) {
           if (st.id && mapped) await messaging.updateStatus(tenantId, st.id, mapped);
         }
       }
+    }
+
+    // WhatsApp Business Calling (WAC-02): dispatch call connect/terminate/status/permission/account
+    // events on the same (HMAC-verified) WABA webhook. Best-effort — never fails the 200 to Meta.
+    if (whatsappCalling) {
+      await dispatchWhatsAppCallingWebhook(whatsappCalling, tenantId, payload).catch(() => {});
     }
     return res.status(200).end();
   });
