@@ -140,18 +140,23 @@ function CallRow({ call }: { call: WhatsappCallRow }) {
   const inbound = call.direction === 'USER_INITIATED';
   const who = inbound ? call.fromNumber : call.toNumber;
   return (
-    <li className="flex items-center gap-3 py-2.5">
-      <span className={inbound ? 'text-vq-success' : 'text-vq-violet'}>
-        {inbound ? <PhoneIncoming size={16} /> : <PhoneOutgoing size={16} />}
-      </span>
-      <span className="flex-1 truncate text-sm text-vq-text-hi">{who ?? 'Unknown'}</span>
-      <StatusBadge status={call.status} />
-      <span className="w-14 text-right text-vq-text-lo text-xs">
-        {formatDuration(call.durationSec)}
-      </span>
-      <span className="w-16 text-right text-vq-text-lo text-xs">
-        {call.costUsd ? formatUsd(call.costUsd) : '—'}
-      </span>
+    <li>
+      <Link
+        href={`/dashboard/whatsapp-calling/live/${encodeURIComponent(call.waCallId)}`}
+        className="-mx-2 flex items-center gap-3 rounded-vq px-2 py-2.5 transition-colors hover:bg-vq-bg-elevated"
+      >
+        <span className={inbound ? 'text-vq-success' : 'text-vq-violet'}>
+          {inbound ? <PhoneIncoming size={16} /> : <PhoneOutgoing size={16} />}
+        </span>
+        <span className="flex-1 truncate text-sm text-vq-text-hi">{who ?? 'Unknown'}</span>
+        <StatusBadge status={call.status} />
+        <span className="w-14 text-right text-vq-text-lo text-xs">
+          {formatDuration(call.durationSec)}
+        </span>
+        <span className="w-16 text-right text-vq-text-lo text-xs">
+          {call.costUsd ? formatUsd(call.costUsd) : '—'}
+        </span>
+      </Link>
     </li>
   );
 }

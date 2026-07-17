@@ -53,6 +53,7 @@
 | WhatsApp Calling — cost metering (WAC-06) | Har WhatsApp call ka cost attribute — inbound free, outbound per-country 6-s pulse + monthly tier. | 🏠 Native |
 | WhatsApp Calling — dashboard + click-to-call (WAC-07) | Lovely home: status hero, aaj ke KPIs, recent calls + click-to-call generator (deep link · QR · website button) with agent context payload. | 🔀 Hybrid (qrcode.react) |
 | WhatsApp Calling — WebRTC media bridge (WAC-00/03) | Meta se raw WebRTC peer (ICE+DTLS-SRTP+OPUS) terminate karke wahi AI loop (STT→LLM→TTS) mein bridge — aiortc; internal api→voice control hop (authed). Live media creds pe gated. | 🔀 Hybrid (aiortc) |
+| WhatsApp Calling — inbound AI answering GA + live-call view (WAC-04) | Customer WhatsApp par "call" tap kare → sahi agent context ke saath answer kare: number→agent routing (PhoneNumber assignment reuse), tapped-button context (`intent`/`campaign`/`reference`) agent ke system prompt mein inject, calling-hours gate (tz-correct, band ho to graceful reject), aur ek unified `Call(channel=WHATSAPP)` khul ke recording/transcription/analytics/cost mein flow kare. Web: signature cyan waveform wala live-call view (reduced-motion safe) + Calls feed channel filter (All·Phone·Web·WhatsApp) + WhatsApp badge. | 🏠 Native (media gated) |
 
 ---
 

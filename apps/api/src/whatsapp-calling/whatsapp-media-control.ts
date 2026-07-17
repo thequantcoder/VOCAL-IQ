@@ -11,6 +11,10 @@ export interface WaAnswerRequest {
   sdpOffer: string;
   /** The agent/flow to answer with (resolved in WAC-04; optional until then). */
   agentId?: string;
+  /** The composed system prompt (persona + inbound context brief) the agent answers with (WAC-04). */
+  systemPrompt?: string;
+  /** The opening line the agent speaks (WAC-04). */
+  greeting?: string;
 }
 
 export interface WaMediaControl {
@@ -55,6 +59,8 @@ export class HttpWaMediaControl implements WaMediaControl {
       sdp_offer: req.sdpOffer,
       tenant_id: req.tenantId,
       agent_id: req.agentId ?? '',
+      ...(req.systemPrompt ? { system_prompt: req.systemPrompt } : {}),
+      ...(req.greeting ? { greeting: req.greeting } : {}),
     });
     const answer = (body as { sdp_answer?: unknown } | null)?.sdp_answer;
     return typeof answer === 'string' && answer.length > 0 ? answer : null;

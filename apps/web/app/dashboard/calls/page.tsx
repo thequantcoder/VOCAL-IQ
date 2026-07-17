@@ -6,7 +6,7 @@ import { Crossfade } from '@vocaliq/ui/motion';
 import { PhoneOutgoing } from 'lucide-react';
 import { type FormEvent, type ReactNode, useState } from 'react';
 import { EmptyState, ErrorState, LoadingCard } from '../../../components/states';
-import { StatusBadge, formatDuration, formatUsd } from '../../../components/ui-bits';
+import { ChannelBadge, StatusBadge, formatDuration, formatUsd } from '../../../components/ui-bits';
 import { type CallListItem, useAgents, useCalls, usePlaceTestCall } from '../../../lib/api';
 import { useActionFeedback } from '../../../lib/use-action-feedback';
 import { useViewTransitionRouter } from '../../../lib/view-transitions';
@@ -87,8 +87,17 @@ const FILTERS = [
   { value: 'failed', label: 'Failed' },
 ];
 
+// Channel filter (WAC-04) — scoped server-side so it works across the full history, not just this page.
+const CHANNEL_FILTERS = [
+  { value: 'all', label: 'All' },
+  { value: 'PSTN', label: 'Phone' },
+  { value: 'WEB', label: 'Web' },
+  { value: 'WHATSAPP', label: 'WhatsApp' },
+];
+
 export default function CallsPage() {
-  const calls = useCalls();
+  const [channel, setChannel] = useState('all');
+  const calls = useCalls(channel === 'all' ? {} : { channel });
   const [filter, setFilter] = useState('all');
   const items = calls.data?.items ?? [];
 
@@ -109,6 +118,14 @@ export default function CallsPage() {
       <PlaceTestCall />
 
       {items.length > 0 && <CallsSummary items={items} />}
+
+      {/* Channel filter (WAC-04) — kept above the results so it's reachable even when a channel is empty. */}
+      <SegmentedControl
+        value={channel}
+        onValueChange={setChannel}
+        aria-label="Filter calls by channel"
+        options={CHANNEL_FILTERS}
+      />
 
       {/* Skeleton → content crossfade (UX-06): the loading placeholder fades into real data. */}
       <Crossfade
@@ -197,7 +214,12 @@ export default function CallsPage() {
                           {c.agent.name}
                         </CallLink>
                       </td>
-                      <td className="px-4 py-2 text-vq-text-lo">{c.direction.toLowerCase()}</td>
+                      <td className="px-4 py-2 text-vq-text-lo">
+                        <span className="flex items-center gap-2">
+                          <ChannelBadge channel={c.channel} iconOnly />
+                          {c.direction.toLowerCase()}
+                        </span>
+                      </td>
                       <td className="px-4 py-2 font-mono text-vq-text-lo text-xs">
                         {formatDuration(c.durationSec)}
                       </td>

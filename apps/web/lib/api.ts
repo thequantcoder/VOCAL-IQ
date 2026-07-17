@@ -183,7 +183,7 @@ export function useCreateAgent() {
   });
 }
 
-export function useCalls(params: { status?: string; agentId?: string } = {}) {
+export function useCalls(params: { status?: string; channel?: string; agentId?: string } = {}) {
   const { getToken } = useAuth();
   const search = new URLSearchParams(
     Object.entries(params).filter(([, v]) => v) as [string, string][],
@@ -4881,6 +4881,55 @@ export function useWhatsappCallOverview() {
   return useQuery({
     queryKey: ['whatsapp-call-overview'],
     queryFn: () => apiFetch<WhatsappCallOverview>(getToken, '/whatsapp-calling/overview'),
+  });
+}
+
+// ── WhatsApp Business Calling — live-call view (WAC-04) ───────────────────────
+
+export interface WhatsappCallContext {
+  intent?: string;
+  campaign?: string;
+  reference?: string;
+  custom?: Record<string, string>;
+}
+
+export interface WhatsappCallEventRow {
+  event: string;
+  at: string;
+}
+
+export interface WhatsappLiveCall {
+  waCallId: string;
+  direction: string;
+  status: string;
+  fromNumber: string | null;
+  toNumber: string | null;
+  waUserId: string | null;
+  context: WhatsappCallContext;
+  callId: string | null;
+  agent: { id: string; name: string } | null;
+  durationSec: number | null;
+  startedAt: string | null;
+  createdAt: string;
+  events: WhatsappCallEventRow[];
+}
+
+/** Terminal WhatsApp-call statuses — once reached, the live view stops polling. */
+export const WHATSAPP_LIVE_TERMINAL = ['completed', 'failed', 'rejected'];
+
+export function useWhatsappLiveCall(waCallId: string) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['whatsapp-live-call', waCallId],
+    queryFn: () =>
+      apiFetch<WhatsappLiveCall>(
+        getToken,
+        `/whatsapp-calling/calls/${encodeURIComponent(waCallId)}`,
+      ),
+    enabled: Boolean(waCallId),
+    // Poll while the call is live; stop once it reaches a terminal status.
+    refetchInterval: (query) =>
+      query.state.data && WHATSAPP_LIVE_TERMINAL.includes(query.state.data.status) ? false : 2500,
   });
 }
 

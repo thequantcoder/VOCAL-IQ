@@ -78,3 +78,42 @@ export function waCallDeepLink(businessNumber: string, payload = ''): string {
   const base = `https://wa.me/call/${num}`;
   return payload ? `${base}?biz_payload=${encodeURIComponent(payload)}` : base;
 }
+
+/**
+ * Flatten a decoded call context into the agent's runtime flow variables (WAC-04). The reserved keys
+ * (`intent`, `campaign`, `reference`) plus any `custom` entries become a plain string map the flow/LLM
+ * can read to open in context. Empty fields are dropped so a variable is only set when it has a value.
+ */
+export function whatsAppCallContextToVars(ctx: WhatsAppCallContext): Record<string, string> {
+  const vars: Record<string, string> = {};
+  if (ctx.intent?.trim()) vars.intent = ctx.intent.trim();
+  if (ctx.campaign?.trim()) vars.campaign = ctx.campaign.trim();
+  if (ctx.reference?.trim()) vars.reference = ctx.reference.trim();
+  for (const [k, v] of Object.entries(ctx.custom ?? {})) {
+    if (k.trim() && v?.trim()) vars[k.trim()] = v.trim();
+  }
+  return vars;
+}
+
+/**
+ * Compose a short, natural-language brief the AI agent prepends to its system prompt so it opens the
+ * call already knowing why the customer tapped "call" (WAC-04, plan §D — context-aware answering).
+ * Returns '' when there's no usable context, so the caller appends nothing. Purely derived from the
+ * (already-validated) context — no PII beyond what the business itself encoded into its own link.
+ */
+export function buildWhatsAppCallBrief(ctx: WhatsAppCallContext): string {
+  const lines: string[] = [];
+  if (ctx.intent?.trim()) lines.push(`- Intent: ${ctx.intent.trim()}`);
+  if (ctx.campaign?.trim()) lines.push(`- Campaign / source: ${ctx.campaign.trim()}`);
+  if (ctx.reference?.trim())
+    lines.push(`- Reference (order/booking/lead id): ${ctx.reference.trim()}`);
+  for (const [k, v] of Object.entries(ctx.custom ?? {})) {
+    if (k.trim() && v?.trim()) lines.push(`- ${k.trim()}: ${v.trim()}`);
+  }
+  if (lines.length === 0) return '';
+  return [
+    'This customer started this call from a WhatsApp entry point with the following context. ' +
+      'Acknowledge it naturally in your opening line; do not read it back verbatim.',
+    ...lines,
+  ].join('\n');
+}

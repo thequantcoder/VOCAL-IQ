@@ -12,6 +12,7 @@ const C1 = '00000000-0000-0000-0000-000000000003';
 const AGENT = '00000000-0000-0000-0000-0000003a0001';
 const CALL_A = '00000000-0000-0000-0000-0000003a0002';
 const CALL_B = '00000000-0000-0000-0000-0000003a0003';
+const CALL_WA = '00000000-0000-0000-0000-0000003a0004';
 
 beforeAll(async () => {
   const a = db.admin;
@@ -20,22 +21,21 @@ beforeAll(async () => {
     create: { id: AGENT, tenantId: C1, name: 'Read Agent' },
     update: {},
   });
-  const mk = (id: string, status: 'COMPLETED' | 'NO_ANSWER', createdAt: Date) =>
+  const mk = (
+    id: string,
+    status: 'COMPLETED' | 'NO_ANSWER',
+    createdAt: Date,
+    channel: 'PSTN' | 'WHATSAPP' = 'PSTN',
+    direction: 'INBOUND' | 'OUTBOUND' = 'OUTBOUND',
+  ) =>
     a.call.upsert({
       where: { id },
-      create: {
-        id,
-        tenantId: C1,
-        agentId: AGENT,
-        direction: 'OUTBOUND',
-        channel: 'PSTN',
-        status,
-        createdAt,
-      },
-      update: { status },
+      create: { id, tenantId: C1, agentId: AGENT, direction, channel, status, createdAt },
+      update: { status, channel },
     });
   await mk(CALL_A, 'COMPLETED', new Date('2021-03-01T10:00:00Z'));
   await mk(CALL_B, 'NO_ANSWER', new Date('2021-03-01T11:00:00Z')); // newer
+  await mk(CALL_WA, 'COMPLETED', new Date('2021-03-01T12:00:00Z'), 'WHATSAPP', 'INBOUND');
   await a.transcript.upsert({
     where: { callId: CALL_A },
     create: {
@@ -67,18 +67,30 @@ describe('CallsReadService.list', () => {
   });
 
   it('paginates by cursor', async () => {
-    const page1 = await svc.list(C1, { agentId: AGENT, limit: 1 });
+    // Scope to PSTN so the WhatsApp row doesn't shift the exact-order assertions.
+    const page1 = await svc.list(C1, { agentId: AGENT, channel: 'PSTN', limit: 1 });
     expect(page1.items).toHaveLength(1);
     expect(page1.nextCursor).toBe(CALL_B);
 
-    const page2 = await svc.list(C1, { agentId: AGENT, limit: 1, cursor: page1.nextCursor });
+    const page2 = await svc.list(C1, {
+      agentId: AGENT,
+      channel: 'PSTN',
+      limit: 1,
+      cursor: page1.nextCursor,
+    });
     expect(page2.items[0]?.id).toBe(CALL_A);
     expect(page2.nextCursor).toBeNull();
   });
 
   it('filters by status', async () => {
     const res = await svc.list(C1, { agentId: AGENT, status: 'COMPLETED' });
-    expect(res.items.map((c) => c.id)).toEqual([CALL_A]);
+    expect(res.items.map((c) => c.id).sort()).toEqual([CALL_A, CALL_WA].sort());
+  });
+
+  it('filters by channel (WhatsApp) — WAC-04', async () => {
+    const res = await svc.list(C1, { agentId: AGENT, channel: 'WHATSAPP' });
+    expect(res.items.map((c) => c.id)).toEqual([CALL_WA]);
+    expect(res.items[0]?.channel).toBe('WHATSAPP');
   });
 });
 

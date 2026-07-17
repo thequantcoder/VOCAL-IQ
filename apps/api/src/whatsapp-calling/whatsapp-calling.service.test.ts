@@ -1,18 +1,52 @@
 import type { WhatsAppCallingTelephony } from '@vocaliq/provider-router';
+import { whatsappCallSettingsSchema } from '@vocaliq/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaService } from '../db/prisma.service';
+import { NoopWaCallMeter } from './whatsapp-call-cost.service';
+import type { WhatsAppInboundRouting } from './whatsapp-call-routing.service';
 import { WhatsAppCallingService } from './whatsapp-calling.service';
 import { dispatchWhatsAppCallingWebhook } from './whatsapp-calling.webhooks';
+import type { WaAnswerRequest } from './whatsapp-media-control';
 import { PendingWaMediaControl } from './whatsapp-media-control';
 
 /**
- * WhatsApp Calling control plane (WAC-02) against real Postgres + RLS. Uses dedicated sibling tenants
- * so the WhatsAppCall/Event rows can't collide with other suites and isolation is provable.
+ * WhatsApp Calling control plane (WAC-02 → WAC-04) against real Postgres + RLS. Uses dedicated sibling
+ * tenants so the WhatsAppCall/Event rows can't collide with other suites and isolation is provable.
  */
 const db = new PrismaService();
 const PLATFORM = '00000000-0000-0000-0000-000000000001';
 const T = '00000000-0000-0000-0000-0000ff20a001';
 const T2 = '00000000-0000-0000-0000-0000ff20a002';
+const AGENT = '00000000-0000-0000-0000-0000ff20b001';
+
+/** WAC-04 helpers: a fake router + settings reader + media that records the answer requests it sees. */
+const routerTo = (routing: WhatsAppInboundRouting | null) => ({
+  resolveInboundAgent: async () => routing,
+});
+const openHours = () => Promise.resolve(whatsappCallSettingsSchema.parse({}));
+const closedHours = () =>
+  Promise.resolve(
+    whatsappCallSettingsSchema.parse({ hours: { enabled: true, timezone: 'UTC', weekly: [] } }),
+  );
+function fakeMedia(answer: string | null) {
+  const reqs: WaAnswerRequest[] = [];
+  const media = {
+    requestSdpAnswer: async (r: WaAnswerRequest) => {
+      reqs.push(r);
+      return answer;
+    },
+    endCall: async () => {},
+  };
+  return { media, reqs };
+}
+const routing = (over: Partial<WhatsAppInboundRouting> = {}): WhatsAppInboundRouting => ({
+  agentId: AGENT,
+  agentName: 'WA Agent',
+  flowVersionId: null,
+  systemPrompt: 'You are A.',
+  greeting: 'Hi from A.',
+  ...over,
+});
 
 beforeAll(async () => {
   for (const id of [T, T2]) {
@@ -28,6 +62,11 @@ beforeAll(async () => {
       update: {},
     });
   }
+  await db.admin.agent.upsert({
+    where: { id: AGENT },
+    create: { id: AGENT, tenantId: T, name: 'WA Agent', status: 'PUBLISHED' },
+    update: {},
+  });
 });
 
 afterAll(async () => {
@@ -148,5 +187,160 @@ describe('WhatsAppCallingService', () => {
       tx.whatsAppCall.findMany({ where: { waCallId: 'wacid.iso' } }),
     );
     expect(seenByT).toHaveLength(1);
+  });
+});
+
+describe('WhatsAppCallingService — WAC-04 inbound GA', () => {
+  it('routes → answers → opens a linked unified Call, in context', async () => {
+    const { adapter, calls } = fakeAdapter();
+    const { media, reqs } = fakeMedia('v=0 answer');
+    const svc = new WhatsAppCallingService(
+      db,
+      async () => adapter,
+      media,
+      new NoopWaCallMeter(),
+      routerTo(routing()),
+      openHours,
+    );
+    await svc.onConnect(T, {
+      waCallId: 'wac4.live',
+      direction: 'USER_INITIATED',
+      to: '16315553601',
+      sdpOffer: 'v=0 offer',
+      ctaPayload: 'intent=book_demo&ref=A1234',
+    });
+
+    expect(calls.accept).toContain('wac4.live');
+    const wa = await db.admin.whatsAppCall.findFirst({
+      where: { tenantId: T, waCallId: 'wac4.live' },
+    });
+    expect(wa?.status).toBe('accepted');
+    const callId = wa?.callId ?? '';
+    expect(callId).toBeTruthy();
+
+    const call = await db.admin.call.findFirst({ where: { id: callId } });
+    expect(call?.channel).toBe('WHATSAPP');
+    expect(call?.direction).toBe('INBOUND');
+    expect(call?.status).toBe('IN_PROGRESS');
+    expect(call?.agentId).toBe(AGENT);
+
+    // The unified Call id (not the WACID) is what the media bridge keys on; the context brief +
+    // persona + greeting all reach the answer request.
+    expect(reqs[0]?.callId).toBe(callId);
+    expect(reqs[0]?.agentId).toBe(AGENT);
+    expect(reqs[0]?.systemPrompt).toContain('You are A.');
+    expect(reqs[0]?.systemPrompt).toContain('book_demo');
+    expect(reqs[0]?.greeting).toBe('Hi from A.');
+  });
+
+  it('rejects a call outside calling hours — no media, no unified Call', async () => {
+    const { media, reqs } = fakeMedia('v=0 answer');
+    const svc = new WhatsAppCallingService(
+      db,
+      async () => null,
+      media,
+      new NoopWaCallMeter(),
+      routerTo(routing()),
+      closedHours,
+    );
+    await svc.onConnect(T, {
+      waCallId: 'wac4.closed',
+      direction: 'USER_INITIATED',
+      to: '16315553601',
+      sdpOffer: 'v=0 offer',
+    });
+    expect(reqs).toHaveLength(0); // never asked the voice bridge for media
+    const wa = await db.admin.whatsAppCall.findFirst({
+      where: { tenantId: T, waCallId: 'wac4.closed' },
+    });
+    expect(wa?.status).toBe('rejected');
+    expect(wa?.callId).toBeNull();
+    const ev = await db.admin.whatsAppCallEvent.findFirst({
+      where: { tenantId: T, waCallId: 'wac4.closed', event: 'rejected' },
+    });
+    expect((ev?.payload as { reason?: string } | null)?.reason).toBe('outside_calling_hours');
+  });
+
+  it('rejects when no publishable agent is available', async () => {
+    const { media, reqs } = fakeMedia('v=0 answer');
+    const svc = new WhatsAppCallingService(
+      db,
+      async () => null,
+      media,
+      new NoopWaCallMeter(),
+      routerTo(null),
+      openHours,
+    );
+    await svc.onConnect(T, {
+      waCallId: 'wac4.noagent',
+      direction: 'USER_INITIATED',
+      to: '16315553601',
+      sdpOffer: 'v=0 offer',
+    });
+    expect(reqs).toHaveLength(0);
+    const wa = await db.admin.whatsAppCall.findFirst({
+      where: { tenantId: T, waCallId: 'wac4.noagent' },
+    });
+    expect(wa?.status).toBe('rejected');
+  });
+
+  it('opens then fails the unified Call when media is unavailable (gated)', async () => {
+    const { media } = fakeMedia(null);
+    const svc = new WhatsAppCallingService(
+      db,
+      async () => null,
+      media,
+      new NoopWaCallMeter(),
+      routerTo(routing()),
+      openHours,
+    );
+    await svc.onConnect(T, {
+      waCallId: 'wac4.gatedmedia',
+      direction: 'USER_INITIATED',
+      to: '16315553601',
+      sdpOffer: 'v=0 offer',
+    });
+    const wa = await db.admin.whatsAppCall.findFirst({
+      where: { tenantId: T, waCallId: 'wac4.gatedmedia' },
+    });
+    expect(wa?.status).toBe('connecting'); // never accepted
+    const callId = wa?.callId ?? '';
+    expect(callId).toBeTruthy();
+    const call = await db.admin.call.findFirst({ where: { id: callId } });
+    expect(call?.status).toBe('FAILED');
+    expect(call?.disposition).toBe('media_unavailable');
+  });
+
+  it('terminate closes the linked unified Call with duration + carrier cost', async () => {
+    const { adapter } = fakeAdapter();
+    const { media } = fakeMedia('v=0 answer');
+    const svc = new WhatsAppCallingService(
+      db,
+      async () => adapter,
+      media,
+      new NoopWaCallMeter(),
+      routerTo(routing()),
+      openHours,
+    );
+    await svc.onConnect(T, {
+      waCallId: 'wac4.term',
+      direction: 'USER_INITIATED',
+      to: '16315553601',
+      sdpOffer: 'v=0 offer',
+    });
+    // Stand in for WAC-06 having metered a carrier cost onto the WhatsApp call row.
+    await db.admin.whatsAppCall.update({
+      where: { tenantId_waCallId: { tenantId: T, waCallId: 'wac4.term' } },
+      data: { costUsd: 0.03 },
+    });
+    await svc.onTerminate(T, { waCallId: 'wac4.term', status: 'Completed', durationSec: 42 });
+
+    const wa = await db.admin.whatsAppCall.findFirst({
+      where: { tenantId: T, waCallId: 'wac4.term' },
+    });
+    const call = await db.admin.call.findFirst({ where: { id: wa?.callId ?? '' } });
+    expect(call?.status).toBe('COMPLETED');
+    expect(call?.durationSec).toBe(42);
+    expect((call?.costBreakdown as { telephony?: number } | null)?.telephony).toBeCloseTo(0.03, 6);
   });
 });

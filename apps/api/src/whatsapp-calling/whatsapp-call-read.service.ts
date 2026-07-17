@@ -1,4 +1,9 @@
 import { WHATSAPP_TIER0_MAX_MINUTES } from '@vocaliq/provider-router';
+import {
+  NotFoundError,
+  type WhatsAppCallContext,
+  decodeWhatsAppCallPayload,
+} from '@vocaliq/shared';
 import type { PrismaService } from '../db/prisma.service';
 import { whatsappCallPeriod } from './whatsapp-call-cost.service';
 
@@ -30,6 +35,31 @@ export interface WhatsAppCallOverview {
   };
   monthly: { period: string; minutes: number; tier: 'tier0' | 'tier1' };
   recent: WhatsAppCallRow[];
+}
+
+/** One lifecycle event on the live-call timeline (payload/SDP deliberately omitted — status only). */
+export interface WhatsAppCallEventRow {
+  event: string;
+  at: Date;
+}
+
+/** The live-call view model (WAC-04): who's calling, why, current status, and the linked unified call. */
+export interface WhatsAppLiveCall {
+  waCallId: string;
+  direction: string;
+  status: string;
+  fromNumber: string | null;
+  toNumber: string | null;
+  waUserId: string | null;
+  /** The tapped-button / deep-link context decoded from the WAC-07 payload — "why they're calling". */
+  context: WhatsAppCallContext;
+  /** The unified Call this WhatsApp call opened (once answered) — links to the shared call detail. */
+  callId: string | null;
+  agent: { id: string; name: string } | null;
+  durationSec: number | null;
+  startedAt: Date | null;
+  createdAt: Date;
+  events: WhatsAppCallEventRow[];
 }
 
 const ANSWERED = ['accepted', 'completed'];
@@ -94,6 +124,61 @@ export class WhatsAppCallReadService {
           tier: minutes > WHATSAPP_TIER0_MAX_MINUTES ? 'tier1' : 'tier0',
         },
         recent,
+      };
+    });
+  }
+
+  /** One WhatsApp call for the live-call view: identity, decoded context, status, timeline, linked call. */
+  async liveCall(tenantId: string, waCallId: string): Promise<WhatsAppLiveCall> {
+    return this.db.withTenant(tenantId, async (tx) => {
+      const wa = await tx.whatsAppCall.findUnique({
+        where: { tenantId_waCallId: { tenantId, waCallId } },
+        select: {
+          waCallId: true,
+          direction: true,
+          status: true,
+          fromNumber: true,
+          toNumber: true,
+          waUserId: true,
+          ctaPayload: true,
+          deeplinkPayload: true,
+          callId: true,
+          durationSec: true,
+          startedAt: true,
+          createdAt: true,
+        },
+      });
+      if (!wa) throw new NotFoundError('WhatsApp call not found');
+
+      const [call, events] = await Promise.all([
+        wa.callId
+          ? tx.call.findFirst({
+              where: { id: wa.callId },
+              select: { agent: { select: { id: true, name: true } } },
+            })
+          : Promise.resolve(null),
+        tx.whatsAppCallEvent.findMany({
+          where: { waCallId },
+          orderBy: { createdAt: 'asc' },
+          take: 50,
+          select: { event: true, createdAt: true },
+        }),
+      ]);
+
+      return {
+        waCallId: wa.waCallId,
+        direction: wa.direction,
+        status: wa.status,
+        fromNumber: wa.fromNumber,
+        toNumber: wa.toNumber,
+        waUserId: wa.waUserId,
+        context: decodeWhatsAppCallPayload(wa.ctaPayload ?? wa.deeplinkPayload ?? ''),
+        callId: wa.callId,
+        agent: call?.agent ?? null,
+        durationSec: wa.durationSec,
+        startedAt: wa.startedAt,
+        createdAt: wa.createdAt,
+        events: events.map((e) => ({ event: e.event, at: e.createdAt })),
       };
     });
   }
