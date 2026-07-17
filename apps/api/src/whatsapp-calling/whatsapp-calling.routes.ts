@@ -28,6 +28,14 @@ export function whatsAppCallingRoutes(
     }),
   );
 
+  // WAC-04 live-call view: one WhatsApp call's identity + decoded context + status timeline.
+  r.get(
+    '/calls/:id',
+    ah(async (req, res) => {
+      res.json(await read.liveCall(req.ctx!.tenantId, req.params.id as string));
+    }),
+  );
+
   r.get(
     '/settings',
     ah(async (req, res) => {

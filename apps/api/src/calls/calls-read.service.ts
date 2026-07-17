@@ -1,4 +1,5 @@
 import {
+  CallChannel,
   type CallChannel as CallChannelT,
   CallDirection,
   type CallDirection as CallDirectionT,
@@ -70,6 +71,9 @@ export const callsQuerySchema = z.object({
     ])
     .optional(),
   direction: z.enum([CallDirection.INBOUND, CallDirection.OUTBOUND]).optional(),
+  channel: z
+    .enum([CallChannel.PSTN, CallChannel.WEB, CallChannel.SIP, CallChannel.WHATSAPP])
+    .optional(),
   agentId: z.string().uuid().optional(),
 });
 
@@ -95,11 +99,12 @@ export class CallsReadService {
   ): Promise<{ items: CallListItem[]; nextCursor: string | null }> {
     const parsed = callsQuerySchema.safeParse(query);
     if (!parsed.success) throw new ValidationError('Invalid call filters');
-    const { limit, cursor, status, direction, agentId } = parsed.data;
+    const { limit, cursor, status, direction, channel, agentId } = parsed.data;
 
     const where = {
       ...(status ? { status } : {}),
       ...(direction ? { direction } : {}),
+      ...(channel ? { channel } : {}),
       ...(agentId ? { agentId } : {}),
     };
 
