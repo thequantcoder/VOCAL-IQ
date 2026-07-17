@@ -4933,6 +4933,91 @@ export function useWhatsappLiveCall(waCallId: string) {
   });
 }
 
+// ── WhatsApp Business Calling — outbound permissions (WAC-08) ─────────────────
+
+export interface WhatsappPermissionView {
+  waId: string;
+  status: string; // no_permission | temporary | permanent
+  expiresAt: string | null;
+  source: string;
+  consecutiveUnanswered: number;
+  updatedAt: string | null;
+}
+
+export interface WhatsappCanCall {
+  allowed: boolean;
+  reason?: string;
+  permission: WhatsappPermissionView;
+  connectedLast24h: number;
+}
+
+export interface WhatsappPermissionInspect {
+  permission: WhatsappPermissionView;
+  canCall: WhatsappCanCall;
+  requestCaps: {
+    sentLast24h: number;
+    sentLast7d: number;
+    canRequest: { allowed: boolean; reason?: string };
+  };
+}
+
+export function useWhatsappPermission(
+  waId: string,
+  opts: { contactId?: string; businessE164?: string } = {},
+) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['whatsapp-permission', waId, opts],
+    queryFn: () => {
+      const params = new URLSearchParams({ waId });
+      if (opts.contactId) params.set('contactId', opts.contactId);
+      if (opts.businessE164) params.set('businessE164', opts.businessE164);
+      return apiFetch<WhatsappPermissionInspect>(
+        getToken,
+        `/whatsapp-calling/permissions?${params.toString()}`,
+      );
+    },
+    enabled: waId.trim().length >= 3,
+  });
+}
+
+export function useRequestWhatsappPermission() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      waId: string;
+      contactId?: string;
+      text?: string;
+      templateName?: string;
+    }) =>
+      apiFetch<WhatsappPermissionView>(getToken, '/whatsapp-calling/permission-requests', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['whatsapp-permission'] }),
+  });
+}
+
+export function usePlaceWhatsappCall() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      to: string;
+      agentId: string;
+      contactId?: string;
+      businessE164?: string;
+    }) =>
+      apiFetch<{ waCallId: string; callId: string; status: string }>(
+        getToken,
+        '/whatsapp-calling/calls',
+        { method: 'POST', body: JSON.stringify(body) },
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['whatsapp-permission'] }),
+  });
+}
+
 // ── Broadcast announcements (PARITY-07) ──────────────────────────────────────
 export type AnnouncementAudienceInput =
   | { scope: 'all' }
