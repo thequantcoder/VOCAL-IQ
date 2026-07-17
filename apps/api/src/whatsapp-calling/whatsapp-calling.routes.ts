@@ -5,6 +5,7 @@ import { requireRoles } from '../http/roles.middleware';
 import { tenantMiddleware } from '../http/tenant.middleware';
 import { CONFIG_WRITERS } from '../tenancy/roles';
 import type { TenantService } from '../tenancy/tenant.service';
+import type { WhatsAppCallReadService } from './whatsapp-call-read.service';
 import type { WhatsAppCallSettingsService } from './whatsapp-call-settings.service';
 
 /**
@@ -13,10 +14,19 @@ import type { WhatsAppCallSettingsService } from './whatsapp-call-settings.servi
  */
 export function whatsAppCallingRoutes(
   settings: WhatsAppCallSettingsService,
+  read: WhatsAppCallReadService,
   tenants: TenantService,
 ): Router {
   const r = Router();
   r.use(authMiddleware, tenantMiddleware(tenants));
+
+  // WAC-07 dashboard: today's KPIs + this-month minutes/tier + recent WhatsApp calls.
+  r.get(
+    '/overview',
+    ah(async (req, res) => {
+      res.json(await read.overview(req.ctx!.tenantId));
+    }),
+  );
 
   r.get(
     '/settings',
