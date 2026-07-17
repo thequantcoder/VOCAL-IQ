@@ -110,6 +110,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: '/dashboard/campaigns', label: 'Campaigns', icon: Megaphone },
       { href: '/dashboard/callbacks', label: 'Callbacks', icon: PhoneOutgoing },
       { href: '/dashboard/messaging', label: 'Messaging', icon: MessageSquare },
+      { href: '/dashboard/whatsapp-calling', label: 'WhatsApp Calling', icon: PhoneIncoming },
       { href: '/dashboard/sip', label: 'SIP trunks', icon: Server },
       { href: '/dashboard/appointments', label: 'Appointments', icon: CalendarCheck },
       { href: '/dashboard/settings/translation', label: 'Translation', icon: Languages },

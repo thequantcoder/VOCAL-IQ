@@ -4850,6 +4850,40 @@ export function useSaveWhatsappCallSettings() {
   });
 }
 
+// ── WhatsApp Business Calling — dashboard overview (WAC-07) ───────────────────────
+
+export interface WhatsappCallRow {
+  waCallId: string;
+  direction: string;
+  status: string;
+  fromNumber: string | null;
+  toNumber: string | null;
+  durationSec: number | null;
+  costUsd: number | null;
+  billedCountry: string | null;
+  createdAt: string;
+}
+
+export interface WhatsappCallOverview {
+  enabled: boolean;
+  stats: {
+    callsToday: number;
+    answeredToday: number;
+    avgDurationSec: number;
+    costTodayUsd: number;
+  };
+  monthly: { period: string; minutes: number; tier: 'tier0' | 'tier1' };
+  recent: WhatsappCallRow[];
+}
+
+export function useWhatsappCallOverview() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['whatsapp-call-overview'],
+    queryFn: () => apiFetch<WhatsappCallOverview>(getToken, '/whatsapp-calling/overview'),
+  });
+}
+
 // ── Broadcast announcements (PARITY-07) ──────────────────────────────────────
 export type AnnouncementAudienceInput =
   | { scope: 'all' }

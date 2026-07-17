@@ -107,6 +107,7 @@ import { WalletService } from './wallet/wallet.service';
 import type { WebhookEmitter } from './webhooks/webhook-emitter';
 import { WebhookService } from './webhooks/webhook.service';
 import { WhatsAppCallCostService } from './whatsapp-calling/whatsapp-call-cost.service';
+import { WhatsAppCallReadService } from './whatsapp-calling/whatsapp-call-read.service';
 import { WhatsAppCallSettingsService } from './whatsapp-calling/whatsapp-call-settings.service';
 import {
   type WaAdapterResolver,
@@ -234,6 +235,7 @@ export function createServices() {
     new WhatsAppCallCostService(db), // WAC-06: meter carrier cost on terminate
   );
   const whatsappCallSettings = new WhatsAppCallSettingsService(db, waCallingAdapterFor);
+  const whatsappCallRead = new WhatsAppCallReadService(db); // WAC-07 dashboard read model
   // Cross-channel automations reuse the messaging + integration subsystems as action executors.
   const automations = new AutomationsService(
     db,
@@ -398,6 +400,7 @@ export function createServices() {
     messaging,
     whatsappCalling,
     whatsappCallSettings,
+    whatsappCallRead,
     automations,
     sip,
     experiments,

@@ -4313,3 +4313,30 @@ J. Quality/docs: ✅ — doc comments + the `UsageRecord`-vs-`chargeCall` design
 K. Build/CI: ✅ — typecheck 12/12; lint clean; provider-router + api suites fully green locally.
 
 WAC-06 complete — every WhatsApp call is cost-attributed (inbound free, outbound per-country pulse+tier metered) through the same `UsageRecord` engine as PSTN. **Next: WAC-07 — the WhatsApp calls dashboard + click-to-call / wa.me deep-link generator** (surfaces these costs + minutes-this-month/tier tile). Gated on WAC-00 creds: WAC-03/04.
+
+### WAC-07 — WhatsApp Calling dashboard + click-to-call generator — 2026-07-17 — ✅ DONE — ⚡ SONNET
+Model: Opus (continuing the WAC arc). Branch `wac/07-web-panel-clicktocall`. 🎨 The showpiece UI slice — the tenant's home for WhatsApp Calling: a status/setup hero, today's KPIs + this-month minutes/tier, the recent-calls feed, and a **click-to-call generator** (deep link · QR · website button) whose business-context payload the AI agent greets with. Offline-buildable; the live message/template *send* is deferred to WAC-08 (it needs a contact's calling permission — consented outbound).
+
+**Scope note (§13):** the super-prompt's "send `voice_call` message/template" tabs are **deferred to WAC-08**, where consent/permission lives (sending is permission-gated, error 138006). WAC-07 ships the delightful **offline** generator (deep link + QR + website button, all client-side, no payload ever leaves the browser) + the dashboard; the panel shows a Callout pointing to consented outbound for sends.
+
+Done (DONE):
+- **shared** `whatsapp-call-link.ts` — the **payload convention**: `WhatsAppCallContext` (intent/campaign/reference/custom) ⇄ a compact URL-query `biz_payload` (`URLSearchParams`, isomorphic; custom namespaced `c.<key>`; length-capped) via `encodeWhatsAppCallPayload`/`decodeWhatsAppCallPayload`, plus `waCallDeepLink(number, payload)` → `wa.me/call/<digits>?biz_payload=…` and `normalizeWaNumber`. Meta echoes the payload back as `cta_payload`/`deeplink_payload` (WAC-02) so the agent greets in context (WAC-04). Test 8/8 (round-trip, blank-drop, length cap, garbage-tolerant, deep-link encode).
+- **api** `WhatsAppCallReadService.overview(tenantId)` — today's KPIs (calls / answered / avg duration / cost, RLS-scoped aggregate), this-month billed minutes + tier (from the WAC-06 `WhatsAppCallVolume`), `enabled` (from settings), and the recent-20 feed. `GET /whatsapp-calling/overview` (members); wired through composition + main. Test 2/2 (KPIs + tier + **sibling-tenant hidden under RLS**; empty-tenant defaults).
+- **web** `/dashboard/whatsapp-calling` — gated **setup card** (3-step onboarding + "Enable calling" CTA) vs an **enabled hero** (signature `Waveform` at rest + "Calling enabled" badge + `StatCard` row + minutes/tier line); a **Recent calls** feed (in/out icon, number, `StatusBadge`, duration, cost) with empty state; and the **`ClickToCallGenerator`** — a shared context builder (number + intent/campaign/reference + add/remove custom k/v) with a **live payload preview** ("the agent will greet with this context"), then `Tabs`: **Deep link** (read-only + `CopyButton`), **QR** (client-side `QRCodeSVG` + download-SVG), **Website button** (branded WhatsApp-green snippet + live preview + copy). Inline validation (over-long payload → danger callout), a11y (label/id association, aria-labels), reduced-motion-safe, tenant tokens. Sidebar nav link (Run group). New dep: `qrcode.react@^4.2.0` (SVG, client-only, self-hostable — no third-party QR service, so payloads never leave the browser).
+
+Verification: **full typecheck 12/12, biome lint clean (shared + api + web), shared 754/754, api 523/523, web production build ✓** (`/dashboard/whatsapp-calling` prerenders, 11.8 kB).
+
+## Self-Audit — WAC-07 (A–K)
+A. Correctness: ✅ — payload convention round-trips (encode→decode, and survives URL-encode in the deep link); overview aggregates match the seeded fixture; tier read matches WAC-06's band.
+B. Isolation: ✅ — overview reads via `withTenant` (RLS); the recent feed / KPIs exclude a sibling tenant's rows (tested).
+C. Security: ✅ — the generator is 100% client-side (no payload sent anywhere; QR rendered locally, not via an image service); overview is a read; no secrets.
+D. Cost: n/a — read-only surfacing of WAC-06's metered cost (no new provider call).
+E. Errors/obs: ✅ — over-long payload → inline danger callout (no crash); overview has loading/error/empty states.
+F. Performance: ✅ — one parallelized read (`Promise.all`: count×2 + aggregate + volume + recent); indexed by `(tenantId, …)`; QR renders client-side.
+G. Error handling: ✅ — number-too-short hides the link with a hint; encode throw caught; missing data → defaults.
+H. UI/AA (focus): ✅ — showpiece: gated-vs-enabled hero, signature waveform, StatCards, tabbed generator, live preview; labels associated, keyboard-reachable, reduced-motion-safe, tenant white-label tokens; reuses `packages/ui` (no one-off styles).
+I. Regressions: ✅ — additive; new route/hook/page + one shared module + one dep; full typecheck + all suites + web build green; no existing behaviour changed.
+J. Quality/docs: ✅ — doc comments + plan §A.7 refs; the send-tab deferral + no-third-party-QR decisions recorded here (§13).
+K. Build/CI: ✅ — typecheck 12/12; lint clean; shared/api suites green; web build ✓.
+
+WAC-07 complete — tenants have a lovely WhatsApp Calling home + a click-to-call generator (link/QR/button) that carries agent context. **This closes the offline-buildable WAC slices (01/02/05/06/07 merged).** Remaining are gated on the admin's WAC-00 test creds + a tunnel: WAC-00 (live spike), WAC-03 (WebRTC media bridge), WAC-04 (inbound GA) → then WAC-08 (permissions + consented outbound, incl. the deferred send tabs), WAC-09 (routing/guardrails), and optional WAC-10 (SIP) / WAC-11 (video).
