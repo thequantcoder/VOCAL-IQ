@@ -42,6 +42,19 @@ class WaEndBody(BaseModel):
     call_id: str
 
 
+class WaOfferBody(BaseModel):
+    call_id: str
+    tenant_id: str
+    agent_id: str
+    system_prompt: str | None = None
+    greeting: str | None = None
+
+
+class WaApplyAnswerBody(BaseModel):
+    call_id: str
+    sdp_answer: str
+
+
 def get_bridge() -> object:
     """Build (once) the aiortc media bridge with the configured provider keys. Lazy import so the
     control surface stays importable without the media stack; monkeypatched in unit tests."""
@@ -87,6 +100,38 @@ async def whatsapp_answer(
         call_id=body.call_id, sdp_offer=body.sdp_offer, config=config
     )
     return {"sdp_answer": sdp_answer}
+
+
+@router.post("/offer")
+async def whatsapp_offer(
+    body: WaOfferBody, x_internal_secret: str | None = Header(default=None)
+) -> dict[str, str]:
+    """Outbound (WAC-08): generate the business SDP OFFER that starts an outbound call. The api dials
+    Meta with this offer; the user's answer arrives on the Connect webhook → /apply-answer."""
+    _authorize(x_internal_secret)
+    if not settings.voice_ai_configured:
+        raise HTTPException(status_code=503, detail="voice-ai providers not configured")
+    config = LoopConfig(
+        tenant_id=body.tenant_id,
+        call_id=body.call_id,
+        agent_id=body.agent_id,
+        system_prompt=body.system_prompt or _DEFAULT_SYSTEM_PROMPT,
+        greeting=body.greeting or _DEFAULT_GREETING,
+    )
+    bridge = get_bridge()
+    sdp_offer = await bridge.offer(call_id=body.call_id, config=config)  # type: ignore[attr-defined]
+    return {"sdp_offer": sdp_offer}
+
+
+@router.post("/apply-answer")
+async def whatsapp_apply_answer(
+    body: WaApplyAnswerBody, x_internal_secret: str | None = Header(default=None)
+) -> dict[str, bool]:
+    """Outbound (WAC-08): apply the user's SDP answer (from the Connect webhook) to the media peer."""
+    _authorize(x_internal_secret)
+    if _bridge is not None:
+        await _bridge.apply_answer(body.call_id, body.sdp_answer)  # type: ignore[attr-defined]
+    return {"ok": True}
 
 
 @router.post("/end")
