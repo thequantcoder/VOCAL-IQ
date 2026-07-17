@@ -17,6 +17,7 @@ import { StatusBadge, formatDuration, formatUsd } from '../../../components/ui-b
 import type { WhatsappCallRow } from '../../../lib/api';
 import { useWhatsappCallOverview } from '../../../lib/api';
 import { ClickToCallGenerator } from './click-to-call-generator';
+import { OutboundCallCard } from './outbound-call-card';
 
 /**
  * WhatsApp Calling home (WAC-07) — the tenant's dashboard for AI voice calls over WhatsApp: a
@@ -130,6 +131,8 @@ export default function WhatsAppCallingPage() {
           )}
         </CardContent>
       </Card>
+
+      {enabled ? <OutboundCallCard /> : null}
 
       <ClickToCallGenerator />
     </div>

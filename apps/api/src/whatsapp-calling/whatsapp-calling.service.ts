@@ -1,14 +1,20 @@
+import { WHATSAPP_NO_PERMISSION_CODE, whatsappErrorCode } from '@vocaliq/provider-router';
 import type { WhatsAppCallingTelephony } from '@vocaliq/provider-router';
 import {
+  ProviderError,
+  ValidationError,
+  type WaCallBlockReason,
   type WhatsappCallSettings,
   buildWhatsAppCallBrief,
   decodeWhatsAppCallPayload,
   isWithinWhatsappCallHours,
+  normalizeWaNumber,
 } from '@vocaliq/shared';
 import type { PrismaService } from '../db/prisma.service';
 import { NoopWaCallMeter, type WaCallMeter } from './whatsapp-call-cost.service';
 import type { WaInboundRouter, WhatsAppInboundRouting } from './whatsapp-call-routing.service';
 import type { WaMediaControl } from './whatsapp-media-control';
+import type { WaPermissionGate, WaPermissionReply } from './whatsapp-permission.service';
 
 /**
  * WhatsApp Business Calling — the CONTROL PLANE (WAC-02 → WAC-04). Receives Meta's calling webhooks
@@ -59,7 +65,36 @@ export interface WaTerminateInput {
   errorCode?: number;
 }
 
+export interface WaPlaceOutboundInput {
+  /** The user's WhatsApp number to call. */
+  to: string;
+  agentId: string;
+  contactId?: string;
+  /** The BUSINESS number's E.164 (for the country-block gate). */
+  businessE164?: string;
+}
+
 const norm = (s?: string) => (s && s.length > 0 ? s : undefined);
+
+/** Operator-facing message for each pre-dial block reason (the compliance gate, WAC-08). */
+function outboundBlockedMessage(reason: WaCallBlockReason | undefined): string {
+  switch (reason) {
+    case 'dnc':
+      return 'This contact is on the do-not-call list.';
+    case 'blocked_country':
+      return 'Outbound WhatsApp calling is blocked from this business number’s country.';
+    case 'no_permission':
+      return 'This user has not granted call permission — request permission first.';
+    case 'permission_expired':
+      return 'Call permission has expired — request permission again.';
+    case 'unanswered_backoff':
+      return 'Too many consecutive unanswered calls — pausing to avoid an auto-revoke.';
+    case 'daily_connected_cap':
+      return 'The 100 connected-calls-per-day limit for this user has been reached.';
+    default:
+      return 'This call is not permitted right now.';
+  }
+}
 
 const COMPONENT_KEYS = ['stt', 'llm', 'tts', 'telephony'] as const;
 
@@ -84,6 +119,8 @@ export class WhatsAppCallingService {
     private readonly router: WaInboundRouter | null = null,
     /** Calling-hours source (WAC-04). Absent → always open (WAC-02/03 behaviour). */
     private readonly settingsReader: WaSettingsReader | null = null,
+    /** Outbound permission governor (WAC-08). Absent → no outbound (dialing throws). */
+    private readonly permission: WaPermissionGate | null = null,
     /** Clock — injectable so the hours gate + timestamps are deterministic in tests. */
     private readonly now: () => Date = () => new Date(),
   ) {}
@@ -120,8 +157,23 @@ export class WhatsAppCallingService {
       ...(norm(input.deeplinkPayload) ? { deeplinkPayload: input.deeplinkPayload } : {}),
     });
 
-    // Only an inbound user-initiated call with an offer is answered here (outbound legs are elsewhere).
-    if (input.direction !== 'USER_INITIATED' || !input.sdpOffer) return;
+    // Outbound (business-initiated): the Connect webhook carries the USER's SDP answer → apply it to
+    // our already-open media leg (WAC-08). The call was placed by `placeOutboundCall`.
+    if (input.direction === 'BUSINESS_INITIATED') {
+      if (input.sdpAnswer) {
+        const wa = await this.db.withTenant(tenantId, (tx) =>
+          tx.whatsAppCall.findUnique({
+            where: { tenantId_waCallId: { tenantId, waCallId: input.waCallId } },
+            select: { callId: true },
+          }),
+        );
+        if (wa?.callId) await this.media.applyAnswer(wa.callId, input.sdpAnswer).catch(() => {});
+      }
+      return;
+    }
+
+    // Inbound: only a user-initiated call with an offer is answered here.
+    if (!input.sdpOffer) return;
 
     // Calling-hours gate (WAC-04) — outside hours → reject gracefully (deflect/voicemail is WAC-05/08).
     if (this.settingsReader) {
@@ -143,9 +195,11 @@ export class WhatsAppCallingService {
     }
 
     // Open the unified Call up-front (when routed) so the media/transcript/cost attach to its id.
-    const unifiedCallId = routing
-      ? await this.openUnifiedCall(tenantId, input.waCallId, routing)
-      : input.waCallId;
+    let unifiedCallId = input.waCallId;
+    if (routing) {
+      unifiedCallId = await this.createUnifiedCall(tenantId, routing, 'INBOUND');
+      await this.linkWhatsAppCall(tenantId, input.waCallId, unifiedCallId);
+    }
 
     // Compose the answering system prompt = the agent's persona + the tapped-button context brief.
     const brief = buildWhatsAppCallBrief(this.contextOf(input));
@@ -176,10 +230,20 @@ export class WhatsAppCallingService {
     if (routing) await this.markUnifiedInProgress(tenantId, unifiedCallId);
   }
 
-  /** Outbound status transitions (RINGING/ACCEPTED/REJECTED). */
+  /** Outbound status transitions (RINGING/ACCEPTED/REJECTED) — mirror onto the linked unified Call. */
   async onStatus(tenantId: string, input: WaStatusInput): Promise<void> {
     const status = input.status.toLowerCase();
     await this.record(tenantId, input.waCallId, 'status', input, { status });
+    if (status !== 'accepted' && status !== 'rejected') return;
+    const wa = await this.db.withTenant(tenantId, (tx) =>
+      tx.whatsAppCall.findUnique({
+        where: { tenantId_waCallId: { tenantId, waCallId: input.waCallId } },
+        select: { callId: true },
+      }),
+    );
+    if (!wa?.callId) return;
+    if (status === 'accepted') await this.markUnifiedInProgress(tenantId, wa.callId);
+    else await this.failUnifiedCall(tenantId, wa.callId, 'rejected');
   }
 
   /** Call ended — persist final status/duration/error, tear down media, meter cost, close the Call. */
@@ -198,20 +262,112 @@ export class WhatsAppCallingService {
     await this.meter.meterTerminated(tenantId, input.waCallId);
     // Close the linked unified Call (WAC-04) — final status + duration + carrier cost. No-op if none.
     await this.closeUnifiedCall(tenantId, input.waCallId);
+    // Outbound auto-revoke back-off (WAC-08): record whether this call was answered.
+    await this.recordOutboundOutcome(tenantId, input.waCallId);
   }
 
-  /** A user's permission accept/reject reply (persistence of the grant itself is WAC-08). */
-  async onPermissionReply(tenantId: string, waCallId: string, payload: unknown): Promise<void> {
+  /** For an outbound call, feed the answered/unanswered signal to the permission back-off engine. */
+  private async recordOutboundOutcome(tenantId: string, waCallId: string): Promise<void> {
+    if (!this.permission) return;
+    const wa = await this.db.withTenant(tenantId, (tx) =>
+      tx.whatsAppCall.findUnique({
+        where: { tenantId_waCallId: { tenantId, waCallId } },
+        select: { direction: true, toNumber: true, durationSec: true },
+      }),
+    );
+    if (wa?.direction !== 'BUSINESS_INITIATED' || !wa.toNumber) return;
+    await this.permission
+      .recordCallOutcome(tenantId, wa.toNumber, (wa.durationSec ?? 0) > 0)
+      .catch(() => {});
+  }
+
+  /** A user's permission accept/reject reply — audit it AND persist the grant (WAC-08). */
+  async onPermissionReply(
+    tenantId: string,
+    waId: string,
+    reply: WaPermissionReply | null,
+    rawPayload?: unknown,
+  ): Promise<void> {
     await this.db.withTenant(tenantId, (tx) =>
       tx.whatsAppCallEvent.create({
         data: {
           tenantId,
-          waCallId: waCallId || 'permission',
+          waCallId: 'permission',
           event: 'permission_reply',
-          payload: (payload ?? {}) as object,
+          payload: (rawPayload ?? reply ?? {}) as object,
         },
       }),
     );
+    if (this.permission && waId && reply) {
+      await this.permission.recordPermissionReply(tenantId, waId, reply).catch(() => {});
+    }
+  }
+
+  /**
+   * Place a CONSENTED outbound WhatsApp call (WAC-08). Runs the compliance gate FIRST (permission,
+   * expiry, ≤100/day, blocked country, unanswered back-off, DNC); only then opens a unified Call, asks
+   * the bridge for a business SDP offer, and dials via the adapter. Throws a typed ValidationError when
+   * blocked, or a ProviderError when the media/creds aren't ready (gated). Metering happens on terminate.
+   */
+  async placeOutboundCall(
+    tenantId: string,
+    input: WaPlaceOutboundInput,
+  ): Promise<{ waCallId: string; callId: string; status: string }> {
+    if (!this.permission) throw new ProviderError('Outbound WhatsApp calling is not available.');
+    const waId = normalizeWaNumber(input.to);
+    if (!waId) throw new ValidationError('A WhatsApp number is required.');
+
+    // 1. The pre-dial compliance gate — never dial when blocked.
+    const gate = await this.permission.canCall(tenantId, {
+      waId,
+      ...(input.businessE164 ? { businessE164: input.businessE164 } : {}),
+      ...(input.contactId ? { contactId: input.contactId } : {}),
+    });
+    if (!gate.allowed) throw new ValidationError(outboundBlockedMessage(gate.reason));
+
+    // 2. Resolve the answering agent's brain.
+    const routing = this.router
+      ? await this.router.resolveAgentById(tenantId, input.agentId)
+      : null;
+    if (!routing) throw new ValidationError('Agent not found or not published.');
+
+    // 3. Open the unified Call, then get the business SDP offer + dial.
+    const callId = await this.createUnifiedCall(tenantId, routing, 'OUTBOUND');
+    const offer = await this.media
+      .requestSdpOffer({
+        tenantId,
+        callId,
+        agentId: routing.agentId,
+        ...(routing.systemPrompt ? { systemPrompt: routing.systemPrompt } : {}),
+        ...(routing.greeting ? { greeting: routing.greeting } : {}),
+      })
+      .catch(() => null);
+    const adapter = offer ? await this.adapterFor(tenantId).catch(() => null) : null;
+    if (!offer || !adapter) {
+      await this.failUnifiedCall(tenantId, callId, 'media_unavailable');
+      throw new ProviderError('WhatsApp outbound media/credentials are not configured.');
+    }
+
+    let waCallId: string;
+    try {
+      ({ waCallId } = await adapter.placeCall({ to: waId, sdpOffer: offer, callbackData: callId }));
+    } catch (err) {
+      await this.failUnifiedCall(tenantId, callId, 'dial_failed');
+      // Meta 138006 → permission lapsed between the gate and the dial; surface it cleanly.
+      if (whatsappErrorCode(err) === WHATSAPP_NO_PERMISSION_CODE) {
+        throw new ValidationError(outboundBlockedMessage('no_permission'));
+      }
+      throw err;
+    }
+
+    // 4. Persist the WhatsApp call row (BUSINESS_INITIATED) linked to the unified Call.
+    await this.record(tenantId, waCallId, 'connect', input, {
+      direction: 'BUSINESS_INITIATED',
+      status: 'ringing',
+      toNumber: waId,
+      callId,
+    });
+    return { waCallId, callId, status: 'ringing' };
   }
 
   /** Settings-update / account-restriction notifications (alerts + remediation are WAC-05/09). */
@@ -232,11 +388,11 @@ export class WhatsAppCallingService {
     return decodeWhatsAppCallPayload(input.ctaPayload ?? input.deeplinkPayload ?? '');
   }
 
-  /** Open the unified Call(channel=WHATSAPP, INBOUND) row and link it back to the WhatsApp call. */
-  private async openUnifiedCall(
+  /** Create a unified Call(channel=WHATSAPP) row for a routed call. Returns its id. */
+  private async createUnifiedCall(
     tenantId: string,
-    waCallId: string,
     routing: WhatsAppInboundRouting,
+    direction: 'INBOUND' | 'OUTBOUND',
   ): Promise<string> {
     return this.db.withTenant(tenantId, async (tx) => {
       const created = await tx.call.create({
@@ -244,18 +400,30 @@ export class WhatsAppCallingService {
           tenantId,
           agentId: routing.agentId,
           ...(routing.flowVersionId ? { flowVersionId: routing.flowVersionId } : {}),
-          direction: 'INBOUND',
+          direction,
           channel: 'WHATSAPP',
           status: 'RINGING',
         },
         select: { id: true },
       });
-      await tx.whatsAppCall.update({
-        where: { tenantId_waCallId: { tenantId, waCallId } },
-        data: { callId: created.id },
-      });
       return created.id;
     });
+  }
+
+  /** Link a WhatsApp call row to its unified Call id (best-effort). */
+  private async linkWhatsAppCall(
+    tenantId: string,
+    waCallId: string,
+    callId: string,
+  ): Promise<void> {
+    await this.db
+      .withTenant(tenantId, (tx) =>
+        tx.whatsAppCall.update({
+          where: { tenantId_waCallId: { tenantId, waCallId } },
+          data: { callId },
+        }),
+      )
+      .catch(() => {});
   }
 
   private async markUnifiedInProgress(tenantId: string, callId: string): Promise<void> {

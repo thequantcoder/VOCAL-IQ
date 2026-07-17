@@ -20,11 +20,20 @@ SECRET = "internal-secret-xyz"
 class FakeBridge:
     def __init__(self) -> None:
         self.answered: list[tuple[str, str]] = []
+        self.offered: list[tuple[str, str]] = []
+        self.applied: list[tuple[str, str]] = []
         self.ended: list[str] = []
 
     async def answer(self, *, call_id: str, sdp_offer: str, config: LoopConfig) -> str:
         self.answered.append((call_id, config.agent_id))
         return "v=0\r\no=- 0 0 IN IP4 127.0.0.1\r\n(answer)"
+
+    async def offer(self, *, call_id: str, config: LoopConfig) -> str:
+        self.offered.append((call_id, config.agent_id))
+        return "v=0\r\no=- 0 0 IN IP4 127.0.0.1\r\n(offer)"
+
+    async def apply_answer(self, call_id: str, sdp_answer: str) -> None:
+        self.applied.append((call_id, sdp_answer))
 
     async def end(self, call_id: str) -> None:
         self.ended.append(call_id)
@@ -77,3 +86,38 @@ def test_end_tears_down_via_bridge(monkeypatch) -> None:
                       headers={"X-Internal-Secret": SECRET})
     assert res.status_code == 200
     assert fake.ended == ["wacid.1"]
+
+
+# ── Outbound (WAC-08) ────────────────────────────────────────────────────────
+
+def test_offer_is_gated_503_when_internal_secret_unset(monkeypatch) -> None:
+    _configure(monkeypatch, secret=None)
+    res = client.post("/calls/whatsapp/offer", json=_body(), headers={"X-Internal-Secret": "x"})
+    assert res.status_code == 503
+
+
+def test_offer_401_on_wrong_secret(monkeypatch) -> None:
+    _configure(monkeypatch)
+    assert client.post("/calls/whatsapp/offer", json=_body(),
+                       headers={"X-Internal-Secret": "wrong"}).status_code == 401
+
+
+def test_offer_returns_sdp_when_authorized(monkeypatch) -> None:
+    _configure(monkeypatch)
+    fake = FakeBridge()
+    monkeypatch.setattr(whatsapp_router, "_bridge", fake)
+    res = client.post("/calls/whatsapp/offer", json=_body(), headers={"X-Internal-Secret": SECRET})
+    assert res.status_code == 200
+    assert res.json()["sdp_offer"].startswith("v=0")
+    assert fake.offered == [("wacid.1", "a1")]
+
+
+def test_apply_answer_feeds_the_bridge(monkeypatch) -> None:
+    _configure(monkeypatch)
+    fake = FakeBridge()
+    monkeypatch.setattr(whatsapp_router, "_bridge", fake)
+    res = client.post("/calls/whatsapp/apply-answer",
+                      json={"call_id": "wacid.1", "sdp_answer": "v=0(answer)"},
+                      headers={"X-Internal-Secret": SECRET})
+    assert res.status_code == 200
+    assert fake.applied == [("wacid.1", "v=0(answer)")]

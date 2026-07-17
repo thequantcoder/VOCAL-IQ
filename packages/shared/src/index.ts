@@ -100,5 +100,6 @@ export * from './version.js';
 export * from './wallet.js';
 export * from './whatsapp-call-link.js';
 export * from './whatsapp-call-settings.js';
+export * from './whatsapp-permission.js';
 export * from './voice.js';
 export * from './workflow.js';
