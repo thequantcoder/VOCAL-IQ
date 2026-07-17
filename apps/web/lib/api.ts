@@ -5018,6 +5018,24 @@ export function usePlaceWhatsappCall() {
   });
 }
 
+// ── WhatsApp Business Calling — routing health (WAC-09) ──────────────────────
+
+export interface WhatsappCallingHealth {
+  enabled: boolean;
+  policy: string;
+  pickup: { attempts: number; answered: number; rate: number; throttled: boolean };
+  restriction: { active: boolean; type: string | null; expiresAt: string | null };
+  monthly: { period: string; minutes: number; tier: 'tier0' | 'tier1' };
+}
+
+export function useWhatsappCallingHealth() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['whatsapp-calling-health'],
+    queryFn: () => apiFetch<WhatsappCallingHealth>(getToken, '/whatsapp-calling/health'),
+  });
+}
+
 // ── Broadcast announcements (PARITY-07) ──────────────────────────────────────
 export type AnnouncementAudienceInput =
   | { scope: 'all' }
