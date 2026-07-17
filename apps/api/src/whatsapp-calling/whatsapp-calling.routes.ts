@@ -1,4 +1,4 @@
-import { ValidationError } from '@vocaliq/shared';
+import { ValidationError, WA_ROUTING_POLICIES } from '@vocaliq/shared';
 import { Router } from 'express';
 import { z } from 'zod';
 import { ah } from '../http/async-handler';
@@ -11,6 +11,7 @@ import type { WhatsAppCallReadService } from './whatsapp-call-read.service';
 import type { WhatsAppCallSettingsService } from './whatsapp-call-settings.service';
 import type { WhatsAppCallingService } from './whatsapp-calling.service';
 import type { WhatsAppPermissionService } from './whatsapp-permission.service';
+import type { WhatsAppRoutingService } from './whatsapp-routing.service';
 
 /**
  * WhatsApp Business Calling API (WAC-05+). Reads open to members; settings + permission + dialing
@@ -39,11 +40,17 @@ const inspectQuerySchema = z.object({
   businessE164: z.string().max(20).optional(),
 });
 
+const routePlanQuerySchema = z.object({ destination: z.string().min(3).max(20) });
+const policySchema = z.object({
+  policy: z.enum(WA_ROUTING_POLICIES as unknown as [string, ...string[]]),
+});
+
 export function whatsAppCallingRoutes(
   settings: WhatsAppCallSettingsService,
   read: WhatsAppCallReadService,
   permission: WhatsAppPermissionService,
   calling: WhatsAppCallingService,
+  routing: WhatsAppRoutingService,
   tenants: TenantService,
 ): Router {
   const r = Router();
@@ -133,6 +140,41 @@ export function whatsAppCallingRoutes(
           ...(d.businessE164 ? { businessE164: d.businessE164 } : {}),
         }),
       );
+    }),
+  );
+
+  // WAC-09 WhatsApp-calling health: pickup rate, active restriction, monthly tier.
+  r.get(
+    '/health',
+    ah(async (req, res) => {
+      res.json(await routing.health(req.ctx!.tenantId));
+    }),
+  );
+
+  // WAC-09 preview the outbound route decision for a destination (WhatsApp vs PSTN + reason).
+  r.get(
+    '/route-plan',
+    ah(async (req, res) => {
+      const parsed = routePlanQuerySchema.safeParse(req.query);
+      if (!parsed.success) throw new ValidationError('A valid destination is required.');
+      res.json(
+        await routing.planRoute(req.ctx!.tenantId, { destination: parsed.data.destination }),
+      );
+    }),
+  );
+
+  // WAC-09 set the tenant's outbound routing policy.
+  r.put(
+    '/routing-policy',
+    requireRoles(...CONFIG_WRITERS),
+    ah(async (req, res) => {
+      const parsed = policySchema.safeParse(req.body);
+      if (!parsed.success) throw new ValidationError('Invalid routing policy.');
+      await routing.setPolicy(
+        req.ctx!.tenantId,
+        parsed.data.policy as Parameters<WhatsAppRoutingService['setPolicy']>[1],
+      );
+      res.json({ policy: parsed.data.policy });
     }),
   );
 
