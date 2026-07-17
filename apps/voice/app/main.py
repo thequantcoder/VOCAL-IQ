@@ -14,6 +14,7 @@ from app.calls.router import (
     drain_active_calls,
     router as calls_router,
 )
+from app.calls.whatsapp_router import router as whatsapp_router
 from app.config import settings
 
 
@@ -27,6 +28,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="VocalIQ Voice Service", version="0.0.0", lifespan=lifespan)
 app.include_router(calls_router)
+app.include_router(whatsapp_router)
 
 
 @app.get("/healthz")

@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     elevenlabs_api_key: str | None = None
 
+    # Shared secret for the internal api→voice control hop (WhatsApp media, WAC-03). When unset the
+    # internal endpoints are DISABLED (gated) rather than open. Never public.
+    voice_internal_secret: str | None = None
+
     @property
     def livekit_configured(self) -> bool:
         return bool(self.livekit_url and self.livekit_api_key and self.livekit_api_secret)

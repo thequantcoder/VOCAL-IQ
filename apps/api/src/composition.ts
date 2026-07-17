@@ -113,7 +113,11 @@ import {
   type WaAdapterResolver,
   WhatsAppCallingService,
 } from './whatsapp-calling/whatsapp-calling.service';
-import { PendingWaMediaControl } from './whatsapp-calling/whatsapp-media-control';
+import {
+  HttpWaMediaControl,
+  PendingWaMediaControl,
+  type WaMediaControl,
+} from './whatsapp-calling/whatsapp-media-control';
 import { buildCloudflareClient } from './whitelabel/cloudflare';
 import { WhiteLabelService } from './whitelabel/whitelabel.service';
 import { WidgetService } from './widget/widget.service';
@@ -222,16 +226,24 @@ export function createServices() {
   const messaging = new MessagingService(db, buildSenders(process.env));
   // WhatsApp Business Calling control plane (WAC-02). Managed-mode adapter from env (per-tenant BYOK
   // resolution lands with the key vault later); null → gated (webhook records events, no signaling).
-  // Media (WebRTC SDP answer) is stubbed until WAC-03.
   const waCallingAdapterFor: WaAdapterResolver = async () => {
     const token = process.env.WHATSAPP_ACCESS_TOKEN ?? process.env.WHATSAPP_TEST_ACCESS_TOKEN;
     const pnid = process.env.WHATSAPP_PHONE_NUMBER_ID ?? process.env.WHATSAPP_TEST_PHONE_NUMBER_ID;
     return token && pnid ? new WhatsAppCallingTelephony(token, pnid) : null;
   };
+  // WAC-03 media control → the voice-service WebRTC bridge (SDP answer). Wired only when both the voice
+  // URL + the shared internal secret are set; otherwise gated (PendingWaMediaControl → call stays connecting).
+  const waMedia: WaMediaControl =
+    process.env.VOICE_SERVICE_URL && process.env.VOICE_INTERNAL_SECRET
+      ? new HttpWaMediaControl({
+          voiceServiceUrl: process.env.VOICE_SERVICE_URL,
+          internalSecret: process.env.VOICE_INTERNAL_SECRET,
+        })
+      : new PendingWaMediaControl();
   const whatsappCalling = new WhatsAppCallingService(
     db,
     waCallingAdapterFor,
-    new PendingWaMediaControl(),
+    waMedia,
     new WhatsAppCallCostService(db), // WAC-06: meter carrier cost on terminate
   );
   const whatsappCallSettings = new WhatsAppCallSettingsService(db, waCallingAdapterFor);
