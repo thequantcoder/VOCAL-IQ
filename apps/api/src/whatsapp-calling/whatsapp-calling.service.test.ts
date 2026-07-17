@@ -29,6 +29,10 @@ const closedHours = () =>
   Promise.resolve(
     whatsappCallSettingsSchema.parse({ hours: { enabled: true, timezone: 'UTC', weekly: [] } }),
   );
+const sipEnabled = () =>
+  Promise.resolve(
+    whatsappCallSettingsSchema.parse({ sip: { enabled: true, servers: [{ hostname: 'pbx.x' }] } }),
+  );
 function fakeMedia(answer: string | null) {
   const reqs: WaAnswerRequest[] = [];
   const media = {
@@ -320,6 +324,32 @@ describe('WhatsAppCallingService — WAC-04 inbound GA', () => {
       where: { tenantId: T, waCallId: 'wac4.closed', event: 'rejected' },
     });
     expect((ev?.payload as { reason?: string } | null)?.reason).toBe('outside_calling_hours');
+  });
+
+  it('WAC-10: skips Graph handling for a SIP-mode number', async () => {
+    const { adapter, calls } = fakeAdapter();
+    const { media, reqs } = fakeMedia('v=0 answer');
+    const svc = new WhatsAppCallingService(
+      db,
+      async () => adapter,
+      media,
+      new NoopWaCallMeter(),
+      routerTo(routing()),
+      sipEnabled,
+    );
+    await svc.onConnect(T, {
+      waCallId: 'wac10.sip',
+      direction: 'USER_INITIATED',
+      to: '16315553601',
+      sdpOffer: 'v=0 offer',
+    });
+    expect(reqs).toHaveLength(0); // never asked the voice bridge
+    expect(calls.accept).toHaveLength(0);
+    const wa = await db.admin.whatsAppCall.findFirst({
+      where: { tenantId: T, waCallId: 'wac10.sip' },
+    });
+    expect(wa?.status).toBe('connecting'); // recorded but not Graph-processed
+    expect(wa?.callId).toBeNull();
   });
 
   it('rejects when no publishable agent is available', async () => {

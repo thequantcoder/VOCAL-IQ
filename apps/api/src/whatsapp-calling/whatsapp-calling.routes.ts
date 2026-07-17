@@ -12,6 +12,7 @@ import type { WhatsAppCallSettingsService } from './whatsapp-call-settings.servi
 import type { WhatsAppCallingService } from './whatsapp-calling.service';
 import type { WhatsAppPermissionService } from './whatsapp-permission.service';
 import type { WhatsAppRoutingService } from './whatsapp-routing.service';
+import type { WhatsAppSipService } from './whatsapp-sip.service';
 
 /**
  * WhatsApp Business Calling API (WAC-05+). Reads open to members; settings + permission + dialing
@@ -45,12 +46,23 @@ const policySchema = z.object({
   policy: z.enum(WA_ROUTING_POLICIES as unknown as [string, ...string[]]),
 });
 
+const sipConfigSchema = z.object({
+  enabled: z.boolean(),
+  servers: z
+    .array(z.object({ hostname: z.string().min(1).max(253), port: z.number().int().optional() }))
+    .max(4)
+    .optional(),
+  webhookDelivery: z.boolean().optional(),
+  srtpProtocol: z.enum(['DTLS', 'SDES']).optional(),
+});
+
 export function whatsAppCallingRoutes(
   settings: WhatsAppCallSettingsService,
   read: WhatsAppCallReadService,
   permission: WhatsAppPermissionService,
   calling: WhatsAppCallingService,
   routing: WhatsAppRoutingService,
+  sip: WhatsAppSipService,
   tenants: TenantService,
 ): Router {
   const r = Router();
@@ -175,6 +187,35 @@ export function whatsAppCallingRoutes(
         parsed.data.policy as Parameters<WhatsAppRoutingService['setPolicy']>[1],
       );
       res.json({ policy: parsed.data.policy });
+    }),
+  );
+
+  // WAC-10 configure SIP mode (PBX tenants) — synced to Meta, then persisted.
+  r.put(
+    '/sip',
+    requireRoles(...CONFIG_WRITERS),
+    ah(async (req, res) => {
+      const parsed = sipConfigSchema.safeParse(req.body);
+      if (!parsed.success) throw new ValidationError('Invalid SIP configuration.');
+      const d = parsed.data;
+      const updated = await sip.configure(req.ctx!.tenantId, {
+        enabled: d.enabled,
+        servers: (d.servers ?? []).map((s) => ({ hostname: s.hostname, port: s.port ?? 5061 })),
+        webhookDelivery: d.webhookDelivery ?? false,
+        srtpProtocol: d.srtpProtocol ?? 'DTLS',
+      });
+      res.json(updated.sip);
+    }),
+  );
+
+  // WAC-10 fetch the Meta-generated SIP digest credentials (gated → 404 when unavailable).
+  r.get(
+    '/sip/credentials',
+    requireRoles(...CONFIG_WRITERS),
+    ah(async (req, res) => {
+      const creds = await sip.credentials(req.ctx!.tenantId);
+      if (!creds) throw new ValidationError('SIP credentials are not available yet.');
+      res.json(creds);
     }),
   );
 

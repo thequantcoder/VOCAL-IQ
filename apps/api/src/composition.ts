@@ -121,6 +121,7 @@ import {
 } from './whatsapp-calling/whatsapp-media-control';
 import { WhatsAppPermissionService } from './whatsapp-calling/whatsapp-permission.service';
 import { WhatsAppRoutingService } from './whatsapp-calling/whatsapp-routing.service';
+import { WhatsAppSipService } from './whatsapp-calling/whatsapp-sip.service';
 import { buildCloudflareClient } from './whitelabel/cloudflare';
 import { WhiteLabelService } from './whitelabel/whitelabel.service';
 import { WidgetService } from './widget/widget.service';
@@ -247,11 +248,18 @@ export function createServices() {
   const whatsappInboundRouter = new WhatsAppInboundRouter(db); // WAC-04: number → answering agent
   const whatsappPermission = new WhatsAppPermissionService(db, waCallingAdapterFor); // WAC-08 governor
   const whatsappRouting = new WhatsAppRoutingService(db, whatsappPermission); // WAC-09 route + guardrails
+  const whatsappCallCost = new WhatsAppCallCostService(db); // WAC-06: meter carrier cost on terminate
+  const whatsappSip = new WhatsAppSipService(
+    db,
+    whatsappCallSettings,
+    waCallingAdapterFor,
+    whatsappCallCost,
+  ); // WAC-10: SIP mode for PBX tenants
   const whatsappCalling = new WhatsAppCallingService(
     db,
     waCallingAdapterFor,
     waMedia,
-    new WhatsAppCallCostService(db), // WAC-06: meter carrier cost on terminate
+    whatsappCallCost,
     whatsappInboundRouter, // WAC-04: resolve the agent that answers
     (tenantId) => whatsappCallSettings.get(tenantId), // WAC-04: calling-hours gate
     whatsappPermission, // WAC-08: consented-outbound governor
@@ -425,6 +433,7 @@ export function createServices() {
     whatsappCallRead,
     whatsappPermission,
     whatsappRouting,
+    whatsappSip,
     automations,
     sip,
     experiments,

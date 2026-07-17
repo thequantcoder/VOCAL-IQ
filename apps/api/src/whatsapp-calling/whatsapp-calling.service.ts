@@ -182,6 +182,8 @@ export class WhatsAppCallingService {
     // Calling-hours gate (WAC-04) — outside hours → reject gracefully (deflect/voicemail is WAC-05/08).
     if (this.settingsReader) {
       const settings = await this.settingsReader(tenantId).catch(() => null);
+      // SIP-mode numbers (WAC-10) are handled by the tenant's PBX, never via the Graph webhook — guard.
+      if (settings?.sip.enabled) return;
       if (settings && !isWithinWhatsappCallHours(settings, this.now())) {
         await this.rejectWithReason(tenantId, input.waCallId, 'outside_calling_hours');
         return;

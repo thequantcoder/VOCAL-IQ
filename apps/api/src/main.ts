@@ -202,6 +202,7 @@ function bootstrap(): void {
       s.whatsappPermission,
       s.whatsappCalling,
       s.whatsappRouting,
+      s.whatsappSip,
       s.tenants,
     ),
   );
