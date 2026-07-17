@@ -36,6 +36,9 @@ class WaAnswerBody(BaseModel):
     agent_id: str
     system_prompt: str | None = None
     greeting: str | None = None
+    # WAC-11: the api only sets this once Meta GAs WhatsApp video; the bridge negotiates an m=video line
+    # then. Until then it's always False (audio-only) — no negotiation against an unpublished spec.
+    video: bool = False
 
 
 class WaEndBody(BaseModel):
@@ -48,6 +51,8 @@ class WaOfferBody(BaseModel):
     agent_id: str
     system_prompt: str | None = None
     greeting: str | None = None
+    # WAC-11: GA-gated video (see WaAnswerBody.video). Audio-only until Meta ships video.
+    video: bool = False
 
 
 class WaApplyAnswerBody(BaseModel):

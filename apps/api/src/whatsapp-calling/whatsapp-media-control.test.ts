@@ -75,6 +75,21 @@ describe('HttpWaMediaControl', () => {
     expect(answer).toBeNull();
   });
 
+  it('WAC-11: does NOT forward a video request while video is not GA (audio-only)', async () => {
+    const fetchImpl = vi.fn(async () =>
+      ok({ sdp_answer: 'v=0\r\n(answer)' }),
+    ) as unknown as typeof fetch;
+    await control(fetchImpl).requestSdpAnswer({
+      tenantId: 't1',
+      callId: 'c',
+      sdpOffer: 'v=0',
+      video: true, // requested, but Meta hasn't GA'd video → must stay audio-only
+    });
+    const call = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0] ?? [];
+    const sent = JSON.parse((call[1] as { body: string }).body);
+    expect(sent.video).toBeUndefined();
+  });
+
   it('endCall posts to /end and swallows failures', async () => {
     const fetchImpl = vi.fn(async () => ok({ ok: true })) as unknown as typeof fetch;
     await control(fetchImpl).endCall('wacid.9');
