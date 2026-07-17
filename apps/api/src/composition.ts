@@ -108,6 +108,7 @@ import type { WebhookEmitter } from './webhooks/webhook-emitter';
 import { WebhookService } from './webhooks/webhook.service';
 import { WhatsAppCallCostService } from './whatsapp-calling/whatsapp-call-cost.service';
 import { WhatsAppCallReadService } from './whatsapp-calling/whatsapp-call-read.service';
+import { WhatsAppInboundRouter } from './whatsapp-calling/whatsapp-call-routing.service';
 import { WhatsAppCallSettingsService } from './whatsapp-calling/whatsapp-call-settings.service';
 import {
   type WaAdapterResolver,
@@ -240,13 +241,16 @@ export function createServices() {
           internalSecret: process.env.VOICE_INTERNAL_SECRET,
         })
       : new PendingWaMediaControl();
+  const whatsappCallSettings = new WhatsAppCallSettingsService(db, waCallingAdapterFor);
+  const whatsappInboundRouter = new WhatsAppInboundRouter(db); // WAC-04: number → answering agent
   const whatsappCalling = new WhatsAppCallingService(
     db,
     waCallingAdapterFor,
     waMedia,
     new WhatsAppCallCostService(db), // WAC-06: meter carrier cost on terminate
+    whatsappInboundRouter, // WAC-04: resolve the agent that answers
+    (tenantId) => whatsappCallSettings.get(tenantId), // WAC-04: calling-hours gate
   );
-  const whatsappCallSettings = new WhatsAppCallSettingsService(db, waCallingAdapterFor);
   const whatsappCallRead = new WhatsAppCallReadService(db); // WAC-07 dashboard read model
   // Cross-channel automations reuse the messaging + integration subsystems as action executors.
   const automations = new AutomationsService(

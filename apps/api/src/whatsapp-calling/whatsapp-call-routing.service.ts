@@ -25,13 +25,21 @@ export interface WhatsAppInboundRouting {
 /** Default opener when the agent has no bespoke greeting configured. */
 export const WA_DEFAULT_GREETING = 'Hello! Thanks for calling. How can I help you today?';
 
+/** The routing seam the control plane depends on — injectable so it stays offline-testable with a fake. */
+export interface WaInboundRouter {
+  resolveInboundAgent(
+    tenantId: string,
+    toNumber: string | undefined,
+  ): Promise<WhatsAppInboundRouting | null>;
+}
+
 interface RoutedAgent {
   id: string;
   name: string;
   persona: unknown;
 }
 
-export class WhatsAppInboundRouter {
+export class WhatsAppInboundRouter implements WaInboundRouter {
   constructor(private readonly db: PrismaService) {}
 
   async resolveInboundAgent(
