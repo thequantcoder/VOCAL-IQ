@@ -30,7 +30,15 @@ interface WaStatus {
   status?: string;
 }
 interface WaMessage {
-  interactive?: { type?: string };
+  from?: string;
+  interactive?: {
+    type?: string;
+    call_permission_reply?: {
+      response?: string;
+      is_permanent?: boolean;
+      expiration_timestamp?: number;
+    };
+  };
   context?: { id?: string };
 }
 interface MetaWabaWebhook {
@@ -98,10 +106,22 @@ export async function dispatchWhatsAppCallingWebhook(
         }
       }
 
-      // Permission accept/reject replies arrive as interactive messages.
+      // Permission accept/reject replies arrive as interactive messages (WAC-08).
       for (const m of v.messages ?? []) {
         if (m.interactive?.type === 'call_permission_reply') {
-          await svc.onPermissionReply(tenantId, m.context?.id ?? '', m);
+          const r = m.interactive.call_permission_reply ?? {};
+          const response: 'accept' | 'reject' | undefined =
+            r.response === 'accept' ? 'accept' : r.response === 'reject' ? 'reject' : undefined;
+          const reply = response
+            ? {
+                response,
+                ...(r.is_permanent !== undefined ? { isPermanent: r.is_permanent } : {}),
+                ...(r.expiration_timestamp !== undefined
+                  ? { expirationTimestamp: r.expiration_timestamp }
+                  : {}),
+              }
+            : null;
+          await svc.onPermissionReply(tenantId, m.from ?? '', reply, m);
         }
       }
 

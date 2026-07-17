@@ -17,17 +17,36 @@ export interface WaAnswerRequest {
   greeting?: string;
 }
 
+/** Outbound (WAC-08): ask the bridge to GENERATE the business SDP offer that starts an outbound call. */
+export interface WaOfferRequest {
+  tenantId: string;
+  callId: string;
+  agentId?: string;
+  systemPrompt?: string;
+  greeting?: string;
+}
+
 export interface WaMediaControl {
   /** Ask the voice service for an SDP answer to the caller's offer. `null` = media not ready/available. */
   requestSdpAnswer(req: WaAnswerRequest): Promise<string | null>;
+  /** Outbound: ask the bridge for a business SDP OFFER to place a call. `null` = media not ready. */
+  requestSdpOffer(req: WaOfferRequest): Promise<string | null>;
+  /** Outbound: apply the user's SDP answer (from the Connect webhook) to the business media leg. */
+  applyAnswer(callId: string, sdpAnswer: string): Promise<void>;
   /** Tear down the media leg for a call (on terminate). Best-effort. */
   endCall(callId: string): Promise<void>;
 }
 
-/** WAC-02 placeholder: no WebRTC media yet, so no SDP answer. Replaced by the real bridge in WAC-03. */
+/** WAC-02 placeholder: no WebRTC media yet, so no SDP. Replaced by the real bridge in WAC-03/08. */
 export class PendingWaMediaControl implements WaMediaControl {
   async requestSdpAnswer(): Promise<string | null> {
     return null;
+  }
+  async requestSdpOffer(): Promise<string | null> {
+    return null;
+  }
+  async applyAnswer(): Promise<void> {
+    /* no-op until the media bridge is wired */
   }
   async endCall(): Promise<void> {
     /* no-op until WAC-03 */
@@ -64,6 +83,22 @@ export class HttpWaMediaControl implements WaMediaControl {
     });
     const answer = (body as { sdp_answer?: unknown } | null)?.sdp_answer;
     return typeof answer === 'string' && answer.length > 0 ? answer : null;
+  }
+
+  async requestSdpOffer(req: WaOfferRequest): Promise<string | null> {
+    const body = await this.post('/calls/whatsapp/offer', {
+      call_id: req.callId,
+      tenant_id: req.tenantId,
+      agent_id: req.agentId ?? '',
+      ...(req.systemPrompt ? { system_prompt: req.systemPrompt } : {}),
+      ...(req.greeting ? { greeting: req.greeting } : {}),
+    });
+    const offer = (body as { sdp_offer?: unknown } | null)?.sdp_offer;
+    return typeof offer === 'string' && offer.length > 0 ? offer : null;
+  }
+
+  async applyAnswer(callId: string, sdpAnswer: string): Promise<void> {
+    await this.post('/calls/whatsapp/apply-answer', { call_id: callId, sdp_answer: sdpAnswer });
   }
 
   async endCall(callId: string): Promise<void> {

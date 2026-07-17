@@ -196,7 +196,13 @@ function bootstrap(): void {
   app.use('/notifications', notificationPrefsRoutes(s.notificationPrefs, s.tenants));
   app.use(
     '/whatsapp-calling',
-    whatsAppCallingRoutes(s.whatsappCallSettings, s.whatsappCallRead, s.tenants),
+    whatsAppCallingRoutes(
+      s.whatsappCallSettings,
+      s.whatsappCallRead,
+      s.whatsappPermission,
+      s.whatsappCalling,
+      s.tenants,
+    ),
   );
   app.use('/ops', opsRoutes(s.opsToolkit, s.tenants));
   app.use('/numbers', numbersRoutes(s.numbers, s.tenants));

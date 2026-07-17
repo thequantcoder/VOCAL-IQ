@@ -31,8 +31,6 @@ export interface WaInboundRouter {
     tenantId: string,
     toNumber: string | undefined,
   ): Promise<WhatsAppInboundRouting | null>;
-  /** Resolve a specific PUBLISHED agent's brain (outbound dialing, WAC-08). Null if missing/unpublished. */
-  resolveAgentById(tenantId: string, agentId: string): Promise<WhatsAppInboundRouting | null>;
 }
 
 interface RoutedAgent {
@@ -50,28 +48,6 @@ export class WhatsAppInboundRouter implements WaInboundRouter {
   ): Promise<WhatsAppInboundRouting | null> {
     return this.db.withTenant(tenantId, async (tx) => {
       const agent = await this.pickAgent(tx, toNumber);
-      if (!agent) return null;
-      const flowVersionId = await this.activeFlowVersion(tx, agent.id);
-      const persona = personaSchema.safeParse(agent.persona ?? {});
-      return {
-        agentId: agent.id,
-        agentName: agent.name,
-        flowVersionId,
-        systemPrompt: persona.success ? buildSystemPrompt(persona.data) : '',
-        greeting: WA_DEFAULT_GREETING,
-      };
-    });
-  }
-
-  async resolveAgentById(
-    tenantId: string,
-    agentId: string,
-  ): Promise<WhatsAppInboundRouting | null> {
-    return this.db.withTenant(tenantId, async (tx) => {
-      const agent = await tx.agent.findFirst({
-        where: { id: agentId, status: 'PUBLISHED' },
-        select: { id: true, name: true, persona: true },
-      });
       if (!agent) return null;
       const flowVersionId = await this.activeFlowVersion(tx, agent.id);
       const persona = personaSchema.safeParse(agent.persona ?? {});

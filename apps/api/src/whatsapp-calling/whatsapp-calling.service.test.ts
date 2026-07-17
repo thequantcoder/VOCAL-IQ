@@ -1,5 +1,5 @@
 import type { WhatsAppCallingTelephony } from '@vocaliq/provider-router';
-import { whatsappCallSettingsSchema } from '@vocaliq/shared';
+import { type WaCallBlockReason, whatsappCallSettingsSchema } from '@vocaliq/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaService } from '../db/prisma.service';
 import { NoopWaCallMeter } from './whatsapp-call-cost.service';
@@ -22,6 +22,7 @@ const AGENT = '00000000-0000-0000-0000-0000ff20b001';
 /** WAC-04 helpers: a fake router + settings reader + media that records the answer requests it sees. */
 const routerTo = (routing: WhatsAppInboundRouting | null) => ({
   resolveInboundAgent: async () => routing,
+  resolveAgentById: async () => routing,
 });
 const openHours = () => Promise.resolve(whatsappCallSettingsSchema.parse({}));
 const closedHours = () =>
@@ -35,6 +36,8 @@ function fakeMedia(answer: string | null) {
       reqs.push(r);
       return answer;
     },
+    requestSdpOffer: async () => null,
+    applyAnswer: async () => {},
     endCall: async () => {},
   };
   return { media, reqs };
@@ -75,7 +78,12 @@ afterAll(async () => {
 
 /** A fake adapter that records the signaling calls the service makes. */
 function fakeAdapter() {
-  const calls = { preAccept: [] as string[], accept: [] as string[], terminate: [] as string[] };
+  const calls = {
+    preAccept: [] as string[],
+    accept: [] as string[],
+    terminate: [] as string[],
+    placeCall: [] as string[],
+  };
   const adapter = {
     async preAccept({ callId }: { callId: string }) {
       calls.preAccept.push(callId);
@@ -87,8 +95,56 @@ function fakeAdapter() {
     async terminate(callId: string) {
       calls.terminate.push(callId);
     },
+    async placeCall({ to }: { to: string }) {
+      calls.placeCall.push(to);
+      return { waCallId: `wacid.out.${to}` };
+    },
   } as unknown as WhatsAppCallingTelephony;
   return { adapter, calls };
+}
+
+/** A media fake that yields a business SDP offer for outbound (and records the answer requests). */
+function fakeOutboundMedia(offer: string | null) {
+  const applied: Array<{ callId: string; sdp: string }> = [];
+  const media = {
+    requestSdpAnswer: async () => null,
+    requestSdpOffer: async () => offer,
+    applyAnswer: async (callId: string, sdp: string) => {
+      applied.push({ callId, sdp });
+    },
+    endCall: async () => {},
+  };
+  return { media, applied };
+}
+
+/** A fake permission gate capturing what the control plane asks of it. */
+function fakePermission(canCall: { allowed: boolean; reason?: WaCallBlockReason }) {
+  const seen = {
+    replies: [] as Array<{ waId: string; response: string }>,
+    outcomes: [] as Array<{ waId: string; answered: boolean }>,
+  };
+  const gate = {
+    canCall: async () => ({
+      allowed: canCall.allowed,
+      ...(canCall.reason ? { reason: canCall.reason } : {}),
+      permission: {
+        waId: '',
+        status: 'permanent' as const,
+        expiresAt: null,
+        source: 'request',
+        consecutiveUnanswered: 0,
+        updatedAt: null,
+      },
+      connectedLast24h: 0,
+    }),
+    recordPermissionReply: async (_t: string, waId: string, reply: { response: string }) => {
+      seen.replies.push({ waId, response: reply.response });
+    },
+    recordCallOutcome: async (_t: string, waId: string, answered: boolean) => {
+      seen.outcomes.push({ waId, answered });
+    },
+  };
+  return { gate, seen };
 }
 
 function connectPayload(waCallId: string) {
@@ -140,7 +196,12 @@ describe('WhatsAppCallingService', () => {
 
   it('pre_accepts + accepts via the adapter when media returns an SDP answer', async () => {
     const { adapter, calls } = fakeAdapter();
-    const media = { requestSdpAnswer: async () => 'v=0 answer', endCall: async () => {} };
+    const media = {
+      requestSdpAnswer: async () => 'v=0 answer',
+      requestSdpOffer: async () => null,
+      applyAnswer: async () => {},
+      endCall: async () => {},
+    };
     const svc = new WhatsAppCallingService(db, async () => adapter, media);
     await svc.onConnect(T, {
       waCallId: 'wacid.live',
@@ -342,5 +403,106 @@ describe('WhatsAppCallingService — WAC-04 inbound GA', () => {
     expect(call?.status).toBe('COMPLETED');
     expect(call?.durationSec).toBe(42);
     expect((call?.costBreakdown as { telephony?: number } | null)?.telephony).toBeCloseTo(0.03, 6);
+  });
+});
+
+describe('WhatsAppCallingService — WAC-08 consented outbound', () => {
+  it('refuses to dial when the permission gate blocks (compliance)', async () => {
+    const { adapter, calls } = fakeAdapter();
+    const { media } = fakeOutboundMedia('v=0 offer');
+    const { gate } = fakePermission({ allowed: false, reason: 'no_permission' });
+    const svc = new WhatsAppCallingService(
+      db,
+      async () => adapter,
+      media,
+      new NoopWaCallMeter(),
+      routerTo(routing()),
+      null,
+      gate,
+    );
+    await expect(svc.placeOutboundCall(T, { to: '15551112222', agentId: AGENT })).rejects.toThrow(
+      /permission/i,
+    );
+    expect(calls.placeCall).toHaveLength(0); // never dialed
+  });
+
+  it('places a consented outbound call and opens a linked OUTBOUND Call', async () => {
+    const { adapter, calls } = fakeAdapter();
+    const { media } = fakeOutboundMedia('v=0 offer');
+    const { gate } = fakePermission({ allowed: true });
+    const svc = new WhatsAppCallingService(
+      db,
+      async () => adapter,
+      media,
+      new NoopWaCallMeter(),
+      routerTo(routing()),
+      null,
+      gate,
+    );
+    const res = await svc.placeOutboundCall(T, { to: '15551112222', agentId: AGENT });
+    expect(calls.placeCall).toContain('15551112222');
+    expect(res.waCallId).toBe('wacid.out.15551112222');
+
+    const wa = await db.admin.whatsAppCall.findFirst({
+      where: { tenantId: T, waCallId: res.waCallId },
+    });
+    expect(wa?.direction).toBe('BUSINESS_INITIATED');
+    expect(wa?.toNumber).toBe('15551112222');
+    expect(wa?.callId).toBe(res.callId);
+
+    const call = await db.admin.call.findFirst({ where: { id: res.callId } });
+    expect(call?.direction).toBe('OUTBOUND');
+    expect(call?.channel).toBe('WHATSAPP');
+    expect(call?.agentId).toBe(AGENT);
+  });
+
+  it('throws + fails the unified Call when outbound media is gated', async () => {
+    const { adapter, calls } = fakeAdapter();
+    const { media } = fakeOutboundMedia(null); // no business offer
+    const { gate } = fakePermission({ allowed: true });
+    const svc = new WhatsAppCallingService(
+      db,
+      async () => adapter,
+      media,
+      new NoopWaCallMeter(),
+      routerTo(routing()),
+      null,
+      gate,
+    );
+    await expect(svc.placeOutboundCall(T, { to: '15553334444', agentId: AGENT })).rejects.toThrow(
+      /not configured/i,
+    );
+    expect(calls.placeCall).toHaveLength(0);
+    const failed = await db.admin.call.findFirst({
+      where: {
+        tenantId: T,
+        channel: 'WHATSAPP',
+        direction: 'OUTBOUND',
+        disposition: 'media_unavailable',
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(failed?.status).toBe('FAILED');
+  });
+
+  it('persists a permission reply + feeds the terminate outcome to the back-off engine', async () => {
+    const { adapter } = fakeAdapter();
+    const { media } = fakeOutboundMedia('v=0 offer');
+    const { gate, seen } = fakePermission({ allowed: true });
+    const svc = new WhatsAppCallingService(
+      db,
+      async () => adapter,
+      media,
+      new NoopWaCallMeter(),
+      routerTo(routing()),
+      null,
+      gate,
+    );
+    await svc.onPermissionReply(T, '15551119999', { response: 'accept', isPermanent: true }, {});
+    expect(seen.replies).toContainEqual({ waId: '15551119999', response: 'accept' });
+
+    const res = await svc.placeOutboundCall(T, { to: '15556667777', agentId: AGENT });
+    await svc.onTerminate(T, { waCallId: res.waCallId, status: 'Completed', durationSec: 30 });
+    expect(seen.outcomes).toContainEqual({ waId: '15556667777', answered: true });
   });
 });
