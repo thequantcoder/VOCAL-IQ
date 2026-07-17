@@ -1,4 +1,5 @@
 import { cn } from '@vocaliq/ui';
+import { Globe, type LucideIcon, MessageCircle, Phone, Radio } from 'lucide-react';
 
 /** USD with sub-cent precision (provider costs are tiny). */
 export function formatUsd(n: number): string {
@@ -35,6 +36,40 @@ export function StatusBadge({ status }: { status: string }) {
       )}
     >
       {status.replace(/_/g, ' ').toLowerCase()}
+    </span>
+  );
+}
+
+// Channel badge (WAC-04): WhatsApp gets the brand-green tone; the rest stay neutral. Icon + label so
+// it's never colour-only (a11y §7); `iconOnly` renders the glyph with an sr-only label for tight rows.
+const MUTED_TONE = 'text-vq-text-lo border-vq-border bg-vq-bg-elevated';
+const CHANNEL_META: Record<string, { label: string; tone: string; Icon: LucideIcon }> = {
+  WHATSAPP: {
+    label: 'WhatsApp',
+    tone: 'text-vq-success border-vq-success/40 bg-vq-success/10',
+    Icon: MessageCircle,
+  },
+  PSTN: { label: 'Phone', tone: MUTED_TONE, Icon: Phone },
+  WEB: { label: 'Web', tone: MUTED_TONE, Icon: Globe },
+  SIP: { label: 'SIP', tone: MUTED_TONE, Icon: Radio },
+};
+
+export function ChannelBadge({
+  channel,
+  iconOnly = false,
+}: { channel: string; iconOnly?: boolean }) {
+  const meta = CHANNEL_META[channel] ?? { label: channel, tone: MUTED_TONE, Icon: Phone };
+  const { Icon } = meta;
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 rounded-vq-pill border px-2 py-0.5 font-medium text-xs',
+        meta.tone,
+      )}
+      title={meta.label}
+    >
+      <Icon size={12} aria-hidden />
+      {iconOnly ? <span className="sr-only">{meta.label}</span> : meta.label}
     </span>
   );
 }

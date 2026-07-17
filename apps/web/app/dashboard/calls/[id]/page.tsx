@@ -16,7 +16,12 @@ import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { ErrorState, LoadingCard } from '../../../../components/states';
-import { StatusBadge, formatDuration, formatUsd } from '../../../../components/ui-bits';
+import {
+  ChannelBadge,
+  StatusBadge,
+  formatDuration,
+  formatUsd,
+} from '../../../../components/ui-bits';
 import {
   type CallDetail,
   type CostBreakdown,
@@ -93,10 +98,10 @@ export default function CallDetailPage() {
                 {data.agent.name}
               </h1>
               <StatusBadge status={data.status} />
+              <ChannelBadge channel={data.channel} />
             </div>
             <span className="font-mono text-vq-text-lo text-xs">
-              {data.direction.toLowerCase()} · {data.channel.toLowerCase()} ·{' '}
-              {formatDuration(data.durationSec)}
+              {data.direction.toLowerCase()} · {formatDuration(data.durationSec)}
             </span>
           </header>
 
