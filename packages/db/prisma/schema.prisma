@@ -290,6 +290,8 @@ model Tenant {
   whatsappCalls        WhatsAppCall[]
   whatsappCallEvents   WhatsAppCallEvent[]
   whatsappCallVolumes  WhatsAppCallVolume[]
+  whatsappCallPermissions WhatsAppCallPermission[]
+  whatsappPermissionRequests WhatsAppPermissionRequest[]
 
   @@index([parentTenantId])
   @@index([type])
@@ -780,6 +782,7 @@ model Contact {
   appointments    Appointment[]
   agentMemories   AgentMemory[]
   formSubmissions FormSubmission[]
+  whatsappCallPermissions WhatsAppCallPermission[]
 
   @@index([tenantId])
   @@index([tenantId, phone])
@@ -986,6 +989,39 @@ model WhatsAppCallEvent {
   createdAt DateTime @default(now())
 
   @@index([tenantId, waCallId])
+}
+
+/// WhatsApp outbound-calling permission per business↔user pair (WAC-08). Meta only lets the USER grant/
+/// revoke; a temporary grant lasts 7 days with NO expiry webhook, so we track `expiresAt` locally and
+/// re-evaluate on read. `consecutiveUnanswered` drives the auto-revoke back-off (4 → Meta revokes).
+model WhatsAppCallPermission {
+  id                   String    @id @default(uuid()) @db.Uuid
+  tenantId             String    @db.Uuid
+  tenant               Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  waId                 String // the user's WhatsApp number (digits)
+  contactId            String?   @db.Uuid
+  contact              Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  status               String    @default("no_permission") // no_permission | temporary | permanent
+  expiresAt            DateTime? // temporary grants only (local clock — Meta sends no expiry webhook)
+  source               String    @default("request") // request | callback | profile
+  consecutiveUnanswered Int      @default(0)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@unique([tenantId, waId])
+  @@index([tenantId])
+}
+
+/// An audit row per permission-request message sent (WAC-08), so the 1/24h + 2/7d send caps can be
+/// enforced from our own history (independent of Meta's `call_permissions.actions[].limits`).
+model WhatsAppPermissionRequest {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  waId      String
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, waId, createdAt])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
