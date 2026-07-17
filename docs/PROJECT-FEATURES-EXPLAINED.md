@@ -52,6 +52,7 @@
 | WhatsApp Calling — settings (WAC-05) | Business hours, call-button visibility, callback permission, voicemail — sab Meta se sync. | 🔀 Hybrid |
 | WhatsApp Calling — cost metering (WAC-06) | Har WhatsApp call ka cost attribute — inbound free, outbound per-country 6-s pulse + monthly tier. | 🏠 Native |
 | WhatsApp Calling — dashboard + click-to-call (WAC-07) | Lovely home: status hero, aaj ke KPIs, recent calls + click-to-call generator (deep link · QR · website button) with agent context payload. | 🔀 Hybrid (qrcode.react) |
+| WhatsApp Calling — WebRTC media bridge (WAC-00/03) | Meta se raw WebRTC peer (ICE+DTLS-SRTP+OPUS) terminate karke wahi AI loop (STT→LLM→TTS) mein bridge — aiortc; internal api→voice control hop (authed). Live media creds pe gated. | 🔀 Hybrid (aiortc) |
 
 ---
 

@@ -29,3 +29,61 @@ export class PendingWaMediaControl implements WaMediaControl {
     /* no-op until WAC-03 */
   }
 }
+
+export interface HttpWaMediaControlOptions {
+  /** Base URL of the voice service (internal network), e.g. `http://voice:8000`. */
+  voiceServiceUrl: string;
+  /** Shared secret sent as `X-Internal-Secret` — must match the voice service's `VOICE_INTERNAL_SECRET`. */
+  internalSecret: string;
+  fetchImpl?: typeof fetch;
+  timeoutMs?: number;
+}
+
+/**
+ * WAC-03: the real media control — calls the voice service's internal WebRTC-bridge endpoints to get
+ * an SDP answer for the caller's offer (and to tear the peer down on terminate). Gated + fail-soft: any
+ * non-200 (503 when the voice bridge is unconfigured), a timeout, or an unreachable voice service
+ * returns `null`/no-op so the webhook path never throws and the call simply stays `connecting`. Never
+ * logs the SDP or the secret. Wired only when `VOICE_SERVICE_URL` + `VOICE_INTERNAL_SECRET` are set.
+ */
+export class HttpWaMediaControl implements WaMediaControl {
+  constructor(private readonly opts: HttpWaMediaControlOptions) {}
+
+  async requestSdpAnswer(req: WaAnswerRequest): Promise<string | null> {
+    const body = await this.post('/calls/whatsapp/answer', {
+      call_id: req.callId,
+      sdp_offer: req.sdpOffer,
+      tenant_id: req.tenantId,
+      agent_id: req.agentId ?? '',
+    });
+    const answer = (body as { sdp_answer?: unknown } | null)?.sdp_answer;
+    return typeof answer === 'string' && answer.length > 0 ? answer : null;
+  }
+
+  async endCall(callId: string): Promise<void> {
+    await this.post('/calls/whatsapp/end', { call_id: callId });
+  }
+
+  private async post(path: string, payload: Record<string, unknown>): Promise<unknown | null> {
+    const fetchImpl = this.opts.fetchImpl ?? fetch;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.opts.timeoutMs ?? 8000);
+    try {
+      const res = await fetchImpl(`${this.opts.voiceServiceUrl}${path}`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-internal-secret': this.opts.internalSecret,
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+      if (!res.ok) return null; // gated (503) / unauthorized / bridge error → no answer
+      return await res.json();
+    } catch {
+      return null; // voice unreachable / aborted — fail soft (call stays connecting)
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+}

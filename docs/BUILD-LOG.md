@@ -4369,3 +4369,35 @@ J. Quality/docs (focus): ✅ — the findings runbook is precise, [DOC]-vs-[LIVE
 K. Build/CI: ✅ — ruff clean; the only new CI surface is the aiortc install (reliable cp312 wheels) — watched on the PR.
 
 WAC-00 complete (build-time) — the media path is documented + a runnable spike is ready; live confirmation is a creds-gated follow-up. **Next: WAC-03 — the production voice-service WebRTC bridge into the AI loop.**
+
+### WAC-03 — Voice-service WhatsApp↔AI WebRTC media bridge — 2026-07-17 — ✅ DONE — 🧠 OPUS
+Model: Opus. Branch `wac/03-webrtc-media-bridge`. 🧠 The hardest slice — the real-time media plane. Terminates a **raw WebRTC peer with Meta** (ICE + DTLS-SRTP + OPUS) per WhatsApp call and bridges its audio **bidirectionally into the same `ConversationLoop`** that powers PSTN/web (Deepgram STT → LLM → ElevenLabs TTS), so persona/flow/RAG/memory/tools "just work" on WhatsApp. Live media is gated on the WAC-00 test creds + `pip install '.[dev]'` (aiortc); everything build-time is done + unit-tested.
+
+**Architecture for testability (build gated, live-test later):** the loop is transport-agnostic (input `AsyncIterator[bytes]` PCM16@16k, output an `AudioSink`), so the bridge mirrors LiveKit's `CallerAudio`/`LiveKitAudioSink`. Pure logic (audio buffer, SDP codec gating, DTMF decode, control-endpoint auth) lives in **aiortc-free modules → unit-tested on any Python** (incl. local 3.14); aiortc is **isolated in one module** (`whatsapp_webrtc.py`) that CI's 3.12 pyright type-checks + the gated live test exercises.
+
+Done (DONE):
+- **dep** — aiortc landed in WAC-00; its CI install on 3.12 is proven green.
+- **`app/telephony/whatsapp_audio.py`** (pure) — `WhatsAppCallerAudio` (async iterator of the caller's 16 kHz PCM, `feed()`/`close()`) + `WhatsAppAudioSink` (buffers agent TTS PCM; `read(n)` zero-pads to silence so the business always emits a frame — **first-SRTP-from-business** + no gaps; `clear()` = barge-in; odd-byte carry).
+- **`whatsapp_sdp.py`** (pure) — `opus_payload_type`/`sdp_has_opus` (OPUS 48 kHz gate) + `telephone_event_payload_type` (DTMF @ 8 kHz).
+- **`whatsapp_dtmf.py`** (pure) — RFC 4733 `decode_dtmf_event` → digit only on the **End** bit (one press per held key).
+- **`whatsapp_webrtc.py`** (aiortc) — `AgentAudioTrack(MediaStreamTrack)` emits 20 ms PCM16@16k frames from the sink (aiortc's OPUS encoder resamples to 48 kHz); `WhatsAppMediaBridge.answer(call_id, sdp_offer, config)` builds the `RTCPeerConnection`, adds the agent track, resamples the caller's 48 kHz recv down to 16 kHz (`av.AudioResampler`) into the loop, starts the `ConversationLoop`, and returns the gathered-ICE SDP answer; `end()` tears the peer + loop down **idempotently** on hangup / ICE-fail / DTLS-timeout / loop crash (never a stuck peer).
+- **`app/calls/whatsapp_router.py`** — internal control endpoints the api calls: `POST /calls/whatsapp/answer {call_id, sdp_offer, tenant_id, agent_id} → {sdp_answer}` + `POST /calls/whatsapp/end`. **Authed** with a shared secret (`X-Internal-Secret`, constant-time; unset → **503 gated**, wrong → 401); voice-AI unconfigured → 503. aiortc imported **lazily** (`get_bridge()`) so the router + its tests need no native stack. Mounted in `main.py`; `VOICE_INTERNAL_SECRET` added to config.
+- **api `HttpWaMediaControl`** (replaces the `PendingWaMediaControl` wiring) — POSTs the offer to the voice bridge with the internal secret; **fail-soft** (503/timeout/unreachable → `null`, call stays `connecting`; never throws into the webhook path; never logs SDP/secret). Wired in composition only when `VOICE_SERVICE_URL` + `VOICE_INTERNAL_SECRET` are set (else gated). `.env.example` updated.
+- **Tests** — voice (18, run on any Python): audio sink/iterator (buffer, silence-pad, barge-in, close), SDP OPUS + DTMF-PT gating, DTMF decode (End-bit-only, `*`/`#`/A–D, malformed), control endpoint (503-gated / 401 / voice-ai-503 / 200-answer / end — bridge mocked). api (5): `HttpWaMediaControl` sends the secret + snake_case body + returns the answer; **every failure mode → null (never throws)**.
+
+Verification: **voice 126 passed / 2 skipped + ruff clean (local 3.14); api typecheck + lint clean; full api suite 528/528** (+5). `whatsapp_webrtc.py` (aiortc) type-checked by CI pyright on 3.12 (can't run locally — 3.14 has no aiortc wheels). **Live media round-trip pending the admin's WAC-00 test creds + a running voice service** — the whole path is wired + gated + unit-proven.
+
+## Self-Audit — WAC-03 (A–K)
+A. Correctness (focus): ✅ — OPUS-48k gate, 16k↔48k handled at the aiortc boundary (encoder up-samples; recv resampler down-samples), DTMF End-bit decode, first-packet-from-business (silence-padded frames) — all unit-tested; real SDP/media correctness is the gated live check.
+B. Isolation: ✅ — media is per-call (peers keyed by call id); the api resolves the tenant before calling; no cross-tenant state.
+C. Security (focus): ✅ — internal endpoint authed with a constant-time shared secret, **gated (503) when unset — never open**; never public; SDP/ICE from Meta treated as untrusted; no token/SDP/secret logged; api client never throws SDP into logs.
+D. Cost: n/a here — duration/metering is WAC-06 (fed by the terminate lifecycle).
+E. Errors/obs (focus): ✅ — every failure mode (ICE fail / DTLS timeout / hangup / loop crash / voice unreachable / gated) fails the call **cleanly** (peer torn down, api returns null → call stays connecting); idempotent `end()`.
+F. Performance (focus): ✅ — reuses the existing loop (no extra hops); media co-located in the voice service; 20 ms frame pacing; the loop stays in PCM16@16k (no engine change).
+G. Error handling: ✅ — bounded caller queue (backpressure), fail-soft api client, idempotent teardown, gated when unconfigured.
+H. UI/AA: n/a — media plane (the live-call UI is WAC-04).
+I. Regressions: ✅ — additive; new modules + a lazily-imported router + a swapped media-control impl; voice 126/2 + api 528 green; no existing path changed.
+J. Quality/docs: ✅ — doc comments + WAC-00-runbook design rules referenced; the aiortc-isolation testability decision recorded above.
+K. Build/CI: ✅ — ruff + api lint/typecheck clean; voice suite green locally; aiortc/pyright validated on CI 3.12.
+
+WAC-03 complete (build-time) — the AI agent can talk over a WhatsApp WebRTC call end-to-end; the api↔voice control hop + SDP answer path is wired + gated. **Next: WAC-04 — inbound GA (number→agent routing, cta/deeplink context, calling-hours gate) + the live-call view UI.** Live media round-trip is the admin's creds-gated follow-up.
