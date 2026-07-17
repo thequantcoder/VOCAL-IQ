@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   WA_CALL_PAYLOAD_MAX,
+  buildWhatsAppCallBrief,
   decodeWhatsAppCallPayload,
   encodeWhatsAppCallPayload,
   normalizeWaNumber,
   waCallDeepLink,
+  whatsAppCallContextToVars,
 } from './whatsapp-call-link.js';
 
 describe('WhatsApp call-link payload convention', () => {
@@ -61,5 +63,49 @@ describe('waCallDeepLink', () => {
 
   it('normalizeWaNumber strips non-digits', () => {
     expect(normalizeWaNumber('+44 20 7946 0000')).toBe('442079460000');
+  });
+});
+
+describe('whatsAppCallContextToVars', () => {
+  it('flattens reserved + custom keys and drops blanks', () => {
+    const vars = whatsAppCallContextToVars({
+      intent: 'support',
+      campaign: '  ',
+      reference: 'ORD-9',
+      custom: { tier: 'gold', region: '  ' },
+    });
+    expect(vars).toEqual({ intent: 'support', reference: 'ORD-9', tier: 'gold' });
+  });
+
+  it('is empty for an empty context', () => {
+    expect(whatsAppCallContextToVars({})).toEqual({});
+  });
+
+  it('round-trips from a decoded payload', () => {
+    const ctx = decodeWhatsAppCallPayload(
+      encodeWhatsAppCallPayload({ intent: 'book_demo', custom: { plan: 'pro' } }),
+    );
+    expect(whatsAppCallContextToVars(ctx)).toEqual({ intent: 'book_demo', plan: 'pro' });
+  });
+});
+
+describe('buildWhatsAppCallBrief', () => {
+  it('renders a brief listing every present field', () => {
+    const brief = buildWhatsAppCallBrief({
+      intent: 'book_demo',
+      campaign: 'q3',
+      reference: 'ORD-1',
+      custom: { plan: 'pro' },
+    });
+    expect(brief).toContain('Intent: book_demo');
+    expect(brief).toContain('Campaign / source: q3');
+    expect(brief).toContain('Reference (order/booking/lead id): ORD-1');
+    expect(brief).toContain('plan: pro');
+    expect(brief).toMatch(/Acknowledge it naturally/);
+  });
+
+  it('returns an empty string when there is no context (nothing to prepend)', () => {
+    expect(buildWhatsAppCallBrief({})).toBe('');
+    expect(buildWhatsAppCallBrief({ intent: '   ' })).toBe('');
   });
 });
