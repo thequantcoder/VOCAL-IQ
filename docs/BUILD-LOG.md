@@ -4340,3 +4340,32 @@ J. Quality/docs: ✅ — doc comments + plan §A.7 refs; the send-tab deferral +
 K. Build/CI: ✅ — typecheck 12/12; lint clean; shared/api suites green; web build ✓.
 
 WAC-07 complete — tenants have a lovely WhatsApp Calling home + a click-to-call generator (link/QR/button) that carries agent context. **This closes the offline-buildable WAC slices (01/02/05/06/07 merged).** Remaining are gated on the admin's WAC-00 test creds + a tunnel: WAC-00 (live spike), WAC-03 (WebRTC media bridge), WAC-04 (inbound GA) → then WAC-08 (permissions + consented outbound, incl. the deferred send tabs), WAC-09 (routing/guardrails), and optional WAC-10 (SIP) / WAC-11 (video).
+
+---
+
+> **Live-media arc (WAC-00 → 03 → 04).** Admin asked to build the three creds-gated media modules fully (backend + frontend) so they can drop in the test access token + phone-number-id and go live. All three are built to the aiortc/Meta docs + the plan, unit-tested where possible without a live peer, and the real WebRTC/agent path is gated behind `WHATSAPP_*` creds (+ `pip install '.[dev]'` pulls aiortc). Live verification is the admin's follow-up.
+
+### WAC-00 — Inbound WhatsApp media spike + findings runbook — 2026-07-17 — ✅ DONE — 🧠 OPUS
+Model: Opus. Branch `wac/00-sandbox-spike`. ⚠️ A **de-risking spike, not product code** — proves the WebRTC/SRTP/OPUS media path shape against Meta before the real bridge (WAC-03). The **findings runbook is the deliverable**; the spike is a runnable reference.
+
+Done (DONE):
+- **dep** — added `aiortc>=1.9.0` to the voice service core deps (the media plane for WAC-00/03; ships cp312 manylinux wheels bundling `av`/`aioice`/`pylibsrtp`, so CI's `pip install -e ".[dev]"` resolves it). The live media path is gated on `WHATSAPP_*` creds; `app/`+`tests/` don't import it yet, so nothing else changes.
+- **spike** `apps/voice/spikes/whatsapp_calling/` — `media.py` (`answer_offer`: aiortc `RTCPeerConnection`, an OPUS **test-tone** `MediaStreamTrack`, `setRemoteDescription(offer)`→`createAnswer()`→gathered-candidate answer, caller audio decoded to a WAV via `MediaRecorder`) + `server.py` (a standalone HMAC-verified `calls` webhook + verify-token handshake that drives `pre_accept`→`accept`→`terminate`) + `README.md` (run it behind a tunnel on the test number). Lives under `spikes/` only — pyright (`app`/`tests`) + pytest (`testpaths=tests`) don't touch it; ruff-clean.
+- **runbook** `docs/runbooks/whatsapp-calling-spike-findings.md` — the confirmed inbound lifecycle + media facts (OPUS 48 kHz payload 111, ICE+DTLS-SRTP, first-SRTP-packet-from-business, 30–60 s accept window, DTMF RFC 4733 @ 8 kHz no-webhook), aiortc specifics, the timing budget, and **8 gotchas → design rules for WAC-03**. Facts tagged **[DOC]** (authoritative now) vs **[LIVE ▢]** (to measure + check off on the first real call).
+
+Verification: **ruff clean on the spike; voice suite unaffected (108 passed / 2 skipped locally on 3.14; aiortc installs + type-resolves on CI 3.12).** Live end-to-end run pending the admin's WAC-00 test creds + tunnel — the spike + runbook are ready to execute.
+
+## Self-Audit — WAC-00 (A–K)
+A. Correctness (focus): ✅ (build-time) — the spike encodes the exact plan §A.3 sequence; **[LIVE ▢]** rows enumerate what the real run must confirm. Real media correctness is the admin's live check.
+B. Isolation: n/a — throwaway spike on one test number (no tenant data).
+C. Security (focus): ✅ — the spike HMAC-verifies every webhook (`X-Hub-Signature-256`, never skipped) + the verify-token handshake; no token/SDP logged as secrets (payloads printed are the spike's whole point, on a throwaway number).
+D. Cost: n/a — spike.
+E. Errors/obs (focus): ✅ — the runbook's gotchas section captures the known failure modes + fixes (media-after-200, first-packet, stuck-peer GC, ICE/DTLS timeout → fail cleanly); live errors get appended after the run.
+F. Performance: ✅ — timing budget documented (answer < 2 s, turn < ~800 ms via the existing loop).
+G. Error handling: ✅ — spike holds peers to avoid GC stalls; closes on terminate.
+H. UI/AA: n/a.
+I. Regressions: ✅ — additive; only a new dep + a `spikes/` dir + a runbook; no `app/` code changed; voice suite green locally.
+J. Quality/docs (focus): ✅ — the findings runbook is precise, [DOC]-vs-[LIVE] tagged, with a go/no-go + a plan-corrections section.
+K. Build/CI: ✅ — ruff clean; the only new CI surface is the aiortc install (reliable cp312 wheels) — watched on the PR.
+
+WAC-00 complete (build-time) — the media path is documented + a runnable spike is ready; live confirmation is a creds-gated follow-up. **Next: WAC-03 — the production voice-service WebRTC bridge into the AI loop.**

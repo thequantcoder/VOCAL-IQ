@@ -13,6 +13,10 @@ dependencies = [
     "websockets>=14.0",
     "livekit-api>=0.8.0",
     "livekit>=0.18.0",
+    # WhatsApp Business Calling media plane (WAC-00/03): a raw WebRTC (ICE+DTLS-SRTP+OPUS)
+    # peer with Meta, bridged into the AI loop. Ships cp312 manylinux wheels (bundles av,
+    # aioice, pylibsrtp) — the live path is gated on WHATSAPP_* creds; unit tests don't import it.
+    "aiortc>=1.9.0",
 ]
 
 [project.optional-dependencies]
