@@ -143,6 +143,8 @@ class WhatsAppMediaBridge:
         try:
             while True:
                 frame = await track.recv()
+                if not isinstance(frame, AudioFrame):
+                    continue  # audio track — ignore any non-audio frame aiortc hands us
                 for out in resampler.resample(frame):
                     caller.feed(bytes(out.planes[0]))
         except MediaStreamError:
