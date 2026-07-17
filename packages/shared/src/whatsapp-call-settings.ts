@@ -59,6 +59,24 @@ export const whatsappCallSettingsSchema = z.object({
       announcementMediaId: z.string().optional(),
     })
     .default({}),
+  // SIP mode (WAC-10) — mutually exclusive with Graph-API calling; for PBX (Asterisk/Kamailio) tenants.
+  sip: z
+    .object({
+      enabled: z.boolean().default(false),
+      servers: z
+        .array(
+          z.object({
+            hostname: z.string().min(1).max(253),
+            port: z.number().int().min(1).max(65535).default(5061),
+            requestUriUserParams: z.record(z.string().max(40), z.string().max(120)).optional(),
+          }),
+        )
+        .max(4)
+        .default([]),
+      webhookDelivery: z.boolean().default(false),
+      srtpProtocol: z.enum(['DTLS', 'SDES']).default('DTLS'),
+    })
+    .default({}),
 });
 export type WhatsappCallSettings = z.infer<typeof whatsappCallSettingsSchema>;
 
@@ -170,6 +188,21 @@ export function toGraphCalling(s: WhatsappCallSettings): Record<string, unknown>
     };
   } else {
     calling.voicemail = { status: 'DISABLED' };
+  }
+  // SIP mode (WAC-10, §A.6). ENABLED strips Graph-API calling for the number (Meta hides webhooks).
+  if (s.sip.enabled) {
+    calling.sip = {
+      status: 'ENABLED',
+      srtp_key_exchange_protocol: s.sip.srtpProtocol,
+      webhook_delivery: s.sip.webhookDelivery ? 'ENABLED' : 'DISABLED',
+      servers: s.sip.servers.map((sv) => ({
+        hostname: sv.hostname,
+        port: sv.port,
+        ...(sv.requestUriUserParams ? { request_uri_user_params: sv.requestUriUserParams } : {}),
+      })),
+    };
+  } else {
+    calling.sip = { status: 'DISABLED' };
   }
   return calling;
 }

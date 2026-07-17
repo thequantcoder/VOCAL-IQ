@@ -102,5 +102,6 @@ export * from './whatsapp-call-link.js';
 export * from './whatsapp-call-settings.js';
 export * from './whatsapp-permission.js';
 export * from './whatsapp-routing.js';
+export * from './whatsapp-sip.js';
 export * from './voice.js';
 export * from './workflow.js';
