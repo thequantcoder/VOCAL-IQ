@@ -16,6 +16,7 @@ import { ErrorState, LoadingCard } from '../../../components/states';
 import { StatusBadge, formatDuration, formatUsd } from '../../../components/ui-bits';
 import type { WhatsappCallRow } from '../../../lib/api';
 import { useWhatsappCallOverview } from '../../../lib/api';
+import { CallingHealth } from './calling-health';
 import { ClickToCallGenerator } from './click-to-call-generator';
 import { OutboundCallCard } from './outbound-call-card';
 
@@ -131,6 +132,8 @@ export default function WhatsAppCallingPage() {
           )}
         </CardContent>
       </Card>
+
+      {enabled ? <CallingHealth /> : null}
 
       {enabled ? <OutboundCallCard /> : null}
 

@@ -121,6 +121,10 @@ export class WhatsAppCallingService {
     private readonly settingsReader: WaSettingsReader | null = null,
     /** Outbound permission governor (WAC-08). Absent → no outbound (dialing throws). */
     private readonly permission: WaPermissionGate | null = null,
+    /** Restriction handler (WAC-09) — persists an `account_update` restriction. Absent → audit only. */
+    private readonly restrictionHandler:
+      | ((tenantId: string, payload: unknown) => Promise<void>)
+      | null = null,
     /** Clock — injectable so the hours gate + timestamps are deterministic in tests. */
     private readonly now: () => Date = () => new Date(),
   ) {}
@@ -381,6 +385,10 @@ export class WhatsAppCallingService {
         data: { tenantId, waCallId: 'account', event, payload: (payload ?? {}) as object },
       }),
     );
+    // WAC-09: persist a restriction so routing steers around it + the health widget surfaces it.
+    if (event === 'restriction' && this.restrictionHandler) {
+      await this.restrictionHandler(tenantId, payload).catch(() => {});
+    }
   }
 
   /** Decode the tapped-button / deep-link context (WAC-07 payload convention) for the answering brief. */

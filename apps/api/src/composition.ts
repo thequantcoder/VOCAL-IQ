@@ -120,6 +120,7 @@ import {
   type WaMediaControl,
 } from './whatsapp-calling/whatsapp-media-control';
 import { WhatsAppPermissionService } from './whatsapp-calling/whatsapp-permission.service';
+import { WhatsAppRoutingService } from './whatsapp-calling/whatsapp-routing.service';
 import { buildCloudflareClient } from './whitelabel/cloudflare';
 import { WhiteLabelService } from './whitelabel/whitelabel.service';
 import { WidgetService } from './widget/widget.service';
@@ -245,6 +246,7 @@ export function createServices() {
   const whatsappCallSettings = new WhatsAppCallSettingsService(db, waCallingAdapterFor);
   const whatsappInboundRouter = new WhatsAppInboundRouter(db); // WAC-04: number → answering agent
   const whatsappPermission = new WhatsAppPermissionService(db, waCallingAdapterFor); // WAC-08 governor
+  const whatsappRouting = new WhatsAppRoutingService(db, whatsappPermission); // WAC-09 route + guardrails
   const whatsappCalling = new WhatsAppCallingService(
     db,
     waCallingAdapterFor,
@@ -253,6 +255,7 @@ export function createServices() {
     whatsappInboundRouter, // WAC-04: resolve the agent that answers
     (tenantId) => whatsappCallSettings.get(tenantId), // WAC-04: calling-hours gate
     whatsappPermission, // WAC-08: consented-outbound governor
+    (tenantId, payload) => whatsappRouting.applyRestriction(tenantId, payload), // WAC-09: restrictions
   );
   const whatsappCallRead = new WhatsAppCallReadService(db); // WAC-07 dashboard read model
   // Cross-channel automations reuse the messaging + integration subsystems as action executors.
@@ -421,6 +424,7 @@ export function createServices() {
     whatsappCallSettings,
     whatsappCallRead,
     whatsappPermission,
+    whatsappRouting,
     automations,
     sip,
     experiments,
