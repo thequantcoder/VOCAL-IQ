@@ -114,3 +114,32 @@ export function isWhatsappRestrictionActive(
   if (!r.expiresAt) return true;
   return now.getTime() < new Date(r.expiresAt).getTime();
 }
+
+/** Meta's 7-day restriction window. */
+export const WHATSAPP_RESTRICTION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Best-effort parse of an `account_update` restriction/violation webhook into a {@link WaRestriction}
+ * with a local 7-day expiry (Meta gives no expiry). Tolerant of shape — extracts a `RESTRICTED_*` /
+ * violation type from the common locations; returns null when there's no restriction. The exact live
+ * payload is confirmed in the WAC-00 smoke; until then this reads what Meta documents.
+ */
+export function parseWhatsappRestriction(
+  payload: unknown,
+  now: Date,
+  ttlMs = WHATSAPP_RESTRICTION_TTL_MS,
+): WaRestriction | null {
+  const v = (payload ?? {}) as Record<string, unknown>;
+  const nested = (v.restriction ?? v.ban_info ?? {}) as Record<string, unknown>;
+  const candidate =
+    (typeof nested.type === 'string' ? nested.type : undefined) ??
+    (typeof v.type === 'string' ? v.type : undefined) ??
+    (typeof v.event === 'string' && v.event.includes('RESTRICTED') ? v.event : undefined);
+  if (!candidate) return null;
+  const direction = typeof nested.direction === 'string' ? nested.direction : undefined;
+  return {
+    type: candidate,
+    ...(direction ? { direction } : {}),
+    expiresAt: new Date(now.getTime() + ttlMs).toISOString(),
+  };
+}
