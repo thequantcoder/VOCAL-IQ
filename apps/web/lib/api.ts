@@ -5,6 +5,7 @@ import type {
   AvailableNumberDto,
   DialerConfig,
   EmotionPolicy,
+  MessengerCallSettings,
   NumberBuyInput,
   NumberSearchInput,
   OwnedNumberDto,
@@ -4847,6 +4848,29 @@ export function useSaveWhatsappCallSettings() {
         body: JSON.stringify(settings),
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['whatsapp-call-settings'] }),
+  });
+}
+
+// ── Messenger (Meta) Calling — settings (MEC-05) ─────────────────────────────
+
+export function useMessengerCallSettings() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['messenger-call-settings'],
+    queryFn: () => apiFetch<MessengerCallSettings>(getToken, '/messenger-calling/settings'),
+  });
+}
+
+export function useSaveMessengerCallSettings() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (settings: MessengerCallSettings) =>
+      apiFetch<MessengerCallSettings>(getToken, '/messenger-calling/settings', {
+        method: 'PUT',
+        body: JSON.stringify(settings),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['messenger-call-settings'] }),
   });
 }
 

@@ -1,5 +1,10 @@
 import type { MessengerCallingTelephony } from '@vocaliq/provider-router';
-import { buildMessengerCallBrief, fromMessengerCallRef } from '@vocaliq/shared';
+import {
+  type MessengerCallSettings,
+  buildMessengerCallBrief,
+  fromMessengerCallRef,
+  isWithinMessengerCallHours,
+} from '@vocaliq/shared';
 import type { PrismaService } from '../db/prisma.service';
 import type { MeMediaControl } from './messenger-media-control';
 
@@ -43,6 +48,9 @@ export interface MessengerInboundRouting {
 export interface MeInboundRouter {
   resolveInboundAgent(tenantId: string, pageId?: string): Promise<MessengerInboundRouting | null>;
 }
+
+/** Reads the tenant's Messenger call settings (for the availability-hours gate, MEC-05). */
+export type MeSettingsReader = (tenantId: string) => Promise<MessengerCallSettings>;
 
 export interface MeConnectInput {
   meCallId: string;
@@ -95,6 +103,8 @@ export class MessengerCallingService {
     private readonly meter: MeCallMeter = new NoopMeCallMeter(),
     /** Inbound agent routing (MEC-04). Absent → no routing + no unified Call (pure MEC-02 behaviour). */
     private readonly router: MeInboundRouter | null = null,
+    /** Availability-hours source (MEC-05). Absent → always open (MEC-02/04 behaviour). */
+    private readonly settingsReader: MeSettingsReader | null = null,
     /** Clock — injectable so timestamps are deterministic in tests. */
     private readonly now: () => Date = () => new Date(),
   ) {}
@@ -146,6 +156,15 @@ export class MessengerCallingService {
 
     // Inbound: only a user-initiated call with an offer is answered here.
     if (!input.sdpOffer) return;
+
+    // Availability gate (MEC-05) — outside the Page's calling hours → reject gracefully.
+    if (this.settingsReader) {
+      const settings = await this.settingsReader(tenantId).catch(() => null);
+      if (settings && !isWithinMessengerCallHours(settings, this.now())) {
+        await this.rejectWithReason(tenantId, input.meCallId, 'outside_calling_hours');
+        return;
+      }
+    }
 
     // Resolve the answering agent (MEC-04). No publishable agent → reject gracefully.
     let routing: MessengerInboundRouting | null = null;

@@ -4588,3 +4588,36 @@ J. Quality/docs: ✅ — doc comments + design-system references; features doc +
 K. Build/CI: ✅ — typecheck + biome green; Next build CI-validated (iCloud-flaky locally).
 
 MEC-07 complete — Messenger Calling now has a full tenant dashboard, live-call view, and shareable m.me call-link generator. **Remaining: MEC-05 (call settings synced to Meta) · MEC-08 (outbound + permissions) · the MEC-00 wire-format spike (gates live media).**
+
+---
+
+### MEC-05 — Messenger Calling: call settings + availability-hours gate — 2026-07-19 — ✅ DONE (gated) — ⚡ SONNET-tier (built as OPUS)
+
+**What & why.** The tenant config surface for Messenger calling (WAC-05 sibling, trimmed). Completes the settings the MEC-07 dashboard hero pointed at, and wires the availability-hours gate into the inbound answer path.
+
+**Built.**
+- `packages/shared/src/messenger-call-settings.ts` — Zod schema (`enabled`, `callButtonVisibility`, `hours{enabled,timezone,weekly,holidays}`) + `parseMessengerCallSettings` (≤2 blocks/day) + `isWithinMessengerCallHours` (Intl, timezone-correct) + `toGraphMessengerCalling` (Meta `calling` shape, `[CONFIRM @ MEC-00]`) + exports + test (7).
+- `apps/api/src/messenger-calling/messenger-call-settings.service.ts` — `get`/`set` on the tenant `settings` JSON (RLS); **sync to Meta FIRST** (a rejection surfaces before we persist), gated → local-only when no creds. + integration test.
+- **Availability gate wired into `MessengerCallingService`:** new optional `settingsReader`; `onConnect` now reads settings and, outside hours, **rejects gracefully** (`outside_calling_hours` event) — never touches media/agent. + a hours-gate test case.
+- `GET/PUT /messenger-calling/settings` (GET members, PUT config-writers).
+- Web: `/dashboard/settings/messenger-calling` (enable + call-button visibility + hours editor) + `useMessengerCallSettings`/`useSaveMessengerCallSettings` hooks + settings sidebar sub-entry + the overview hero now links to it.
+- Composition wires the settings service + the `settingsReader`.
+
+**Trim from WhatsApp (WAC-05):** Messenger has no phone numbers → no country restriction, no extra codecs, no voicemail (deferred), no SIP mode.
+
+**Checks.** api typecheck ✅ · web typecheck ✅ · shared tests ✅ (settings 7/7 + full suite) · biome clean on all new files; edited files (composition/main/routes/service/api.ts/sidebar) no errors (composition import order fixed manually). The Postgres+RLS settings + hours-gate tests run on CI (local Docker DB down); Next build CI-validated.
+
+## Self-Audit — MEC-05 (A–K)
+A. Correctness (focus): ✅ — schema + 2-block rule + timezone-correct `isWithin` unit-tested; gate wired so out-of-hours never answers; settings mapper marked `[CONFIRM]` (not asserted as Meta fact).
+B. Isolation (focus): ✅ — get/set in `withTenant` (RLS); settings live under the tenant's own `settings` JSON.
+C. Security (focus): ✅ — PUT behind `requireRoles(CONFIG_WRITERS)`; GET to members; sync-to-Meta failure surfaces as a ValidationError (no internal leak); no secret logged.
+D. Cost: n/a (config).
+E. Errors/obs: ✅ — invalid settings → ValidationError with the rule message; Meta rejection → surfaced; out-of-hours → an audited `outside_calling_hours` event.
+F. Performance: ✅ — one read / one update per call; the gate adds one settings read on inbound connect.
+G. Error handling: ✅ — see E; `.catch` around the settings read in the gate (fail-open to answering rather than dropping a valid call on a read blip).
+H. UI/AA (focus): ✅ — labelled toggles/inputs; native time inputs; keyboard-navigable; save/saved/error states.
+I. Regressions (focus): ✅ — additive; `settingsReader` is a new optional ctor param (MEC-02/04 call sites unaffected); shipped-file edits are composition/main/routes/service (additive) + api.ts/sidebar (new hooks/entry). WhatsApp untouched; api+web typecheck green.
+J. Quality/docs: ✅ — doc comments explain the WhatsApp trim + the `[CONFIRM]` mapper; features doc + BUILD-LOG updated.
+K. Build/CI: ✅ — typecheck + biome + shared tests green; DB/Next validated on CI.
+
+MEC-05 complete (gated). Messenger Calling now has a full settings surface + availability gate. **Remaining: MEC-08 (outbound + permissions — needs the MEC-00-confirmed Messenger permission caps) + the MEC-00 wire-format spike (gates live media). Both need the Meta access flagged to the admin.**

@@ -161,6 +161,11 @@ export const NAV_GROUPS: NavGroup[] = [
         label: 'WhatsApp Calling',
         icon: PhoneIncoming,
       },
+      {
+        href: '/dashboard/settings/messenger-calling',
+        label: 'Messenger Calling',
+        icon: MessageCircle,
+      },
       { href: '/dashboard/settings/sso', label: 'SSO', icon: ShieldCheck },
       { href: '/dashboard/settings/compliance', label: 'Compliance', icon: ShieldAlert },
       { href: '/dashboard/settings/biometrics', label: 'Voice biometrics', icon: Fingerprint },
