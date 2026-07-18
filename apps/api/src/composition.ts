@@ -68,6 +68,8 @@ import { httpMcpTransport } from './mcp/transport';
 import { MemoryService } from './memory/memory.service';
 import { MessagingService } from './messaging/messaging.service';
 import { buildSenders } from './messaging/senders';
+import { MessengerCallReadService } from './messenger-calling/messenger-call-read.service';
+import { MessengerInboundRouter } from './messenger-calling/messenger-call-routing.service';
 import {
   type MeAdapterResolver,
   MessengerCallingService,
@@ -290,7 +292,15 @@ export function createServices() {
           internalSecret: process.env.VOICE_INTERNAL_SECRET,
         })
       : new PendingMeMediaControl();
-  const messengerCalling = new MessengerCallingService(db, meCallingAdapterFor, meMedia);
+  const messengerInboundRouter = new MessengerInboundRouter(db); // MEC-04: Page → answering agent
+  const messengerCalling = new MessengerCallingService(
+    db,
+    meCallingAdapterFor,
+    meMedia,
+    undefined, // meter: MEC-06 wires the real cost service (default no-op until then)
+    messengerInboundRouter, // MEC-04: resolve the agent that answers
+  );
+  const messengerCallRead = new MessengerCallReadService(db); // MEC-04 dashboard read model
   // Cross-channel automations reuse the messaging + integration subsystems as action executors.
   const automations = new AutomationsService(
     db,
@@ -458,6 +468,7 @@ export function createServices() {
     whatsappCallRead,
     whatsappPermission,
     messengerCalling,
+    messengerCallRead,
     whatsappRouting,
     whatsappSip,
     automations,

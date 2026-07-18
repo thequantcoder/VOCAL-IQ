@@ -4494,3 +4494,35 @@ J. Quality/docs: ✅ — doc comments explain the WhatsApp-parity + the generali
 K. Build/CI: ✅ — ruff + pyright (non-aiortc) clean; voice suite green; the aiortc bridge is CI-type-checked (deps installed there), mirroring WAC.
 
 MEC-03 complete (build-time, gated) — the AI agent can talk over a Messenger WebRTC call end-to-end; the api↔voice control hop + SDP answer path is wired + gated. **Next: MEC-04 — inbound AI answering GA (Page→agent routing, `ref` context brief, unified Call) + the live-call view UI.** Live media round-trip is the creds-gated + MEC-00 follow-up.
+
+---
+
+### MEC-04 — Messenger Calling: inbound AI answering GA (backend) — 2026-07-18 — ✅ DONE (backend, gated) — 🧠 OPUS
+
+**What & why.** Inbound Messenger calls now route to a real agent + open a unified Call — the WAC-04 sibling, backend half. The MEC-02/03 plumbing (unified-Call open+link, `ref` context brief, media SDP-answer) was already in place; this wires the concrete router + adds the dashboard read model.
+
+**Built.**
+- `messenger-call-routing.service.ts` — `MessengerInboundRouter` (concrete `MeInboundRouter`): resolves the tenant's **first PUBLISHED agent** (persona→system prompt + active flow version). Unlike WhatsApp, Messenger has NO phone numbers → no `PhoneNumber.e164` mapping; a per-Page→agent mapping is a future enhancement.
+- `messenger-call-read.service.ts` — `MessengerCallReadService`: `overview` (today KPIs + this-month minutes summed from durations; free-tier → always `tier0`, no volume table until MEC-06) + `liveCall` (identity psid/pageId, `ref`-decoded context, linked agent, status timeline).
+- `messenger-calling.routes.ts` — `GET /messenger-calling/overview` + `GET /messenger-calling/calls/:id`, auth + tenant RLS.
+- Wiring: composition instantiates `MessengerInboundRouter` (passed into `MessengerCallingService`) + `MessengerCallReadService`; main.ts mounts `/messenger-calling`.
+- Tests: `messenger-call-routing.service.test.ts` (router resolves first PUBLISHED agent, null when none, tenant-isolated) + `messenger-call-read.service.test.ts` (overview KPIs + liveCall context/agent/timeline).
+
+**Deviation from the plan (recorded per CLAUDE.md §11):** the plan's MEC-04 bundles the **web live-call VIEW**; I've deferred the web UI to **MEC-07** (the web panel + entry-point generator) so MEC-04 stays a focused, testable backend slice. The read API it needs is shipped here.
+
+**Checks.** api typecheck ✅ (validates the Prisma reads + the router/read/routes wiring) · biome clean on new files (2 `req.ctx!` warnings — identical to the WhatsApp routes, CI-tolerated) · main/composition biome clean (import order fixed manually). The Postgres+RLS integration tests (router + read) run on CI — local Docker DB down this session.
+
+## Self-Audit — MEC-04 (A–K)
+A. Correctness (focus): ✅ — router resolves the first PUBLISHED agent deterministically (createdAt asc); read model computes today/month aggregates + decodes the `ref` context. Routed-answer path already integration-tested in MEC-02; router + read have their own tests.
+B. Isolation (focus): ✅ — every query runs in `withTenant`; router test asserts a tenant with no agent resolves null even given another tenant's Page id; reads are RLS-scoped.
+C. Security: ✅ — routes behind auth + tenant middleware; reads only (no mutation); no secret/PII leak (context is the business's own `ref`).
+D. Cost: ✅ — read model reports cost/minutes from persisted rows; free-tier tier0 until MEC-06 wires real metering (the terminate path already calls the meter, Noop today).
+E. Errors/obs: ✅ — `liveCall` throws NotFound for an unknown id; overview tolerates empty data (zeros).
+F. Performance: ✅ — overview is a single `Promise.all` of scoped aggregates + a 20-row recent feed; indexed by `(tenantId)` / `(tenantId,status)`.
+G. Error handling: ✅ — see E; safe defaults throughout.
+H. UI/AA: n/a here — web live-call view is MEC-07 (deferred, noted).
+I. Regressions (focus): ✅ — additive; the only shipped-file edits are composition (instantiate + pass router, add read to the services map) + main.ts (mount route). WhatsApp untouched; api typecheck green.
+J. Quality/docs: ✅ — doc comments explain the no-phone-number routing difference; features doc + BUILD-LOG updated; deviation recorded.
+K. Build/CI: ✅ — typecheck + biome green; integration tests CI-validated.
+
+MEC-04 complete (backend, gated) — inbound Messenger calls route to a PUBLISHED agent, open a unified `Call(channel=MESSENGER)` with context, and surface on the dashboard read API. **Next: MEC-06 — per-call cost metering (`messenger-call-cost.service.ts` → `UsageRecord(Provider.MESSENGER)`, idempotent `billedAt`), then MEC-05 settings, MEC-07 web panel + live-call view + entry-point generator, MEC-08 outbound/permissions.**
