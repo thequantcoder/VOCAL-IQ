@@ -294,6 +294,8 @@ model Tenant {
   whatsappCallVolumes  WhatsAppCallVolume[]
   whatsappCallPermissions WhatsAppCallPermission[]
   whatsappPermissionRequests WhatsAppPermissionRequest[]
+  messengerCalls       MessengerCall[]
+  messengerCallEvents  MessengerCallEvent[]
 
   @@index([parentTenantId])
   @@index([type])
@@ -1024,6 +1026,51 @@ model WhatsAppPermissionRequest {
   createdAt DateTime @default(now())
 
   @@index([tenantId, waId, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Messenger (Meta) Calling (MEC-02) — the WhatsApp-Calling sibling for Facebook
+// Page ↔ Messenger PSID WebRTC voice. Identity is a PSID + Page (NO phone numbers,
+// so no fromNumber/toNumber/dial-code routing). Tracks the Messenger call lifecycle
+// and links to the unified `Call(channel=MESSENGER)` once the agent answers (MEC-04).
+// ─────────────────────────────────────────────────────────────────────────────
+
+model MessengerCall {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @db.Uuid
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  meCallId    String // Meta Messenger call id
+  direction   String // USER_INITIATED | BUSINESS_INITIATED
+  status      String    @default("connecting") // connecting|ringing|accepted|rejected|completed|failed
+  psid        String? // the Messenger user's Page-Scoped ID (there is no phone number)
+  pageId      String? // the business Page id (addressed as `me` with the Page token)
+  refPayload  String? // m.me / call-button `ref` context (agent greets with it) — MEC-04/07
+  callId      String?   @db.Uuid // link to the unified Call once the agent answers (MEC-04)
+  errorCode   Int? // Meta calling error code on failure
+  startedAt   DateTime?
+  endedAt     DateTime?
+  durationSec Int?
+  // Cost metering (MEC-06): set once, atomically, when the terminated call is metered.
+  costUsd     Float? // Messenger carrier cost (free-tier default; still metered)
+  billedAt    DateTime? // idempotency guard — non-null ⇒ already metered (never double-charge)
+  createdAt   DateTime  @default(now())
+
+  @@unique([tenantId, meCallId])
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+// Append-only audit of every Messenger calling webhook (MEC-02) — for replay/debug + idempotency.
+model MessengerCallEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  meCallId  String
+  event     String // connect|status|terminate|settings_update
+  payload   Json     @default("{}")
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, meCallId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

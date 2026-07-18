@@ -11,6 +11,8 @@ import { ah } from '../http/async-handler';
 import { authMiddleware } from '../http/auth.middleware';
 import { requireRoles } from '../http/roles.middleware';
 import { tenantMiddleware } from '../http/tenant.middleware';
+import type { MessengerCallingService } from '../messenger-calling/messenger-calling.service';
+import { dispatchMessengerCallingWebhook } from '../messenger-calling/messenger-calling.webhooks';
 import { CONFIG_WRITERS } from '../tenancy/roles';
 import type { TenantService } from '../tenancy/tenant.service';
 import type { WhatsAppCallingService } from '../whatsapp-calling/whatsapp-calling.service';
@@ -263,6 +265,7 @@ export function telegramWebhookHandler(messaging: MessagingService) {
 export function metaMessagingWebhookHandler(
   messaging: MessagingService,
   channel: Extract<MessageChannel, 'MESSENGER' | 'INSTAGRAM'>,
+  messengerCalling?: MessengerCallingService,
 ) {
   const secretEnv = channel === 'MESSENGER' ? 'MESSENGER_APP_SECRET' : 'INSTAGRAM_APP_SECRET';
   const verifyEnv = channel === 'MESSENGER' ? 'MESSENGER_VERIFY_TOKEN' : 'INSTAGRAM_VERIFY_TOKEN';
@@ -295,6 +298,12 @@ export function metaMessagingWebhookHandler(
           });
         }
       }
+    }
+
+    // Messenger (Meta) Calling (MEC-02): dispatch call connect/terminate/status/settings events on the
+    // same (HMAC-verified) Messenger webhook. Best-effort — never fails the 200 to Meta.
+    if (channel === 'MESSENGER' && messengerCalling) {
+      await dispatchMessengerCallingWebhook(messengerCalling, tenantId, payload).catch(() => {});
     }
     return res.status(200).end();
   });
