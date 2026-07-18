@@ -1,3 +1,5 @@
+import { whatsappCallMediaMode } from '@vocaliq/shared';
+
 /**
  * The control-channel contract between the api (signaling) and the voice service (WebRTC media) for
  * WhatsApp calls (WAC-02). The api receives the caller's SDP offer on the `calls` webhook and needs
@@ -15,6 +17,8 @@ export interface WaAnswerRequest {
   systemPrompt?: string;
   /** The opening line the agent speaks (WAC-04). */
   greeting?: string;
+  /** Caller requested video (WAC-11) — only honoured once Meta GAs video; else audio-only. */
+  video?: boolean;
 }
 
 /** Outbound (WAC-08): ask the bridge to GENERATE the business SDP offer that starts an outbound call. */
@@ -24,6 +28,8 @@ export interface WaOfferRequest {
   agentId?: string;
   systemPrompt?: string;
   greeting?: string;
+  /** Request video (WAC-11) — only honoured once Meta GAs video; else audio-only. */
+  video?: boolean;
 }
 
 export interface WaMediaControl {
@@ -80,6 +86,8 @@ export class HttpWaMediaControl implements WaMediaControl {
       agent_id: req.agentId ?? '',
       ...(req.systemPrompt ? { system_prompt: req.systemPrompt } : {}),
       ...(req.greeting ? { greeting: req.greeting } : {}),
+      // WAC-11: only ask the bridge for video once Meta GAs it; else audio-only.
+      ...(whatsappCallMediaMode(req.video) === 'video' ? { video: true } : {}),
     });
     const answer = (body as { sdp_answer?: unknown } | null)?.sdp_answer;
     return typeof answer === 'string' && answer.length > 0 ? answer : null;
@@ -92,6 +100,8 @@ export class HttpWaMediaControl implements WaMediaControl {
       agent_id: req.agentId ?? '',
       ...(req.systemPrompt ? { system_prompt: req.systemPrompt } : {}),
       ...(req.greeting ? { greeting: req.greeting } : {}),
+      // WAC-11: only ask the bridge for video once Meta GAs it; else audio-only.
+      ...(whatsappCallMediaMode(req.video) === 'video' ? { video: true } : {}),
     });
     const offer = (body as { sdp_offer?: unknown } | null)?.sdp_offer;
     return typeof offer === 'string' && offer.length > 0 ? offer : null;
