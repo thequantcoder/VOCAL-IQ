@@ -4401,3 +4401,37 @@ J. Quality/docs: ✅ — doc comments + WAC-00-runbook design rules referenced; 
 K. Build/CI: ✅ — ruff + api lint/typecheck clean; voice suite green locally; aiortc/pyright validated on CI 3.12.
 
 WAC-03 complete (build-time) — the AI agent can talk over a WhatsApp WebRTC call end-to-end; the api↔voice control hop + SDP answer path is wired + gated. **Next: WAC-04 — inbound GA (number→agent routing, cta/deeplink context, calling-hours gate) + the live-call view UI.** Live media round-trip is the admin's creds-gated follow-up.
+
+---
+
+### MEC-00/01 — Messenger (Meta) Calling: plan + foundation (adapter · pricing · entry-points · enums) — 2026-07-18 — ✅ DONE (foundation, gated) — 🧠 OPUS
+
+**What & why.** User asked whether Meta also has a *Messenger* Calling API (beyond WhatsApp) — it does: the **Messenger Platform Calling API** (Facebook **Page** ↔ Messenger **PSID**, WebRTC voice, `pages_messaging`, GA). This starts a Messenger Calling module as a near-sibling of the shipped WhatsApp Calling (WAC) module, reusing its proven architecture. This increment = **MEC-00 (deep plan)** + **MEC-01 (foundation, fully gated, offline-testable)**.
+
+**Built.**
+- `docs/MESSENGER-CALLING-AI-ENGINE-PLAN.md` — the deep+smart plan (TL;DR, API reference with every unconfirmed wire detail marked `[CONFIRM @ MEC-00]`, reuse map, architecture, MEC-00…08 phased plan, risks, open decisions). Honest per CLAUDE.md §15: Meta's *low-level* Messenger calling wire format is not fully public → isolated behind the provider seam + a spike gates the media path.
+- **Enum sync** (`Provider` + `CallChannel` gain `MESSENGER`): `packages/shared/src/enums.ts` + `packages/db/prisma/schema.prisma` + migration `20260718120000_messenger_calling_enums` (`ALTER TYPE … ADD VALUE`). Voice service has no Provider enum → no Python change.
+- `packages/provider-router/src/adapters/messenger-calling.ts` — `MessengerCallingTelephony` (the only place Messenger calling Graph specifics live; Page=`me`, PSID recipient; injected HTTP; **never logs token/SDP**; typed `ProviderError` w/ `meErrorCode`). Endpoints/fields mapped from the documented WhatsApp sibling, `[CONFIRM @ MEC-00]`.
+- `packages/provider-router/src/pricing.ts` — `messengerCallCostUsd` / `messengerCallRatePerMin` / `messengerCallPulses` (flat rate, **free-tier default $0**, still metered; no per-country card because Messenger has no phone numbers).
+- `packages/shared/src/messenger-call-link.ts` — `m.me` entry-point + business-context payload (our convention); wire `ref` is **base64url-wrapped** (isomorphic, no deps) to stay valid under Meta's restricted `m.me` ref charset — the key divergence from WhatsApp's `wa.me/call` query payload.
+- `packages/shared/src/messenger-video.ts` — audio-only media gate (`MESSENGER_VIDEO_GA=false`), mirrors WAC-11.
+- Exports (shared + provider-router index), tests, features doc (+docx).
+
+**Smart divergences from a blind WAC clone (design decisions).** PSID identity (no phone/E.164) → **no per-country dial-code routing**; **WAC-09 least-cost PSTN routing is N/A** (a PSID has no phone number to fall back to); **WAC-10 SIP mode is N/A** (no PBX phone number); no 5-country outbound block; Messenger has its own permission caps (`[CONFIRM]`). Parallel module — **zero edits to shipped WAC files** beyond the additive shared enum values (golden rule #6).
+
+**Checks.** shared 801/801 ✅ · provider-router 62 (+1 skipped live) ✅ · shared+provider-router typecheck ✅ · db+api typecheck ✅ (no enum-exhaustiveness breaks) · Prisma client generates with the new enums ✅ · biome clean on all new files ✅. Web untouched (additive; trust CI).
+
+## Self-Audit — MEC-00/01 (A–K)
+A. Correctness (focus): ✅ — pure helpers unit-tested (context encode/decode + base64url ref round-trip incl. hostile `&`/`%`/space values → charset-safe ref; page normalization; pulses; free-tier cost). Adapter tested with a fake HTTP transport (place/accept/reject/terminate bodies, permission parse, error mapping). Real Meta wire shape is the gated MEC-00 spike — every such spot is `[CONFIRM]`, not asserted as fact.
+B. Isolation: ✅ — no data-access code yet (foundation only); DB models come in MEC-02 and will carry `tenantId`+RLS. Enum additions are tenant-neutral.
+C. Security (focus): ✅ — adapter never logs the Page token or SDP (error message carries only the Graph code); HTTP injected/timeout-bounded; nothing live can fire (no creds wired here). No secrets in code.
+D. Cost (focus): ✅ — `messengerCallCostUsd` exists so MEC-06 has no unmetered path; inbound free, outbound flat (default 0) but **always recorded**; `Provider.MESSENGER` added so the future `UsageRecord` is valid.
+E. Errors/obs: ✅ — adapter throws typed `ProviderError`; ref decode tolerant of garbage; payload-too-long throws a surfaced validation error.
+F. Performance: ✅ — pure, allocation-light helpers; base64url is O(n) no-dep; no hot-path added.
+G. Error handling: ✅ — see A/E; place-call with no id throws; tolerant decoders.
+H. UI/AA: n/a — no UI this phase (MEC-07).
+I. Regressions (focus): ✅ — additive only; enum values added *before* `LIVEKIT`/after `WHATSAPP`; db+api+shared+provider-router all green; **no shipped WhatsApp/other file changed**.
+J. Quality/docs: ✅ — doc comments explain *why* + the WhatsApp contrast; plan doc records the `[CONFIRM]` seam + dropped phases (MEC-09/10 N/A) with rationale.
+K. Build/CI: ✅ — typecheck/test/lint green locally; shared `dist` rebuilt (gitignored — all `src` committed so CI api-typecheck stays green).
+
+MEC-00/01 complete (build-time, gated). **Next: MEC-02 — `MessengerCall*` DB models + RLS + the Messenger `calls` webhook dispatch + signaling service (onConnect/onStatus/onTerminate) + media-control contract.** Live paths await Meta creds + the MEC-00 wire-format confirmation.

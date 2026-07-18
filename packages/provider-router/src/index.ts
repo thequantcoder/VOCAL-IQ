@@ -24,6 +24,14 @@ export {
   type WaPlaceCallInput,
   type WaSession,
 } from './adapters/whatsapp-calling.js';
+export {
+  MessengerCallingTelephony,
+  messengerErrorCode,
+  MESSENGER_GRAPH_VERSION,
+  type MeCallPermission,
+  type MePlaceCallInput,
+  type MeSession,
+} from './adapters/messenger-calling.js';
 export { OpenRouterLLM } from './adapters/openrouter.js';
 export { LiveKitMedia } from './adapters/livekit.js';
 

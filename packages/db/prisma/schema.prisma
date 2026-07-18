@@ -61,6 +61,7 @@ enum Provider {
   TELNYX
   PLIVO
   WHATSAPP
+  MESSENGER
   LIVEKIT
 }
 
@@ -102,6 +103,7 @@ enum CallChannel {
   WEB
   SIP
   WHATSAPP
+  MESSENGER
 }
 
 enum CallStatus {

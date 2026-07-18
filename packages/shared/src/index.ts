@@ -59,6 +59,8 @@ export * from './marketplace.js';
 export * from './mcp.js';
 export * from './memory.js';
 export * from './messaging.js';
+export * from './messenger-call-link.js';
+export * from './messenger-video.js';
 export * from './n8n-templates.js';
 export * from './slack.js';
 export * from './multilingual.js';
