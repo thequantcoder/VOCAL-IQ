@@ -124,6 +124,8 @@ Most are **already set** from Day 93 (Messenger messaging):
 - 🔲 (optional) `MESSENGER_GRAPH_VERSION` override (default `v21.0`).
 
 > No *new* secret is expected for a first inbound spike — the Day-93 Messenger creds should cover it. If Meta requires a separate calling token/allow-list, that surfaces at MEC-00 and we emit the `🔑 ADMIN ACTION REQUIRED` block then.
+>
+> 📋 **Admin go-live checklist:** `docs/runbooks/messenger-calling-setup.md` — step-by-step Meta access (Page + `pages_messaging` Advanced Access + Calling API allow-list + webhook subscription) and the MEC-00 confirmation checklist mapping each `[CONFIRM]` to its one code location.
 
 ---
 

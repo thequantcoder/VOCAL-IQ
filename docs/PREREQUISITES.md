@@ -110,7 +110,8 @@ This is the complete list of accounts, API keys, and decisions Claude will need,
 | Real-time avatar/video provider | Digital human agents (#92) | HeyGen / D-ID / Tavus-class | `AVATAR_PROVIDER_API_KEY` |
 | Translation-capable model | Real-time translation (#88) | LLM/translation API (reuse) | reuses LLM keys |
 | Telegram Bot API | Telegram channel (#93) | t.me/BotFather | `TELEGRAM_BOT_TOKEN` |
-| Meta Business (Messenger/Instagram) | Messenger/IG channels (#93) | developers.facebook.com | `META_PAGE_TOKEN`, `META_APP_SECRET`, `META_VERIFY_TOKEN` |
+| Meta Business (Messenger/Instagram) | Messenger/IG channels (#93) | developers.facebook.com | `MESSENGER_PAGE_ACCESS_TOKEN`, `MESSENGER_APP_SECRET`, `MESSENGER_VERIFY_TOKEN` (IG: `INSTAGRAM_*`) |
+| Meta Messenger **Calling** (MEC) | AI voice calls over Messenger (Page↔PSID) | developers.facebook.com — Messenger Calling API allow-list + `pages_messaging` Advanced Access | reuses the `MESSENGER_*` creds above; see `docs/runbooks/messenger-calling-setup.md` |
 | RCS provider | RCS messaging (#93) | via Twilio/Sinch RCS | `RCS_*` (provider-specific) |
 | Data warehouse (optional) | Analytics API exports (#87) | Snowflake/BigQuery | `WAREHOUSE_*` (usually customer-side) |
 
