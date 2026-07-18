@@ -4621,3 +4621,16 @@ J. Quality/docs: ✅ — doc comments explain the WhatsApp trim + the `[CONFIRM]
 K. Build/CI: ✅ — typecheck + biome + shared tests green; DB/Next validated on CI.
 
 MEC-05 complete (gated). Messenger Calling now has a full settings surface + availability gate. **Remaining: MEC-08 (outbound + permissions — needs the MEC-00-confirmed Messenger permission caps) + the MEC-00 wire-format spike (gates live media). Both need the Meta access flagged to the admin.**
+
+---
+
+### Messenger Calling — admin go-live runbook + PREREQUISITES fix — 2026-07-19 — ✅ DOCS — 🧠 OPUS
+
+**What & why.** The Messenger Calling module (MEC-01→07 + MEC-05) is merged + gated; the only remaining phases (MEC-00 spike, MEC-08 outbound) need Meta access I can't provision. This is the non-blocked, non-speculative work that unblocks the admin: the exact setup steps + the MEC-00 confirmation checklist. No Meta API is guessed (CLAUDE.md §15) — unconfirmed bits are mapped to their single `[CONFIRM]` code location.
+
+**Built.**
+- `docs/runbooks/messenger-calling-setup.md` — Meta access step-by-step (app + Page + Messenger product + Page token + `pages_messaging` Advanced Access + Calling API allow-list + webhook subscription), the env-var table, and a **MEC-00 confirmation checklist** (7 facts → each mapped to the one file that changes: webhooks dispatcher / provider adapter / voice bridge / call-link / settings mapper / pricing / future permission governor).
+- `docs/PREREQUISITES.md` — **fixed the stale Messenger entry** (`META_PAGE_TOKEN`… → the real `MESSENGER_PAGE_ACCESS_TOKEN` / `MESSENGER_APP_SECRET` / `MESSENGER_VERIFY_TOKEN` the code actually reads) + added a Messenger **Calling** row pointing at the runbook.
+- Plan doc Part E → runbook pointer.
+
+**Module status.** MEC-01→07 + MEC-05 shipped + merged (#167–173), all gated. **MEC-08 + MEC-00 remain, both blocked on admin Meta access** (Messenger Calling API allow-list + `pages_messaging` Advanced Access + a test Page/user). Once granted → confirm §4 of the runbook → flip live → build MEC-08.
