@@ -207,7 +207,10 @@ function bootstrap(): void {
       s.tenants,
     ),
   );
-  app.use('/messenger-calling', messengerCallingRoutes(s.messengerCallRead, s.tenants));
+  app.use(
+    '/messenger-calling',
+    messengerCallingRoutes(s.messengerCallRead, s.messengerCallSettings, s.tenants),
+  );
   app.use('/ops', opsRoutes(s.opsToolkit, s.tenants));
   app.use('/numbers', numbersRoutes(s.numbers, s.tenants));
   app.use('/reseller', resellerRoutes(s.reseller, s.tenants));

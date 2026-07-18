@@ -71,6 +71,7 @@ import { buildSenders } from './messaging/senders';
 import { MessengerCallCostService } from './messenger-calling/messenger-call-cost.service';
 import { MessengerCallReadService } from './messenger-calling/messenger-call-read.service';
 import { MessengerInboundRouter } from './messenger-calling/messenger-call-routing.service';
+import { MessengerCallSettingsService } from './messenger-calling/messenger-call-settings.service';
 import {
   type MeAdapterResolver,
   MessengerCallingService,
@@ -295,12 +296,14 @@ export function createServices() {
       : new PendingMeMediaControl();
   const messengerInboundRouter = new MessengerInboundRouter(db); // MEC-04: Page → answering agent
   const messengerCallCost = new MessengerCallCostService(db); // MEC-06: meter carrier cost on terminate
+  const messengerCallSettings = new MessengerCallSettingsService(db, meCallingAdapterFor); // MEC-05
   const messengerCalling = new MessengerCallingService(
     db,
     meCallingAdapterFor,
     meMedia,
     messengerCallCost, // MEC-06: cost attribution on terminate (golden rule #4)
     messengerInboundRouter, // MEC-04: resolve the agent that answers
+    (tenantId) => messengerCallSettings.get(tenantId), // MEC-05: availability-hours gate
   );
   const messengerCallRead = new MessengerCallReadService(db); // MEC-04 dashboard read model
   // Cross-channel automations reuse the messaging + integration subsystems as action executors.
@@ -471,6 +474,7 @@ export function createServices() {
     whatsappPermission,
     messengerCalling,
     messengerCallRead,
+    messengerCallSettings,
     whatsappRouting,
     whatsappSip,
     automations,

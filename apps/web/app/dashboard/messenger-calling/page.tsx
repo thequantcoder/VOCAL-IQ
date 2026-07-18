@@ -48,12 +48,17 @@ export default function MessengerCallingPage() {
           <div className="flex items-center justify-between">
             {enabled ? (
               <Badge variant="success">
-                <CheckCircle2 size={13} /> Page connected
+                <CheckCircle2 size={13} /> Calling enabled
               </Badge>
             ) : (
-              <Badge variant="warn">Connect your Facebook Page</Badge>
+              <Badge variant="warn">Setup needed</Badge>
             )}
-            <span className="text-vq-text-lo text-xs">Free-tier · inbound</span>
+            <Link
+              href="/dashboard/settings/messenger-calling"
+              className="text-sm text-vq-violet hover:underline"
+            >
+              Edit settings
+            </Link>
           </div>
           <Waveform bars={40} className="h-10 opacity-60" aria-hidden />
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

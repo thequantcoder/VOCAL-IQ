@@ -1,5 +1,5 @@
 import type { MessengerCallingTelephony } from '@vocaliq/provider-router';
-import { toMessengerCallRef } from '@vocaliq/shared';
+import { parseMessengerCallSettings, toMessengerCallRef } from '@vocaliq/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaService } from '../db/prisma.service';
 import { MessengerCallingService, type MessengerInboundRouting } from './messenger-calling.service';
@@ -231,6 +231,34 @@ describe('MessengerCallingService (MEC-02)', () => {
       where: { tenantId: T, meCallId: 'mec.noagent' },
     });
     expect(me?.status).toBe('rejected');
+  });
+
+  it('MEC-05: rejects a call outside the Page availability hours', async () => {
+    const { media, reqs } = fakeMedia('v=0 answer');
+    // Hours enabled with no weekly block → always closed (deterministic, no clock coupling).
+    const closed = parseMessengerCallSettings({
+      hours: { enabled: true, timezone: 'UTC', weekly: [] },
+    });
+    const svc = new MessengerCallingService(
+      db,
+      async () => null,
+      media,
+      undefined,
+      routerTo(routing()),
+      async () => closed,
+    );
+    await svc.onConnect(T, {
+      meCallId: 'mec.closed',
+      direction: 'USER_INITIATED',
+      pageId: 'PAGE123',
+      sdpOffer: 'v=0 offer',
+    });
+    expect(reqs).toHaveLength(0); // never asked the voice bridge
+    const me = await db.admin.messengerCall.findFirst({
+      where: { tenantId: T, meCallId: 'mec.closed' },
+    });
+    expect(me?.status).toBe('rejected');
+    expect(me?.callId).toBeNull();
   });
 
   it('opens then fails the unified Call when media is unavailable (gated)', async () => {
