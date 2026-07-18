@@ -8,7 +8,7 @@ import {
   type ThemeFont,
   type ThemePreset,
   type ThemeRadius,
-} from './theme';
+} from './theme.js';
 
 /**
  * Theme engine runtime (UX-12) — pure colour maths + resolution. Turns a chosen base palette into the
