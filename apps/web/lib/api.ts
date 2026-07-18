@@ -4933,6 +4933,86 @@ export function useWhatsappLiveCall(waCallId: string) {
   });
 }
 
+// ── Messenger (Meta) Calling — dashboard overview (MEC-07) ────────────────────
+
+export interface MessengerCallRow {
+  meCallId: string;
+  direction: string;
+  status: string;
+  psid: string | null;
+  durationSec: number | null;
+  costUsd: number | null;
+  createdAt: string;
+}
+
+export interface MessengerCallOverview {
+  enabled: boolean;
+  stats: {
+    callsToday: number;
+    answeredToday: number;
+    avgDurationSec: number;
+    costTodayUsd: number;
+  };
+  monthly: { period: string; minutes: number; tier: 'tier0' | 'tier1' };
+  recent: MessengerCallRow[];
+}
+
+export function useMessengerCallOverview() {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['messenger-call-overview'],
+    queryFn: () => apiFetch<MessengerCallOverview>(getToken, '/messenger-calling/overview'),
+  });
+}
+
+// ── Messenger (Meta) Calling — live-call view (MEC-07) ────────────────────────
+
+export interface MessengerCallContext {
+  intent?: string;
+  campaign?: string;
+  reference?: string;
+  custom?: Record<string, string>;
+}
+
+export interface MessengerCallEventRow {
+  event: string;
+  at: string;
+}
+
+export interface MessengerLiveCall {
+  meCallId: string;
+  direction: string;
+  status: string;
+  psid: string | null;
+  pageId: string | null;
+  context: MessengerCallContext;
+  callId: string | null;
+  agent: { id: string; name: string } | null;
+  durationSec: number | null;
+  startedAt: string | null;
+  createdAt: string;
+  events: MessengerCallEventRow[];
+}
+
+/** Terminal Messenger-call statuses — once reached, the live view stops polling. */
+export const MESSENGER_LIVE_TERMINAL = ['completed', 'failed', 'rejected'];
+
+export function useMessengerLiveCall(meCallId: string) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['messenger-live-call', meCallId],
+    queryFn: () =>
+      apiFetch<MessengerLiveCall>(
+        getToken,
+        `/messenger-calling/calls/${encodeURIComponent(meCallId)}`,
+      ),
+    enabled: Boolean(meCallId),
+    // Poll while the call is live; stop once it reaches a terminal status.
+    refetchInterval: (query) =>
+      query.state.data && MESSENGER_LIVE_TERMINAL.includes(query.state.data.status) ? false : 2500,
+  });
+}
+
 // ── WhatsApp Business Calling — outbound permissions (WAC-08) ─────────────────
 
 export interface WhatsappPermissionView {

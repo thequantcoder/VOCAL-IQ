@@ -49,6 +49,11 @@ const CHANNEL_META: Record<string, { label: string; tone: string; Icon: LucideIc
     tone: 'text-vq-success border-vq-success/40 bg-vq-success/10',
     Icon: MessageCircle,
   },
+  MESSENGER: {
+    label: 'Messenger',
+    tone: 'text-vq-cyan border-vq-cyan/40 bg-vq-cyan/10',
+    Icon: MessageCircle,
+  },
   PSTN: { label: 'Phone', tone: MUTED_TONE, Icon: Phone },
   WEB: { label: 'Web', tone: MUTED_TONE, Icon: Globe },
   SIP: { label: 'SIP', tone: MUTED_TONE, Icon: Radio },
