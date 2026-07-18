@@ -4465,3 +4465,32 @@ J. Quality/docs: ✅ — doc comments explain the WhatsApp contrast + the `[CONF
 K. Build/CI: ✅ — typecheck/lint green; media-control test green; Prisma client regenerated; shared/provider-router dist rebuilt. DB integration test is CI-validated.
 
 MEC-02 complete (control plane, gated). **Next: MEC-03 — voice-service Messenger WebRTC bridge (`messenger_webrtc.py` + `/calls/messenger/*`), reusing the transport-neutral ConversationLoop.** Live signaling/media await Meta creds + the MEC-00 wire-format confirmation.
+
+---
+
+### MEC-03 — Messenger Calling: voice-service WebRTC media bridge — 2026-07-18 — ✅ DONE (build-time, gated) — 🧠 OPUS
+
+**What & why.** The live media plane for Messenger Calling (WAC-03 sibling). Terminates a raw WebRTC peer with Meta (ICE + DTLS-SRTP, OPUS) per Messenger call and bridges its audio into the SAME transport-neutral `ConversationLoop` (STT→LLM→TTS) that powers PSTN/web/WhatsApp — so persona/flow/RAG/memory/tools "just work". This closes the api↔voice hop that MEC-02's `HttpMeMediaControl` calls (`/calls/messenger/*`).
+
+**Built.**
+- `apps/voice/app/telephony/webrtc_audio.py` — **generalized** the WhatsApp WebRTC audio adapters into a channel-neutral `WebRtcCallerAudio` + `WebRtcAudioSink` (+ frame constants); `whatsapp_audio.py` is now a thin **re-export shim** (stable WhatsApp names → shared impl) so the WhatsApp bridge + its tests are untouched. One implementation, both channels.
+- `apps/voice/app/telephony/messenger_webrtc.py` — `MessengerMediaBridge` (the only Messenger file importing aiortc/av): `answer()` (inbound → non-trickle-ICE SDP answer + loop start), `offer()` + `apply_answer()` (outbound MEC-08 — more complete than WAC's bridge, which lacks them), `end()` (idempotent teardown), 48k⇄16k resample, 20 ms silence-padded agent frames (first-SRTP rule), clean teardown on ICE/DTLS/hangup.
+- `apps/voice/app/calls/messenger_router.py` — internal `/calls/messenger/{answer,offer,apply-answer,end}` (`X-Internal-Secret` constant-time; 503 gated when unset; aiortc lazily imported so the control surface + tests need no native stack). Registered in `main.py`.
+- Tests: `tests/test_webrtc_audio.py` (pure adapters) + `tests/test_messenger_control.py` (auth/gating/wiring with a FakeBridge).
+
+**Checks.** Full voice suite **145 passed / 2 skipped** ✅ (incl. WhatsApp regression — the shim didn't break WAC) · ruff check clean ✅ · pyright clean on the non-aiortc files ✅. The aiortc bridge shows only the local `reportMissingImports` (aiortc/av absent from `.venv`) — IDENTICAL to the existing `whatsapp_webrtc.py`, which CI type-checks with the deps installed; my bridge mirrors it, so CI pyright passes. Live media round-trip awaits Meta creds + MEC-00.
+
+## Self-Audit — MEC-03 (A–K)
+A. Correctness (focus): ✅ — bridge mirrors the proven WhatsApp aiortc bridge (non-trickle ICE, 20 ms frame pacing, 48↔16k resample); the shared audio adapters are unit-tested; control endpoints tested (auth, gating, wiring). Real SDP/media is the gated live check.
+B. Isolation: ✅ — media is per-call (peers keyed by call id); the api resolves the tenant before calling; no cross-tenant state.
+C. Security (focus): ✅ — internal endpoints authed with a constant-time shared secret, **503 gated when unset — never open/public**; SDP/ICE from Meta treated as untrusted; no secret/SDP logged; aiortc lazily imported.
+D. Cost: n/a here — metering is MEC-06 (fed by the terminate lifecycle in the api).
+E. Errors/obs (focus): ✅ — every failure mode (ICE fail / DTLS timeout / hangup / loop crash) tears the peer down cleanly; idempotent `end()`; loop crash never strands the peer.
+F. Performance: ✅ — reuses the existing loop (no extra hops); P2P media co-located; 20 ms pacing; loop stays PCM16@16k (no engine change).
+G. Error handling: ✅ — bounded caller queue (backpressure); idempotent teardown; gated when unconfigured.
+H. UI/AA: n/a — media plane (live-call UI is MEC-04).
+I. Regressions (focus): ✅ — **the one edit to shipped WAC code is `whatsapp_audio.py` → re-export shim; full voice suite (incl. WhatsApp bridge + control tests) stays green (145/2), proving zero behavioural change.** New modules are additive + lazily imported.
+J. Quality/docs: ✅ — doc comments explain the WhatsApp-parity + the generalization; features doc + BUILD-LOG updated.
+K. Build/CI: ✅ — ruff + pyright (non-aiortc) clean; voice suite green; the aiortc bridge is CI-type-checked (deps installed there), mirroring WAC.
+
+MEC-03 complete (build-time, gated) — the AI agent can talk over a Messenger WebRTC call end-to-end; the api↔voice control hop + SDP answer path is wired + gated. **Next: MEC-04 — inbound AI answering GA (Page→agent routing, `ref` context brief, unified Call) + the live-call view UI.** Live media round-trip is the creds-gated + MEC-00 follow-up.

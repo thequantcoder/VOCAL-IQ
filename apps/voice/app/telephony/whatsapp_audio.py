@@ -1,94 +1,32 @@
-"""WhatsApp WebRTC ↔ AI-loop audio bridge (WAC-03), the transport-neutral half.
+"""WhatsApp WebRTC ↔ AI-loop audio adapters (WAC-03) — a backwards-compatible re-export shim.
 
-The `ConversationLoop` speaks PCM16 mono @ 16 kHz: it consumes an `AsyncIterator[bytes]` and writes to
-an `AudioSink` (`.write()` / `.clear()`). These two adapters bind that contract to a WhatsApp WebRTC
-peer WITHOUT importing aiortc — the aiortc glue (`whatsapp_webrtc.py`) feeds the caller iterator with
-already-resampled 16 kHz PCM and drains the sink for the outbound track. Keeping this pure makes the
-bridge unit-testable with no native media stack (mirrors LiveKit's `CallerAudio`/`LiveKitAudioSink`).
+The transport-neutral adapters now live in `webrtc_audio.py` (generalized at MEC-03 so WhatsApp +
+Messenger calling share ONE implementation). This module keeps the WhatsApp import paths + class names
+stable, so the WhatsApp bridge (`whatsapp_webrtc.py`) and its tests are untouched.
 """
 
 from __future__ import annotations
 
-import asyncio
-import contextlib
-from collections.abc import AsyncIterator
+from app.telephony.webrtc_audio import (
+    FRAME_BYTES,
+    FRAME_MS,
+    FRAME_SAMPLES,
+    NUM_CHANNELS,
+    SAMPLE_RATE,
+    WebRtcAudioSink,
+    WebRtcCallerAudio,
+)
 
-SAMPLE_RATE = 16_000
-NUM_CHANNELS = 1
-FRAME_MS = 20
-# 16 kHz mono s16 → 320 samples / 640 bytes per 20 ms frame.
-FRAME_SAMPLES = SAMPLE_RATE * FRAME_MS // 1000
-FRAME_BYTES = FRAME_SAMPLES * 2
+# Stable WhatsApp names (WAC-03) — aliases of the shared adapters.
+WhatsAppCallerAudio = WebRtcCallerAudio
+WhatsAppAudioSink = WebRtcAudioSink
 
-
-class WhatsAppCallerAudio:
-    """WhatsApp peer → engine: an async iterator of the caller's PCM16@16k frames.
-
-    The WebRTC receive pump calls `feed()` with each resampled frame; `close()` ends the iterator
-    (on hangup / ICE failure) so the loop terminates cleanly. Bounded queue drops on overflow rather
-    than growing unbounded if the loop stalls (same backpressure posture as the LiveKit path).
-    """
-
-    def __init__(self, maxsize: int = 200) -> None:
-        self._queue: asyncio.Queue[bytes | None] = asyncio.Queue(maxsize=maxsize)
-        self._closed = False
-
-    def feed(self, pcm16: bytes) -> None:
-        if self._closed or not pcm16:
-            return
-        with contextlib.suppress(asyncio.QueueFull):
-            self._queue.put_nowait(pcm16)
-
-    def close(self) -> None:
-        if self._closed:
-            return
-        self._closed = True
-        with contextlib.suppress(asyncio.QueueFull):
-            self._queue.put_nowait(None)
-
-    async def __aiter__(self) -> AsyncIterator[bytes]:
-        while True:
-            frame = await self._queue.get()
-            if frame is None:
-                return
-            yield frame
-
-
-class WhatsAppAudioSink:
-    """Engine → WhatsApp peer: buffers agent PCM16@16k for the outbound track; `clear()` = barge-in.
-
-    The engine writes TTS audio here (odd-byte chunks carried to stay int16-aligned, like the LiveKit
-    sink); the WebRTC send track pulls fixed-size frames via `read()`, which zero-pads to the requested
-    length so the business side always emits a frame (Meta requires the first SRTP packet from the
-    business, and steady 20 ms frames avoid gaps). `clear()` drops queued audio so a barged-in turn
-    goes silent immediately.
-    """
-
-    def __init__(self) -> None:
-        self._buf = bytearray()
-        self._carry = b""
-
-    async def write(self, pcm16: bytes) -> None:
-        data = self._carry + pcm16
-        if len(data) % 2:
-            self._carry = data[-1:]
-            data = data[:-1]
-        else:
-            self._carry = b""
-        self._buf += data
-
-    async def clear(self) -> None:
-        self._carry = b""
-        self._buf.clear()
-
-    def read(self, nbytes: int = FRAME_BYTES) -> bytes:
-        """Pull up to `nbytes` of buffered agent audio, zero-padded to exactly `nbytes` (silence idle)."""
-        take = min(nbytes, len(self._buf))
-        out = bytes(self._buf[:take])
-        del self._buf[:take]
-        if take < nbytes:
-            out += b"\x00" * (nbytes - take)
-        return out
-
-    def pending_bytes(self) -> int:
-        return len(self._buf)
+__all__ = [
+    "FRAME_BYTES",
+    "FRAME_MS",
+    "FRAME_SAMPLES",
+    "NUM_CHANNELS",
+    "SAMPLE_RATE",
+    "WhatsAppAudioSink",
+    "WhatsAppCallerAudio",
+]
