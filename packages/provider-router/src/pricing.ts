@@ -122,6 +122,46 @@ export function whatsappCallCostUsd(
 }
 
 /**
+ * Messenger (Meta) Calling — OUTBOUND USD per minute as `[tier0, tier1]` (tier1 = discounted higher-
+ * volume rate). **Inbound (user-initiated) is FREE.** Unlike WhatsApp, Messenger has NO phone numbers →
+ * NO per-country dial-code routing, so this is a single FLAT band, not a per-country card.
+ * ⚠️ Meta has not published a Messenger *calling* rate; Messenger messaging is free-tier in our model, so
+ * we default calling to `[0, 0]` (still metered as a $0 UsageRecord — golden rule #4). Structure + math
+ * are correct; flip these numbers if/when Meta publishes a rate (CLAUDE.md §15, confirm @ MEC-00).
+ */
+export const MESSENGER_CALL_RATE_PER_MIN: readonly [number, number] = [0, 0];
+
+/** Monthly-volume tier boundary (minutes) — the LOWER rate applies once volume crosses the band. */
+export const MESSENGER_TIER0_MAX_MINUTES = 50_000;
+
+/** Number of billed 6-second pulses for a call of `seconds` (rounded up; 56 s → 10 pulses). */
+export function messengerCallPulses(seconds: number): number {
+  if (seconds <= 0) return 0;
+  return Math.ceil(seconds / 6);
+}
+
+/** Per-minute Messenger rate for the current monthly-minutes tier (flat; no destination country). */
+export function messengerCallRatePerMin(monthlyMinutes = 0): number {
+  const [tier0, tier1] = MESSENGER_CALL_RATE_PER_MIN;
+  return monthlyMinutes > MESSENGER_TIER0_MAX_MINUTES ? tier1 : tier0;
+}
+
+/**
+ * Messenger call carrier cost in USD. Inbound (user-initiated) is FREE (returns 0). Outbound is billed in
+ * 6-second pulses (round up) at the flat per-minute rate for the current monthly tier. `monthlyMinutes` =
+ * the tenant's (or platform's) accrued Messenger outbound minutes this month. Default rate is 0 (free).
+ */
+export function messengerCallCostUsd(
+  seconds: number,
+  direction: 'inbound' | 'outbound',
+  monthlyMinutes = 0,
+): number {
+  if (direction === 'inbound' || seconds <= 0) return 0;
+  const billedSeconds = messengerCallPulses(seconds) * 6;
+  return (billedSeconds / 60) * messengerCallRatePerMin(monthlyMinutes);
+}
+
+/**
  * Resolve a price for a model id, tolerating provider date suffixes
  * (e.g. `gpt-4o-mini-2024-07-18` → `gpt-4o-mini`). Exact match wins; otherwise the
  * LONGEST table key that is a dash-prefix of the model (so `gpt-4o-mini-…` never

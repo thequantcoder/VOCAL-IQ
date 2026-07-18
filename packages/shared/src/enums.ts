@@ -69,6 +69,7 @@ export const Provider = {
   TELNYX: 'TELNYX',
   PLIVO: 'PLIVO',
   WHATSAPP: 'WHATSAPP',
+  MESSENGER: 'MESSENGER',
   LIVEKIT: 'LIVEKIT',
 } as const;
 export type Provider = (typeof Provider)[keyof typeof Provider];
@@ -120,6 +121,7 @@ export const CallChannel = {
   WEB: 'WEB',
   SIP: 'SIP',
   WHATSAPP: 'WHATSAPP',
+  MESSENGER: 'MESSENGER',
 } as const;
 export type CallChannel = (typeof CallChannel)[keyof typeof CallChannel];
 
