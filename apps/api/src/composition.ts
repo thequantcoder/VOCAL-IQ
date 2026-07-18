@@ -68,6 +68,7 @@ import { httpMcpTransport } from './mcp/transport';
 import { MemoryService } from './memory/memory.service';
 import { MessagingService } from './messaging/messaging.service';
 import { buildSenders } from './messaging/senders';
+import { MessengerCallCostService } from './messenger-calling/messenger-call-cost.service';
 import { MessengerCallReadService } from './messenger-calling/messenger-call-read.service';
 import { MessengerInboundRouter } from './messenger-calling/messenger-call-routing.service';
 import {
@@ -293,11 +294,12 @@ export function createServices() {
         })
       : new PendingMeMediaControl();
   const messengerInboundRouter = new MessengerInboundRouter(db); // MEC-04: Page → answering agent
+  const messengerCallCost = new MessengerCallCostService(db); // MEC-06: meter carrier cost on terminate
   const messengerCalling = new MessengerCallingService(
     db,
     meCallingAdapterFor,
     meMedia,
-    undefined, // meter: MEC-06 wires the real cost service (default no-op until then)
+    messengerCallCost, // MEC-06: cost attribution on terminate (golden rule #4)
     messengerInboundRouter, // MEC-04: resolve the agent that answers
   );
   const messengerCallRead = new MessengerCallReadService(db); // MEC-04 dashboard read model
