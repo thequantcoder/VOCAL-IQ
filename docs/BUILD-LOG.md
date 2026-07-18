@@ -4556,3 +4556,35 @@ J. Quality/docs: ✅ — doc comments explain the free-tier + no-volume-table di
 K. Build/CI: ✅ — typecheck + biome green; metering test CI-validated.
 
 MEC-06 complete (gated). Every Messenger call is now cost-attributed (free-tier $0, still metered). **Next: MEC-05 — call settings (availability / call-button visibility, synced to Meta) + the `call_settings` webhook mirror; then MEC-07 — web panel + live-call view + m.me entry-point generator; MEC-08 — outbound/permissions.**
+
+---
+
+### MEC-07 — Messenger Calling: web dashboard + live-call view + m.me generator — 2026-07-18 — ✅ DONE — ⚡ SONNET-tier UI (built as OPUS)
+
+**What & why.** The user-visible half of Messenger Calling (WAC-07 sibling + the MEC-04-deferred live-call view). Makes the whole module tangible: a dashboard the tenant can see, a live-call view, and a shareable m.me call-link generator. Consumes the read API shipped in MEC-04.
+
+**Built.**
+- `apps/web/lib/api.ts` — `MessengerCallRow`/`MessengerCallOverview` + `useMessengerCallOverview` (GET /messenger-calling/overview) and `MessengerCallContext`/`MessengerLiveCall` + `useMessengerLiveCall` (GET /messenger-calling/calls/:id, polls 2.5s until terminal).
+- `app/dashboard/messenger-calling/page.tsx` — overview: status hero (Page connected? + free-tier), today's KPIs, this-month minutes, recent-calls feed (PSID short id), + the generator.
+- `app/dashboard/messenger-calling/live/[id]/page.tsx` — live-call view: the signature cyan `LiveWaveform` hero (pulses when accepted, reduced-motion safe), caller PSID, Messenger channel badge, `ref`-decoded "why they're calling" context, answering agent, talk/listen indicator, status timeline, "Take over" → Agent Desk.
+- `app/dashboard/messenger-calling/entry-point-generator.tsx` — the m.me call-link generator (WhatsApp click-to-call sibling): Facebook Page + context builder → `messengerCallLink()` (m.me + base64url ref) + downloadable QR + paste-anywhere website button (Messenger blue #0084FF).
+- `components/sidebar-nav.tsx` — "Messenger Calling" nav entry (MessageCircle); `components/ui-bits.tsx` — MESSENGER `ChannelBadge` (cyan).
+
+**Note:** the hero shows "Page connected?" from `overview.enabled` (tenant settings) rather than a settings CTA — the Messenger call **settings** page is MEC-05 (deferred); inbound Messenger calling is free + needs only the Page webhook subscription. No hard gate to a non-existent settings route.
+
+**Checks.** web typecheck ✅ (validates the hooks + shared `messengerCallLink`/`encodeMessengerCallContext`/`MessengerCallContext` from MEC-01) · biome clean on all new files; edited files (api.ts / ui-bits / sidebar-nav) no errors. The Next.js production build is CI-validated (local web build is flaky under iCloud — see the iCloud-eviction note).
+
+## Self-Audit — MEC-07 (A–K)
+A. Correctness (focus): ✅ — hooks mirror the proven WhatsApp ones; generator reuses the MEC-01 `messengerCallLink` (base64url ref, charset-safe) so the link is always valid; live view polls until terminal.
+B. Isolation: ✅ — all reads go through the tenant-scoped API (auth + RLS server-side); no client-side tenant handling.
+C. Security: ✅ — no secrets in the client; the generator builds only public m.me links; QR/button are static.
+D. Cost: n/a (read-only UI); the overview surfaces the metered cost/minutes from MEC-06.
+E. Errors/obs: ✅ — LoadingCard / ErrorState with retry on both pages; empty states for no-calls / no-context.
+F. Performance: ✅ — one query per page; live view polls 2.5s only while non-terminal, then stops.
+G. Error handling: ✅ — payload-too-long surfaces an inline Callout in the generator; safe fallbacks throughout.
+H. UI/AA (focus): ✅ — DESIGN-SYSTEM §5c live-call hero (cyan waveform is the only motion, reduced-motion-safe); talk indicator never colour-only (paired text, a11y §7); labelled inputs; keyboard-navigable.
+I. Regressions (focus): ✅ — additive pages + hooks; the only shipped-file edits are api.ts (new hooks), ui-bits (a new CHANNEL_META entry + import), sidebar-nav (a nav row + import). WhatsApp UI untouched; web typecheck green.
+J. Quality/docs: ✅ — doc comments + design-system references; features doc + BUILD-LOG updated.
+K. Build/CI: ✅ — typecheck + biome green; Next build CI-validated (iCloud-flaky locally).
+
+MEC-07 complete — Messenger Calling now has a full tenant dashboard, live-call view, and shareable m.me call-link generator. **Remaining: MEC-05 (call settings synced to Meta) · MEC-08 (outbound + permissions) · the MEC-00 wire-format spike (gates live media).**
