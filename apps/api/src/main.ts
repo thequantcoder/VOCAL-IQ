@@ -59,6 +59,7 @@ import {
   twilioWebhookHandler,
   whatsappWebhookHandler,
 } from './messaging/messaging.routes';
+import { messengerCallingRoutes } from './messenger-calling/messenger-calling.routes';
 import { customModelsRoutes } from './models/custom-models.routes';
 import { notificationPrefsRoutes } from './notifications/notification-prefs.routes';
 import { numbersRoutes } from './numbers/numbers.routes';
@@ -206,6 +207,7 @@ function bootstrap(): void {
       s.tenants,
     ),
   );
+  app.use('/messenger-calling', messengerCallingRoutes(s.messengerCallRead, s.tenants));
   app.use('/ops', opsRoutes(s.opsToolkit, s.tenants));
   app.use('/numbers', numbersRoutes(s.numbers, s.tenants));
   app.use('/reseller', resellerRoutes(s.reseller, s.tenants));
