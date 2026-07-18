@@ -4435,3 +4435,33 @@ J. Quality/docs: ✅ — doc comments explain *why* + the WhatsApp contrast; pla
 K. Build/CI: ✅ — typecheck/test/lint green locally; shared `dist` rebuilt (gitignored — all `src` committed so CI api-typecheck stays green).
 
 MEC-00/01 complete (build-time, gated). **Next: MEC-02 — `MessengerCall*` DB models + RLS + the Messenger `calls` webhook dispatch + signaling service (onConnect/onStatus/onTerminate) + media-control contract.** Live paths await Meta creds + the MEC-00 wire-format confirmation.
+
+---
+
+### MEC-02 — Messenger Calling: webhook + signaling control plane + DB + media contract — 2026-07-18 — ✅ DONE (control plane, gated) — 🧠 OPUS
+
+**What & why.** The inbound-first control plane for Messenger Calling (WAC-02 sibling). Receives Meta's Messenger call webhooks on the existing (HMAC-verified) Messenger route and drives the signaling handshake, persisting the call lifecycle. No live media (MEC-03) — SDP answer comes from the injected media control.
+
+**Built.**
+- **DB** (`packages/db`): `MessengerCall` + `MessengerCallEvent` models (PSID + Page identity — no phone numbers, so no fromNumber/toNumber/dial-code fields) + Tenant relations + migration `20260718130000_messenger_calls` with the standard `tenant_isolation` RLS policy on both tables.
+- `apps/api/src/messenger-calling/messenger-media-control.ts` — `MeMediaControl` contract + `PendingMeMediaControl` (MEC-02 stub) + `HttpMeMediaControl` (posts to voice `/calls/messenger/*`, `X-Internal-Secret`, gated + fail-soft, never logs SDP/secret).
+- `messenger-calling.service.ts` — `MessengerCallingService`: `record` (idempotent upsert + event, `withTenant` RLS), `onConnect` (route → media answer → adapter pre_accept/accept → unified `Call(channel=MESSENGER)` open+link → in-progress), `onStatus`, `onTerminate` (persist → media teardown → meter → close unified Call), `onAccountEvent`. Router + meter are OPTIONAL (MEC-04/06); outbound + permissions deferred to MEC-08.
+- `messenger-calling.webhooks.ts` — `dispatchMessengerCallingWebhook`: parses Messenger `entry[].messaging[].call` events (+ WhatsApp-style `changes[].value.calls[]` fallback), `[CONFIRM @ MEC-00]`, tolerant, best-effort.
+- **Wiring:** `metaMessagingWebhookHandler` now dispatches call events on the Messenger webhook (MESSENGER only); composition instantiates `MessengerCallingService` (managed adapter from the Day-93 `MESSENGER_PAGE_ACCESS_TOKEN`; `PendingMeMediaControl` until the voice bridge env is set); main.ts passes it to the Messenger route.
+
+**Checks.** api typecheck ✅ (validates every Prisma model/field/delegate + the `tenantId_meCallId` key against the regenerated client) · media-control unit test 4/4 ✅ · biome clean on all messenger files · shared+provider-router rebuilt. **The Postgres+RLS integration test (`messenger-calling.service.test.ts`, mirrors the WAC integration suite) runs on CI** — the local Docker DB (port 5434) was down this session; api typecheck compiling the test + the WAC-identical structure de-risk it.
+
+## Self-Audit — MEC-02 (A–K)
+A. Correctness (focus): ✅ — lifecycle mirrors the proven WAC service; idempotent by Meta call id (upsert on `tenantId_meCallId`); context brief decoded from the base64url `ref`; the unified Call id (not the Meta id) is what the media bridge keys on. Webhook dispatcher exercised by the integration test's Messenger-shaped payload.
+B. Isolation (focus): ✅ — both new tables carry `tenantId` + RLS `tenant_isolation`; every op runs in `withTenant`; integration test asserts a sibling tenant sees none of another's Messenger calls.
+C. Security (focus): ✅ — call events ride the existing HMAC-verified Messenger webhook (no new unauthenticated surface); media control gated (503→null) + never logs SDP/secret; adapter never logs token/SDP.
+D. Cost: ✅ — `onTerminate` calls `meter.meterTerminated` (Noop until MEC-06) so there's no unmetered path once MEC-06 lands; carrier cost merged into the unified Call's costBreakdown without clobbering AI-loop components.
+E. Errors/obs: ✅ — dispatcher best-effort (never fails the 200 to Meta); media/adapter failures leave the call `connecting` (gated) and mark any opened unified Call FAILED; teardown/meter wrapped in `.catch`.
+F. Performance: ✅ — reuses the messaging webhook (no new route/parse); per-call work is a couple of scoped upserts; no hot path added.
+G. Error handling: ✅ — see A/E; tolerant webhook parse; graceful reject when no publishable agent.
+H. UI/AA: n/a — control plane (the live-call view is MEC-04).
+I. Regressions (focus): ✅ — parallel module; the only edits to shipped files are additive (a 3rd optional arg on `metaMessagingWebhookHandler`, wiring in composition/main, additive Tenant relations). WhatsApp Calling untouched. api typecheck green; **had to revert 5 pre-existing `req.ctx!.tenantId` that a `biome --unsafe` pass wrongly rewrote to `?.` — lesson: never run `biome --write --unsafe` across a whole pre-existing file.**
+J. Quality/docs: ✅ — doc comments explain the WhatsApp contrast + the `[CONFIRM]` seam; features doc + BUILD-LOG updated.
+K. Build/CI: ✅ — typecheck/lint green; media-control test green; Prisma client regenerated; shared/provider-router dist rebuilt. DB integration test is CI-validated.
+
+MEC-02 complete (control plane, gated). **Next: MEC-03 — voice-service Messenger WebRTC bridge (`messenger_webrtc.py` + `/calls/messenger/*`), reusing the transport-neutral ConversationLoop.** Live signaling/media await Meta creds + the MEC-00 wire-format confirmation.

@@ -143,12 +143,12 @@ function bootstrap(): void {
   );
   app.get(
     '/public/messaging/messenger/:tenantId',
-    metaMessagingWebhookHandler(s.messaging, 'MESSENGER'),
+    metaMessagingWebhookHandler(s.messaging, 'MESSENGER', s.messengerCalling),
   );
   app.post(
     '/public/messaging/messenger/:tenantId',
     express.raw({ type: '*/*' }),
-    metaMessagingWebhookHandler(s.messaging, 'MESSENGER'),
+    metaMessagingWebhookHandler(s.messaging, 'MESSENGER', s.messengerCalling),
   );
   app.get(
     '/public/messaging/instagram/:tenantId',

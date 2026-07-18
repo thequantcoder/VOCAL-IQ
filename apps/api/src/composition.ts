@@ -1,4 +1,4 @@
-import { WhatsAppCallingTelephony } from '@vocaliq/provider-router';
+import { MessengerCallingTelephony, WhatsAppCallingTelephony } from '@vocaliq/provider-router';
 import {
   SLACK_EVENTS,
   type SlackEvent,
@@ -68,6 +68,15 @@ import { httpMcpTransport } from './mcp/transport';
 import { MemoryService } from './memory/memory.service';
 import { MessagingService } from './messaging/messaging.service';
 import { buildSenders } from './messaging/senders';
+import {
+  type MeAdapterResolver,
+  MessengerCallingService,
+} from './messenger-calling/messenger-calling.service';
+import {
+  HttpMeMediaControl,
+  type MeMediaControl,
+  PendingMeMediaControl,
+} from './messenger-calling/messenger-media-control';
 import { CustomModelsService, buildFineTuneProvider } from './models/custom-models.service';
 import { NotificationPrefsService } from './notifications/notification-prefs.service';
 import { NumbersService } from './numbers/numbers.service';
@@ -266,6 +275,22 @@ export function createServices() {
     (tenantId, payload) => whatsappRouting.applyRestriction(tenantId, payload), // WAC-09: restrictions
   );
   const whatsappCallRead = new WhatsAppCallReadService(db); // WAC-07 dashboard read model
+  // Messenger (Meta) Calling control plane (MEC-02). Managed-mode adapter from the Day-93 Messenger Page
+  // token (same Page/app does messaging + calling); null → gated (webhook records events, no signaling).
+  const meCallingAdapterFor: MeAdapterResolver = async () => {
+    const token = process.env.MESSENGER_PAGE_ACCESS_TOKEN;
+    return token ? new MessengerCallingTelephony(token) : null;
+  };
+  // MEC-03 media control → the voice-service WebRTC bridge. Wired only when the voice URL + internal secret
+  // are set; otherwise gated (PendingMeMediaControl → call stays connecting).
+  const meMedia: MeMediaControl =
+    process.env.VOICE_SERVICE_URL && process.env.VOICE_INTERNAL_SECRET
+      ? new HttpMeMediaControl({
+          voiceServiceUrl: process.env.VOICE_SERVICE_URL,
+          internalSecret: process.env.VOICE_INTERNAL_SECRET,
+        })
+      : new PendingMeMediaControl();
+  const messengerCalling = new MessengerCallingService(db, meCallingAdapterFor, meMedia);
   // Cross-channel automations reuse the messaging + integration subsystems as action executors.
   const automations = new AutomationsService(
     db,
@@ -432,6 +457,7 @@ export function createServices() {
     whatsappCallSettings,
     whatsappCallRead,
     whatsappPermission,
+    messengerCalling,
     whatsappRouting,
     whatsappSip,
     automations,
