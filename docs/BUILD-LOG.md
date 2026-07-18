@@ -4526,3 +4526,33 @@ J. Quality/docs: ✅ — doc comments explain the no-phone-number routing differ
 K. Build/CI: ✅ — typecheck + biome green; integration tests CI-validated.
 
 MEC-04 complete (backend, gated) — inbound Messenger calls route to a PUBLISHED agent, open a unified `Call(channel=MESSENGER)` with context, and surface on the dashboard read API. **Next: MEC-06 — per-call cost metering (`messenger-call-cost.service.ts` → `UsageRecord(Provider.MESSENGER)`, idempotent `billedAt`), then MEC-05 settings, MEC-07 web panel + live-call view + entry-point generator, MEC-08 outbound/permissions.**
+
+---
+
+### MEC-06 — Messenger Calling: per-call cost metering — 2026-07-18 — ✅ DONE (gated) — 🧠 OPUS
+
+**What & why.** Golden rule #4 — no calling path ships without cost attribution. Closes the metering seam that MEC-02's `onTerminate` already calls (`meter.meterTerminated`, a Noop until now).
+
+**Built.**
+- `messenger-call-cost.service.ts` — `MessengerCallCostService implements MeCallMeter`: on terminate, **atomically claims `billedAt`** (idempotent — a replayed terminate never double-meters), computes `messengerCallCostUsd(seconds, direction, 0)`, writes a `UsageRecord(Provider.MESSENGER, Capability.telephony, units=seconds, costUsd, byok=false, callId?)`, and stamps `MessengerCall.costUsd` — all in one tenant (RLS) transaction.
+- Wiring: composition now passes `MessengerCallCostService` into `MessengerCallingService` (was `undefined`/Noop).
+- Test: `messenger-call-cost.service.test.ts` — inbound $0 + UsageRecord written, idempotent replay (one record), outbound flat $0.
+
+**Difference from WhatsApp (WAC-06):** Messenger has NO phone numbers → no per-country rate card and no `WhatsAppCallVolume`-style tier table; calling is free-tier, so inbound AND outbound log a **$0** UsageRecord (still a metered path — never unmetered). `monthlyMinutes` is 0 (tiering is moot at $0); a volume table would only be added if Meta publishes a tiered Messenger calling rate. Pricing helpers + `costUsd`/`billedAt` columns + `Provider.MESSENGER` were all laid down in MEC-01/02.
+
+**Checks.** api typecheck ✅ (validates the `messengerCall`/`usageRecord` ops + `Provider.MESSENGER`/`Capability.telephony`) · biome clean on new files · composition clean. The Postgres+RLS metering test runs on CI — local Docker DB down this session.
+
+## Self-Audit — MEC-06 (A–K)
+A. Correctness (focus): ✅ — free-tier cost math (inbound/outbound both 0) via the MEC-01 pricing helper; atomic `billedAt` claim mirrors the proven WAC-06 idempotency; UsageRecord shape matches PSTN/WhatsApp so it rolls up unchanged.
+B. Isolation: ✅ — all reads/writes in `withTenant` (RLS); UsageRecord carries `tenantId`.
+C. Security: ✅ — no secret/PII; pure metering.
+D. Cost (focus): ✅ — EVERY terminated call now writes a UsageRecord (inbound + outbound), closing the last unmetered path; managed pricing → byok=false; links to the unified `callId` when present.
+E. Errors/obs: ✅ — not-found / already-billed / lost-claim all return cleanly (no throw, no double-charge).
+F. Performance: ✅ — one findUnique + one atomic updateMany + one create + one update, all indexed by `(tenantId, meCallId)`.
+G. Error handling: ✅ — see E; `.catch` on the caller side (onTerminate) already wraps it.
+H. UI/AA: n/a.
+I. Regressions (focus): ✅ — additive; the only shipped-file edit is composition (swap the Noop meter for the real service). WhatsApp untouched; api typecheck green.
+J. Quality/docs: ✅ — doc comments explain the free-tier + no-volume-table difference; features doc + BUILD-LOG updated.
+K. Build/CI: ✅ — typecheck + biome green; metering test CI-validated.
+
+MEC-06 complete (gated). Every Messenger call is now cost-attributed (free-tier $0, still metered). **Next: MEC-05 — call settings (availability / call-button visibility, synced to Meta) + the `call_settings` webhook mirror; then MEC-07 — web panel + live-call view + m.me entry-point generator; MEC-08 — outbound/permissions.**
