@@ -75,4 +75,34 @@ describe('HttpMeMediaControl', () => {
     expect(call[0]).toBe('http://voice:8000/calls/messenger/end');
     expect(String(call[0])).not.toContain('s3cret');
   });
+
+  it('MEC-11: does NOT forward a video request while Messenger video is not GA (inbound answer)', async () => {
+    const fetchImpl = vi.fn(async () =>
+      ok({ sdp_answer: 'v=0\r\n(answer)' }),
+    ) as unknown as typeof fetch;
+    await control(fetchImpl).requestSdpAnswer({
+      tenantId: 't1',
+      callId: 'c',
+      sdpOffer: 'v=0',
+      video: true, // requested, but Meta hasn't GA'd Messenger video → must stay audio-only
+    });
+    const call = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0] ?? [];
+    const sent = JSON.parse((call[1] as { body: string }).body);
+    expect(sent.video).toBeUndefined();
+  });
+
+  it('MEC-11: does NOT forward a video request while Messenger video is not GA (outbound offer)', async () => {
+    const fetchImpl = vi.fn(async () =>
+      ok({ sdp_offer: 'v=0\r\n(offer)' }),
+    ) as unknown as typeof fetch;
+    await control(fetchImpl).requestSdpOffer({
+      tenantId: 't1',
+      callId: 'c',
+      agentId: 'a1',
+      video: true, // MEC-08 outbound path — same audio-only gate until GA
+    });
+    const call = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0] ?? [];
+    const sent = JSON.parse((call[1] as { body: string }).body);
+    expect(sent.video).toBeUndefined();
+  });
 });

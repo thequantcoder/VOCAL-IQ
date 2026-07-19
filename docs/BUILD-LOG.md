@@ -4670,3 +4670,31 @@ J. Quality/docs: ✅ — doc comments spell out every divergence + the `[CONFIRM
 K. Build/CI: ✅ — typecheck + biome + shared tests green; DB tests validated on CI.
 
 **Module status.** MEC-01→08 + MEC-05 now built + gated. **Only MEC-00 (the wire-format spike) remains — it needs Meta access I can't provision** (Calling API allow-list + `pages_messaging` Advanced Access + a test Page/user). Once granted → confirm §4 of `docs/runbooks/messenger-calling-setup.md` (7 facts → 7 files) → flip live media on → the outbound path is already built and waiting.
+
+---
+
+### MEC-11 — Messenger Calling: video / screen-share GA-gate (closure) — 2026-07-19 — ✅ DONE (GA-gated) — ⚡ SONNET-tier (built as OPUS)
+
+**What & why.** Closes the Messenger Calling module to full **WAC-00..11 structural parity**. Meta's programmatic Messenger calling is audio-only (video/screen-share not confirmed GA); per CLAUDE.md §15 we don't negotiate SDP against an unpublished spec. The substantive seam already shipped across earlier phases — MEC-01 (`messenger-video.ts`: `MESSENGER_VIDEO_GA=false` + `messengerCallMediaMode()`), MEC-03 (media-control `video?` forwarded only when GA; `MeAnswerBody`/`MeOfferBody` `video: bool=False`). MEC-11 adds the missing WAC-11 finish: the unit proof + the GA-ready design note + docs.
+
+**Built.**
+- `apps/api/.../messenger-media-control.test.ts` — 2 new tests: a `video: true` request is NOT forwarded to the voice bridge while `MESSENGER_VIDEO_GA=false`, on BOTH the inbound `requestSdpAnswer` and the MEC-08 outbound `requestSdpOffer` paths (audio-only degrade, no fake negotiation). 6/6 green.
+- `docs/runbooks/messenger-calling-video-design.md` — the GA-ready extension plan (re-fetch spec @ MEC-00 → flip `MESSENGER_VIDEO_GA` → `m=video` negotiation in `messenger_webrtc.py` → avatar/Agent-Desk video track → live-call video pane w/ audio-only fallback → MEC-06 metering), mirroring the WhatsApp note; audio stays the hero.
+- Plan MEC-11 row → DONE (GA-gated); features catalog (+docx) entry.
+
+**No new runtime code** — the seam was already landed + gated in MEC-01/03; this phase proves it (tests) + documents the GA path. Nothing live fires; `MESSENGER_VIDEO_GA` stays `false`.
+
+## Self-Audit — MEC-11 (A–K)
+A. Correctness (focus): ✅ — the media-mode gate returns `audio_only` for every call until the flag flips; the new tests assert the `video` field is stripped from the bridge request on both answer + offer paths.
+B. Isolation: n/a (no data path changed); the media control is per-call + tenant-scoped upstream.
+C. Security: ✅ — no new endpoint/surface; the design note reiterates the internal-secret gate; no spec guessed.
+D. Cost: n/a now — the runbook ties any GA video pricing to MEC-06 when it lands.
+E. Errors/obs: ✅ — a video request degrades to audio (no throw, no fake negotiation).
+F. Performance: n/a (no runtime change).
+G. Error handling: ✅ — audio-only is the safe default on every branch.
+H. UI/AA: n/a (no UI change); the runbook fixes the future video pane as secondary with the cyan waveform staying the audio hero + audio-only fallback (DESIGN-SYSTEM §5c).
+I. Regressions (focus): ✅ — test-only + docs; the audio path (MEC-01..08) is untouched; api media-control suite 6/6 green; `MESSENGER_VIDEO_GA` unchanged (false).
+J. Quality/docs: ✅ — runbook + plan row + features catalog + this log; the seam is documented end-to-end.
+K. Build/CI: ✅ — api media-control test green + biome clean; full typecheck validated on CI.
+
+**Module status — Messenger Calling COMPLETE (gated).** MEC-00..08 + MEC-05 + MEC-11 built; MEC-09/10 N/A (PSID has no PSTN). The **only** open item is the **MEC-00 wire-format spike**, which needs Meta access I can't provision (Calling API allow-list + `pages_messaging` Advanced Access + a test Page/user). Once granted → `docs/runbooks/messenger-calling-setup.md` §4 (7 facts → 7 files) → flip live media → the entire inbound + outbound + (GA) video path is already built + waiting.
