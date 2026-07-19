@@ -11,11 +11,25 @@ import { ComplianceService } from './compliance.service';
 const db = new PrismaService();
 const svc = new ComplianceService(db);
 
-const C1 = '00000000-0000-0000-0000-000000000003'; // seed customer
+// A DEDICATED tenant (not the shared seed `…0003`) so this suite's `setRetention` read-modify-write of
+// `tenant.settings` — and its teardown — can never race another parallel settings-writing suite.
+const PLATFORM = '00000000-0000-0000-0000-000000000001';
+const C1 = '00000000-0000-0000-0000-0000060a0003';
 const AGENT = '00000000-0000-0000-0000-0000060a0001';
 const CALL = '00000000-0000-0000-0000-0000060a0002';
 
 beforeAll(async () => {
+  await db.admin.tenant.upsert({
+    where: { id: C1 },
+    create: {
+      id: C1,
+      type: 'CUSTOMER',
+      name: 'compliance-suite',
+      slug: `compliance-suite-${Date.now()}`,
+      parentTenantId: PLATFORM,
+    },
+    update: {},
+  });
   await db.admin.agent.upsert({
     where: { id: AGENT },
     create: { id: AGENT, tenantId: C1, name: 'Compliance Agent' },
@@ -48,14 +62,12 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  // Global suppressions aren't tenant-scoped, so clear them by phone; deleting the dedicated tenant
+  // cascades its agent + call + transcript + consent + settings (no shared seed state to reset).
   await db.admin.suppression.deleteMany({
     where: { phone: { in: ['14155550199', '15005550006'] } },
   });
-  await db.admin.consentRecord.deleteMany({ where: { tenantId: C1 } });
-  await db.admin.transcript.deleteMany({ where: { callId: CALL } });
-  await db.admin.call.deleteMany({ where: { id: CALL } });
-  await db.admin.agent.deleteMany({ where: { id: AGENT } });
-  await db.admin.tenant.update({ where: { id: C1 }, data: { settings: {} } });
+  await db.admin.tenant.deleteMany({ where: { id: C1 } });
 });
 
 describe('Consent (region-aware — self-audit A)', () => {

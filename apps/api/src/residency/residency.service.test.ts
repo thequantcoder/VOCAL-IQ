@@ -1,5 +1,5 @@
 import { Role } from '@vocaliq/shared';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaService } from '../db/prisma.service';
 import { type Actor, ResidencyService } from './residency.service';
 
@@ -12,16 +12,34 @@ import { type Actor, ResidencyService } from './residency.service';
 const db = new PrismaService();
 const svc = new ResidencyService(db, { DATA_REGION: 'us-east-1' } as NodeJS.ProcessEnv);
 
-const C1 = '00000000-0000-0000-0000-000000000003'; // seed customer
+// A DEDICATED tenant (not the shared seed `…0003`) so `setResidency`'s read-modify-write of
+// `tenant.settings` — and the "unpinned defaults" assertion — can never race another parallel suite.
+const PLATFORM = '00000000-0000-0000-0000-000000000001';
+const C1 = '00000000-0000-0000-0000-0000061a0003';
 const OWNER: Actor = {
   userId: '00000000-0000-0000-0000-0000061a000a',
   tenantId: C1,
   role: Role.OWNER,
 };
 
+beforeAll(async () => {
+  await db.admin.tenant.upsert({
+    where: { id: C1 },
+    create: {
+      id: C1,
+      type: 'CUSTOMER',
+      name: 'residency-suite',
+      slug: `residency-suite-${Date.now()}`,
+      parentTenantId: PLATFORM,
+    },
+    update: {},
+  });
+});
+
 afterAll(async () => {
-  await db.admin.auditLog.deleteMany({ where: { action: 'residency.set' } });
-  await db.admin.tenant.update({ where: { id: C1 }, data: { settings: {} } });
+  // Deleting the dedicated tenant cascades its residency.set audit + settings — no shared state to reset.
+  await db.admin.auditLog.deleteMany({ where: { action: 'residency.set', tenantId: C1 } });
+  await db.admin.tenant.deleteMany({ where: { id: C1 } });
 });
 
 describe('ResidencyService', () => {
