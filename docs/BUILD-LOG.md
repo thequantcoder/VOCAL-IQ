@@ -4698,3 +4698,18 @@ J. Quality/docs: ✅ — runbook + plan row + features catalog + this log; the s
 K. Build/CI: ✅ — api media-control test green + biome clean; full typecheck validated on CI.
 
 **Module status — Messenger Calling COMPLETE (gated).** MEC-00..08 + MEC-05 + MEC-11 built; MEC-09/10 N/A (PSID has no PSTN). The **only** open item is the **MEC-00 wire-format spike**, which needs Meta access I can't provision (Calling API allow-list + `pages_messaging` Advanced Access + a test Page/user). Once granted → `docs/runbooks/messenger-calling-setup.md` §4 (7 facts → 7 files) → flip live media → the entire inbound + outbound + (GA) video path is already built + waiting.
+
+---
+
+### Test hygiene — kill the shared-tenant `settings` cross-suite race (disclosure flake) — 2026-07-19 — ✅ DONE — ⚡ SONNET-tier
+
+**What & why.** The long-known intermittent CI flake — `disclosure.service.test` occasionally failing under vitest's parallel file execution — was a **shared-tenant `settings` race**: many API suites do a read-modify-write of the SAME seed tenant's `settings` JSON (customer `…0003` / platform `…0001` / reseller `…0002`) and some **destructively reset it to `{}`** in teardown. When two such suites overlap, one wipes/clobbers another's freshly-written config mid-assertion. Root-caused + fixed the observed flake and removed the worst perpetrator.
+
+**Fixed (safe, high-confidence subset).**
+- **`disclosure.service.test`** → its own **dedicated tenant** (`…071a0003`, created in beforeAll, deleted in afterAll). It no longer touches the shared `…0003.settings`, so it can neither be clobbered nor clobber others. *(This alone resolves the named flake.)*
+- **`slack.service.test`** → dedicated tenant (`…51ac…0003`). Same read-modify-write-then-read-back pattern on `…0003.settings`; now isolated.
+- **`vault.service.test`** → **removed** the two gratuitous `settings: {}` resets of PLATFORM + C1. `VaultService` stores keys in `providerCredential`, **never** in `tenant.settings`, so those resets did nothing but wipe two SHARED tenants' settings — the single most destructive perpetrator (it clobbered the platform tenant used by many suites). Vault's settings-sensitive override test already used its own dedicated tenant.
+
+**Deferred (documented follow-up).** `compliance` (writes `retention`), `residency` (writes `residency`), `whitelabel` (writes `domain`), and `reseller-dashboard` (mutates `…0002` markup) also read-modify-write + full-wipe their shared seed tenant's `settings`. Each should move to a dedicated tenant (or scope its reset to only the key it wrote), but they carry heavier seed-data dependencies (agents/calls/consent tables, reseller hierarchy, Cloudflare custom domains) and want a **live DB to verify** — the local Docker DB is down, so these are left for a pass that can run them. After the three fixes above, each is effectively the sole writer of its shared settings row, so the clobber pressure is largely gone.
+
+**Checks.** api typecheck green · biome clean on the three files · the DB suites validate on CI (local Docker DB down). Removing vault's resets is assertion-neutral; disclosure/slack use the same dedicated-tenant pattern proven across the suite (messenger/*, vault's own override test).

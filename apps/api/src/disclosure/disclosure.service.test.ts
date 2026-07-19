@@ -11,11 +11,25 @@ import { DisclosureService } from './disclosure.service';
 const db = new PrismaService();
 const svc = new DisclosureService(db);
 
-const C1 = '00000000-0000-0000-0000-000000000003';
+// A DEDICATED tenant (not the shared seed `…0003`) so this suite's `setConfig` read-modify-write of
+// `tenant.settings` — and its teardown — can never race another parallel suite that touches that row.
+const PLATFORM = '00000000-0000-0000-0000-000000000001';
+const C1 = '00000000-0000-0000-0000-0000071a0003';
 const AGENT = '00000000-0000-0000-0000-0000071a0001';
 const CALL = '00000000-0000-0000-0000-0000071a0002';
 
 beforeAll(async () => {
+  await db.admin.tenant.upsert({
+    where: { id: C1 },
+    create: {
+      id: C1,
+      type: 'CUSTOMER',
+      name: 'disclosure-suite',
+      slug: `disclosure-suite-${Date.now()}`,
+      parentTenantId: PLATFORM,
+    },
+    update: {},
+  });
   await db.admin.agent.upsert({
     where: { id: AGENT },
     create: { id: AGENT, tenantId: C1, name: 'Disc Agent' },
@@ -36,9 +50,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await db.admin.call.deleteMany({ where: { id: CALL } });
-  await db.admin.agent.deleteMany({ where: { id: AGENT } });
-  await db.admin.tenant.update({ where: { id: C1 }, data: { settings: {} } });
+  // Deleting the dedicated tenant cascades its agent + call + settings — no shared state to reset.
+  await db.admin.tenant.deleteMany({ where: { id: C1 } });
 });
 
 describe('DisclosureService config + build', () => {
