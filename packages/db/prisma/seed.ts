@@ -18,6 +18,8 @@ const ID = {
   reseller: '00000000-0000-0000-0000-000000000002',
   customer: '00000000-0000-0000-0000-000000000003',
   superAdmin: '00000000-0000-0000-0000-00000000000a',
+  resellerAdmin: '00000000-0000-0000-0000-00000000000b',
+  demoOwner: '00000000-0000-0000-0000-00000000000c',
   planFree: '00000000-0000-0000-0000-000000000010',
   planPro: '00000000-0000-0000-0000-000000000011',
   planScale: '00000000-0000-0000-0000-000000000012',
@@ -48,22 +50,48 @@ async function main(): Promise<void> {
     update: { parentTenantId: ID.reseller },
   });
 
-  // Super-admin user + membership on the platform tenant.
-  await prisma.user.upsert({
-    where: { id: ID.superAdmin },
-    create: {
+  // Dev/test accounts — the one-click DevLogin on the sign-in page (localhost only). Self-hosted
+  // email/password auth: `passwordHash` is a bcrypt hash (rounds=10) of the password shown in
+  // apps/web/components/dev-login.tsx. Dev-only credentials (NOT secrets). Each is given a membership
+  // on the matching seeded tenant so the dashboard has a real tenant context after login.
+  const devAccounts = [
+    {
       id: ID.superAdmin,
       email: 'admin@vocaliq.dev',
       name: 'Platform Super Admin',
-      authProviderId: 'seed_super_admin',
+      passwordHash: '$2a$10$nNfQaywU9Gd5LZmntIfLd.3ZgcBiN32cZzldmMulo2R6VFBoP1DRK', // VocalIQ!Admin123
+      tenantId: ID.platform,
+      role: 'SUPER_ADMIN' as const,
     },
-    update: { email: 'admin@vocaliq.dev' },
-  });
-  await prisma.membership.upsert({
-    where: { tenantId_userId: { tenantId: ID.platform, userId: ID.superAdmin } },
-    create: { tenantId: ID.platform, userId: ID.superAdmin, role: 'SUPER_ADMIN' },
-    update: { role: 'SUPER_ADMIN' },
-  });
+    {
+      id: ID.resellerAdmin,
+      email: 'reseller@vocaliq.dev',
+      name: 'Reseller Admin',
+      passwordHash: '$2a$10$ADEFJYkIbwCIg/2jzWzSZ.wQGb8l2MeNAcsyS1EX8bQSg5FuDX5My', // VocalIQ!Reseller123
+      tenantId: ID.reseller,
+      role: 'RESELLER_ADMIN' as const,
+    },
+    {
+      id: ID.demoOwner,
+      email: 'demo@vocaliq.dev',
+      name: 'Demo Owner',
+      passwordHash: '$2a$10$7mkPqP2trWqvaeLnheNm.ew7mmD.q8Mg7eGmmiAv3qLnryiTeY7nq', // VocalIQ!Demo123
+      tenantId: ID.customer,
+      role: 'OWNER' as const,
+    },
+  ];
+  for (const a of devAccounts) {
+    await prisma.user.upsert({
+      where: { id: a.id },
+      create: { id: a.id, email: a.email, name: a.name, passwordHash: a.passwordHash },
+      update: { email: a.email, name: a.name, passwordHash: a.passwordHash },
+    });
+    await prisma.membership.upsert({
+      where: { tenantId_userId: { tenantId: a.tenantId, userId: a.id } },
+      create: { tenantId: a.tenantId, userId: a.id, role: a.role },
+      update: { role: a.role },
+    });
+  }
 
   // Plan ladder — global plans (tenantId null), base currency USD. Prices/limits
   // are minor-unit + editable later (the no-code plan builder is Day 56).
@@ -135,7 +163,7 @@ async function main(): Promise<void> {
     });
   }
 
-  console.log('[seed] platform/reseller/customer + super-admin + plans + preset voices ready.');
+  console.log('[seed] platform/reseller/customer + 3 dev-login accounts (admin/reseller/demo) + plans + preset voices ready.');
 }
 
 main()
