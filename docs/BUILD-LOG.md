@@ -4634,3 +4634,39 @@ MEC-05 complete (gated). Messenger Calling now has a full settings surface + ava
 - Plan doc Part E → runbook pointer.
 
 **Module status.** MEC-01→07 + MEC-05 shipped + merged (#167–173), all gated. **MEC-08 + MEC-00 remain, both blocked on admin Meta access** (Messenger Calling API allow-list + `pages_messaging` Advanced Access + a test Page/user). Once granted → confirm §4 of the runbook → flip live → build MEC-08.
+
+---
+
+### MEC-08 — Messenger Calling: consented outbound + permission governor — 2026-07-19 — ✅ DONE (gated) — 🧠 OPUS
+
+**What & why.** The final Messenger Calling phase: Page-initiated (outbound) AI voice calls, gated behind a compliance governor so we never dial without consent. Built gated (like the rest of the module) ahead of the MEC-00 wire-format spike — the outbound *code surface* is complete; live dialing still waits on Meta access. The signaling scaffolding already existed (adapter `placeCall`/`getCallPermission` from MEC-01, bridge `offer`/`apply_answer` from MEC-03, and the `onConnect` BUSINESS_INITIATED answer-apply path); MEC-08 adds the governor + the dial entrypoint + the UI.
+
+**Smart divergence from a blind WAC-08 clone (recorded so it isn't re-derived):**
+- **Permission is read LIVE from Meta's Call-Permissions API** (`adapter.getCallPermission`), so the caps come from Meta at call time — we do NOT hardcode WhatsApp-style caps (which for Messenger are `[CONFIRM @ MEC-00]`). WhatsApp instead reconstructs permission from webhook replies + a persisted grant; Messenger doesn't need that.
+- **No new DB table/migration.** The consecutive-unanswered back-off is **derived from `MessengerCall` history** (the terminate path already records each call's duration). So MEC-08 adds zero schema.
+- **No permission-request send flow** (WhatsApp's 1/24h + 2/7d send caps): Messenger permission is granted by the user on the Page, not requested by us — and the send API is unconfirmed, so we don't invent it (CLAUDE.md §15).
+- **No blocked-country rule / no LCR / no SIP** — a PSID has no phone number.
+
+**Built.**
+- `packages/shared/src/messenger-permission.ts` — the pure decision core: `canPlaceMessengerCall` (DNC → active permission → local unanswered back-off → Meta's live rate verdict) + `isMessengerPermissionActive` (epoch-seconds expiry) + `messengerOutboundBlockedMessage` + `MESSENGER_UNANSWERED_BACKOFF=3` `[CONFIRM]`. 13 unit tests.
+- `apps/api/src/messenger-calling/messenger-permission.service.ts` — `MessengerPermissionService` (implements `MePermissionGate`): reads the live permission (gated/errored → `no_permission` = **fail-closed**), derives the back-off run from `MessengerCall` rows, resolves DNC by contact, returns the pre-dial decision + an `inspect` view. RLS-scoped. DB test (4 groups) on CI.
+- `MessengerCallingService.placeOutboundCall` — gate FIRST → resolve agent → open unified `Call(OUTBOUND, MESSENGER)` → request Page SDP offer → `adapter.placeCall(recipient=psid, callbackData=unifiedCallId)` → persist the `BUSINESS_INITIATED` MessengerCall row. New optional `permission` ctor param (absent → outbound throws). + `resolveAgentById` on the router/interface. Outbound service tests (gated / blocked-first / gated-media / happy-path).
+- Routes: `POST /messenger-calling/calls` (config-writers) + `GET /messenger-calling/permissions` inspector; wired in composition + `main.ts`.
+- Web: `usePlaceMessengerCall` + `useMessengerPermission` hooks + `OutboundCallCard` (PSID input, live permission panel, "Call now" disabled with the blocked reason) on the Messenger Calling dashboard.
+
+**Checks.** shared build + 13 unit tests ✅ · api typecheck ✅ · web typecheck ✅ · biome clean on new files (only the repo-wide `req.ctx!` `noNonNullAssertion` warnings remain). The Postgres+RLS governor + outbound service tests run on CI (local Docker daemon down); they collect cleanly (fail only at DB connect), matching every prior MEC phase.
+
+## Self-Audit — MEC-08 (A–K)
+A. Correctness (focus): ✅ — pure gate order (DNC → permission → back-off → rate) unit-tested; `placeOutboundCall` runs the gate BEFORE any dial/offer; the back-off derivation breaks the run on the first answered call (accepted or duration>0), verified.
+B. Isolation (focus): ✅ — all reads/writes via `withTenant` (RLS); the back-off + DNC queries are tenant-scoped; the service test asserts sibling-tenant invisibility (existing case still green).
+C. Security (focus): ✅ — `POST /calls` + inspector behind `requireRoles(CONFIG_WRITERS)`/members; fail-closed when the live permission API is gated/errored (never dial without a positive live grant); no token/SDP logged (adapter already scrubs); Zod-validated route inputs.
+D. Cost: ✅ — outbound reuses the unified-Call + MEC-06 terminate metering path (golden rule #4); no new unmetered path (a placed call terminates → `meterTerminated`).
+E. Errors/obs: ✅ — typed `ValidationError` (blocked, with the reason message) vs `ProviderError` (gated media/creds/outbound-unavailable); a failed dial marks the unified Call `dial_failed`; gated media → `media_unavailable`.
+F. Performance: ✅ — the gate is 3 parallel reads (permission, back-off scan of ≤25 rows, DNC); the back-off scan is indexed by `tenantId` + bounded.
+G. Error handling (focus): ✅ — `getPermission` never throws (catch → no_permission); dial errors roll the unified Call to a failed disposition and rethrow; the `.catch` around the live read fails closed.
+H. UI/AA: ✅ — labelled PSID/agent inputs; "Call now" disabled with a clear blocked reason (never colour-only — paired text); loading/blocked/gated states; keyboard-navigable.
+I. Regressions (focus): ✅ — additive; `permission` is a new optional ctor param (MEC-02/04/05 call sites + tests unaffected); `resolveAgentById` added to `MeInboundRouter` + the test router helper; WhatsApp + inbound Messenger untouched; api+web typecheck green; no schema change.
+J. Quality/docs: ✅ — doc comments spell out every divergence + the `[CONFIRM @ MEC-00]` spots; plan MEC-08 row + this log + features doc updated.
+K. Build/CI: ✅ — typecheck + biome + shared tests green; DB tests validated on CI.
+
+**Module status.** MEC-01→08 + MEC-05 now built + gated. **Only MEC-00 (the wire-format spike) remains — it needs Meta access I can't provision** (Calling API allow-list + `pages_messaging` Advanced Access + a test Page/user). Once granted → confirm §4 of `docs/runbooks/messenger-calling-setup.md` (7 facts → 7 files) → flip live media on → the outbound path is already built and waiting.

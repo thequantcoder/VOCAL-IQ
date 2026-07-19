@@ -28,16 +28,37 @@ export class MessengerInboundRouter implements MeInboundRouter {
         orderBy: { createdAt: 'asc' },
         select: { id: true, persona: true },
       });
-      if (!agent) return null;
-      const flowVersionId = await this.activeFlowVersion(tx, agent.id);
-      const persona = personaSchema.safeParse(agent.persona ?? {});
-      return {
-        agentId: agent.id,
-        ...(flowVersionId ? { flowVersionId } : {}),
-        systemPrompt: persona.success ? buildSystemPrompt(persona.data) : '',
-        greeting: ME_DEFAULT_GREETING,
-      };
+      return agent ? this.toRouting(tx, agent) : null;
     });
+  }
+
+  /** Resolve a specific PUBLISHED agent by id to dial an outbound Page call (MEC-08). */
+  async resolveAgentById(
+    tenantId: string,
+    agentId: string,
+  ): Promise<MessengerInboundRouting | null> {
+    return this.db.withTenant(tenantId, async (tx) => {
+      const agent = await tx.agent.findFirst({
+        where: { id: agentId, status: 'PUBLISHED' },
+        select: { id: true, persona: true },
+      });
+      return agent ? this.toRouting(tx, agent) : null;
+    });
+  }
+
+  /** Build the routing brain (active flow version + persona system prompt + default greeting). */
+  private async toRouting(
+    tx: TxClient,
+    agent: { id: string; persona: unknown },
+  ): Promise<MessengerInboundRouting> {
+    const flowVersionId = await this.activeFlowVersion(tx, agent.id);
+    const persona = personaSchema.safeParse(agent.persona ?? {});
+    return {
+      agentId: agent.id,
+      ...(flowVersionId ? { flowVersionId } : {}),
+      systemPrompt: persona.success ? buildSystemPrompt(persona.data) : '',
+      greeting: ME_DEFAULT_GREETING,
+    };
   }
 
   /** The latest PUBLISHED version of the agent's active flow (if any). */
