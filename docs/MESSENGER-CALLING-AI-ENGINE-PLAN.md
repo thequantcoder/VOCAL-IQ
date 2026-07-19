@@ -153,7 +153,7 @@ Most are **already set** from Day 93 (Messenger messaging):
 | **MEC-08** ✅ | Consented outbound (permissions) — **DONE (gated)** | `messenger-permission.ts` pure governor + `MessengerPermissionService` (reads the **live** Call-Permissions API — caps come from Meta, not hardcoded) + `placeOutboundCall` (gate → Page SDP offer → adapter `placeCall`) + `POST /messenger-calling/calls` + `GET /permissions` inspector + web outbound card. Unanswered back-off **derived from `MessengerCall` history** (no new table). Fully gated: 503/blocked until Meta creds + a live grant. Live dialing still needs MEC-00 to confirm the wire format. | mirror WAC-08 |
 | ~~MEC-09~~ | ~~Least-cost routing~~ | **N/A** — no PSTN fallback for a PSID. | dropped |
 | ~~MEC-10~~ | ~~SIP mode~~ | **N/A** — no phone number / PBX. | dropped |
-| **MEC-11** | (opt) Video / screen-share | when Meta GA's Messenger video, flip the media-mode gate. | mirror WAC-11 |
+| **MEC-11** ✅ | (opt) Video / screen-share — **DONE (GA-gated)** | The honest seam is complete: `messenger-video.ts` GA flag + `messengerCallMediaMode()` (MEC-01), the api media-control `video?` forwarded only when GA (MEC-03, **unit-tested MEC-11** for both inbound answer + outbound offer), and `MeAnswerBody`/`MeOfferBody` `video: bool = False` (inert). GA-ready plan: `docs/runbooks/messenger-calling-video-design.md`. Live m=video negotiation deferred until Meta GAs it (flip `MESSENGER_VIDEO_GA` + follow the runbook). | mirror WAC-11 |
 
 ---
 
