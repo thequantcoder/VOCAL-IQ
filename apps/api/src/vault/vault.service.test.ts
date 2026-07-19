@@ -35,8 +35,10 @@ const createdKeyIds: string[] = [];
 afterAll(async () => {
   await db.admin.providerCredential.deleteMany({ where: { id: { in: createdKeyIds } } });
   await db.admin.auditLog.deleteMany({ where: { action: { startsWith: 'vault.' } } });
-  await db.admin.tenant.update({ where: { id: PLATFORM }, data: { settings: {} } });
-  await db.admin.tenant.update({ where: { id: C1 }, data: { settings: {} } });
+  // NOTE: no `settings: {}` reset here — VaultService stores keys in `providerCredential`, never in
+  // `tenant.settings`, so these resets were gratuitous. Wiping the SHARED PLATFORM + C1 settings raced
+  // any parallel suite reading those rows (a source of the disclosure flake). The settings-sensitive
+  // override test below already uses its own dedicated tenant.
 });
 
 describe('VaultService key storage (encrypted at rest — self-audit C)', () => {

@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaService } from '../db/prisma.service';
 import { type SlackHttp, SlackService } from './slack.service';
 
@@ -9,7 +9,10 @@ import { type SlackHttp, SlackService } from './slack.service';
  */
 
 const db = new PrismaService();
-const C1 = '00000000-0000-0000-0000-000000000003';
+// A DEDICATED tenant (not the shared seed `…0003`) so this suite's `setConfig` read-modify-write of
+// `tenant.settings` — and its read-back assertions — can never race another parallel settings-writing suite.
+const PLATFORM = '00000000-0000-0000-0000-000000000001';
+const C1 = '00000000-0000-0000-0000-51ac00000003';
 const HOOK = 'https://hooks.slack.com/services/T000/B000/xyz';
 
 function make() {
@@ -21,12 +24,23 @@ function make() {
   return { svc: new SlackService(db, http), posts };
 }
 
+beforeAll(async () => {
+  await db.admin.tenant.upsert({
+    where: { id: C1 },
+    create: {
+      id: C1,
+      type: 'CUSTOMER',
+      name: 'slack-suite',
+      slug: `slack-suite-${Date.now()}`,
+      parentTenantId: PLATFORM,
+    },
+    update: {},
+  });
+});
+
 afterAll(async () => {
-  // Reset the tenant's slack settings so the shared seed tenant is left clean.
-  const t = await db.admin.tenant.findFirst({ where: { id: C1 }, select: { settings: true } });
-  const settings = { ...((t?.settings as object) ?? {}) } as Record<string, unknown>;
-  settings.slack = undefined;
-  await db.admin.tenant.update({ where: { id: C1 }, data: { settings: settings as object } });
+  // Deleting the dedicated tenant cascades its settings — no shared seed state to reset.
+  await db.admin.tenant.deleteMany({ where: { id: C1 } });
 });
 
 describe('SlackService', () => {
