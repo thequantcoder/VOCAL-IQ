@@ -9,6 +9,7 @@ import { StatusBadge, formatDuration } from '../../../components/ui-bits';
 import type { MessengerCallRow } from '../../../lib/api';
 import { useMessengerCallOverview } from '../../../lib/api';
 import { EntryPointGenerator } from './entry-point-generator';
+import { OutboundCallCard } from './outbound-call-card';
 
 /**
  * Messenger Calling home (MEC-07) — the tenant's dashboard for AI voice calls over Messenger: a
@@ -102,6 +103,8 @@ export default function MessengerCallingPage() {
           )}
         </CardContent>
       </Card>
+
+      <OutboundCallCard />
 
       <EntryPointGenerator />
     </div>

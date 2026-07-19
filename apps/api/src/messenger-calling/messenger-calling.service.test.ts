@@ -1,11 +1,12 @@
-import type { MessengerCallingTelephony } from '@vocaliq/provider-router';
+import type { MePlaceCallInput, MessengerCallingTelephony } from '@vocaliq/provider-router';
 import { parseMessengerCallSettings, toMessengerCallRef } from '@vocaliq/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaService } from '../db/prisma.service';
 import { MessengerCallingService, type MessengerInboundRouting } from './messenger-calling.service';
 import { dispatchMessengerCallingWebhook } from './messenger-calling.webhooks';
-import type { MeAnswerRequest } from './messenger-media-control';
+import type { MeAnswerRequest, MeOfferRequest } from './messenger-media-control';
 import { PendingMeMediaControl } from './messenger-media-control';
+import type { MeCanCallResult, MePermissionGate } from './messenger-permission.service';
 
 /**
  * Messenger Calling control plane (MEC-02) against real Postgres + RLS. Dedicated sibling tenants so the
@@ -19,6 +20,7 @@ const AGENT = '00000000-0000-0000-0000-0000ff30b001';
 
 const routerTo = (routing: MessengerInboundRouting | null) => ({
   resolveInboundAgent: async () => routing,
+  resolveAgentById: async () => routing,
 });
 const routing = (over: Partial<MessengerInboundRouting> = {}): MessengerInboundRouting => ({
   agentId: AGENT,
@@ -314,5 +316,151 @@ describe('MessengerCallingService (MEC-02)', () => {
     expect(call?.status).toBe('COMPLETED');
     expect(call?.durationSec).toBe(42);
     expect((call?.costBreakdown as { telephony?: number } | null)?.telephony).toBeCloseTo(0.01, 6);
+  });
+});
+
+// ── MEC-08: consented outbound (Page-initiated dialing) ──────────────────────────────────────────────
+/** A permission gate that returns a fixed decision (default: allowed). */
+const gate = (over: Partial<MeCanCallResult> = {}): MePermissionGate => ({
+  canCall: async () => ({
+    allowed: true,
+    consecutiveUnanswered: 0,
+    permission: { psid: 'PSID_OUT', status: 'permanent', expiresAt: null, live: true },
+    ...over,
+  }),
+});
+
+/** A media control that yields a Page SDP OFFER (or null when gated) and records the offer requests. */
+function fakeOfferMedia(offer: string | null) {
+  const reqs: MeOfferRequest[] = [];
+  const media = {
+    requestSdpAnswer: async () => null,
+    requestSdpOffer: async (r: MeOfferRequest) => {
+      reqs.push(r);
+      return offer;
+    },
+    applyAnswer: async () => {},
+    endCall: async () => {},
+  };
+  return { media, reqs };
+}
+
+/** A fake adapter that records placeCall inputs and returns a Meta call id. */
+function fakeDialAdapter(meCallId: string) {
+  const dialed: MePlaceCallInput[] = [];
+  const adapter = {
+    async placeCall(input: MePlaceCallInput) {
+      dialed.push(input);
+      return { callId: meCallId };
+    },
+    async preAccept() {},
+    async accept() {},
+    async reject() {},
+    async terminate() {},
+  } as unknown as MessengerCallingTelephony;
+  return { adapter, dialed };
+}
+
+describe('MessengerCallingService — outbound (MEC-08)', () => {
+  it('throws when no permission governor is wired (outbound unavailable)', async () => {
+    const { media } = fakeOfferMedia('v=0 offer');
+    const svc = new MessengerCallingService(db, async () => null, media);
+    await expect(svc.placeOutboundCall(T, { psid: 'PSID_NO_GOV', agentId: AGENT })).rejects.toThrow(
+      /not available/i,
+    );
+  });
+
+  it('runs the compliance gate FIRST and never dials when blocked', async () => {
+    const { adapter, dialed } = fakeDialAdapter('mec.out.blocked');
+    const { media, reqs } = fakeOfferMedia('v=0 offer');
+    const svc = new MessengerCallingService(
+      db,
+      async () => adapter,
+      media,
+      undefined,
+      routerTo(routing()),
+      undefined,
+      gate({ allowed: false, reason: 'no_permission' }),
+    );
+    await expect(
+      svc.placeOutboundCall(T, { psid: 'PSID_BLOCKED', agentId: AGENT }),
+    ).rejects.toThrow(/permission/i);
+    expect(dialed).toHaveLength(0); // never dialed
+    expect(reqs).toHaveLength(0); // never asked the bridge for an offer
+    const me = await db.admin.messengerCall.findFirst({
+      where: { tenantId: T, direction: 'BUSINESS_INITIATED', psid: 'PSID_BLOCKED' },
+    });
+    expect(me).toBeNull(); // no row created
+  });
+
+  it('opens then fails the unified Call when outbound media is gated', async () => {
+    const { adapter } = fakeDialAdapter('mec.out.gated');
+    const { media } = fakeOfferMedia(null); // no offer → gated
+    const svc = new MessengerCallingService(
+      db,
+      async () => adapter,
+      media,
+      undefined,
+      routerTo(routing()),
+      undefined,
+      gate(),
+    );
+    await expect(
+      svc.placeOutboundCall(T, { psid: 'PSID_GATED_MEDIA', agentId: AGENT }),
+    ).rejects.toThrow(/not configured/i);
+    const call = await db.admin.call.findFirst({
+      where: {
+        tenantId: T,
+        channel: 'MESSENGER',
+        direction: 'OUTBOUND',
+        disposition: 'media_unavailable',
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(call?.status).toBe('FAILED');
+  });
+
+  it('gate → offer → dial → persists a BUSINESS_INITIATED call linked to a unified OUTBOUND Call', async () => {
+    const { adapter, dialed } = fakeDialAdapter('mec.out.ok');
+    const { media, reqs } = fakeOfferMedia('v=0 page-offer');
+    const svc = new MessengerCallingService(
+      db,
+      async () => adapter,
+      media,
+      undefined,
+      routerTo(routing()),
+      undefined,
+      gate(),
+    );
+    const ref = toMessengerCallRef({ intent: 'follow_up', reference: 'LEAD-7' });
+    const res = await svc.placeOutboundCall(T, {
+      psid: 'PSID_OUT_OK',
+      agentId: AGENT,
+      refPayload: ref,
+    });
+
+    expect(res.meCallId).toBe('mec.out.ok');
+    expect(res.status).toBe('ringing');
+    // Dialed the PSID with the Page offer + the unified Call id as callback data.
+    expect(dialed[0]?.recipient).toBe('PSID_OUT_OK');
+    expect(dialed[0]?.sdpOffer).toBe('v=0 page-offer');
+    expect(dialed[0]?.callbackData).toBe(res.callId);
+    // The offer request carried the composed prompt (persona + context brief) + greeting.
+    expect(reqs[0]?.systemPrompt).toContain('You are A.');
+    expect(reqs[0]?.systemPrompt).toContain('follow_up');
+    expect(reqs[0]?.greeting).toBe('Hi from A.');
+
+    const me = await db.admin.messengerCall.findFirst({
+      where: { tenantId: T, meCallId: 'mec.out.ok' },
+    });
+    expect(me?.direction).toBe('BUSINESS_INITIATED');
+    expect(me?.status).toBe('ringing');
+    expect(me?.psid).toBe('PSID_OUT_OK');
+    expect(me?.callId).toBe(res.callId);
+
+    const call = await db.admin.call.findFirst({ where: { id: res.callId } });
+    expect(call?.channel).toBe('MESSENGER');
+    expect(call?.direction).toBe('OUTBOUND');
+    expect(call?.agentId).toBe(AGENT);
   });
 });

@@ -1,12 +1,16 @@
 import type { MessengerCallingTelephony } from '@vocaliq/provider-router';
 import {
   type MessengerCallSettings,
+  ProviderError,
+  ValidationError,
   buildMessengerCallBrief,
   fromMessengerCallRef,
   isWithinMessengerCallHours,
+  messengerOutboundBlockedMessage,
 } from '@vocaliq/shared';
 import type { PrismaService } from '../db/prisma.service';
 import type { MeMediaControl } from './messenger-media-control';
+import type { MePermissionGate } from './messenger-permission.service';
 
 /**
  * Messenger (Meta) Calling — the CONTROL PLANE (MEC-02), the WhatsApp `WhatsAppCallingService` sibling.
@@ -44,9 +48,11 @@ export interface MessengerInboundRouting {
   systemPrompt?: string;
   greeting?: string;
 }
-/** Resolves which PUBLISHED agent answers an inbound Messenger call (MEC-04). */
+/** Resolves which PUBLISHED agent answers an inbound Messenger call (MEC-04) / dials an outbound one. */
 export interface MeInboundRouter {
   resolveInboundAgent(tenantId: string, pageId?: string): Promise<MessengerInboundRouting | null>;
+  /** Resolve a specific PUBLISHED agent by id (the Page-initiated outbound brain, MEC-08). */
+  resolveAgentById(tenantId: string, agentId: string): Promise<MessengerInboundRouting | null>;
 }
 
 /** Reads the tenant's Messenger call settings (for the availability-hours gate, MEC-05). */
@@ -80,6 +86,16 @@ export interface MeTerminateInput {
   errorCode?: number;
 }
 
+export interface MePlaceOutboundInput {
+  /** The Messenger user's PSID to call. */
+  psid: string;
+  agentId: string;
+  /** Optional contact for the DNC check (Messenger has no phone number to match on). */
+  contactId?: string;
+  /** Optional context payload echoed to the answering agent's brief. */
+  refPayload?: string;
+}
+
 const norm = (s?: string) => (s && s.length > 0 ? s : undefined);
 
 const COMPONENT_KEYS = ['stt', 'llm', 'tts', 'telephony'] as const;
@@ -105,6 +121,8 @@ export class MessengerCallingService {
     private readonly router: MeInboundRouter | null = null,
     /** Availability-hours source (MEC-05). Absent → always open (MEC-02/04 behaviour). */
     private readonly settingsReader: MeSettingsReader | null = null,
+    /** Outbound permission governor (MEC-08). Absent → no outbound (dialing throws). */
+    private readonly permission: MePermissionGate | null = null,
     /** Clock — injectable so timestamps are deterministic in tests. */
     private readonly now: () => Date = () => new Date(),
   ) {}
@@ -244,6 +262,85 @@ export class MessengerCallingService {
     await this.meter.meterTerminated(tenantId, input.meCallId);
     // Close the linked unified Call (MEC-04) — final status + duration + carrier cost. No-op if none.
     await this.closeUnifiedCall(tenantId, input.meCallId);
+  }
+
+  /**
+   * Place a CONSENTED outbound Messenger call (MEC-08). Runs the compliance gate FIRST (live Meta
+   * permission + rate limits, the history-derived unanswered back-off, DNC); only then opens a unified
+   * Call, asks the bridge for a Page SDP OFFER, and dials via the adapter. Throws a typed ValidationError
+   * when blocked, or a ProviderError when the media/creds aren't ready (gated). Cost is metered on
+   * terminate like any other call (golden rule #4); the back-off self-records via the persisted row.
+   */
+  async placeOutboundCall(
+    tenantId: string,
+    input: MePlaceOutboundInput,
+  ): Promise<{ meCallId: string; callId: string; status: string }> {
+    if (!this.permission) throw new ProviderError('Outbound Messenger calling is not available.');
+    const psid = (input.psid ?? '').trim();
+    if (!psid) throw new ValidationError('A Messenger user PSID is required.');
+
+    // 1. The pre-dial compliance gate — never dial when blocked.
+    const gate = await this.permission.canCall(tenantId, {
+      psid,
+      ...(input.contactId ? { contactId: input.contactId } : {}),
+    });
+    if (!gate.allowed) throw new ValidationError(messengerOutboundBlockedMessage(gate.reason));
+
+    // 2. Resolve the answering agent's brain.
+    const routing = this.router
+      ? await this.router.resolveAgentById(tenantId, input.agentId)
+      : null;
+    if (!routing) throw new ValidationError('Agent not found or not published.');
+
+    // Compose the outbound system prompt = the agent's persona + the optional context brief.
+    const brief = buildMessengerCallBrief(fromMessengerCallRef(input.refPayload ?? ''));
+    const systemPrompt =
+      [routing.systemPrompt, brief].filter((s) => s?.trim()).join('\n\n') || undefined;
+
+    // 3. Open the unified Call, then get the Page SDP offer + dial.
+    const callId = await this.createUnifiedCall(tenantId, routing, 'OUTBOUND');
+    const offer = await this.media
+      .requestSdpOffer({
+        tenantId,
+        callId,
+        agentId: routing.agentId,
+        ...(systemPrompt ? { systemPrompt } : {}),
+        ...(routing.greeting ? { greeting: routing.greeting } : {}),
+      })
+      .catch(() => null);
+    const adapter = offer ? await this.adapterFor(tenantId).catch(() => null) : null;
+    if (!offer || !adapter) {
+      await this.failUnifiedCall(tenantId, callId, 'media_unavailable');
+      throw new ProviderError('Messenger outbound media/credentials are not configured.');
+    }
+
+    let meCallId: string;
+    try {
+      ({ callId: meCallId } = await adapter.placeCall({
+        recipient: psid,
+        sdpOffer: offer,
+        callbackData: callId,
+      }));
+    } catch (err) {
+      await this.failUnifiedCall(tenantId, callId, 'dial_failed');
+      throw err;
+    }
+
+    // 4. Persist the Messenger call row (BUSINESS_INITIATED) linked to the unified Call.
+    await this.record(
+      tenantId,
+      meCallId,
+      'connect',
+      { psid, agentId: routing.agentId },
+      {
+        direction: 'BUSINESS_INITIATED',
+        status: 'ringing',
+        psid,
+        callId,
+        ...(norm(input.refPayload) ? { refPayload: input.refPayload } : {}),
+      },
+    );
+    return { meCallId, callId, status: 'ringing' };
   }
 
   /** Settings-update notifications (call-button visibility / availability; alerts are MEC-05). */

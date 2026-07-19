@@ -5037,6 +5037,65 @@ export function useMessengerLiveCall(meCallId: string) {
   });
 }
 
+// ── Messenger (Meta) Calling — outbound permissions + dialing (MEC-08) ────────
+export interface MessengerPermissionView {
+  psid: string;
+  status: string; // no_permission | temporary | permanent
+  expiresAt: string | null;
+  callAllowed?: boolean;
+  limit?: { maxAllowed: number; currentUsage: number };
+  live: boolean;
+}
+
+export interface MessengerCanCall {
+  allowed: boolean;
+  reason?: string;
+  permission: MessengerPermissionView;
+  consecutiveUnanswered: number;
+}
+
+export interface MessengerPermissionInspect {
+  permission: MessengerPermissionView;
+  canCall: MessengerCanCall;
+}
+
+/** Inspect the LIVE Meta call permission + pre-dial decision for a PSID (MEC-08). */
+export function useMessengerPermission(psid: string, opts: { contactId?: string } = {}) {
+  const { getToken } = useAuth();
+  return useQuery({
+    queryKey: ['messenger-permission', psid, opts],
+    queryFn: () => {
+      const params = new URLSearchParams({ psid });
+      if (opts.contactId) params.set('contactId', opts.contactId);
+      return apiFetch<MessengerPermissionInspect>(
+        getToken,
+        `/messenger-calling/permissions?${params.toString()}`,
+      );
+    },
+    enabled: psid.trim().length >= 1,
+  });
+}
+
+/** Place a consented outbound Messenger call — the server runs the full compliance gate first (MEC-08). */
+export function usePlaceMessengerCall() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      psid: string;
+      agentId: string;
+      contactId?: string;
+      refPayload?: string;
+    }) =>
+      apiFetch<{ meCallId: string; callId: string; status: string }>(
+        getToken,
+        '/messenger-calling/calls',
+        { method: 'POST', body: JSON.stringify(body) },
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['messenger-permission'] }),
+  });
+}
+
 // ── WhatsApp Business Calling — outbound permissions (WAC-08) ─────────────────
 
 export interface WhatsappPermissionView {

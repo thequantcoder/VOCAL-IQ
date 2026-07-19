@@ -209,7 +209,13 @@ function bootstrap(): void {
   );
   app.use(
     '/messenger-calling',
-    messengerCallingRoutes(s.messengerCallRead, s.messengerCallSettings, s.tenants),
+    messengerCallingRoutes(
+      s.messengerCallRead,
+      s.messengerCallSettings,
+      s.messengerPermission,
+      s.messengerCalling,
+      s.tenants,
+    ),
   );
   app.use('/ops', opsRoutes(s.opsToolkit, s.tenants));
   app.use('/numbers', numbersRoutes(s.numbers, s.tenants));
