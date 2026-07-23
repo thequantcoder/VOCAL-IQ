@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { PrismaService } from '../db/prisma.service';
 import type { CfCustomHostname, CloudflareClient } from './cloudflare';
 import { WhiteLabelService } from './whitelabel.service';
@@ -7,11 +7,19 @@ import { WhiteLabelService } from './whitelabel.service';
  * White-label (Day 52) against real Postgres + RLS. Proves: branding get/set + CSS-var theming,
  * domain provisioning through Cloudflare (fake) + gated fallback, hostname→tenant resolution,
  * no-platform-leak when hidden, and tenant scoping (self-audit B + C + H).
+ *
+ * Runs on DEDICATED tenants — never the shared seed tenants `…0003`/`…0002`. Provisioning writes
+ * `tenant.settings.domain`, and this suite used to full-wipe the shared customer's `settings` in
+ * teardown, clobbering other suites' settings mid-assertion under vitest's parallel file execution
+ * (the settings cross-suite race). Its own customer + reseller are created here and dropped in
+ * afterAll, so no shared row is ever read-modified or wiped.
  */
 
 const db = new PrismaService();
-const C1 = '00000000-0000-0000-0000-000000000003';
-const R1 = '00000000-0000-0000-0000-000000000002';
+const PLATFORM = '00000000-0000-0000-0000-000000000001';
+const C1 = '00000000-0000-0000-0000-0000052a0003'; // this suite's own customer
+const R1 = '00000000-0000-0000-0000-0000052a0002'; // this suite's own reseller
+const DOMAINS = ['calls.acme.com', 'voice.reseller.co'];
 
 const liveCf: CloudflareClient = {
   configured: true,
@@ -41,13 +49,39 @@ const disabledCf: CloudflareClient = {
 const svc = new WhiteLabelService(db, liveCf);
 const gatedSvc = new WhiteLabelService(db, disabledCf);
 
-afterAll(async () => {
-  // Reset the mutated seed tenants.
-  await db.admin.tenant.update({
-    where: { id: C1 },
-    data: { branding: {}, customDomain: null, settings: {} },
+beforeAll(async () => {
+  // `customDomain` is globally unique — free the hostnames this suite claims from any stale owner
+  // (e.g. an old shared-tenant run) so provisioning doesn't false-conflict.
+  await db.admin.tenant.updateMany({
+    where: { customDomain: { in: DOMAINS } },
+    data: { customDomain: null },
   });
-  await db.admin.tenant.update({ where: { id: R1 }, data: { branding: {}, customDomain: null } });
+  await db.admin.tenant.upsert({
+    where: { id: R1 },
+    create: {
+      id: R1,
+      type: 'RESELLER',
+      name: 'Reseller',
+      slug: `wl-reseller-${Date.now()}`,
+      parentTenantId: PLATFORM,
+    },
+    update: { branding: {}, customDomain: null, settings: {} },
+  });
+  await db.admin.tenant.upsert({
+    where: { id: C1 },
+    create: {
+      id: C1,
+      type: 'CUSTOMER',
+      name: 'Customer',
+      slug: `wl-customer-${Date.now()}`,
+      parentTenantId: PLATFORM,
+    },
+    update: { branding: {}, customDomain: null, settings: {} },
+  });
+});
+
+afterAll(async () => {
+  await db.admin.tenant.deleteMany({ where: { id: { in: [C1, R1] } } });
 });
 
 describe('branding (theming — self-audit H)', () => {
