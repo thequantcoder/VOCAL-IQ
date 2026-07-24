@@ -13,14 +13,21 @@ their rooms. A Redis-backed registry replaces this map when the loop scales out.
 from __future__ import annotations
 
 import asyncio
+import hmac
 import uuid
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException
 
 from app.calls.events import events
 from app.calls.lifecycle import CallSession, CallStatus
 from app.calls.livekit_service import LiveKitRoomService, mint_access_token
-from app.calls.models import CallTokens, StartCallRequest, StartCallResponse
+from app.calls.models import (
+    CallTokens,
+    DispatchAgentRequest,
+    DispatchAgentResponse,
+    StartCallRequest,
+    StartCallResponse,
+)
 from app.config import settings
 from app.loop import livekit_agent
 from app.loop.emotion import EmotionPolicy
@@ -106,8 +113,6 @@ async def start_call(req: StartCallRequest) -> StartCallResponse:
 
 def _dispatch_agent(call_id: str, room: str, agent_token: str, req: StartCallRequest) -> None:
     """Launch the conversation-loop agent worker to join the room (background task)."""
-    assert settings.livekit_url and settings.deepgram_api_key
-    assert settings.openai_api_key and settings.elevenlabs_api_key
     config = LoopConfig(
         tenant_id=req.tenant_id,
         call_id=call_id,
@@ -119,6 +124,14 @@ def _dispatch_agent(call_id: str, room: str, agent_token: str, req: StartCallReq
             EmotionPolicy.from_dict(req.emotion_policy) if req.emotion_policy is not None else None
         ),
     )
+    _run_agent_in_room(call_id, agent_token, config)
+
+
+def _run_agent_in_room(call_id: str, agent_token: str, config: LoopConfig) -> None:
+    """Join the agent to an already-created room + run the loop as a background task. Shared by
+    /start (fresh room) and /dispatch (the web widget's existing room)."""
+    assert settings.livekit_url and settings.deepgram_api_key
+    assert settings.openai_api_key and settings.elevenlabs_api_key
     task = asyncio.create_task(
         livekit_agent.run_agent(
             url=settings.livekit_url,
@@ -131,6 +144,54 @@ def _dispatch_agent(call_id: str, room: str, agent_token: str, req: StartCallReq
     )
     _agent_tasks[call_id] = task
     task.add_done_callback(lambda _t: _agent_tasks.pop(call_id, None))
+
+
+def _authorize(secret: str | None) -> None:
+    """Gate (503) when the internal secret is unset; reject (401) a missing/wrong header."""
+    expected = settings.voice_internal_secret
+    if not expected:
+        raise HTTPException(status_code=503, detail="internal control channel not configured")
+    if not secret or not hmac.compare_digest(secret, expected):
+        raise HTTPException(status_code=401, detail="unauthorized")
+
+
+@router.post("/dispatch", response_model=DispatchAgentResponse)
+async def dispatch_agent_into_room(
+    body: DispatchAgentRequest, x_internal_secret: str | None = Header(default=None)
+) -> DispatchAgentResponse:
+    """Put the AI agent into an ALREADY-CREATED LiveKit room. The web widget mints the visitor's
+    token + opens the room, then the api calls this so the agent joins the SAME room and they can
+    talk. INTERNAL ONLY — `X-Internal-Secret`, constant-time compared. Fail-soft on capability:
+    returns `dispatched=false` + a note when LiveKit / voice-AI keys aren't configured (the room
+    stays usable), rather than erroring the caller.
+    """
+    _authorize(x_internal_secret)
+    if not settings.livekit_configured:
+        return DispatchAgentResponse(dispatched=False, note="LiveKit not configured — no agent")
+    if not settings.voice_ai_configured:
+        return DispatchAgentResponse(
+            dispatched=False,
+            note="voice-ai providers (Deepgram/OpenAI/ElevenLabs) not set — room ready, no agent",
+        )
+    assert settings.livekit_api_key and settings.livekit_api_secret
+    agent_token = mint_access_token(
+        settings.livekit_api_key,
+        settings.livekit_api_secret,
+        body.room,
+        f"agent-{body.call_id}",
+        name="VocalIQ Agent",
+        metadata=body.agent_id,
+    )
+    config = LoopConfig(
+        tenant_id=body.tenant_id,
+        call_id=body.call_id,
+        agent_id=body.agent_id,
+        system_prompt=body.system_prompt or _DEFAULT_SYSTEM_PROMPT,
+        greeting=body.greeting or _DEFAULT_GREETING,
+    )
+    _run_agent_in_room(body.call_id, agent_token, config)
+    await events.emit(body.call_id, body.tenant_id, "agent.dispatched", room=body.room)
+    return DispatchAgentResponse(dispatched=True)
 
 
 def active_session_count() -> int:

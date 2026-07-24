@@ -36,3 +36,22 @@ class StartCallResponse(BaseModel):
     tokens: CallTokens | None = None
     # Set when something is pending (e.g. LiveKit keys not configured yet).
     note: str | None = None
+
+
+class DispatchAgentRequest(BaseModel):
+    """Put the AI agent into an ALREADY-CREATED room (the web widget minted the visitor's
+    token + room; the api asks us to join the agent). INTERNAL ONLY."""
+
+    call_id: str = Field(min_length=1)
+    tenant_id: str = Field(min_length=1)
+    agent_id: str = Field(min_length=1)
+    room: str = Field(min_length=1)
+    system_prompt: str | None = None
+    greeting: str | None = None
+
+
+class DispatchAgentResponse(BaseModel):
+    dispatched: bool
+    # Set when the agent was NOT dispatched (LiveKit / voice-AI not configured) — the room is
+    # still usable; only the agent leg is pending.
+    note: str | None = None

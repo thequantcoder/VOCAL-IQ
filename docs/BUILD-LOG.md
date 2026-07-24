@@ -4828,3 +4828,34 @@ J. Quality/docs: ✅ — doc comments on the seam + the config-swap contract + t
 K. Build/CI: ✅ — typecheck + biome green; widget tests green in isolation. (Full parallel suite still shows the unrelated `benchmarking`/`experiments` timeout flakes on this loaded machine — CI validates on a fresh runner.)
 
 **Status — widget dispatch seam DONE (api, gated).** Next go-live increments: voice `POST /calls/dispatch` (make the widget agent actually join, offline-runnable with LiveKit + AI keys), then the two PSTN worker seams (need the funded-number `HttpDialer` chain).
+
+---
+
+### Go-live seam #1b — voice `POST /calls/dispatch` (widget agent join) — 2026-07-24 — ✅ DONE (gated) — 🧠 OPUS
+
+**What & why.** Increment #2 of the widget seam: the voice-service counterpart to increment #1's `HttpVoiceDispatcher`. Now the api→voice hop is complete — the agent actually joins the widget's LiveKit room. WEB is LiveKit-only, so with LiveKit up (Docker) + AI keys this is a genuinely working offline web AI call; no carrier/paid telephony.
+
+**Built (mirrors the WhatsApp/Messenger internal-router pattern).**
+- `apps/voice/app/calls/router.py` — `POST /calls/dispatch` (internal-only, `X-Internal-Secret` constant-time compared via a local `_authorize`, exactly like `whatsapp_router`/`messenger_router`). Takes `{call_id, tenant_id, agent_id, room, system_prompt?, greeting?}`, mints an **agent** join token for the GIVEN room (the visitor already holds a token for it), and launches the loop. **Capability fail-soft**: returns `{dispatched:false, note}` (not an error) when LiveKit or voice-AI keys aren't configured — the room stays usable, only the agent leg is pending. Emits an `agent.dispatched` lifecycle event.
+- Refactor: extracted `_run_agent_in_room(call_id, agent_token, config)` — the shared launcher used by BOTH `/calls/start` (fresh room) and `/calls/dispatch` (the widget's existing room); `_dispatch_agent` now delegates to it (no behaviour change to `/start`).
+- `models.py` — `DispatchAgentRequest` / `DispatchAgentResponse` (Pydantic v2, boundary-validated).
+- `tests/test_calls_dispatch.py` — 5 tests: 503-gated when the secret is unset, 401 on wrong/missing header, `dispatched:false` when voice-AI or LiveKit unconfigured, and the happy path launches the agent with the right call/agent/tenant **and a join token whose `video.room` is the visitor's exact room** (decoded from the JWT — proves they share the room). Agent run + LiveKit network mocked (runs on any Python).
+
+**Checks.** voice **pytest 150 passed / 2 skipped** (aiortc-only, skipped on local 3.14) — incl. the 5 new + the `/start` regressions (refactor safe); ruff clean; pyright **0 errors** on the changed files. `VOICE_SERVICE_URL`/`VOICE_INTERNAL_SECRET` already in `.env.example` (WAC-03) — no env change.
+
+**End-to-end now (offline, gated).** api `HttpVoiceDispatcher` → voice `/calls/dispatch` → agent joins the widget room. Going live = set `VOICE_SERVICE_URL` + `VOICE_INTERNAL_SECRET` (+ LiveKit already local; + Deepgram/OpenAI/ElevenLabs for the agent to actually speak — real provider minutes, so the live E2E is the paid verification step).
+
+## Self-Audit — voice /calls/dispatch (A–K)
+A. Correctness (focus): ✅ — the agent joins the SAME room the visitor holds (asserted by decoding the minted token's `video.room`); `/start` unchanged (shared launcher, regressions green).
+B. Isolation: ✅ — `tenant_id`/`agent_id` flow into the LoopConfig; no cross-tenant read; the endpoint only acts on the room the api names.
+C. Security (focus): ✅ — internal-only, `X-Internal-Secret` constant-time compared (503 unset / 401 wrong), mirroring the two shipped internal routers; secret never logged; token is a short-lived scoped JWT.
+D. Cost: ✅ — dispatch itself is free; the agent's provider minutes meter via the existing loop; the `voice_ai_configured` gate means no accidental spend when keys are absent.
+E. Errors/obs: ✅ — capability fail-soft (`dispatched:false`+note) rather than 5xx; `agent.dispatched` event emitted.
+F. Performance: ✅ — one token mint + a background task; the request returns immediately.
+G. Error handling (focus): ✅ — auth gate + capability gates before any launch; the launcher asserts its required keys.
+H. UI/AA: n/a — internal endpoint.
+I. Regressions (focus): ✅ — `/start` delegates to the extracted launcher (full voice suite green); additive endpoint + models; no schema/env change.
+J. Quality/docs: ✅ — docstrings on the endpoint + the shared launcher + the room-sharing rationale; this log.
+K. Build/CI: ✅ — pytest + ruff + pyright green locally; CI runs the voice job on 3.12.
+
+**Status — widget WEB-call dispatch COMPLETE end-to-end (gated).** api seam (#185) + voice endpoint both built + tested. Going live = `VOICE_SERVICE_URL`+secret (LiveKit already local). Remaining Bucket-1 offline seams: the two PSTN worker dispatches (need the funded-number `HttpDialer` + a voice PSTN `/dial` endpoint) — larger, carrier-gated.
