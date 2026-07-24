@@ -24,7 +24,11 @@ dev = [
     "pytest>=8.3.0",
     "pytest-asyncio>=0.24.0",
     "httpx>=0.28.0",
-    "ruff>=0.8.0",
+    # Pinned exactly (CLAUDE.md §4): ruff 0.16.0 stabilised new rules (PYI034/BLE001/RUF022/…)
+    # into its DEFAULT set, which flags previously-clean code. The floor `>=0.8.0` let CI drift
+    # onto 0.16 and go red on untouched voice files. 0.15.x is the last default-set the code was
+    # written against (0 findings). Bump deliberately when adopting the newer rules.
+    "ruff==0.15.0",
     "pyright>=1.1.390",
 ]
 
