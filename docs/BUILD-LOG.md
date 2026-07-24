@@ -4738,3 +4738,29 @@ K. Build/CI: ✅ — typecheck + biome green; the DB suites verified locally (Do
 **Status — settings cross-suite race CLOSED.** All six shared-tenant settings perpetrators (`disclosure`, `slack`, `vault`, `compliance`, `residency`, `whitelabel`, `reseller-dashboard`) are resolved; no known shared-`settings` teardown clobber remains.
 
 **Post-merge verification — full API suite, 4× green (2026-07-23).** After PR #180 merged to `main` (`e491c37`), brought up local Docker (Postgres+Redis+LiveKit), `migrate:deploy` (63 migrations, current) + `db:seed`, and ran the **entire** `apps/api` vitest suite (not just the 7 settings suites) under vitest's default parallel file execution against live Postgres+RLS. **108 test files / 604 tests passed, four consecutive runs** — the previously-intermittent `disclosure` flake never reappeared. This is the end-to-end confirmation the settings-race deferral asked for: the whole suite (every prior settings-writer included) is stable in parallel. No code changed in this pass — verification + this log entry only.
+
+---
+
+### Web page-load audit + widget error-message fix — 2026-07-23 — ✅ DONE — ⚡ SONNET-tier
+
+**What & why.** Verified every web page actually opens/loads (not just that tests pass). Production `next build` compiled all **84 routes** (build success ⇒ every page structurally valid), then a headless-Chromium crawl — logged in as the seeded SUPER_ADMIN (`vq_token` cookie), visiting all 84 routes — confirmed **84/84 render with no 500, no uncaught client exception, no auth-loop**. Dynamic `[id]` routes were hit with a placeholder UUID; their `(cerr)` console lines are just the API's expected 404 for the non-existent id (graceful empty/not-found states, not crashes).
+
+**One real nit found + fixed.** For a non-existent/deleted agent id, the public widget (`/widget/[agentId]`) and the `web-call-widget` component showed the generic **"Something went wrong."** instead of the API's specific **"Resource not found."**. Root cause: the app-wide pattern re-throws as `throw new Error(messageFromError(data))`, so the caught value is a native `Error` whose `.message` is *already* the safe message — but `messageFromError` had no `Error` case, so `messageFromError(e)` in the `.catch` fell through to the fallback.
+
+- **Fix (`apps/web/lib/api-error.ts`):** added `if (value instanceof Error && value.message) return value.message;` before the fallback. One line; fixes **both** call sites (widget page + `web-call-widget.tsx:68`) consistently. No internal leak — thrown Errors carry only the safe `messageFromError(data)` text; native JS errors (TypeError/SyntaxError) carry generic browser text, no internals.
+- **Verified live:** rebuilt web (74/74 static pages) + `next start`; re-probed `/widget/<bad-uuid>` → now renders **"Resource not found."**, HTTP 200, zero uncaught errors.
+
+## Self-Audit — widget message fix (A–K)
+A. Correctness (focus): ✅ — live re-probe shows the specific API message; fallback preserved for genuinely-unknown values.
+B. Isolation: n/a — client-side error formatting, no data path.
+C. Security (focus): ✅ — no internal leak; only safe API messages or generic browser-error text ever surface.
+D. Cost: n/a.
+E. Errors/obs: ✅ — improves error-message fidelity on a public surface.
+F. Performance: n/a — one `instanceof` check.
+G. Error handling (focus): ✅ — the whole change; graceful specific messaging, safe fallback intact.
+H. UI/AA: ✅ — widget error `<p>` styling unchanged; text just more specific.
+I. Regressions (focus): ✅ — blast radius audited (12 `messageFromError` usages): the two `.catch(messageFromError(e))` sites now correct; all others pass API payloads (unchanged) or `throw` with it (unchanged). web typecheck + biome + build green; 84/84 page load unaffected.
+J. Quality/docs: ✅ — doc comment on the new `Error` case; this BUILD-LOG entry.
+K. Build/CI: ✅ — web typecheck + biome clean; production build green (74/74 static pages).
+
+**Status.** Web app fully audited — every page loads; the one messaging nit is fixed + verified. Web has no unit-test runner (Playwright-only), so the fix was verified by live re-probe rather than a vitest unit.
