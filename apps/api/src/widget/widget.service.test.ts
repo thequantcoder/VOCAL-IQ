@@ -2,6 +2,11 @@ import { isAppError } from '@vocaliq/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaService } from '../db/prisma.service';
 import { RateLimiter } from './rate-limiter';
+import {
+  PendingVoiceDispatcher,
+  type VoiceDispatchRequest,
+  type VoiceDispatcher,
+} from './voice-dispatcher';
 import { type TokenMinter, WidgetService } from './widget.service';
 
 /**
@@ -91,6 +96,32 @@ describe('WidgetService.createSession', () => {
     await expect(s.createSession(AGENT_PUB, '9.9.9.9')).rejects.toSatisfy(
       (e) => isAppError(e) && e.code === 'RATE_LIMIT',
     );
+  });
+
+  it('dispatches the AI agent into the visitor’s room (same room, right agent/tenant)', async () => {
+    const dispatcher = new PendingVoiceDispatcher();
+    const s = new WidgetService(db, new RateLimiter(5, 60_000, () => 0), fakeMinter, dispatcher);
+    const session = await s.createSession(AGENT_PUB, '5.5.5.5');
+
+    expect(dispatcher.dispatched).toHaveLength(1);
+    const req = dispatcher.dispatched[0];
+    expect(req?.room).toBe(session.room); // agent joins the SAME room the visitor holds a token for
+    expect(req?.callId).toBe(session.callId);
+    expect(req?.agentId).toBe(AGENT_PUB);
+    expect(req?.tenantId).toBe(WT);
+  });
+
+  it('is fail-soft: a pending/unreachable dispatcher never blocks the session', async () => {
+    const throwing: VoiceDispatcher = {
+      dispatchAgent: async (_req: VoiceDispatchRequest) => {
+        throw new Error('voice service unreachable');
+      },
+    };
+    const s = new WidgetService(db, new RateLimiter(5, 60_000, () => 0), fakeMinter, throwing);
+    // The session (room + token) must still return even though dispatch failed.
+    const session = await s.createSession(AGENT_PUB, '6.6.6.6');
+    expect(session.room).toBe(`web-${session.callId}`);
+    expect(session.token).toContain(`visitor-${session.callId}`);
   });
 });
 
