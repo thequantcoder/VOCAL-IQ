@@ -1,6 +1,8 @@
-import { ValidationError } from '@vocaliq/shared';
+import { SubscriptionStatus, ValidationError } from '@vocaliq/shared';
 import { PrismaService } from '../db/prisma.service';
 import { mapEventToStatus, verifyStripeSignature } from './stripe-webhook';
+
+const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
 
 /**
  * Stripe webhook handler (self-audit focus C). Verifies the signature over the RAW body,
@@ -50,6 +52,20 @@ export class BillingWebhookService {
 
     if (await this.processed.seen(eventId)) return { status: 'duplicate', eventId };
 
+    // First paid checkout: the local Subscription row has no Stripe id yet, so the status-only
+    // events below can't find it. `checkout.session.completed` carries the tenant (client_reference_id
+    // / metadata) + the new Stripe subscription id, so we LINK them here before any status sync.
+    if (event.type === 'checkout.session.completed') {
+      const obj = event.data?.object ?? {};
+      const meta = (obj.metadata ?? {}) as Record<string, unknown>;
+      const tenantId = str(obj.client_reference_id) ?? str(meta.tenantId);
+      const subExternalId = str(obj.subscription);
+      const planId = str(meta.planId);
+      if (tenantId && subExternalId) await this.linkSubscription(tenantId, subExternalId, planId);
+      await this.processed.mark(eventId);
+      return { status: 'linked', eventId };
+    }
+
     const status = mapEventToStatus(event.type);
     if (status) {
       const obj = event.data?.object ?? {};
@@ -63,5 +79,43 @@ export class BillingWebhookService {
 
     await this.processed.mark(eventId);
     return { status: status ?? 'ignored', eventId };
+  }
+
+  /**
+   * Link the tenant's subscription to the freshly-created Stripe subscription. Updates the
+   * tenant's latest row (e.g. the TRIALING free-plan seed) to the paid plan + ACTIVE, or
+   * creates one when none exists. Cross-tenant (webhook), so the admin client is used.
+   */
+  private async linkSubscription(
+    tenantId: string,
+    externalId: string,
+    planId?: string,
+  ): Promise<void> {
+    const existing = await this.db.admin.subscription.findFirst({
+      where: { tenantId },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    });
+    if (existing) {
+      await this.db.admin.subscription.update({
+        where: { id: existing.id },
+        data: {
+          externalId,
+          processor: 'stripe',
+          status: SubscriptionStatus.ACTIVE,
+          ...(planId ? { planId } : {}),
+        },
+      });
+    } else if (planId) {
+      await this.db.admin.subscription.create({
+        data: {
+          tenantId,
+          planId,
+          externalId,
+          processor: 'stripe',
+          status: SubscriptionStatus.ACTIVE,
+        },
+      });
+    }
   }
 }

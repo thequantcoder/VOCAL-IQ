@@ -25,7 +25,8 @@ import { EntitlementsService } from './billing/entitlements.service';
 import { OutcomeBillingService } from './billing/outcome-billing.service';
 import { PlanBuilderService } from './billing/plan-builder.service';
 import { PlansService } from './billing/plans.service';
-import { PendingBillingProcessor } from './billing/processor';
+import { type BillingProcessor, PendingBillingProcessor } from './billing/processor';
+import { StripeBillingProcessor } from './billing/stripe-processor';
 import { BillingWebhookService } from './billing/webhook.service';
 import {
   BiometricsService,
@@ -428,7 +429,28 @@ export function createServices() {
 
   const plans = new PlansService(db);
   const billingWebhook = new BillingWebhookService(db);
-  const processor = new PendingBillingProcessor();
+  // Live Stripe billing swaps in automatically once STRIPE_SECRET_KEY is set; until then the
+  // gated PendingBillingProcessor keeps the app + billing logic fully usable (no live actions).
+  const stripeSecret = process.env.STRIPE_SECRET_KEY;
+  const processor: BillingProcessor = stripeSecret
+    ? new StripeBillingProcessor(
+        {
+          secretKey: stripeSecret,
+          ...(process.env.STRIPE_USAGE_METER_EVENT
+            ? { meterEventName: process.env.STRIPE_USAGE_METER_EVENT }
+            : {}),
+        },
+        {
+          resolveCheckoutContext: async (req) => {
+            const plan = await db.admin.plan.findUnique({
+              where: { id: req.planId },
+              select: { stripePriceId: true },
+            });
+            return { stripePriceId: plan?.stripePriceId ?? null };
+          },
+        },
+      )
+    : new PendingBillingProcessor();
   const planBuilder = new PlanBuilderService(db, processor);
 
   const widget = new WidgetService(db);

@@ -151,4 +151,29 @@ describe('BillingWebhookService', () => {
       (e) => isAppError(e) && e.code === 'VALIDATION',
     );
   });
+
+  it('links a fresh Stripe subscription to the tenant on checkout.session.completed', async () => {
+    // Clean slate: this is the FIRST paid checkout — the tenant has no linked subscription yet.
+    await db.admin.subscription.deleteMany({ where: { tenantId: BT } });
+    const body = JSON.stringify({
+      id: 'evt_checkout_1',
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          client_reference_id: BT,
+          subscription: 'sub_from_checkout',
+          metadata: { tenantId: BT, planId: PLAN_PRO },
+        },
+      },
+    });
+
+    const res = await service.handle(body, signed(body), secret);
+    expect(res.status).toBe('linked');
+
+    const sub = await db.admin.subscription.findFirst({ where: { tenantId: BT } });
+    expect(sub?.externalId).toBe('sub_from_checkout');
+    expect(sub?.status).toBe('ACTIVE');
+    expect(sub?.planId).toBe(PLAN_PRO);
+    expect(sub?.processor).toBe('stripe');
+  });
 });
