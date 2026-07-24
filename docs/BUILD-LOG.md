@@ -4764,3 +4764,38 @@ J. Quality/docs: ✅ — doc comment on the new `Error` case; this BUILD-LOG ent
 K. Build/CI: ✅ — web typecheck + biome clean; production build green (74/74 static pages).
 
 **Status.** Web app fully audited — every page loads; the one messaging nit is fixed + verified. Web has no unit-test runner (Playwright-only), so the fix was verified by live re-probe rather than a vitest unit.
+
+---
+
+### Stripe go-live — live BillingProcessor implementation (Day 15/56 closure) — 2026-07-23 — ✅ CODE DONE (keys-gated) — 🧠 OPUS
+
+**What & why.** "Make Stripe live." Audit found the billing module was fully built EXCEPT the actual outbound Stripe calls: only the gated `PendingBillingProcessor` (throws "not configured") was bound — the webhook signature-verify, event→status map, webhook route, checkout route, and all billing logic (plans/entitlements/proration/dunning/usage) already shipped. Built the missing live half so Stripe activates the moment `STRIPE_SECRET_KEY` is set. Read the official Stripe API docs first (§15): Checkout Sessions, Products/Prices, and the current **Billing Meter Events** API (the legacy `usage_records` API is removed in Stripe 2025-03-31+).
+
+**Built.**
+- **`apps/api/src/billing/stripe-processor.ts`** — `StripeBillingProcessor implements BillingProcessor`, raw form-encoded `fetch` to `api.stripe.com` (no SDK, matching the hand-rolled offline-testable webhook verifier). Bearer auth; secret never logged; non-2xx → typed `BillingError` carrying Stripe's safe `error.message`.
+  - `createCheckoutSession` — subscription-mode Checkout; `client_reference_id`=tenantId + `metadata`/`subscription_data.metadata` carry tenant+plan so the webhook can link back; refuses (BillingError) if the plan isn't synced (no price). Returns Stripe's hosted `url`.
+  - `syncPlan` — create/update Product, then mint a fresh recurring **monthly** Price (Stripe prices are immutable), returns both ids (persisted onto the Plan by the existing `PlanBuilderService.sync`).
+  - `reportUsage` — current **Billing Meter Events** API, keyed by the customer resolved from the subscription; idempotent per subscription+period; safe no-op when no meter is configured (flat monthly plans don't need it).
+  - A composition-provided `CheckoutContextResolver` maps `planId → Plan.stripePriceId`, keeping the processor Prisma-free + unit-testable.
+- **`webhook.service.ts`** — handle `checkout.session.completed`: **link** the fresh Stripe subscription to the tenant (by `client_reference_id`/metadata) — flips the tenant's row (e.g. the TRIALING free-plan seed) to the paid plan + ACTIVE, or creates one. Without this the first paid checkout never linked (the status-only events can't find a row with no external id yet). Existing invoice/subscription status transitions unchanged.
+- **`composition.ts`** — bind `StripeBillingProcessor` when `STRIPE_SECRET_KEY` is set (with an optional `STRIPE_USAGE_METER_EVENT`), else `PendingBillingProcessor`. Zero behaviour change while keys are unset.
+- **Tests** — `stripe-processor.test.ts` (7, stubbed `fetch`: checkout form+url, no-price refusal, product+price sync create/update, meter-event usage, non-2xx→BillingError) + a webhook `checkout.session.completed` linkage test on the dedicated billing tenant. No schema change (existing `Plan.stripePriceId`/`Subscription.externalId` fields suffice → no migration). `.env.example` documents the go-live vars + the Stripe-CLI webhook step.
+
+**Checks.** api typecheck ✅ · biome clean on all 5 touched files ✅ · **my two test files green in isolation: 14/14** (incl. the new checkout-linkage) ✅ · api build green (4/4). Full parallel suite shows **2 environment-induced TIMEOUT flakes** (`benchmarking` + `experiments` — both billing-unrelated, both pass in isolation, both hit the 20s wall only under full-parallel load on this loaded machine after a 27h+ session; `experiments` alone runs ~18s). Not a regression — the Stripe code can't affect their query speed; CI (fresh runner) validates the full DB suite.
+
+**Still gated on the admin (live test-mode verification).** `STRIPE_SECRET_KEY` (sk_test_…), `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (pk_test_…), and `STRIPE_WEBHOOK_SECRET` (from `stripe listen --forward-to localhost:3001/billing/webhook`) are all EMPTY in `.env`. Once set (test mode first): sync a plan → checkout → complete a test card → webhook flips the subscription ACTIVE. Then flip to sk_live. (memory: stripe-live-test-pending)
+
+## Self-Audit — Stripe live processor (A–K)
+A. Correctness (focus): ✅ — endpoints/params verified against live Stripe docs; checkout carries tenant+plan; webhook links the fresh subscription; unit tests assert exact form encoding + the linkage.
+B. Isolation (focus): ✅ — checkout is tenant-scoped (route under auth+tenant middleware); the webhook is cross-tenant BY DESIGN (admin client) but links strictly by the tenant carried in `client_reference_id`/metadata; the resolver reads only the requested plan.
+C. Security (focus): ✅ — secret sent as Bearer, NEVER logged; non-2xx surfaces only Stripe's safe `error.message`; webhook still signature-verified over the raw body (unchanged) + idempotent; checkout behind `CONFIG_WRITERS`.
+D. Cost: ✅ — this IS the billing/cost path; usage metering uses the current Meter Events API (idempotent), no unmetered path added.
+E. Errors/obs: ✅ — typed `BillingError`; checkout refuses cleanly when a plan isn't synced; reportUsage no-ops safely when unconfigured.
+F. Performance: ✅ — one Stripe call per checkout/sync; reportUsage adds one subscription GET only when a meter is configured.
+G. Error handling (focus): ✅ — every non-2xx throws a typed error with a safe message; missing price / missing customer handled explicitly.
+H. UI/AA: n/a — server-side billing; the existing checkout page/redirect is unchanged.
+I. Regressions (focus): ✅ — additive: new file + optional constructor wiring; composition falls back to Pending when unkeyed (current runtime unaffected — keys empty); existing billing tests still green; the webhook change is a new branch + preserves all prior transitions (existing webhook test still passes). Full-suite failures are unrelated timeout flakes (see Checks).
+J. Quality/docs: ✅ — doc comments on every method + the Meter-Events-vs-legacy rationale; `.env.example` go-live notes; this log + features catalog.
+K. Build/CI: ✅ — typecheck + biome + api build green; billing/stripe tests green in isolation; CI runs the full DB suite on a fresh runner.
+
+**Status — Stripe live CODE COMPLETE, keys-gated.** The live processor + webhook linkage are built, unit-proven, and auto-bind on `STRIPE_SECRET_KEY`. Only the admin's test-mode keys + `stripe listen` remain for the end-to-end live verification.

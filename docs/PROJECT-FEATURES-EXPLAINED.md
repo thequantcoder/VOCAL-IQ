@@ -146,6 +146,7 @@
 |---|---|---|
 | cost module | Har call ka STT+LLM+TTS+telephony cost tenant pe attribute. | 🏠 Native |
 | billing module | Subscriptions, plan tiers, invoices. | 🔌 3rd-party (Stripe, gated) |
+| Live Stripe processor | `StripeBillingProcessor` — hosted subscription Checkout, plan→product/price sync, metered usage (current Meter Events API), + webhook links the fresh Stripe subscription to the tenant. Raw HTTP (no SDK). Auto-binds jab `STRIPE_SECRET_KEY` set ho; warna gated Pending. | 🔌 3rd-party (Stripe) |
 | payments | Wallet top-up, payment flows. | 🔌 3rd-party (Stripe) |
 | wallet module | Prepaid credits balance (managed minutes). | 🏠 Native |
 | Promo/bonus credits (parity) | Wallet mein promo/bonus credits — admin grants + redeemable promo codes; paid balance se pehle spend, expire ho sakte hain. | 🏠 Native |
