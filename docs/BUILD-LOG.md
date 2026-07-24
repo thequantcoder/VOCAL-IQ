@@ -4859,3 +4859,33 @@ J. Quality/docs: ✅ — docstrings on the endpoint + the shared launcher + the 
 K. Build/CI: ✅ — pytest + ruff + pyright green locally; CI runs the voice job on 3.12.
 
 **Status — widget WEB-call dispatch COMPLETE end-to-end (gated).** api seam (#185) + voice endpoint both built + tested. Going live = `VOICE_SERVICE_URL`+secret (LiveKit already local). Remaining Bucket-1 offline seams: the two PSTN worker dispatches (need the funded-number `HttpDialer` + a voice PSTN `/dial` endpoint) — larger, carrier-gated.
+
+**Widget WEB-call — LIVE VERIFIED (control-plane, zero cost) 2026-07-24.** Brought the voice service up (uvicorn :8000, `VOICE_INTERNAL_SECRET` set, AI keys forced OFF for $0) + the api rebuilt with `VOICE_SERVICE_URL`+secret. Direct `POST /calls/dispatch`: 401 (no/wrong secret), `200 {dispatched:false, note}` (correct secret, AI off — capability gate). End-to-end `POST /widget/session` → api returned a valid session (room `web-<callId>` + a LiveKit token whose JWT `video.room` matches) and the voice log showed `POST /calls/dispatch 200 OK` — the api's `HttpVoiceDispatcher` reached the voice service. The whole browser→api→voice control hop is proven live; the only unproven leg is the agent audibly talking (needs AI keys ON + a browser+mic in the room = real provider minutes — the paid manual step).
+
+---
+
+### Go-live seam #2a — api `HttpDialer` (live PSTN dispatch) — 2026-07-24 — ✅ DONE (gated) — 🧠 OPUS
+
+**What & why.** First increment of the PSTN worker-seam track. Unlike the widget (WEB = LiveKit-only, fully offline-verifiable), PSTN is **carrier-gated**: the outbound chain is worker → `OutboundService` (gates + Call row) → `Dialer` → voice `/calls/dial` → carrier, and several links are still stubs. This ships the api's live `Dialer` implementation — the reusable PSTN dispatch seam — so the api's outbound path (already complete up to the `Dialer`) becomes config-swap-ready, exactly mirroring the widget's `HttpVoiceDispatcher`.
+
+**Built.**
+- `apps/api/src/calls/dialer.ts` — `HttpDialer implements Dialer`: POSTs the vetted call (`call_id/tenant_id/agent_id/to/from?/flow_version_id?`) to the voice service `POST /calls/dial` with `X-Internal-Secret`. Gated + **fail-soft** (non-2xx / timeout / unreachable is swallowed → the Call stays QUEUED for the reconciliation sweep, so `placeCall` never crashes on a voice hiccup); never logs the secret. Mirrors `HttpVoiceDispatcher` / `HttpWaMediaControl`.
+- `composition.ts` — bind `HttpDialer` when `VOICE_SERVICE_URL` + `VOICE_INTERNAL_SECRET` are set, else `PendingDialer` (records intent, no-ops the PSTN leg). Inert while unset — current runtime unaffected.
+- `dialer.test.ts` — 3 unit tests (stubbed fetch): posts the right endpoint + body + secret; fail-soft on a non-2xx; fail-soft on an unreachable voice service. `OutboundService`/`InstantDial` suites still green (they inject their own FakeDialer).
+
+**Remaining PSTN go-live pieces (carrier-gated — NOT buildable/verifiable offline).** (1) voice `POST /calls/dial` — dial the number (existing Day-10 Twilio telephony) + bridge the answered leg into the loop (a real Twilio↔LiveKit media bridge — needs a funded number to build+verify); (2) the two worker seams (`campaign-scheduler` / `callback-dialer` `dial`) → route through `OutboundService` (all DNC/consent/concurrency gates + metering); (3) a funded carrier number + tunnel for the live smoke. These need the number to be meaningful, so they wait (memory: twilio-live-test-pending).
+
+## Self-Audit — api HttpDialer (A–K)
+A. Correctness: ✅ — posts the documented voice contract; unit-asserted body + endpoint + secret.
+B. Isolation: ✅ — the dispatch carries the resolved tenant/call; `OutboundService` already created the Call under RLS + ran the DNC/consent/concurrency gates BEFORE the dial (unchanged).
+C. Security (focus): ✅ — `X-Internal-Secret` to the internal voice URL (never logged); gated when unset; no secret in code/logs.
+D. Cost: ✅ — no new spend on the api side; the carrier leg meters via the existing disposition path (`recordDisposition` cost breakdown); no unmetered path added.
+E. Errors/obs: ✅ — fail-soft with an `onError` sink (message only); a stuck QUEUED call is the reconciliation sweep's job.
+F. Performance: ✅ — one POST with an 8s abort timeout.
+G. Error handling (focus): ✅ — non-2xx + throw both swallowed; `placeCall` never fails on a voice hiccup.
+H. UI/AA: n/a — backend seam.
+I. Regressions (focus): ✅ — additive (new class + a gated composition branch); `PendingDialer` stays the default while the voice env is unset; api typecheck + biome clean; dialer + outbound + instant-dial suites green (a lone flaky timeout re-ran clean — the local machine also runs the verify api+voice).
+J. Quality/docs: ✅ — doc comments spell out the gate + fail-soft + the carrier-gated remainder; this log.
+K. Build/CI: ✅ — typecheck + biome + the new unit tests green; CI validates the DB suites.
+
+**Status — api PSTN dial seam DONE (gated).** The api's `Dialer` now has its live impl; going live = the voice `/calls/dial` + a funded number. This is as far as the PSTN track goes offline — the rest is genuinely carrier-gated.
