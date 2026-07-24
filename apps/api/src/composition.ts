@@ -34,7 +34,7 @@ import {
 } from './biometrics/biometrics.service';
 import { CallbacksService } from './callbacks/callbacks.service';
 import { CallsReadService } from './calls/calls-read.service';
-import { PendingDialer } from './calls/dialer';
+import { type Dialer, HttpDialer, PendingDialer } from './calls/dialer';
 import { InstantDialService } from './calls/instant-dial.service';
 import { OutboundService } from './calls/outbound.service';
 import { CampaignsService } from './campaigns/campaigns.service';
@@ -190,12 +190,19 @@ export function createServices() {
     }
     await Promise.allSettled(tasks);
   };
-  const outbound = new OutboundService(
-    db,
-    new PendingDialer(),
-    (tid) => abuse.assess(tid),
-    emitDomainEvent,
-  );
+  // Live PSTN dial → the voice service's internal dial endpoint. Gated + fail-soft like the
+  // widget/WA/ME hops: wired only when the voice URL + shared secret are set, else PendingDialer
+  // (records intent, no-ops the PSTN leg). The voice /calls/dial + a funded number are the
+  // remaining carrier-gated go-live pieces; the api's outbound gates already ship.
+  const dialer: Dialer =
+    process.env.VOICE_SERVICE_URL && process.env.VOICE_INTERNAL_SECRET
+      ? new HttpDialer({
+          voiceServiceUrl: process.env.VOICE_SERVICE_URL,
+          internalSecret: process.env.VOICE_INTERNAL_SECRET,
+          onError: (m) => console.warn(`[dialer] ${m}`),
+        })
+      : new PendingDialer();
+  const outbound = new OutboundService(db, dialer, (tid) => abuse.assess(tid), emitDomainEvent);
   const instantDial = new InstantDialService(db, outbound, emitDomainEvent);
 
   const cost = new CostService(db);
