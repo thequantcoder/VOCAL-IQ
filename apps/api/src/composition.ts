@@ -139,6 +139,11 @@ import { WhatsAppRoutingService } from './whatsapp-calling/whatsapp-routing.serv
 import { WhatsAppSipService } from './whatsapp-calling/whatsapp-sip.service';
 import { buildCloudflareClient } from './whitelabel/cloudflare';
 import { WhiteLabelService } from './whitelabel/whitelabel.service';
+import {
+  HttpVoiceDispatcher,
+  PendingVoiceDispatcher,
+  type VoiceDispatcher,
+} from './widget/voice-dispatcher';
 import { WidgetService } from './widget/widget.service';
 import { PendingWorkflowQueue } from './workflows/workflow-queue';
 import { WorkflowsService } from './workflows/workflows.service';
@@ -453,7 +458,17 @@ export function createServices() {
     : new PendingBillingProcessor();
   const planBuilder = new PlanBuilderService(db, processor);
 
-  const widget = new WidgetService(db);
+  // Widget WEB-call agent dispatch → voice service. Gated + fail-soft like the WA/ME media control:
+  // wired only when the voice URL + shared secret are set, else Pending (room/token still return).
+  const widgetDispatcher: VoiceDispatcher =
+    process.env.VOICE_SERVICE_URL && process.env.VOICE_INTERNAL_SECRET
+      ? new HttpVoiceDispatcher({
+          voiceServiceUrl: process.env.VOICE_SERVICE_URL,
+          internalSecret: process.env.VOICE_INTERNAL_SECRET,
+          onError: (m) => console.warn(`[widget] ${m}`),
+        })
+      : new PendingVoiceDispatcher();
+  const widget = new WidgetService(db, undefined, undefined, widgetDispatcher);
 
   return {
     prisma,

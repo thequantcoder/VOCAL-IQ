@@ -2,6 +2,7 @@ import { LiveKitMedia } from '@vocaliq/provider-router';
 import { NotFoundError, ProviderError, RateLimitError } from '@vocaliq/shared';
 import { PrismaService } from '../db/prisma.service';
 import { RateLimiter } from './rate-limiter';
+import { PendingVoiceDispatcher, type VoiceDispatcher } from './voice-dispatcher';
 
 /**
  * Public web-call widget backend (Day 16). Visitors talk to a PUBLISHED agent over
@@ -43,15 +44,19 @@ const envMinter: TokenMinter = async (room, identity) => {
 export class WidgetService {
   private readonly limiter: RateLimiter;
   private readonly mint: TokenMinter;
+  private readonly dispatcher: VoiceDispatcher;
 
   constructor(
     private readonly db: PrismaService,
     limiter?: RateLimiter,
     minter?: TokenMinter,
+    dispatcher?: VoiceDispatcher,
   ) {
     // ≤5 new sessions per caller (ip+agent) per minute.
     this.limiter = limiter ?? new RateLimiter(5, 60_000);
     this.mint = minter ?? envMinter;
+    // Pending by default: records intent + no-ops until the voice deploy is wired (HttpVoiceDispatcher).
+    this.dispatcher = dispatcher ?? new PendingVoiceDispatcher();
   }
 
   /** Open a widget session: rate-limit → resolve a published agent → WEB Call + token. */
@@ -80,8 +85,20 @@ export class WidgetService {
 
     const room = `web-${call.id}`;
     const { token, serverUrl } = await this.mint(room, `visitor-${call.id}`);
-    // TODO(live): dispatch the voice agent worker to join `room` (reuse Day 9 run_agent);
-    // the transport is proven — this is the api→voice call, wired with the voice deploy.
+    // Put the AI agent into the visitor's room. Fail-soft at the boundary: the session (room +
+    // token) is already committed, so a pending/unreachable/buggy dispatcher must never roll it
+    // back — the browser still connects; the agent joins once the voice deploy is wired
+    // (HttpVoiceDispatcher, config-swap to live).
+    try {
+      await this.dispatcher.dispatchAgent({
+        tenantId: agent.tenantId,
+        callId: call.id,
+        agentId: agent.id,
+        room,
+      });
+    } catch {
+      // swallowed by design — never fail an already-valid session on a dispatch hiccup.
+    }
     return { callId: call.id, room, token, serverUrl, agentName: agent.name };
   }
 

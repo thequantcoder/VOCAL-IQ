@@ -4799,3 +4799,32 @@ J. Quality/docs: ✅ — doc comments on every method + the Meter-Events-vs-lega
 K. Build/CI: ✅ — typecheck + biome + api build green; billing/stripe tests green in isolation; CI runs the full DB suite on a fresh runner.
 
 **Status — Stripe live CODE COMPLETE, keys-gated.** The live processor + webhook linkage are built, unit-proven, and auto-bind on `STRIPE_SECRET_KEY`. Only the admin's test-mode keys + `stripe listen` remain for the end-to-end live verification.
+
+---
+
+### Go-live seam #1 — widget WEB-call agent dispatch (`VoiceDispatcher`) — 2026-07-24 — ✅ DONE (gated, api side) — 🧠 OPUS
+
+**What & why.** Offline-hardening pass on Bucket-1 go-live seams (no external creds). Closes the first of the 3 `TODO(live)` call/dispatch seams: the web widget (`WidgetService.createSession`) minted the visitor's LiveKit token + opened a WEB Call but never told the voice service to put the AI agent into the room (bare TODO). The WEB channel is **LiveKit-only** (no carrier/paid creds), so this seam is genuinely completable + testable offline; the two PSTN worker seams (campaign-scheduler / callback-dialer) need the funded-number chain (api `HttpDialer` + a voice PSTN `/dial` endpoint — all still `Pending`) and are a later increment.
+
+**Built (api side — mirrors the proven `HttpWaMediaControl`/`HttpMeMediaControl` pattern).**
+- `apps/api/src/widget/voice-dispatcher.ts` — `VoiceDispatcher` seam: `PendingVoiceDispatcher` (records intent + no-ops, default) + `HttpVoiceDispatcher` (POSTs `/calls/dispatch` to the voice service with `X-Internal-Secret`, gated + **fail-soft**: any non-2xx/timeout/unreachable is swallowed so the session — already valid — never breaks; secret never logged).
+- `WidgetService.createSession` — after minting, dispatches the agent into the **visitor's** room (`web-<callId>`), wrapped in a boundary try/catch (the Call row + token are already committed, so a dispatch hiccup must never roll the session back). New optional 4th ctor param (default Pending) → existing call sites unaffected.
+- `composition.ts` — binds `HttpVoiceDispatcher` when `VOICE_SERVICE_URL` + `VOICE_INTERNAL_SECRET` are set, else `PendingVoiceDispatcher` (same gate as WA/ME media control). No behaviour change while unset.
+- Tests — 2 new (7/7 in the widget suite): the agent is dispatched into the SAME room with the right callId/agentId/tenantId; and a throwing dispatcher never blocks the session (fail-soft).
+
+**Going live = config swap.** Set `VOICE_SERVICE_URL` + `VOICE_INTERNAL_SECRET` → the agent joins. The matching voice-side `POST /calls/dispatch` (join an existing room + run the loop; extracts the existing `_dispatch_agent`) is **increment #2** (Python). The agent actually talking still consumes Deepgram/OpenAI/ElevenLabs minutes (`voice_ai_configured` gate) — real cost, so the live E2E is the verification step.
+
+## Self-Audit — widget VoiceDispatcher (A–K)
+A. Correctness (focus): ✅ — dispatch targets the visitor's exact room (`web-<callId>`), asserted by test; contract mirrors the two shipped media-control seams.
+B. Isolation (focus): ✅ — dispatch carries the resolved `tenantId`/`agentId`; no cross-tenant read; the Call row is created under `withTenant` (unchanged).
+C. Security (focus): ✅ — `X-Internal-Secret` auth to the internal voice URL (never logged); the public widget route stays unauthenticated but gated by published-agent + rate-limit (unchanged); no secret in code/logs.
+D. Cost: ✅ — no new spend on the api side; the (future) live agent's provider minutes meter via the existing loop path; documented that `voice_ai_configured` gates real cost.
+E. Errors/obs: ✅ — fail-soft with an `onError` log sink (message only, no secret); Pending records intent.
+F. Performance: ✅ — one fire-and-guard HTTP POST with an 8s abort timeout; never blocks the returned session.
+G. Error handling (focus): ✅ — boundary try/catch in `createSession` + internal catch in `HttpVoiceDispatcher` (defense-in-depth); a dispatch failure never fails an already-committed session.
+H. UI/AA: n/a — backend seam; the widget page/UX is unchanged.
+I. Regressions (focus): ✅ — additive; new optional ctor param (default Pending) keeps all call sites working; composition inert without the voice env; api typecheck + biome clean; widget suite 7/7 in isolation.
+J. Quality/docs: ✅ — doc comments on the seam + the config-swap contract + the room-sharing rationale; this log + the go-live note for increment #2.
+K. Build/CI: ✅ — typecheck + biome green; widget tests green in isolation. (Full parallel suite still shows the unrelated `benchmarking`/`experiments` timeout flakes on this loaded machine — CI validates on a fresh runner.)
+
+**Status — widget dispatch seam DONE (api, gated).** Next go-live increments: voice `POST /calls/dispatch` (make the widget agent actually join, offline-runnable with LiveKit + AI keys), then the two PSTN worker seams (need the funded-number `HttpDialer` chain).
