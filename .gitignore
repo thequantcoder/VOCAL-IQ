@@ -58,3 +58,6 @@ pnpm-debug.log*
 
 # Build kit archive (kept locally, not in repo)
 VocalIQ-Build-Kit.zip
+
+# Word/Office lock files
+~$*
