@@ -20,6 +20,10 @@ export const LLM_PRICES: Readonly<Record<string, ModelPrice>> = {
   // OpenAI (re-verify periodically)
   'gpt-4o': { inputPerM: 2.5, outputPerM: 10 },
   'gpt-4o-mini': { inputPerM: 0.15, outputPerM: 0.6 },
+  // Sarvam AI — India-first LLM (22 Indian languages, OpenAI-compatible). INR→USD @ ~₹84/$.
+  // Prefix-matched, so `sarvam-30b-16k` / `sarvam-105b-32k` resolve to the base rate.
+  'sarvam-30b': { inputPerM: 0.03, outputPerM: 0.12 },
+  'sarvam-105b': { inputPerM: 0.048, outputPerM: 0.19 },
 };
 
 /** USD per 1M tokens for embedding models. */

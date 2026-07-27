@@ -71,6 +71,9 @@ export const Provider = {
   WHATSAPP: 'WHATSAPP',
   MESSENGER: 'MESSENGER',
   LIVEKIT: 'LIVEKIT',
+  // India-first: Sarvam AI covers STT (Saaras) + TTS (Bulbul) + LLM (sarvam-30b/105b,
+  // OpenAI-compatible) + translation for Hindi + 22 Indian languages (India roadmap).
+  SARVAM: 'SARVAM',
 } as const;
 export type Provider = (typeof Provider)[keyof typeof Provider];
 

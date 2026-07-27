@@ -33,6 +33,7 @@ export {
   type MeSession,
 } from './adapters/messenger-calling.js';
 export { OpenRouterLLM } from './adapters/openrouter.js';
+export { SarvamLLM } from './adapters/sarvam-llm.js';
 export { LiveKitMedia } from './adapters/livekit.js';
 
 // ── Typed message + completion contracts ──────────────────────────────────────
