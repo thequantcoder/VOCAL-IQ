@@ -140,6 +140,8 @@ def _run_agent_in_room(call_id: str, agent_token: str, config: LoopConfig) -> No
             stt_key=settings.deepgram_api_key,
             llm_key=settings.openai_api_key,
             tts_key=settings.elevenlabs_api_key,
+            # India roadmap: Indic-language calls route to Sarvam when this is set (else default stack).
+            sarvam_key=settings.sarvam_api_key,
         )
     )
     _agent_tasks[call_id] = task

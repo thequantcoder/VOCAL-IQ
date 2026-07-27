@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     deepgram_api_key: str | None = None
     openai_api_key: str | None = None
     elevenlabs_api_key: str | None = None
+    # Sarvam AI — India-first STT (Saaras) + LLM (sarvam-30b) + TTS (Bulbul) for Hindi + 22 Indian
+    # languages. One key covers all three. When set, Indic-language calls route to Sarvam end-to-end
+    # (else the default Deepgram/OpenAI/ElevenLabs stack). India roadmap Phase 1.
+    sarvam_api_key: str | None = None
 
     # Shared secret for the internal api→voice control hop (WhatsApp media, WAC-03). When unset the
     # internal endpoints are DISABLED (gated) rather than open. Never public.

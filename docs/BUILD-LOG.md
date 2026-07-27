@@ -4922,3 +4922,37 @@ J. Quality/docs: ✅ — doc comment on the adapter (India context, English-weak
 K. Build/CI: ✅ — typecheck + biome + tests green locally; migration is clean append-only; CI validates on a fresh DB.
 
 **Status — Sarvam LLM live (keys-gated).** Set `SARVAM_API_KEY` + route Indic models to `sarvam-30b`/`sarvam-105b` → Indic reasoning at ~1/100th GPT cost. **Next (increment 2): Sarvam STT (Saaras, WebSocket) + TTS (Bulbul, REST stream) adapters; increment 3: Python voice-service Pipecat Sarvam services (the real-time win).**
+
+---
+
+### India Phase 1 (increment 2/3) — Python voice-service Sarvam STT+LLM+TTS + Indic routing — 2026-07-27 — ✅ DONE (keys-gated) — 🧠 OPUS
+
+**What & why.** The real-time win: an Indian-language call now routes **end-to-end to Sarvam** in the voice loop (Saaras STT → sarvam-30b LLM → Bulbul TTS) — best Hindi/regional accuracy at a fraction of the cost — gated behind `SARVAM_API_KEY` (unset ⇒ the default Deepgram/OpenAI/ElevenLabs stack, zero change). The voice service is NOT Pipecat; it has its own provider Protocols + a `ConversationLoop`, so Sarvam slots in as three new Python adapters + a single selection seam. API shapes were fetched from Sarvam's docs (§15). Sarvam docs confirmed: STT `wss://api.sarvam.ai/speech-to-text/ws`, TTS `POST /text-to-speech` → base64 WAV in `audios[]`, LLM OpenAI-compatible `/v1/chat/completions`.
+
+**Built (apps/voice).**
+- `providers/adapters/sarvam_llm.py` — OpenAI-compatible over httpx (mirrors `openai.py`, base `api.sarvam.ai/v1`), default `sarvam-30b`; `complete`/`stream`.
+- `providers/adapters/sarvam_tts.py` — Bulbul REST; decodes `audios[0]` base64 + **strips the WAV header** so the media sink gets the same raw PCM16 @16 kHz as ElevenLabs. Target language baked in at construction (satisfies the language-less `TTSProvider` contract without changing it). `speed`→`pace`.
+- `providers/adapters/sarvam_stt.py` — Saaras WebSocket (mirrors `deepgram.py`: websockets + pump + certifi SSL); parses `{"type":"data","data":{transcript,is_final}}`, ignores VAD `events`. The raw-PCM **frame encoding token carries a `[CONFIRM live @ SARVAM_API_KEY]` note** (docs don't pin it — the one live-verify item; whole path is gated).
+- `providers/select.py` — `is_indic_language` (22 scheduled langs) + `build_stack(...)`: the ONE place the loop picks Sarvam (Indic + keyed) vs the default stack, returning the trio + the Sarvam model ids to request/meter.
+- `providers/pricing.py` — `sarvam-30b`/`105b` (LLM), `saaras:v3` (STT $0.006/min), `bulbul:v3`/`v2` (TTS $0.0036/1k) — lock-step with the TS table.
+- `loop/livekit_agent.run_agent` — new `sarvam_key` param → `build_stack`; when Sarvam, overrides `config.model`/`stt_model`/`tts_model` so the loop requests + meters the right models. `calls/router.py _run_agent_in_room` passes `settings.sarvam_api_key`. `config.py` adds `sarvam_api_key`.
+- `tests/test_sarvam_providers.py` — 8 tests: `is_indic_language`, `normalize_language`, WAV-strip, `build_stack` routing (Indic+key→Sarvam with model ids; no key→default; English→default even keyed), pricing tables, adapter provider/model ids.
+
+**Scope note.** The **TS `provider-router` STT/TTS adapters (roadmap increment 2) are intentionally NOT built** — the api `Router` wires only LLM; real-time STT/TTS run in the Python voice service, so a TS `SarvamSTT`/`SarvamTTS` would be dead code. TS LLM (Sarvam) shipped in the prior increment. The two **WhatsApp/Messenger WebRTC bridges** build their own `LoopConfig` + take keys via constructor; wiring Sarvam there (same `build_stack`) is a follow-up (those media paths are Meta-creds-gated anyway).
+
+**Checks.** ruff clean (`ruff check .`, pinned 0.15.0) · pyright 0 errors on all new files (the lone `livekit_agent.py` "Import livekit could not be resolved" is a pre-existing local-venv-only resolution issue on an untouched line — `livekit>=0.18.0` is a declared dep, CI 3.12 resolves it) · **full voice pytest 158 passed / 2 skipped** (+8 new, no regressions).
+
+## Self-Audit — Python voice Sarvam (A–K)
+A. Correctness (focus): ✅ — routing decision + WAV-strip + language-normalize + pricing all unit-tested; adapters follow the fetched Sarvam docs; the one unpinned wire detail (STT frame encoding) is flagged `[CONFIRM live]` not guessed-as-fact.
+B. Isolation: ✅ — per-call providers built from per-call config/keys; no cross-call/tenant state.
+C. Security: ✅ — key injected only, never logged; internal control endpoints unchanged.
+D. Cost (focus): ✅ — Sarvam STT/LLM/TTS priced in `pricing.py`; the loop meters seconds/tokens/chars exactly as for the default stack (golden rule #4). No unmetered path.
+E. Errors/obs: ✅ — typed `LLMError`/`TTSError`/`STTError`; a Sarvam failure surfaces like any provider error.
+F. Performance: ✅ — streaming LLM (SSE) + WS STT + chunked TTS; no extra buffering vs the default stack.
+G. Error handling: ✅ — gated (no key ⇒ default stack, so existing calls unaffected); English calls never route to Sarvam.
+H. UI/AA: n/a — voice backend.
+I. Regressions (focus): ✅ — additive + gated; `run_agent` default path byte-identical when `sarvam_key` unset; full voice suite 158 passed (incl. all `/calls` + WhatsApp/Messenger + emotion regressions); ruff/pyright clean.
+J. Quality/docs: ✅ — docstrings on every adapter + the selection seam + the `[CONFIRM live]` STT note; this log; scope note on the skipped TS + gated bridges.
+K. Build/CI: ✅ — ruff + pyright + full pytest green locally; CI runs voice on 3.12 with livekit resolved.
+
+**Status — India real-time voice FUNCTIONAL (keys-gated).** Set `SARVAM_API_KEY` → any Indic-language call (agent `language` ∈ 22 scheduled langs) runs Saaras+sarvam-30b+Bulbul end-to-end at ~$0.02–0.03/min; English stays on the default stack. Only live wire-confirmation (STT frame encoding) + the two gated Meta bridges remain. **Phase 1 functionally complete.**
