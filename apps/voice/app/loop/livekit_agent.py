@@ -19,9 +19,7 @@ from collections.abc import AsyncIterator
 from livekit import rtc
 
 from app.loop.engine import AudioSink, ConversationLoop, LoopConfig
-from app.providers.adapters.deepgram import DeepgramSTT
-from app.providers.adapters.elevenlabs import ElevenLabsTTS
-from app.providers.adapters.openai import OpenAILLM
+from app.providers.select import build_stack
 
 SAMPLE_RATE = 16_000
 NUM_CHANNELS = 1
@@ -112,9 +110,12 @@ async def run_agent(
     stt_key: str,
     llm_key: str,
     tts_key: str,
+    sarvam_key: str | None = None,
     audio_sink_factory: type[AudioSink] = LiveKitAudioSink,  # injectable for tests
 ) -> None:
-    """Join the room as the agent and run the conversation loop until disconnect."""
+    """Join the room as the agent and run the conversation loop until disconnect. India roadmap:
+    an Indic-language call routes end-to-end to Sarvam when `sarvam_key` is set (else the default
+    Deepgram/OpenAI/ElevenLabs stack)."""
     room = rtc.Room()
     caller = CallerAudio()
     reader_tasks: list[asyncio.Task[None]] = []
@@ -137,10 +138,26 @@ async def run_agent(
         track, rtc.TrackPublishOptions(source=rtc.TrackSource.SOURCE_MICROPHONE)
     )
 
+    # India-first: route Indic-language calls to Sarvam (STT+LLM+TTS) when keyed, else the default stack.
+    stack = build_stack(
+        language=config.language,
+        deepgram_key=stt_key,
+        openai_key=llm_key,
+        elevenlabs_key=tts_key,
+        sarvam_key=sarvam_key,
+    )
+    if stack.provider == "SARVAM":
+        # Request + meter the Sarvam models (else the loop would ask Sarvam for gpt/eleven models).
+        if stack.llm_model:
+            config.model = stack.llm_model
+        if stack.stt_model:
+            config.stt_model = stack.stt_model
+        if stack.tts_model:
+            config.tts_model = stack.tts_model
     loop = ConversationLoop(
-        stt=DeepgramSTT(stt_key),
-        llm=OpenAILLM(llm_key),
-        tts=ElevenLabsTTS(tts_key),
+        stt=stack.stt,
+        llm=stack.llm,
+        tts=stack.tts,
         audio_out=audio_sink_factory(source),  # type: ignore[call-arg]
         config=config,
     )

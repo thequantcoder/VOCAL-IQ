@@ -11,6 +11,9 @@ LLM_PRICES: dict[str, tuple[float, float]] = {
     "claude-haiku-4-5": (1.0, 5.0),
     "gpt-4o": (2.5, 10.0),
     "gpt-4o-mini": (0.15, 0.6),
+    # Sarvam AI — India-first LLM (INR→USD @ ~84). Prefix-matched for -16k/-32k variants.
+    "sarvam-30b": (0.03, 0.12),
+    "sarvam-105b": (0.048, 0.19),
 }
 
 # USD per 1M tokens.
@@ -23,12 +26,17 @@ EMBEDDING_PRICES: dict[str, float] = {
 TTS_PRICES: dict[str, float] = {
     "eleven_turbo_v2_5": 0.15,
     "eleven_multilingual_v2": 0.3,
+    # Sarvam Bulbul v3 — ₹30/10K chars ≈ $0.0036/1K (≈83× cheaper than ElevenLabs for Indic).
+    "bulbul:v3": 0.0036,
+    "bulbul:v2": 0.0018,
 }
 
 # USD per audio minute.
 STT_PRICES: dict[str, float] = {
     "nova-2": 0.0043,
     "nova-3": 0.0043,
+    # Sarvam Saaras v3 — ₹30/hr ≈ $0.006/min (22 Indian languages, best Hindi accuracy).
+    "saaras:v3": 0.006,
 }
 
 # USD per call minute (US default).
