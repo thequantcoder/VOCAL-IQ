@@ -11,6 +11,7 @@ const PLATFORM = '00000000-0000-0000-0000-000000000001';
 const T = '00000000-0000-0000-0000-0000ff31a001'; // has a published agent
 const T2 = '00000000-0000-0000-0000-0000ff31a002'; // no published agent
 const AGENT = '00000000-0000-0000-0000-0000ff31b001';
+const PLAIN = '00000000-0000-0000-0000-0000ff31b002';
 
 beforeAll(async () => {
   for (const id of [T, T2]) {
@@ -26,9 +27,30 @@ beforeAll(async () => {
       update: {},
     });
   }
+  // AGENT (earliest ⇒ the "first PUBLISHED" pick) is a Hindi agent with a chosen Bulbul speaker.
   await db.admin.agent.upsert({
     where: { id: AGENT },
-    create: { id: AGENT, tenantId: T, name: 'ME Agent', status: 'PUBLISHED' },
+    create: {
+      id: AGENT,
+      tenantId: T,
+      name: 'ME Agent',
+      status: 'PUBLISHED',
+      languages: ['hi'],
+      persona: { systemPrompt: 'नमस्ते', sarvamVoice: 'priya' },
+      createdAt: new Date('2020-01-01T00:00:00Z'),
+    },
+    update: {},
+  });
+  // A plain (non-Indic) agent, created later — resolved by id for the negative case.
+  await db.admin.agent.upsert({
+    where: { id: PLAIN },
+    create: {
+      id: PLAIN,
+      tenantId: T,
+      name: 'Plain Agent',
+      status: 'PUBLISHED',
+      createdAt: new Date('2021-01-01T00:00:00Z'),
+    },
     update: {},
   });
 });
@@ -43,6 +65,16 @@ describe('MessengerInboundRouter (MEC-04)', () => {
     expect(routing?.agentId).toBe(AGENT);
     expect(routing?.greeting).toBe(ME_DEFAULT_GREETING);
     expect(typeof routing?.systemPrompt).toBe('string');
+    // India roadmap: the Indic primary language + chosen Bulbul voice ride along.
+    expect(routing?.language).toBe('hi');
+    expect(routing?.voiceId).toBe('priya');
+  });
+
+  it('a plain (non-Indic) agent carries no Sarvam language/voice routing', async () => {
+    const routing = await new MessengerInboundRouter(db).resolveAgentById(T, PLAIN);
+    expect(routing?.agentId).toBe(PLAIN);
+    expect(routing?.language).toBeUndefined();
+    expect(routing?.voiceId).toBeUndefined();
   });
 
   it('returns null when the tenant has no publishable agent', async () => {

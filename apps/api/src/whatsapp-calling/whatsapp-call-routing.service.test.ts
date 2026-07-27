@@ -15,9 +15,11 @@ const T2 = '00000000-0000-0000-0000-0000ff24a002';
 const FALLBACK = '00000000-0000-0000-0000-0000ff24b001';
 const ASSIGNED = '00000000-0000-0000-0000-0000ff24b002';
 const DRAFT = '00000000-0000-0000-0000-0000ff24b003';
+const HINDI = '00000000-0000-0000-0000-0000ff24b004';
 const FLOW = '00000000-0000-0000-0000-0000ff24c001';
 const FLOW_VERSION = '00000000-0000-0000-0000-0000ff24c002';
 const BIZ_NUMBER = '+16315553601';
+const HINDI_NUMBER = '+16315553602';
 
 beforeAll(async () => {
   for (const id of [T, T2]) {
@@ -53,15 +55,23 @@ beforeAll(async () => {
       },
       // A DRAFT agent in T2 proves the PUBLISHED gate (never routed to).
       { id: DRAFT, tenantId: T2, name: 'Draft Agent', status: 'DRAFT' },
+      // A Hindi (Indic) agent with a chosen Bulbul speaker — the Sarvam routing path.
+      {
+        id: HINDI,
+        tenantId: T,
+        name: 'Hindi Agent',
+        status: 'PUBLISHED',
+        languages: ['hi'],
+        persona: { systemPrompt: 'नमस्ते', sarvamVoice: 'priya' },
+        createdAt: new Date('2022-01-01T00:00:00Z'),
+      },
     ],
   });
-  await db.admin.phoneNumber.create({
-    data: {
-      tenantId: T,
-      provider: 'TWILIO',
-      e164: BIZ_NUMBER,
-      assignedAgentId: ASSIGNED,
-    },
+  await db.admin.phoneNumber.createMany({
+    data: [
+      { tenantId: T, provider: 'TWILIO', e164: BIZ_NUMBER, assignedAgentId: ASSIGNED },
+      { tenantId: T, provider: 'TWILIO', e164: HINDI_NUMBER, assignedAgentId: HINDI },
+    ],
   });
   await db.admin.flow.create({
     data: { id: FLOW, tenantId: T, agentId: ASSIGNED, name: 'Main', isActive: true },
@@ -96,6 +106,16 @@ describe('WhatsAppInboundRouter.resolveInboundAgent', () => {
     expect(r?.agentId).toBe(FALLBACK);
     expect(r?.systemPrompt).toBe('You are a helpdesk agent.');
     expect(r?.flowVersionId).toBeNull(); // fallback agent has no active flow
+    // A plain (non-Indic) agent carries no Sarvam language/voice routing.
+    expect(r?.language).toBeUndefined();
+    expect(r?.voiceId).toBeUndefined();
+  });
+
+  it('surfaces the primary language + chosen Bulbul voice for an Indic agent (India roadmap)', async () => {
+    const r = await svc.resolveInboundAgent(T, '16315553602');
+    expect(r?.agentId).toBe(HINDI);
+    expect(r?.language).toBe('hi'); // Indic primary → routes the call to Sarvam
+    expect(r?.voiceId).toBe('priya'); // …and the stored Bulbul speaker drives TTS
   });
 
   it('falls back when the business number is unknown/undefined', async () => {

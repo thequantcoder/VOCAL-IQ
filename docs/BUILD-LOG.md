@@ -5007,3 +5007,21 @@ K. Build/CI: ✅ — typecheck + biome + ruff + web build + touched test suites 
 **Checks.** biome clean (touched TS files, safe-fix formatted); new tests cover isSarvamVoice; persona storage + validation reject; Indic dispatch carries voiceId while a plain agent does not; the dispatch endpoint threads language+voice_id into `LoopConfig`. Local pytest/typecheck flaked under iCloud (venv/node_modules eviction) — CI (voice + node jobs) is the authoritative gate, as for Phase 1/2.
 
 **Remaining Phase-2 polish.** WhatsApp/Messenger/PSTN language+voice plumbing (widget path done); full dashboard UI localization into the 22 languages (translation content).
+
+---
+
+## India roadmap — Phase 2 follow-up: **WhatsApp + Messenger** language + voice plumbing
+
+**What.** Extends the India voice routing beyond the web widget to the **WhatsApp** (WAC) and **Messenger** (MEC) calling paths. An inbound/outbound WA or Messenger call to an Indic-language agent now runs end-to-end on Sarvam with the agent's chosen Bulbul voice — same behaviour the web widget got in #193/#194.
+
+**Path (mirrors the widget, per channel).** The inbound/outbound router already resolves the answering agent + composes its system prompt; it now also surfaces the agent's **primary language** (`primaryLanguage(languages)`) and its **Bulbul voice** (`persona.sarvamVoice`, Indic-gated) on the routing object → the calling service passes them to the media control → the media control POSTs `language` + `voice_id` to the voice bridge's `/answer` + `/offer` → the voice router sets them on the `LoopConfig` → `build_and_apply` routes an Indic call to Sarvam and the loop applies the Bulbul speaker.
+
+- **api (WA)**: `whatsapp-call-routing.service` (new `toRouting` helper computes language + Indic-gated voiceId; selects `languages`), `whatsapp-calling.service` (answer + offer pass them), `whatsapp-media-control` (`language`/`voiceId` → `voice_id` in both POST bodies).
+- **api (Messenger)**: same across `messenger-call-routing.service` / `messenger-calling.service` / `messenger-media-control`.
+- **voice**: `whatsapp_router.py` + `messenger_router.py` — `language`/`voice_id` on the answer/offer body models + all four `LoopConfig` builds.
+
+**Guardrail.** The Bulbul voice is gated on an Indic primary language in the router (`isIndianLanguage(language) && isSarvamVoice(...)`), so a non-Indic agent never carries a stale speaker onto the default stack — identical to the widget guardrail.
+
+**Checks.** biome clean (10 touched api files); tests: WA + Messenger routing surface language+voiceId for an Indic agent and neither for a plain one; both media controls forward `language`+`voice_id` (snake_case); both voice control endpoints thread them into `LoopConfig`. Local pytest flaked under the sandbox's iCloud venv eviction — CI (node + voice) is the authoritative gate.
+
+**Remaining.** PSTN (Twilio/Telnyx dialer) language+voice plumbing; full dashboard UI localization (translation content).

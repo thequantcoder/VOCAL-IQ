@@ -1,5 +1,11 @@
 import type { TxClient } from '@vocaliq/db';
-import { buildSystemPrompt, personaSchema } from '@vocaliq/shared';
+import {
+  buildSystemPrompt,
+  isIndianLanguage,
+  isSarvamVoice,
+  personaSchema,
+  primaryLanguage,
+} from '@vocaliq/shared';
 import type { PrismaService } from '../db/prisma.service';
 import type { MeInboundRouter, MessengerInboundRouting } from './messenger-calling.service';
 
@@ -26,7 +32,7 @@ export class MessengerInboundRouter implements MeInboundRouter {
       const agent = await tx.agent.findFirst({
         where: { status: 'PUBLISHED' },
         orderBy: { createdAt: 'asc' },
-        select: { id: true, persona: true },
+        select: { id: true, persona: true, languages: true },
       });
       return agent ? this.toRouting(tx, agent) : null;
     });
@@ -40,24 +46,34 @@ export class MessengerInboundRouter implements MeInboundRouter {
     return this.db.withTenant(tenantId, async (tx) => {
       const agent = await tx.agent.findFirst({
         where: { id: agentId, status: 'PUBLISHED' },
-        select: { id: true, persona: true },
+        select: { id: true, persona: true, languages: true },
       });
       return agent ? this.toRouting(tx, agent) : null;
     });
   }
 
-  /** Build the routing brain (active flow version + persona system prompt + default greeting). */
+  /** Build the routing brain: active flow version + persona prompt + greeting + (India) language + voice. */
   private async toRouting(
     tx: TxClient,
-    agent: { id: string; persona: unknown },
+    agent: { id: string; persona: unknown; languages: string[] },
   ): Promise<MessengerInboundRouting> {
     const flowVersionId = await this.activeFlowVersion(tx, agent.id);
     const persona = personaSchema.safeParse(agent.persona ?? {});
+    const language = primaryLanguage(agent.languages);
+    // The stored Bulbul speaker only applies to a Sarvam (Indic-primary) call — gate it so a non-Indic
+    // agent never carries a stale voice onto the default TTS stack.
+    const rawPersona = (agent.persona ?? {}) as { sarvamVoice?: unknown };
+    const sarvamVoice =
+      typeof rawPersona.sarvamVoice === 'string' ? rawPersona.sarvamVoice : undefined;
+    const voiceId =
+      isIndianLanguage(language) && isSarvamVoice(sarvamVoice) ? sarvamVoice : undefined;
     return {
       agentId: agent.id,
       ...(flowVersionId ? { flowVersionId } : {}),
       systemPrompt: persona.success ? buildSystemPrompt(persona.data) : '',
       greeting: ME_DEFAULT_GREETING,
+      ...(language ? { language } : {}),
+      ...(voiceId ? { voiceId } : {}),
     };
   }
 

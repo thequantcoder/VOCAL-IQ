@@ -78,6 +78,27 @@ def test_answer_returns_sdp_when_authorized_and_configured(monkeypatch) -> None:
     assert fake.answered == [("mecid.1", "a1")]  # the offer reached the bridge with the agent
 
 
+def test_answer_threads_language_and_voice_into_config(monkeypatch) -> None:
+    """India roadmap: the agent's primary language + chosen Bulbul speaker reach the loop config, so an
+    Indic Messenger call runs on Sarvam with the picked TTS voice (the loop forwards config.voice_id)."""
+    _configure(monkeypatch)
+    captured: dict[str, object] = {}
+
+    class CapturingBridge(FakeBridge):
+        async def answer(self, *, call_id: str, sdp_offer: str, config: LoopConfig) -> str:
+            captured["config"] = config
+            return await super().answer(call_id=call_id, sdp_offer=sdp_offer, config=config)
+
+    monkeypatch.setattr(messenger_router, "_bridge", CapturingBridge())
+    body = {**_body(), "language": "hi", "voice_id": "priya"}
+    res = client.post("/calls/messenger/answer", json=body, headers={"X-Internal-Secret": SECRET})
+    assert res.status_code == 200
+    cfg = captured["config"]
+    assert isinstance(cfg, LoopConfig)
+    assert cfg.language == "hi"
+    assert cfg.voice_id == "priya"
+
+
 def test_end_tears_down_via_bridge(monkeypatch) -> None:
     _configure(monkeypatch)
     fake = FakeBridge()

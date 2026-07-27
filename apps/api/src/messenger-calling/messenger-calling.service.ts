@@ -47,6 +47,10 @@ export interface MessengerInboundRouting {
   flowVersionId?: string;
   systemPrompt?: string;
   greeting?: string;
+  /** India roadmap: the agent's primary language — an Indic code routes the call to Sarvam. */
+  language?: string;
+  /** India roadmap: the agent's chosen Bulbul speaker (only set for an Indic-primary agent). */
+  voiceId?: string;
 }
 /** Resolves which PUBLISHED agent answers an inbound Messenger call (MEC-04) / dials an outbound one. */
 export interface MeInboundRouter {
@@ -216,6 +220,9 @@ export class MessengerCallingService {
         ...(agentId ? { agentId } : {}),
         ...(systemPrompt ? { systemPrompt } : {}),
         ...(routing?.greeting ? { greeting: routing.greeting } : {}),
+        // India roadmap: an Indic primary language routes this call to Sarvam + drives its Bulbul voice.
+        ...(routing?.language ? { language: routing.language } : {}),
+        ...(routing?.voiceId ? { voiceId: routing.voiceId } : {}),
       })
       .catch(() => null);
     const adapter = answer ? await this.adapterFor(tenantId).catch(() => null) : null;
@@ -306,6 +313,9 @@ export class MessengerCallingService {
         agentId: routing.agentId,
         ...(systemPrompt ? { systemPrompt } : {}),
         ...(routing.greeting ? { greeting: routing.greeting } : {}),
+        // India roadmap: an Indic primary language routes this call to Sarvam + drives its Bulbul voice.
+        ...(routing.language ? { language: routing.language } : {}),
+        ...(routing.voiceId ? { voiceId: routing.voiceId } : {}),
       })
       .catch(() => null);
     const adapter = offer ? await this.adapterFor(tenantId).catch(() => null) : null;

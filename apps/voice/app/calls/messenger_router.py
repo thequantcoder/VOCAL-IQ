@@ -36,6 +36,9 @@ class MeAnswerBody(BaseModel):
     agent_id: str
     system_prompt: str | None = None
     greeting: str | None = None
+    # India roadmap: the agent's primary language (Indic ⇒ Sarvam) + chosen Bulbul speaker.
+    language: str | None = None
+    voice_id: str | None = None
     # MEC-11: the api only sets this once Meta GAs Messenger video; audio-only until then.
     video: bool = False
 
@@ -50,6 +53,9 @@ class MeOfferBody(BaseModel):
     agent_id: str
     system_prompt: str | None = None
     greeting: str | None = None
+    # India roadmap: the agent's primary language (Indic ⇒ Sarvam) + chosen Bulbul speaker.
+    language: str | None = None
+    voice_id: str | None = None
     # MEC-11: GA-gated video (see MeAnswerBody.video). Audio-only until Meta ships video.
     video: bool = False
 
@@ -99,6 +105,9 @@ async def messenger_answer(
         agent_id=body.agent_id,
         system_prompt=body.system_prompt or _DEFAULT_SYSTEM_PROMPT,
         greeting=body.greeting or _DEFAULT_GREETING,
+        # India roadmap: Indic primary language ⇒ Sarvam stack; chosen Bulbul speaker drives its TTS.
+        language=body.language,
+        voice_id=body.voice_id,
     )
     bridge = get_bridge()
     sdp_answer = await bridge.answer(  # type: ignore[attr-defined]
@@ -122,6 +131,9 @@ async def messenger_offer(
         agent_id=body.agent_id,
         system_prompt=body.system_prompt or _DEFAULT_SYSTEM_PROMPT,
         greeting=body.greeting or _DEFAULT_GREETING,
+        # India roadmap: Indic primary language ⇒ Sarvam stack; chosen Bulbul speaker drives its TTS.
+        language=body.language,
+        voice_id=body.voice_id,
     )
     bridge = get_bridge()
     sdp_offer = await bridge.offer(call_id=body.call_id, config=config)  # type: ignore[attr-defined]

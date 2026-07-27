@@ -270,5 +270,6 @@ VocalIQ ka India play: ek **Indian-language agent** ki poori call **Sarvam AI** 
 | 22 Indian languages + 4 India agent templates | Scheduled languages catalog + Hindi/Tamil/Marathi/Bengali starters | ✅ merged (#193) |
 | Bulbul voice-picker (39 voices) | Indic agent ke liye speaker chuno → Sarvam TTS voice (`voiceId`→`voice_id`) | ✅ (is PR me) |
 | WhatsApp/Messenger bridges → Sarvam | Dono WebRTC bridges Sarvam pe wired | ✅ merged (#192) |
+| WhatsApp + Messenger language+voice plumbing | Inbound/outbound WA + Messenger call ab agent ki primary language + Bulbul voice pe chalti hai (Indic ⇒ Sarvam) | ✅ (is PR me) |
 
-**Live test pending (`SARVAM_API_KEY` chahiye):** real Sarvam call verify (STT frame-encoding confirm). **Baaki polish:** WhatsApp/Messenger/PSTN language+voice plumbing (widget path done), full dashboard UI localization (translation content).
+**Live test pending (`SARVAM_API_KEY` chahiye):** real Sarvam call verify (STT frame-encoding confirm). **Baaki polish:** PSTN (Twilio/Telnyx) language+voice plumbing, full dashboard UI localization (translation content). *(Web widget + WhatsApp + Messenger paths ab done.)*
