@@ -44,8 +44,12 @@ describe('persona', () => {
 });
 
 describe('agent templates', () => {
-  it('has the five categories and each is retrievable', () => {
-    expect(AGENT_TEMPLATES).toHaveLength(5);
+  it('has the built-in templates (incl. India) and each is retrievable', () => {
+    // 5 base templates + 4 India-first templates (India roadmap Phase 2).
+    expect(AGENT_TEMPLATES).toHaveLength(9);
+    expect(AGENT_TEMPLATES.some((t) => t.category === 'India')).toBe(true);
+    const ids = new Set(AGENT_TEMPLATES.map((t) => t.id));
+    expect(ids.size).toBe(AGENT_TEMPLATES.length); // ids are unique
     for (const t of AGENT_TEMPLATES) {
       expect(getAgentTemplate(t.id)?.id).toBe(t.id);
       expect(t.persona.role.length).toBeGreaterThan(0);
