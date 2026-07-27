@@ -47,6 +47,23 @@ describe('HttpMeMediaControl', () => {
     });
   });
 
+  it('forwards the Indic language + Bulbul voice to the voice bridge (India roadmap)', async () => {
+    const fetchImpl = vi.fn(async () =>
+      ok({ sdp_answer: 'v=0\r\n(answer)' }),
+    ) as unknown as typeof fetch;
+    await control(fetchImpl).requestSdpAnswer({
+      tenantId: 't1',
+      callId: 'c',
+      sdpOffer: 'v=0',
+      language: 'hi',
+      voiceId: 'priya',
+    });
+    const call = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0] ?? [];
+    const sent = JSON.parse((call[1] as { body: string }).body);
+    expect(sent.language).toBe('hi');
+    expect(sent.voice_id).toBe('priya'); // snake_case for the Python voice service
+  });
+
   it('returns null when the bridge is gated (503) — call stays connecting', async () => {
     const answer = await control((async () =>
       notOk(503)) as unknown as typeof fetch).requestSdpAnswer({

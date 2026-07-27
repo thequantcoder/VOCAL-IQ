@@ -222,6 +222,9 @@ export class WhatsAppCallingService {
         ...(agentId ? { agentId } : {}),
         ...(systemPrompt ? { systemPrompt } : {}),
         ...(routing?.greeting ? { greeting: routing.greeting } : {}),
+        // India roadmap: an Indic primary language routes this call to Sarvam + drives its Bulbul voice.
+        ...(routing?.language ? { language: routing.language } : {}),
+        ...(routing?.voiceId ? { voiceId: routing.voiceId } : {}),
       })
       .catch(() => null);
     const adapter = answer ? await this.adapterFor(tenantId).catch(() => null) : null;
@@ -346,6 +349,9 @@ export class WhatsAppCallingService {
         agentId: routing.agentId,
         ...(routing.systemPrompt ? { systemPrompt: routing.systemPrompt } : {}),
         ...(routing.greeting ? { greeting: routing.greeting } : {}),
+        // India roadmap: an Indic primary language routes this call to Sarvam + drives its Bulbul voice.
+        ...(routing.language ? { language: routing.language } : {}),
+        ...(routing.voiceId ? { voiceId: routing.voiceId } : {}),
       })
       .catch(() => null);
     const adapter = offer ? await this.adapterFor(tenantId).catch(() => null) : null;

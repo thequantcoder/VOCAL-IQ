@@ -1,5 +1,11 @@
 import type { TxClient } from '@vocaliq/db';
-import { buildSystemPrompt, personaSchema } from '@vocaliq/shared';
+import {
+  buildSystemPrompt,
+  isIndianLanguage,
+  isSarvamVoice,
+  personaSchema,
+  primaryLanguage,
+} from '@vocaliq/shared';
 import type { PrismaService } from '../db/prisma.service';
 
 /**
@@ -20,6 +26,10 @@ export interface WhatsAppInboundRouting {
   systemPrompt: string;
   /** The opening line the agent speaks. */
   greeting: string;
+  /** India roadmap: the agent's primary language — an Indic code routes the call to Sarvam. */
+  language?: string;
+  /** India roadmap: the agent's chosen Bulbul speaker (only set for an Indic-primary agent). */
+  voiceId?: string;
 }
 
 /** Default opener when the agent has no bespoke greeting configured. */
@@ -39,6 +49,7 @@ interface RoutedAgent {
   id: string;
   name: string;
   persona: unknown;
+  languages: string[];
 }
 
 export class WhatsAppInboundRouter implements WaInboundRouter {
@@ -52,14 +63,7 @@ export class WhatsAppInboundRouter implements WaInboundRouter {
       const agent = await this.pickAgent(tx, toNumber);
       if (!agent) return null;
       const flowVersionId = await this.activeFlowVersion(tx, agent.id);
-      const persona = personaSchema.safeParse(agent.persona ?? {});
-      return {
-        agentId: agent.id,
-        agentName: agent.name,
-        flowVersionId,
-        systemPrompt: persona.success ? buildSystemPrompt(persona.data) : '',
-        greeting: WA_DEFAULT_GREETING,
-      };
+      return this.toRouting(agent, flowVersionId);
     });
   }
 
@@ -70,19 +74,34 @@ export class WhatsAppInboundRouter implements WaInboundRouter {
     return this.db.withTenant(tenantId, async (tx) => {
       const agent = await tx.agent.findFirst({
         where: { id: agentId, status: 'PUBLISHED' },
-        select: { id: true, name: true, persona: true },
+        select: { id: true, name: true, persona: true, languages: true },
       });
       if (!agent) return null;
       const flowVersionId = await this.activeFlowVersion(tx, agent.id);
-      const persona = personaSchema.safeParse(agent.persona ?? {});
-      return {
-        agentId: agent.id,
-        agentName: agent.name,
-        flowVersionId,
-        systemPrompt: persona.success ? buildSystemPrompt(persona.data) : '',
-        greeting: WA_DEFAULT_GREETING,
-      };
+      return this.toRouting(agent, flowVersionId);
     });
+  }
+
+  /** Compose the routing brain: persona system prompt + greeting + (India) primary language + Bulbul voice. */
+  private toRouting(agent: RoutedAgent, flowVersionId: string | null): WhatsAppInboundRouting {
+    const persona = personaSchema.safeParse(agent.persona ?? {});
+    const language = primaryLanguage(agent.languages);
+    // The stored Bulbul speaker only applies to a Sarvam (Indic-primary) call — gate it so a non-Indic
+    // agent never carries a stale voice onto the default TTS stack.
+    const rawPersona = (agent.persona ?? {}) as { sarvamVoice?: unknown };
+    const sarvamVoice =
+      typeof rawPersona.sarvamVoice === 'string' ? rawPersona.sarvamVoice : undefined;
+    const voiceId =
+      isIndianLanguage(language) && isSarvamVoice(sarvamVoice) ? sarvamVoice : undefined;
+    return {
+      agentId: agent.id,
+      agentName: agent.name,
+      flowVersionId,
+      systemPrompt: persona.success ? buildSystemPrompt(persona.data) : '',
+      greeting: WA_DEFAULT_GREETING,
+      ...(language ? { language } : {}),
+      ...(voiceId ? { voiceId } : {}),
+    };
   }
 
   /** Number-assigned PUBLISHED agent first (explicit operator intent), else the first PUBLISHED agent. */
@@ -96,14 +115,16 @@ export class WhatsAppInboundRouter implements WaInboundRouter {
           assignedAgentId: { not: null },
           assignedAgent: { is: { status: 'PUBLISHED' } },
         },
-        select: { assignedAgent: { select: { id: true, name: true, persona: true } } },
+        select: {
+          assignedAgent: { select: { id: true, name: true, persona: true, languages: true } },
+        },
       });
       if (pn?.assignedAgent) return pn.assignedAgent;
     }
     return tx.agent.findFirst({
       where: { status: 'PUBLISHED' },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, name: true, persona: true },
+      select: { id: true, name: true, persona: true, languages: true },
     });
   }
 

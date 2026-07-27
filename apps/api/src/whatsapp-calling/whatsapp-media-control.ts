@@ -17,6 +17,10 @@ export interface WaAnswerRequest {
   systemPrompt?: string;
   /** The opening line the agent speaks (WAC-04). */
   greeting?: string;
+  /** India roadmap: the agent's primary language — an Indic code routes the call to Sarvam. */
+  language?: string;
+  /** India roadmap: the agent's chosen Bulbul speaker (only for an Indic-primary agent). */
+  voiceId?: string;
   /** Caller requested video (WAC-11) — only honoured once Meta GAs video; else audio-only. */
   video?: boolean;
 }
@@ -28,6 +32,10 @@ export interface WaOfferRequest {
   agentId?: string;
   systemPrompt?: string;
   greeting?: string;
+  /** India roadmap: the agent's primary language — an Indic code routes the call to Sarvam. */
+  language?: string;
+  /** India roadmap: the agent's chosen Bulbul speaker (only for an Indic-primary agent). */
+  voiceId?: string;
   /** Request video (WAC-11) — only honoured once Meta GAs video; else audio-only. */
   video?: boolean;
 }
@@ -86,6 +94,8 @@ export class HttpWaMediaControl implements WaMediaControl {
       agent_id: req.agentId ?? '',
       ...(req.systemPrompt ? { system_prompt: req.systemPrompt } : {}),
       ...(req.greeting ? { greeting: req.greeting } : {}),
+      ...(req.language ? { language: req.language } : {}),
+      ...(req.voiceId ? { voice_id: req.voiceId } : {}),
       // WAC-11: only ask the bridge for video once Meta GAs it; else audio-only.
       ...(whatsappCallMediaMode(req.video) === 'video' ? { video: true } : {}),
     });
@@ -100,6 +110,8 @@ export class HttpWaMediaControl implements WaMediaControl {
       agent_id: req.agentId ?? '',
       ...(req.systemPrompt ? { system_prompt: req.systemPrompt } : {}),
       ...(req.greeting ? { greeting: req.greeting } : {}),
+      ...(req.language ? { language: req.language } : {}),
+      ...(req.voiceId ? { voice_id: req.voiceId } : {}),
       // WAC-11: only ask the bridge for video once Meta GAs it; else audio-only.
       ...(whatsappCallMediaMode(req.video) === 'video' ? { video: true } : {}),
     });
