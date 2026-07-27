@@ -61,3 +61,6 @@ VocalIQ-Build-Kit.zip
 
 # Word/Office lock files
 ~$*
+
+# iCloud sync conflict copies (repo lives in an iCloud-synced folder)
+* [0-9].*

@@ -3,6 +3,7 @@
 import { Button, Card, CardContent, Input, cn } from '@vocaliq/ui';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
+import { LanguagePicker } from '../../../../components/language-picker';
 import { ErrorState } from '../../../../components/states';
 import { type AgentInput, useCreateAgent } from '../../../../lib/api';
 
@@ -20,7 +21,7 @@ export default function NewAgentPage() {
     'You are a friendly, concise voice assistant. Keep replies short and natural.',
   );
   const [type, setType] = useState('INBOUND');
-  const [languages, setLanguages] = useState('en');
+  const [languages, setLanguages] = useState<string[]>(['en']);
   const [turnTimeoutMs, setTurnTimeoutMs] = useState(1500);
 
   async function onSubmit(e: FormEvent) {
@@ -30,10 +31,7 @@ export default function NewAgentPage() {
       systemPrompt: systemPrompt.trim(),
       type,
       status: 'DRAFT',
-      languages: languages
-        .split(',')
-        .map((l) => l.trim())
-        .filter(Boolean),
+      languages,
       turnTimeoutMs,
     };
     const agent = await create.mutateAsync(body);
@@ -73,7 +71,7 @@ export default function NewAgentPage() {
               />
             </Field>
 
-            <div className="grid gap-5 sm:grid-cols-3">
+            <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Type" htmlFor="type">
                 <select
                   id="type"
@@ -85,14 +83,6 @@ export default function NewAgentPage() {
                   <option value="OUTBOUND">Outbound</option>
                   <option value="MIXED">Mixed</option>
                 </select>
-              </Field>
-              <Field label="Languages" htmlFor="langs" hint="Comma-separated">
-                <Input
-                  id="langs"
-                  placeholder="en, es"
-                  value={languages}
-                  onChange={(e) => setLanguages(e.target.value)}
-                />
               </Field>
               <Field label="Turn timeout (ms)" htmlFor="tt">
                 <Input
@@ -107,6 +97,14 @@ export default function NewAgentPage() {
               </Field>
             </div>
 
+            <Field
+              label="Languages"
+              htmlFor="langs"
+              hint="First (Primary) drives the voice — an Indian language runs on Sarvam."
+            >
+              <LanguagePicker value={languages} onChange={setLanguages} />
+            </Field>
+
             {create.isError ? <ErrorState message={(create.error as Error).message} /> : null}
 
             <div className="flex items-center gap-3">
@@ -114,7 +112,7 @@ export default function NewAgentPage() {
                 type="submit"
                 variant="primary"
                 size="md"
-                disabled={create.isPending || !name.trim()}
+                disabled={create.isPending || !name.trim() || languages.length === 0}
               >
                 {create.isPending ? 'Creating…' : 'Create agent'}
               </Button>

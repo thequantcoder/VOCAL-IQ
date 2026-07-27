@@ -1,5 +1,5 @@
 import { LiveKitMedia } from '@vocaliq/provider-router';
-import { NotFoundError, ProviderError, RateLimitError } from '@vocaliq/shared';
+import { NotFoundError, ProviderError, RateLimitError, primaryLanguage } from '@vocaliq/shared';
 import { PrismaService } from '../db/prisma.service';
 import { RateLimiter } from './rate-limiter';
 import { PendingVoiceDispatcher, type VoiceDispatcher } from './voice-dispatcher';
@@ -66,7 +66,7 @@ export class WidgetService {
     }
     const agent = await this.db.admin.agent.findFirst({
       where: { id: agentId, status: 'PUBLISHED' },
-      select: { id: true, name: true, tenantId: true },
+      select: { id: true, name: true, tenantId: true, languages: true },
     });
     if (!agent) throw new NotFoundError('This agent is not available.');
 
@@ -90,11 +90,14 @@ export class WidgetService {
     // back — the browser still connects; the agent joins once the voice deploy is wired
     // (HttpVoiceDispatcher, config-swap to live).
     try {
+      const language = primaryLanguage(agent.languages);
       await this.dispatcher.dispatchAgent({
         tenantId: agent.tenantId,
         callId: call.id,
         agentId: agent.id,
         room,
+        // India roadmap: an Indic primary language routes the voice loop to Sarvam end-to-end.
+        ...(language ? { language } : {}),
       });
     } catch {
       // swallowed by design — never fail an already-valid session on a dispatch hiccup.

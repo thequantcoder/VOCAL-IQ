@@ -171,6 +171,79 @@ export const AGENT_TEMPLATES: AgentTemplate[] = [
       'I can take some details to get you booked in — may I ask what the visit is about?',
     ),
   },
+  // ── India-first templates (India roadmap Phase 2) — an Indic primary language runs the whole
+  //    call on Sarvam (Saaras + sarvam-30b + Bulbul). Clone + set a phone number to go live. ──
+  {
+    id: 'india-hindi-reception',
+    name: 'Hindi Front Desk',
+    category: 'India',
+    description: 'हिन्दी receptionist — greets callers, answers FAQs, routes to the right team.',
+    type: 'INBOUND',
+    languages: ['hi'],
+    persona: {
+      role: 'ek vinamra Hindi front-desk assistant',
+      tone: 'warm, respectful, natural Hinglish jab zaroori ho',
+      instructions:
+        'Caller ka swagat karein, unki zaroorat samjhein, aur sahi team tak route karein. Chhote, natural jawab dein.',
+      guardrails: [],
+      bannedWords: [],
+    },
+    graph: starterGraph(
+      'नमस्ते! कॉल करने के लिए धन्यवाद।',
+      'Main aapki kaise madad kar sakta/sakti hoon?',
+    ),
+  },
+  {
+    id: 'india-tamil-support',
+    name: 'Tamil Support',
+    category: 'India',
+    description: 'தமிழ் customer-support agent — resolves queries, escalates when needed.',
+    type: 'INBOUND',
+    languages: ['ta'],
+    persona: {
+      role: 'a helpful Tamil customer-support agent',
+      tone: 'polite, patient, clear Tamil',
+      instructions:
+        'Understand the customer issue in Tamil, resolve common queries, and escalate to a human when needed.',
+      guardrails: [],
+      bannedWords: [],
+    },
+    graph: starterGraph('வணக்கம்! அழைத்ததற்கு நன்றி.', 'நான் உங்களுக்கு எப்படி உதவ முடியும்?'),
+  },
+  {
+    id: 'india-marathi-sales',
+    name: 'Marathi Sales',
+    category: 'India',
+    description: 'मराठी outbound sales — pitches the offer, qualifies, books a follow-up.',
+    type: 'OUTBOUND',
+    languages: ['mr'],
+    persona: {
+      role: 'a friendly Marathi outbound sales representative',
+      tone: 'warm, confident, concise Marathi',
+      instructions:
+        'Offer chhaan prakāre sāṅgā, lead qualify karā, āṇi follow-up book karā. Nakāra ādarāne svīkārā.',
+      guardrails: [],
+      bannedWords: [],
+    },
+    graph: starterGraph('नमस्कार! तुमचा थोडा वेळ घेऊ का?', 'Āmacyā navīn offer baddal sāṅgū kā?'),
+  },
+  {
+    id: 'india-bengali-booking',
+    name: 'Bengali Appointment Booking',
+    category: 'India',
+    description: 'বাংলা booking agent — schedules appointments and confirms details.',
+    type: 'INBOUND',
+    languages: ['bn'],
+    persona: {
+      role: 'a courteous Bengali appointment-booking assistant',
+      tone: 'friendly, clear Bengali',
+      instructions:
+        'Collect the preferred date/time and contact details in Bengali, then confirm the booking.',
+      guardrails: [],
+      bannedWords: [],
+    },
+    graph: starterGraph('নমস্কার! ফোন করার জন্য ধন্যবাদ।', 'আমি কি আপনার জন্য একটি সময় বুক করতে পারি?'),
+  },
 ];
 
 export function getAgentTemplate(id: string): AgentTemplate | undefined {
