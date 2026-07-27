@@ -15,6 +15,8 @@ export interface VoiceDispatchRequest {
   agentId: string;
   /** The LiveKit room the visitor already holds a token for (the agent must join THIS room). */
   room: string;
+  /** Agent's primary language (India roadmap): an Indic code routes the loop to Sarvam. */
+  language?: string;
 }
 
 export interface VoiceDispatcher {
@@ -72,6 +74,7 @@ export class HttpVoiceDispatcher implements VoiceDispatcher {
           tenant_id: req.tenantId,
           agent_id: req.agentId,
           room: req.room,
+          ...(req.language ? { language: req.language } : {}),
         }),
         signal: controller.signal,
       });

@@ -14,6 +14,8 @@ class StartCallRequest(BaseModel):
     flow_version_id: str | None = None
     direction: CallDirection = "OUTBOUND"
     channel: CallChannel = "WEB"
+    # The agent's primary language (India roadmap): an Indic code (e.g. 'hi') routes the loop to Sarvam.
+    language: str | None = None
     # Arbitrary per-call context (lead fields, dynamic vars) — passed to the agent.
     lead_context: dict[str, object] = Field(default_factory=dict)
     # Day 77: the agent's emotion-aware voice policy (Agent.emotionPolicy JSON). The caller fetches it
@@ -48,6 +50,8 @@ class DispatchAgentRequest(BaseModel):
     room: str = Field(min_length=1)
     system_prompt: str | None = None
     greeting: str | None = None
+    # The agent's primary language (India roadmap): an Indic code routes the loop to Sarvam.
+    language: str | None = None
 
 
 class DispatchAgentResponse(BaseModel):

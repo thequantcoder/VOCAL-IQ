@@ -4958,3 +4958,34 @@ K. Build/CI: ✅ — ruff + pyright + full pytest green locally; CI runs voice o
 **Status — India real-time voice FUNCTIONAL (keys-gated).** Set `SARVAM_API_KEY` → any Indic-language call (agent `language` ∈ 22 scheduled langs) runs Saaras+sarvam-30b+Bulbul end-to-end at ~$0.02–0.03/min; English stays on the default stack. Only live wire-confirmation (STT frame encoding) + the two gated Meta bridges remain. **Phase 1 functionally complete.**
 
 **Follow-up — WhatsApp + Messenger WebRTC bridges wired to Sarvam (2026-07-27).** The two Meta-calling media bridges (`whatsapp_webrtc.py` `answer()`, `messenger_webrtc.py` `_start_loop()` — used by both inbound `answer` + outbound `offer`) now build their `ConversationLoop` via the shared selector, so an Indic-language WhatsApp/Messenger call also routes to Sarvam. Extracted `build_and_apply(config, …)` into `select.py` (build_stack + stamp the Sarvam model ids onto the config; typed against a `ConfigLike` Protocol so the providers layer doesn't import the loop) — the single call now used by `run_agent` + both bridges (DRY; the inline override in `run_agent` was replaced). Both `get_bridge()` factories pass `settings.sarvam_api_key`; both bridge ctors take an optional `sarvam_key` (default None ⇒ default stack, gated). +2 tests (build_and_apply stamps Sarvam models for Indic, leaves config untouched for English). ruff clean · pyright 0 errors on changed files (bridge `av`/`aiortc`/`livekit` import errors are pre-existing local-venv-only on untouched lines) · **full voice pytest 160 passed / 2 skipped** (+2, no regressions). Now ALL three real-time paths (web/PSTN via `run_agent`, WhatsApp, Messenger) share one India-routing seam. The STT-frame `[CONFIRM live]` item + a real key are the only things left for a live Indic call.
+
+---
+
+### India Phase 2 — frontend language picker + agent→voice language plumbing — 2026-07-27 — ✅ DONE — 🧠 OPUS
+
+**What & why.** The India UX + the connective plumbing that makes it functional. Until now the Sarvam engine was wired backend-side but **nothing set `config.language`** — the loop's language was always `None`, so Indic routing never fired. Phase 2 adds (1) a proper language picker so users choose Indian languages, and (2) the plumbing so the chosen primary language flows agent → api → voice `LoopConfig.language` → `build_and_apply` → Sarvam.
+
+**Built.**
+- **`packages/shared/src/india.ts`** (new) — `INDIAN_LANGUAGES` (22 scheduled langs, code + English + native script + `tts` flag), `SARVAM_VOICES` (39 Bulbul speakers + gender), `isIndianLanguage`/`baseLanguageCode`/`primaryLanguage` helpers. One source of truth for FE + api.
+- **Language plumbing (functional core):** voice `StartCallRequest` + `DispatchAgentRequest` gain optional `language`; the `/calls/start` + `/calls/dispatch` `LoopConfig(...)` builds set `language=…`; the api `HttpVoiceDispatcher` sends it; `WidgetService.createSession` resolves the agent's `primaryLanguage(agent.languages)` + passes it. So a web-widget call now carries the agent's language → Sarvam when Indic. (WhatsApp/Messenger/PSTN language plumbing is a follow-up — those paths are Meta/carrier-gated anyway.)
+- **`apps/web/components/language-picker.tsx`** (new) — chip multi-select: Indian languages in native script surfaced first (with a "Sarvam voice AI" hint), global languages below. The FIRST selected is the **Primary** (badge); clicking a selected chip promotes it to primary. Shows the primary + a "Sarvam voice" pill when Indic. Replaces the raw comma-separated text field in **agent-new**; submit requires ≥1 language.
+- **4 India state-wise agent templates** (`agent-templates.ts`, category `India`) — Hindi Front Desk, Tamil Support, Marathi Sales, Bengali Appointment Booking — each with a native-script opening line + regional persona + Indic `languages` (clone → primary Indic → runs on Sarvam).
+
+**Checks.** shared + web + api typecheck green (enum/data additive); biome clean (new files formatted; `agent-templates` diff scoped to the India additions only); ruff clean (voice); **web production build green (74/74 static pages)**; api widget suite 7/7; voice calls suite 23 passed — no regressions.
+
+**Scope / remaining (honest).** ✅ language picker + plumbing (widget path) + India templates + shared catalog. ⏳ **NOT done:** (a) Sarvam **Bulbul voice-picker UI** — needs a `voiceId` → `SarvamTTS(speaker)` plumbing the agent schema doesn't carry yet; (b) WhatsApp/Messenger/PSTN language plumbing (gated); (c) **full dashboard UI localization** into the 22 languages — that's translation *content* (catalog files per locale), not code, and is a separate effort (the `hi` locale scaffold already exists in `i18n.ts`).
+
+## Self-Audit — India FE Phase 2 (A–K)
+A. Correctness (focus): ✅ — primary language (languages[0]) flows end-to-end to `config.language`; `isIndianLanguage`/`primaryLanguage` unit-covered by the voice `build_and_apply` tests; picker orders selection so primary is deterministic.
+B. Isolation: ✅ — widget still resolves the agent under the admin client by published-status; language is read-only agent data; no cross-tenant path.
+C. Security: ✅ — no secrets; picker is client-side; language is a short code (Zod `zLanguageTag` on the agent schema already validates).
+D. Cost: ✅ — choosing an Indian language routes to Sarvam (cheaper); metering unchanged (loop meters the resolved models).
+E. Errors/obs: ✅ — dispatch stays fail-soft; empty language ⇒ default stack (no crash).
+F. Performance: n/a — one extra column in the widget agent select; a static constant list in the FE.
+G. Error handling: ✅ — submit disabled with <1 language; empty/none language safely ⇒ default stack.
+H. UI/AA (focus): ✅ — labelled chips, keyboard-operable buttons, native-script labels, primary never colour-only (a text "Primary" badge), reduced-motion-safe (no motion); DESIGN-SYSTEM tokens (violet accent).
+I. Regressions (focus): ✅ — agent-new language input replaced (comma-string → ordered array; submit maps 1:1); existing templates byte-untouched (diff-scoped); web build 74/74; api widget 7/7; voice 23 passed.
+J. Quality/docs: ✅ — doc comments on the picker + india.ts + the plumbing; this log; honest remaining-scope note.
+K. Build/CI: ✅ — typecheck + biome + ruff + web build + touched test suites green; CI validates all.
+
+**Status — India voice now functional from the UI (keys-gated).** Create an agent, pick a Hindi/regional primary language (or clone an India template) → with `SARVAM_API_KEY` set, a web-widget call to that agent runs Saaras+sarvam-30b+Bulbul end-to-end. Remaining Phase-2 polish: Bulbul voice-picker, WA/Messenger language plumbing, full dashboard localization (content).
