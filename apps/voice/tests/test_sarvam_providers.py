@@ -6,12 +6,13 @@ real key (the STT frame encoding carries a [CONFIRM live] note in the adapter)."
 
 from __future__ import annotations
 
+from app.loop.engine import LoopConfig
 from app.providers.adapters.sarvam_llm import SarvamLLM
 from app.providers.adapters.sarvam_stt import SarvamSTT
 from app.providers.adapters.sarvam_tts import SarvamTTS, _strip_wav_header, normalize_language
 from app.providers.adapters.deepgram import DeepgramSTT
 from app.providers.pricing import llm_cost_usd, stt_cost_usd, tts_cost_usd
-from app.providers.select import build_stack, is_indic_language
+from app.providers.select import build_and_apply, build_stack, is_indic_language
 
 DEFAULT_KEYS = {"deepgram_key": "dg", "openai_key": "oa", "elevenlabs_key": "el"}
 
@@ -82,3 +83,23 @@ def test_sarvam_adapters_report_provider_and_models() -> None:
     assert SarvamLLM("k").default_model == "sarvam-30b"
     assert SarvamSTT("k", "hi").default_model == "saaras:v3"
     assert SarvamTTS("k", "hi").default_model == "bulbul:v3"
+
+
+def _cfg(language: str) -> LoopConfig:
+    # Real LoopConfig → defaults model=gpt-4o-mini, stt_model=nova-3, tts_model=eleven_turbo_v2_5.
+    return LoopConfig(tenant_id="t", call_id="c", agent_id="a", language=language)
+
+
+def test_build_and_apply_stamps_sarvam_models_for_indic() -> None:
+    cfg = _cfg("hi-IN")
+    stack = build_and_apply(cfg, deepgram_key="dg", openai_key="oa", elevenlabs_key="el", sarvam_key="sk")
+    assert stack.provider == "SARVAM"
+    # The loop must request + meter the Sarvam models, not the default gpt/eleven/nova ones.
+    assert (cfg.model, cfg.stt_model, cfg.tts_model) == ("sarvam-30b", "saaras:v3", "bulbul:v3")
+
+
+def test_build_and_apply_leaves_config_untouched_for_default() -> None:
+    cfg = _cfg("en-US")
+    stack = build_and_apply(cfg, deepgram_key="dg", openai_key="oa", elevenlabs_key="el", sarvam_key="sk")
+    assert stack.provider == "DEFAULT"
+    assert (cfg.model, cfg.stt_model, cfg.tts_model) == ("gpt-4o-mini", "nova-3", "eleven_turbo_v2_5")

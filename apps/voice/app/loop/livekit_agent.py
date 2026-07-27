@@ -19,7 +19,7 @@ from collections.abc import AsyncIterator
 from livekit import rtc
 
 from app.loop.engine import AudioSink, ConversationLoop, LoopConfig
-from app.providers.select import build_stack
+from app.providers.select import build_and_apply
 
 SAMPLE_RATE = 16_000
 NUM_CHANNELS = 1
@@ -139,21 +139,13 @@ async def run_agent(
     )
 
     # India-first: route Indic-language calls to Sarvam (STT+LLM+TTS) when keyed, else the default stack.
-    stack = build_stack(
-        language=config.language,
+    stack = build_and_apply(
+        config,
         deepgram_key=stt_key,
         openai_key=llm_key,
         elevenlabs_key=tts_key,
         sarvam_key=sarvam_key,
     )
-    if stack.provider == "SARVAM":
-        # Request + meter the Sarvam models (else the loop would ask Sarvam for gpt/eleven models).
-        if stack.llm_model:
-            config.model = stack.llm_model
-        if stack.stt_model:
-            config.stt_model = stack.stt_model
-        if stack.tts_model:
-            config.tts_model = stack.tts_model
     loop = ConversationLoop(
         stt=stack.stt,
         llm=stack.llm,

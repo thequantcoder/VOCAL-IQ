@@ -71,6 +71,7 @@ def get_bridge() -> object:
             stt_key=settings.deepgram_api_key,
             llm_key=settings.openai_api_key,
             tts_key=settings.elevenlabs_api_key,
+            sarvam_key=settings.sarvam_api_key,
         )
     return _bridge
 
