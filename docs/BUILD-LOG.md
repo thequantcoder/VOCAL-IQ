@@ -4889,3 +4889,36 @@ J. Quality/docs: ✅ — doc comments spell out the gate + fail-soft + the carri
 K. Build/CI: ✅ — typecheck + biome + the new unit tests green; CI validates the DB suites.
 
 **Status — api PSTN dial seam DONE (gated).** The api's `Dialer` now has its live impl; going live = the voice `/calls/dial` + a funded number. This is as far as the PSTN track goes offline — the rest is genuinely carrier-gated.
+
+---
+
+### India Phase 1 (increment 1) — Sarvam AI LLM adapter — 2026-07-27 — ✅ DONE — 🧠 OPUS
+
+**What & why.** First increment of the India-language roadmap (`docs/VOCALIQ-India-Language-Roadmap`): Sarvam AI as the India-first AI layer behind the provider-router (golden rule #2). Sarvam's chat API is **OpenAI-compatible**, so the LLM adapter is the cleanest, highest-value first piece — used by EVERY LLM task (agent reasoning, summary, intel, translation, copilot), and `sarvam-30b` is ~$0.03/$0.12 per 1M tokens (≈100× cheaper than GPT-4o output) with best-in-class Indic reasoning. STT (Saaras) + TTS (Bulbul) adapters + the Python voice-service Pipecat wiring are increments 2–3.
+
+**Built.**
+- `packages/shared/src/enums.ts` + `packages/db/prisma/schema.prisma` — `SARVAM` appended to the `Provider` enum (both, per the enum-sync rule). Migration `20260727032456_add_sarvam_provider` is a **hand-written clean** `ALTER TYPE "Provider" ADD VALUE IF NOT EXISTS 'SARVAM'` (see the migration-hygiene note below).
+- `packages/provider-router/src/adapters/sarvam-llm.ts` — `SarvamLLM implements LLMProvider`, reusing the `openai` SDK pointed at `https://api.sarvam.ai/v1` (mirrors `OpenRouterLLM`). `complete`/`stream`; `embed` throws a typed `ProviderError`; default model `sarvam-30b`. Key injected; Router meters.
+- `pricing.ts` — `sarvam-30b` ($0.03/$0.12) + `sarvam-105b` ($0.048/$0.19) in `LLM_PRICES` (prefix-matched → `sarvam-30b-16k`/`-105b-32k` resolve to the base rate).
+- `router.ts` — registered in `defaultFactories` (`[Provider.SARVAM]: (k) => new SarvamLLM(k)`) + `providerForModel` maps `sarvam*` → SARVAM (so a tenant model preference routes to Sarvam).
+- `index.ts` export; `.env.example` `SARVAM_API_KEY` (dashboard.sarvam.ai, ₹1,000 free credits).
+- `sarvam-llm.test.ts` — provider/capability/default-model, embed-throws, and metering (base + context-length variant resolve; cheaper than GPT-4o).
+
+**Migration hygiene (important).** `prisma migrate dev` bundled pre-existing repo **drift** into the enum migration — it tried to DROP the pgvector HNSW indexes (`KbChunk_embedding_hnsw`, `Transcript_embedding_hnsw`), the `UsageRecord_ts_idx`, and strip `gen_random_uuid()` defaults from ~48 tables (none of which schema.prisma represents). That is destructive (RAG/search/inserts). The committed migration was hand-cleaned to the single enum line — matching every prior provider-enum migration (whatsapp/plivo/messenger). The local dev DB (which `migrate dev` had mutated) was restored with `prisma migrate reset` (user consent, local Docker DB only) — HNSW indexes + uuid defaults verified back.
+
+**Checks.** shared + api + workers typecheck ✅ (enum add is additive — no `switch(provider)` exhaustiveness breakage) · biome clean (6 touched files) · **provider-router suite 65 passed / 1 skipped** (incl. new Sarvam tests) · DB reset + reseed clean (SARVAM enum + hnsw + defaults verified).
+
+## Self-Audit — Sarvam LLM adapter (A–K)
+A. Correctness (focus): ✅ — OpenAI-compatible shape (mirrors OpenRouter, proven); model routing + prefix-priced metering unit-tested.
+B. Isolation: ✅ — no data path; key resolved per-tenant by the Router's KeyResolver (BYOK vs platform) as for every other LLM.
+C. Security: ✅ — key injected only, never logged; typed `ProviderError` on failure; no secret in code.
+D. Cost (focus): ✅ — priced in `LLM_PRICES`; `llmCostUsd` meters input+output; BYOK recorded-not-billed via the Router (golden rule #4). No unmetered path.
+E. Errors/obs: ✅ — `complete`/`stream` wrap failures in `ProviderError`; embed throws clearly.
+F. Performance: n/a — thin SDK wrapper; streaming supported.
+G. Error handling: ✅ — Router falls back to the next provider on Sarvam failure (no outage takes down a call).
+H. UI/AA: n/a — provider layer.
+I. Regressions (focus): ✅ — purely additive (new enum value, new adapter, new factory entry); shared/api/workers typecheck green; provider-router suite green; the destructive migration drift was caught + reverted (indexes/defaults restored).
+J. Quality/docs: ✅ — doc comment on the adapter (India context, English-weak caveat); this log + the migration-hygiene note; enum comment.
+K. Build/CI: ✅ — typecheck + biome + tests green locally; migration is clean append-only; CI validates on a fresh DB.
+
+**Status — Sarvam LLM live (keys-gated).** Set `SARVAM_API_KEY` + route Indic models to `sarvam-30b`/`sarvam-105b` → Indic reasoning at ~1/100th GPT cost. **Next (increment 2): Sarvam STT (Saaras, WebSocket) + TTS (Bulbul, REST stream) adapters; increment 3: Python voice-service Pipecat Sarvam services (the real-time win).**

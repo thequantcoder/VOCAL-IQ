@@ -63,6 +63,7 @@ enum Provider {
   WHATSAPP
   MESSENGER
   LIVEKIT
+  SARVAM
 }
 
 enum Capability {
