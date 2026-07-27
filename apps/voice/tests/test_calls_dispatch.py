@@ -84,3 +84,28 @@ def test_dispatch_launches_agent_into_the_visitors_room(monkeypatch) -> None:
     # The agent's join token must grant the visitor's EXACT room (they must share it to talk).
     claims = jwt.decode(str(captured["token"]), options={"verify_signature": False})
     assert claims["video"]["room"] == "web-webcid.1"
+
+
+def test_dispatch_threads_language_and_voice_into_loopconfig(monkeypatch) -> None:
+    """India roadmap: the agent's primary language + chosen Bulbul speaker reach the loop, so an
+    Indic call runs on Sarvam with the picked TTS voice (the loop forwards config.voice_id to TTS)."""
+    _configure(monkeypatch)
+    captured: dict[str, object] = {}
+
+    def fake_run_agent(*, config: LoopConfig, token: str, **_kw: object) -> object:
+        captured["config"] = config
+
+        async def _noop() -> None:
+            return None
+
+        return _noop()
+
+    monkeypatch.setattr(calls_router.livekit_agent, "run_agent", fake_run_agent)
+    body = {**_body(), "language": "hi", "voice_id": "priya"}
+    res = client.post("/calls/dispatch", json=body, headers={"X-Internal-Secret": SECRET})
+    assert res.status_code == 200
+
+    cfg = captured["config"]
+    assert isinstance(cfg, LoopConfig)
+    assert cfg.language == "hi"
+    assert cfg.voice_id == "priya"

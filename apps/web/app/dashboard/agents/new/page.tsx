@@ -1,9 +1,11 @@
 'use client';
 
+import { DEFAULT_SARVAM_VOICE, isIndianLanguage } from '@vocaliq/shared';
 import { Button, Card, CardContent, Input, cn } from '@vocaliq/ui';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
 import { LanguagePicker } from '../../../../components/language-picker';
+import { SarvamVoicePicker } from '../../../../components/sarvam-voice-picker';
 import { ErrorState } from '../../../../components/states';
 import { type AgentInput, useCreateAgent } from '../../../../lib/api';
 
@@ -22,7 +24,12 @@ export default function NewAgentPage() {
   );
   const [type, setType] = useState('INBOUND');
   const [languages, setLanguages] = useState<string[]>(['en']);
+  const [sarvamVoice, setSarvamVoice] = useState(DEFAULT_SARVAM_VOICE);
   const [turnTimeoutMs, setTurnTimeoutMs] = useState(1500);
+
+  // The Sarvam voice only applies to a Sarvam (Indic-primary) agent — the picker + the value are
+  // scoped to that case so a stale voice never rides along on a non-Indic agent.
+  const isIndicPrimary = isIndianLanguage(languages[0]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -33,6 +40,7 @@ export default function NewAgentPage() {
       status: 'DRAFT',
       languages,
       turnTimeoutMs,
+      ...(isIndicPrimary ? { sarvamVoice } : {}),
     };
     const agent = await create.mutateAsync(body);
     router.push(`/dashboard/agents?created=${agent.id}`);
@@ -104,6 +112,16 @@ export default function NewAgentPage() {
             >
               <LanguagePicker value={languages} onChange={setLanguages} />
             </Field>
+
+            {isIndicPrimary ? (
+              <Field
+                label="Voice"
+                htmlFor="voice"
+                hint="The Sarvam Bulbul speaker for this Indian-language agent."
+              >
+                <SarvamVoicePicker value={sarvamVoice} onChange={setSarvamVoice} />
+              </Field>
+            ) : null}
 
             {create.isError ? <ErrorState message={(create.error as Error).message} /> : null}
 

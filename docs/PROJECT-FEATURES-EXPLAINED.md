@@ -253,3 +253,22 @@ Base build (Day 00–95) **poora** hai, aur **Competitor-Parity phase bhi ab com
 
 **PARITY-10 follow-ups — ✅ all shipped:** workflow failed-run retry (#148), analytics trend tiles + PDF export (#149), unified notification matrix (#150).
 **Live test pending (real keys chahiye):** Twilio, Stripe, SIP, Google Calendar/Sheets, voice biometrics, avatar, messaging channels.
+
+---
+
+## 🇮🇳 India Voice (Sarvam AI) — India-first calling
+
+VocalIQ ka India play: ek **Indian-language agent** ki poori call **Sarvam AI** pe chalti hai — STT (Saaras v3), LLM (sarvam-30b), TTS (Bulbul v3) — best Hindi + regional accuracy ke liye. Sab kuch provider-router seam ke peeche hai aur **`SARVAM_API_KEY` set hone tak gated** (key na ho to default stack pe fall back).
+
+**Kaise kaam karta hai (end-to-end):** Agent builder me aap **languages** chunte ho — pehli (Primary) language call ki voice routing decide karti hai. Agar Primary koi Indian language hai (Hindi, Tamil, Marathi, Bengali, …) to loop apne aap Sarvam pe route ho jaata hai. Indian-language agent ke liye ek **Bulbul voice-picker** bhi dikhta hai (39 speakers, gender-wise) — chuni hui awaaz agent ke `persona` me store hoke Sarvam TTS ko drive karti hai.
+
+| Feature | Kya hai | Status |
+|---|---|---|
+| Sarvam adapters (STT/LLM/TTS) | Saaras v3 + sarvam-30b + Bulbul v3, provider-router ke peeche | ✅ merged (#190–192) |
+| Indic auto-routing | Indic primary language ⇒ poori call Sarvam pe | ✅ merged (#191) |
+| Language picker + primary-language plumbing | Native-script picker; primary language web→api→voice tak jaata hai | ✅ merged (#193) |
+| 22 Indian languages + 4 India agent templates | Scheduled languages catalog + Hindi/Tamil/Marathi/Bengali starters | ✅ merged (#193) |
+| Bulbul voice-picker (39 voices) | Indic agent ke liye speaker chuno → Sarvam TTS voice (`voiceId`→`voice_id`) | ✅ (is PR me) |
+| WhatsApp/Messenger bridges → Sarvam | Dono WebRTC bridges Sarvam pe wired | ✅ merged (#192) |
+
+**Live test pending (`SARVAM_API_KEY` chahiye):** real Sarvam call verify (STT frame-encoding confirm). **Baaki polish:** WhatsApp/Messenger/PSTN language+voice plumbing (widget path done), full dashboard UI localization (translation content).

@@ -69,4 +69,26 @@ describe('AgentsService', () => {
       (e) => isAppError(e) && e.code === 'NOT_FOUND',
     );
   });
+
+  it('stores a valid Sarvam voice in persona and rejects an unknown one (India roadmap)', async () => {
+    const created = await svc.create(C1, {
+      name: 'Hindi Desk',
+      systemPrompt: 'आप रिसेप्शनिस्ट हैं।',
+      languages: ['hi'],
+      sarvamVoice: 'priya',
+    });
+    createdIds.push(created.id);
+    expect((created.persona as { sarvamVoice?: string }).sarvamVoice).toBe('priya');
+
+    // An update to another persona field must not wipe the stored voice.
+    const updated = await svc.update(C1, created.id, { systemPrompt: 'नया प्रॉम्प्ट' });
+    expect((updated.persona as { sarvamVoice?: string }).sarvamVoice).toBe('priya');
+    // …and the voice itself is editable.
+    const revoiced = await svc.update(C1, created.id, { sarvamVoice: 'shubh' });
+    expect((revoiced.persona as { sarvamVoice?: string }).sarvamVoice).toBe('shubh');
+
+    await expect(
+      svc.create(C1, { name: 'Bad Voice', languages: ['hi'], sarvamVoice: 'nope' }),
+    ).rejects.toSatisfy((e) => isAppError(e) && e.code === 'VALIDATION');
+  });
 });

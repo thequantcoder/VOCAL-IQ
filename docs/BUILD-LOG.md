@@ -4989,3 +4989,21 @@ J. Quality/docs: ✅ — doc comments on the picker + india.ts + the plumbing; t
 K. Build/CI: ✅ — typecheck + biome + ruff + web build + touched test suites green; CI validates all.
 
 **Status — India voice now functional from the UI (keys-gated).** Create an agent, pick a Hindi/regional primary language (or clone an India template) → with `SARVAM_API_KEY` set, a web-widget call to that agent runs Saaras+sarvam-30b+Bulbul end-to-end. Remaining Phase-2 polish: Bulbul voice-picker, WA/Messenger language plumbing, full dashboard localization (content).
+
+---
+
+## India roadmap — Phase 2 follow-up: Sarvam Bulbul **voice-picker** (voiceId → SarvamTTS)
+
+**What.** Closes follow-up (a) above: an Indic-language agent now carries a **chosen Bulbul speaker** that drives its Sarvam TTS voice, selectable in the builder. Migration-free — the speaker id lives in the agent's `persona` JSON (next to `systemPrompt`/`bannedWords`), and the voice loop already forwards `config.voice_id` to `synthesize_stream` (engine.py), so no schema change was needed.
+
+**End-to-end path.**
+- **shared** (`india.ts`): `isSarvamVoice(id)` validator over the 39-voice `SARVAM_VOICES` catalog + `india.test.ts` (helpers + catalog well-formedness).
+- **api** (`agents.service`): `sarvamVoice` on the create/update Zod schema, `.refine(isSarvamVoice)` so only a real speaker persists; stored/merged in `persona` JSON. (`widget.service`): selects `persona`, and when the primary language is Indic **and** a valid voice is stored, passes it as `voiceId`; `voice-dispatcher` forwards it as `voice_id` on the internal dispatch POST.
+- **voice** (`models.py` + `router.py`): `voice_id` on `StartCallRequest`/`DispatchAgentRequest` → both `LoopConfig` builds. The loop already applies `config.voice_id` on the Sarvam (and default) TTS.
+- **web**: new `SarvamVoicePicker` (39 voices grouped by gender), shown on the new-agent page **only when the primary language is Indic**; defaults to `shubh`; wired into `AgentInput` (`sarvamVoice`).
+
+**Guardrail.** The stored voice only rides a Sarvam (Indic-primary) call — the widget drops it for a non-Indic agent, so a stale speaker never lands on the default (ElevenLabs) stack.
+
+**Checks.** biome clean (touched TS files, safe-fix formatted); new tests cover isSarvamVoice; persona storage + validation reject; Indic dispatch carries voiceId while a plain agent does not; the dispatch endpoint threads language+voice_id into `LoopConfig`. Local pytest/typecheck flaked under iCloud (venv/node_modules eviction) — CI (voice + node jobs) is the authoritative gate, as for Phase 1/2.
+
+**Remaining Phase-2 polish.** WhatsApp/Messenger/PSTN language+voice plumbing (widget path done); full dashboard UI localization into the 22 languages (translation content).

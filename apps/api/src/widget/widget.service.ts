@@ -1,6 +1,13 @@
 import { LiveKitMedia } from '@vocaliq/provider-router';
-import { NotFoundError, ProviderError, RateLimitError, primaryLanguage } from '@vocaliq/shared';
-import { PrismaService } from '../db/prisma.service';
+import {
+  NotFoundError,
+  ProviderError,
+  RateLimitError,
+  isIndianLanguage,
+  isSarvamVoice,
+  primaryLanguage,
+} from '@vocaliq/shared';
+import type { PrismaService } from '../db/prisma.service';
 import { RateLimiter } from './rate-limiter';
 import { PendingVoiceDispatcher, type VoiceDispatcher } from './voice-dispatcher';
 
@@ -66,7 +73,7 @@ export class WidgetService {
     }
     const agent = await this.db.admin.agent.findFirst({
       where: { id: agentId, status: 'PUBLISHED' },
-      select: { id: true, name: true, tenantId: true, languages: true },
+      select: { id: true, name: true, tenantId: true, languages: true, persona: true },
     });
     if (!agent) throw new NotFoundError('This agent is not available.');
 
@@ -91,6 +98,12 @@ export class WidgetService {
     // (HttpVoiceDispatcher, config-swap to live).
     try {
       const language = primaryLanguage(agent.languages);
+      // The picked Bulbul speaker only applies to a Sarvam (Indic) call; ignore it otherwise so a
+      // stale voice never leaks onto the default (ElevenLabs) stack.
+      const persona = (agent.persona ?? {}) as { sarvamVoice?: unknown };
+      const sarvamVoice = typeof persona.sarvamVoice === 'string' ? persona.sarvamVoice : undefined;
+      const voiceId =
+        isIndianLanguage(language) && isSarvamVoice(sarvamVoice) ? sarvamVoice : undefined;
       await this.dispatcher.dispatchAgent({
         tenantId: agent.tenantId,
         callId: call.id,
@@ -98,6 +111,8 @@ export class WidgetService {
         room,
         // India roadmap: an Indic primary language routes the voice loop to Sarvam end-to-end.
         ...(language ? { language } : {}),
+        // …and the agent's chosen Bulbul speaker drives its TTS voice.
+        ...(voiceId ? { voiceId } : {}),
       });
     } catch {
       // swallowed by design — never fail an already-valid session on a dispatch hiccup.
