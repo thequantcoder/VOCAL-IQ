@@ -28,9 +28,7 @@ from av import AudioFrame
 from av.audio.resampler import AudioResampler
 
 from app.loop.engine import ConversationLoop, LoopConfig
-from app.providers.adapters.deepgram import DeepgramSTT
-from app.providers.adapters.elevenlabs import ElevenLabsTTS
-from app.providers.adapters.openai import OpenAILLM
+from app.providers.select import build_and_apply
 from app.telephony.whatsapp_audio import (
     FRAME_BYTES,
     FRAME_MS,
@@ -87,10 +85,13 @@ class WhatsAppMediaBridge:
     the voice-AI providers are configured (else the control endpoint reports gated).
     """
 
-    def __init__(self, *, stt_key: str, llm_key: str, tts_key: str) -> None:
+    def __init__(
+        self, *, stt_key: str, llm_key: str, tts_key: str, sarvam_key: str | None = None
+    ) -> None:
         self._stt_key = stt_key
         self._llm_key = llm_key
         self._tts_key = tts_key
+        self._sarvam_key = sarvam_key  # India roadmap: Indic calls route to Sarvam when set
         self._peers: dict[str, _Peer] = {}
 
     async def answer(self, *, call_id: str, sdp_offer: str, config: LoopConfig) -> str:
@@ -125,10 +126,18 @@ class WhatsAppMediaBridge:
         await pc.setLocalDescription(answer)
 
         # Start the AI brain — its greeting queues in the sink and plays as soon as media connects.
+        # India-first: an Indic-language call routes end-to-end to Sarvam when keyed (else default).
+        stack = build_and_apply(
+            config,
+            deepgram_key=self._stt_key,
+            openai_key=self._llm_key,
+            elevenlabs_key=self._tts_key,
+            sarvam_key=self._sarvam_key,
+        )
         loop = ConversationLoop(
-            stt=DeepgramSTT(self._stt_key),
-            llm=OpenAILLM(self._llm_key),
-            tts=ElevenLabsTTS(self._tts_key),
+            stt=stack.stt,
+            llm=stack.llm,
+            tts=stack.tts,
             audio_out=sink,
             config=config,
         )
