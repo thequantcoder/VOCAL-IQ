@@ -147,6 +147,8 @@ export interface AgentInput {
   status: string;
   languages: string[];
   turnTimeoutMs: number;
+  /** Sarvam Bulbul speaker id (India roadmap) — sent only for an Indic-primary agent. */
+  sarvamVoice?: string;
 }
 
 export interface OutboundInput {

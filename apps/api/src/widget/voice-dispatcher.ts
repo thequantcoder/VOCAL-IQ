@@ -17,6 +17,8 @@ export interface VoiceDispatchRequest {
   room: string;
   /** Agent's primary language (India roadmap): an Indic code routes the loop to Sarvam. */
   language?: string;
+  /** Agent's chosen Sarvam Bulbul speaker (India roadmap): sets the TTS voice on the Sarvam stack. */
+  voiceId?: string;
 }
 
 export interface VoiceDispatcher {
@@ -75,6 +77,7 @@ export class HttpVoiceDispatcher implements VoiceDispatcher {
           agent_id: req.agentId,
           room: req.room,
           ...(req.language ? { language: req.language } : {}),
+          ...(req.voiceId ? { voice_id: req.voiceId } : {}),
         }),
         signal: controller.signal,
       });

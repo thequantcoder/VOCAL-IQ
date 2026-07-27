@@ -8,6 +8,7 @@ import {
   NotFoundError,
   ValidationError,
   emotionPolicySchema,
+  isSarvamVoice,
   parseEmotionPolicy,
 } from '@vocaliq/shared';
 import { z } from 'zod';
@@ -68,6 +69,9 @@ export const createAgentSchema = z.object({
   keyTerms: z.array(z.string().min(1).max(60)).max(100).optional(),
   noVerbatim: z.boolean().optional(),
   defaultVoiceId: z.string().uuid().optional(),
+  // India roadmap: the Sarvam Bulbul speaker for an Indic-language agent (stored in persona JSON).
+  // Validated against the catalog so only a real speaker id is ever persisted.
+  sarvamVoice: z.string().refine(isSarvamVoice, { message: 'Unknown Sarvam voice' }).optional(),
   memoryEnabled: z.boolean().optional(),
 });
 
@@ -148,6 +152,7 @@ export class AgentsService {
       keyTerms,
       noVerbatim,
       defaultVoiceId,
+      sarvamVoice,
       memoryEnabled,
     } = parsed.data;
     return this.db.withTenant(tenantId, (tx) =>
@@ -155,7 +160,11 @@ export class AgentsService {
         data: {
           tenantId,
           name,
-          persona: { systemPrompt, ...(bannedWords ? { bannedWords } : {}) },
+          persona: {
+            systemPrompt,
+            ...(bannedWords ? { bannedWords } : {}),
+            ...(sarvamVoice ? { sarvamVoice } : {}),
+          },
           type,
           status,
           languages,
@@ -184,14 +193,19 @@ export class AgentsService {
       const existing = await tx.agent.findFirst({ where: { id }, select: { persona: true } });
       if (!existing) throw new NotFoundError('Agent not found');
 
-      // Merge persona so a banned-words edit never wipes the system prompt (and vice-versa).
+      // Merge persona so editing one field never wipes the others (prompt / banned-words / voice).
       let persona: Record<string, unknown> | undefined;
-      if (data.systemPrompt !== undefined || data.bannedWords !== undefined) {
+      if (
+        data.systemPrompt !== undefined ||
+        data.bannedWords !== undefined ||
+        data.sarvamVoice !== undefined
+      ) {
         const current = (existing.persona ?? {}) as Record<string, unknown>;
         persona = {
           ...current,
           ...(data.systemPrompt !== undefined ? { systemPrompt: data.systemPrompt } : {}),
           ...(data.bannedWords !== undefined ? { bannedWords: data.bannedWords } : {}),
+          ...(data.sarvamVoice !== undefined ? { sarvamVoice: data.sarvamVoice } : {}),
         };
       }
 

@@ -115,3 +115,10 @@ export const SARVAM_VOICES: readonly SarvamVoice[] = [
 ] as const;
 
 export const DEFAULT_SARVAM_VOICE = 'shubh';
+
+const SARVAM_VOICE_IDS: ReadonlySet<string> = new Set(SARVAM_VOICES.map((v) => v.id));
+
+/** True when `id` is a real Bulbul v3 speaker — guards the agent's stored voice + the picker. */
+export function isSarvamVoice(id: string | null | undefined): boolean {
+  return !!id && SARVAM_VOICE_IDS.has(id);
+}

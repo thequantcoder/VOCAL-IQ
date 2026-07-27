@@ -19,6 +19,7 @@ const PLATFORM = '00000000-0000-0000-0000-000000000001';
 const WT = '00000000-0000-0000-0000-0000005a0001';
 const AGENT_PUB = '00000000-0000-0000-0000-0000005a0002';
 const AGENT_DRAFT = '00000000-0000-0000-0000-0000005a0003';
+const AGENT_HI = '00000000-0000-0000-0000-0000005a0004';
 
 const fakeMinter: TokenMinter = async (room, identity) => ({
   token: `tok-${room}-${identity}`,
@@ -53,6 +54,19 @@ beforeAll(async () => {
     where: { id: AGENT_DRAFT },
     create: { id: AGENT_DRAFT, tenantId: WT, name: 'Draft Agent', status: 'DRAFT' },
     update: { status: 'DRAFT' },
+  });
+  // A Hindi (Indic) agent with a chosen Bulbul speaker — the Sarvam voice-routing path.
+  await a.agent.upsert({
+    where: { id: AGENT_HI },
+    create: {
+      id: AGENT_HI,
+      tenantId: WT,
+      name: 'Hindi Agent',
+      status: 'PUBLISHED',
+      languages: ['hi'],
+      persona: { systemPrompt: 'नमस्ते', sarvamVoice: 'priya' },
+    },
+    update: { status: 'PUBLISHED', languages: ['hi'], persona: { sarvamVoice: 'priya' } },
   });
 });
 
@@ -109,6 +123,19 @@ describe('WidgetService.createSession', () => {
     expect(req?.callId).toBe(session.callId);
     expect(req?.agentId).toBe(AGENT_PUB);
     expect(req?.tenantId).toBe(WT);
+    // A plain English agent carries no Sarvam language/voice routing.
+    expect(req?.language).toBeUndefined();
+    expect(req?.voiceId).toBeUndefined();
+  });
+
+  it('dispatches an Indic agent with its primary language + chosen Bulbul voice (India roadmap)', async () => {
+    const dispatcher = new PendingVoiceDispatcher();
+    const s = new WidgetService(db, new RateLimiter(5, 60_000, () => 0), fakeMinter, dispatcher);
+    await s.createSession(AGENT_HI, '7.7.7.7');
+
+    const req = dispatcher.dispatched[0];
+    expect(req?.language).toBe('hi'); // Indic primary → routes the loop to Sarvam
+    expect(req?.voiceId).toBe('priya'); // …and the agent's stored Bulbul speaker drives TTS
   });
 
   it('is fail-soft: a pending/unreachable dispatcher never blocks the session', async () => {

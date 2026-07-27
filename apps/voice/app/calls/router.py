@@ -121,6 +121,8 @@ def _dispatch_agent(call_id: str, room: str, agent_token: str, req: StartCallReq
         greeting=_DEFAULT_GREETING,
         # India roadmap: primary language drives Sarvam routing (Indic ⇒ Sarvam) in run_agent.
         language=req.language,
+        # India roadmap: the agent's chosen Bulbul speaker drives Sarvam TTS (loop passes it through).
+        voice_id=req.voice_id,
         # Day 77: activate emotion-aware voice when the caller supplied the agent's policy.
         emotion_policy=(
             EmotionPolicy.from_dict(req.emotion_policy) if req.emotion_policy is not None else None
@@ -194,6 +196,8 @@ async def dispatch_agent_into_room(
         greeting=body.greeting or _DEFAULT_GREETING,
         # India roadmap: primary language drives Sarvam routing (Indic ⇒ Sarvam) in run_agent.
         language=body.language,
+        # India roadmap: the agent's chosen Bulbul speaker drives Sarvam TTS (loop passes it through).
+        voice_id=body.voice_id,
     )
     _run_agent_in_room(body.call_id, agent_token, config)
     await events.emit(body.call_id, body.tenant_id, "agent.dispatched", room=body.room)
