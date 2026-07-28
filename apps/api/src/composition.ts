@@ -17,7 +17,7 @@ import { AutomationsService } from './automations/automations.service';
 import { buildActionExecutors } from './automations/executors';
 import {
   AvatarService,
-  mockAvatarProvider,
+  heygenAvatarProvider,
   unavailableAvatarProvider,
 } from './avatars/avatar.service';
 import { BenchmarkingService } from './benchmarking/benchmarking.service';
@@ -404,12 +404,14 @@ export function createServices() {
   const biometrics = new BiometricsService(db, encryptor, deterministicVoiceprintProvider());
 
   // Video-avatar agents (Day 92): plan-gated + metered per second, with graceful voice fallback. The
-  // avatar/video vendor is gated — `unavailable` by default (so video safely falls back to voice), and a
-  // real provider (HeyGen/D-ID/Tavus-class) swaps into this seam when AVATAR_PROVIDER_API_KEY is set.
+  // avatar/video vendor is gated — `unavailable` by default (so video safely falls back to voice), and
+  // the live HeyGen Streaming-Avatar provider swaps into this seam when AVATAR_PROVIDER_API_KEY is set.
   const avatars = new AvatarService(
     db,
     (tid) => entitlements.hasFeature(tid, 'videoAvatar'),
-    process.env.AVATAR_PROVIDER_API_KEY ? mockAvatarProvider() : unavailableAvatarProvider(),
+    process.env.AVATAR_PROVIDER_API_KEY
+      ? heygenAvatarProvider(process.env.AVATAR_PROVIDER_API_KEY)
+      : unavailableAvatarProvider(),
   );
 
   // Real-time translation: every translation routes through the metered RouterService (rule #4 — no

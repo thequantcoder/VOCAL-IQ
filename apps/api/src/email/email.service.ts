@@ -41,11 +41,57 @@ export class DisabledEmailSender implements EmailSender {
   }
 }
 
-/** Select the sender from env — a real Resend adapter swaps in when RESEND_API_KEY is set (gated). */
+/**
+ * Live Resend sender: `POST https://api.resend.com/emails` with a Bearer key; the message body is sent
+ * as `html`. Fail-soft — any non-2xx / network error resolves to `FAILED` (never throws) so a delivery
+ * hiccup never breaks the caller; the Message row is still recorded + metered upstream. Never logs the
+ * key. Injectable `fetch` keeps it unit-testable offline (mirrors HttpDialer / StripeBillingProcessor).
+ */
+export class ResendEmailSender implements EmailSender {
+  readonly name = 'resend';
+  constructor(
+    private readonly apiKey: string,
+    private readonly from: string,
+    private readonly fetchImpl: typeof fetch = fetch,
+  ) {}
+
+  async send(msg: { to: string; subject: string; body: string }): Promise<{
+    providerMessageId?: string;
+    status: 'SENT' | 'FAILED';
+    error?: string;
+  }> {
+    try {
+      const res = await this.fetchImpl('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${this.apiKey}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: this.from,
+          to: msg.to,
+          subject: msg.subject,
+          html: msg.body,
+        }),
+      });
+      if (!res.ok) {
+        return { status: 'FAILED', error: `Resend error ${res.status}` };
+      }
+      const data = (await res.json().catch(() => ({}))) as { id?: string };
+      return { status: 'SENT', ...(data.id ? { providerMessageId: data.id } : {}) };
+    } catch (err) {
+      return {
+        status: 'FAILED',
+        error: err instanceof Error ? err.message : 'Resend unreachable',
+      };
+    }
+  }
+}
+
+/** Select the sender from env — the live Resend adapter when RESEND_API_KEY + MARKETING_EMAIL_FROM are set. */
 export function buildEmailSender(env: NodeJS.ProcessEnv = process.env): EmailSender {
   if (env.RESEND_API_KEY && env.MARKETING_EMAIL_FROM) {
-    // A ResendEmailSender lands here once the marketing domain (SPF/DKIM/DMARC) is verified.
-    return new DisabledEmailSender();
+    return new ResendEmailSender(env.RESEND_API_KEY, env.MARKETING_EMAIL_FROM);
   }
   return new DisabledEmailSender();
 }
