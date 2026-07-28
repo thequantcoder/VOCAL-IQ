@@ -15,6 +15,10 @@ export interface DialRequest {
   /** Optional caller-id override (a tenant PhoneNumber e164). */
   from?: string;
   flowVersionId?: string;
+  /** India roadmap: the agent's primary language — an Indic code routes the call to Sarvam. */
+  language?: string;
+  /** India roadmap: the agent's chosen Bulbul speaker (only set for an Indic-primary agent). */
+  voiceId?: string;
 }
 
 export interface Dialer {
@@ -81,6 +85,10 @@ export class HttpDialer implements Dialer {
           to: req.to,
           ...(req.from ? { from: req.from } : {}),
           ...(req.flowVersionId ? { flow_version_id: req.flowVersionId } : {}),
+          // India roadmap: an Indic primary language routes the call to Sarvam + drives its Bulbul voice.
+          // (The voice-side POST /calls/dial reads these when it lands — carrier-gated go-live.)
+          ...(req.language ? { language: req.language } : {}),
+          ...(req.voiceId ? { voice_id: req.voiceId } : {}),
         }),
         signal: controller.signal,
       });

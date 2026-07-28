@@ -5025,3 +5025,21 @@ K. Build/CI: ✅ — typecheck + biome + ruff + web build + touched test suites 
 **Checks.** biome clean (10 touched api files); tests: WA + Messenger routing surface language+voiceId for an Indic agent and neither for a plain one; both media controls forward `language`+`voice_id` (snake_case); both voice control endpoints thread them into `LoopConfig`. Local pytest flaked under the sandbox's iCloud venv eviction — CI (node + voice) is the authoritative gate.
 
 **Remaining.** PSTN (Twilio/Telnyx dialer) language+voice plumbing; full dashboard UI localization (translation content).
+
+---
+
+## India roadmap — Phase 2 follow-up: **PSTN dialer** language + voice plumbing (API side)
+
+**What.** Completes the API-side language+voice plumbing for the fourth calling path — outbound **PSTN**. An outbound PSTN call to an Indic-language agent now carries the agent's primary language + chosen Bulbul voice on the dial request, so when the (carrier-gated) voice-side `POST /calls/dial` endpoint lands it runs the call on Sarvam with the right voice — same behaviour as web widget / WhatsApp / Messenger.
+
+**Path.** `outbound.service.placeCall` (the single `DialRequest` build; `instant-dial` routes through it) resolves the agent's `primaryLanguage(languages)` + Indic-gated `persona.sarvamVoice` inside the RLS tx → `dialer.dial({..., language, voiceId})` → `HttpDialer` POSTs `language` + `voice_id` to the voice service's `/calls/dial`.
+
+- **api**: `dialer.ts` (`DialRequest` gains `language`/`voiceId`; `HttpDialer` POST body adds `language`/`voice_id`), `outbound.service.ts` (agent select extended to `languages`+`persona`; computes both, Indic-gated; hands them to the dialer).
+
+**Scope note (honest).** The voice-side `POST /calls/dial` endpoint is **not built yet** — it's the remaining carrier-gated go-live piece (see memory: twilio-live-test-pending), same as `HttpDialer` itself which is inert until go-live. This change sends the fields **ahead** so the voice endpoint reads them the day it's wired; no voice-side code was added (there's no endpoint to thread into yet). Inbound PSTN has no live api handler either. So this is the outbound API half — the last piece (the voice `/calls/dial` build) is deferred with the rest of the Twilio go-live.
+
+**Guardrail.** The Bulbul voice is gated on an Indic primary language (`isIndianLanguage(language) && isSarvamVoice(...)`), so a non-Indic agent never carries a stale speaker — identical to the other channels.
+
+**Checks.** biome clean (4 touched api files); tests: `HttpDialer` POSTs `language`+`voice_id` for an Indic dial and neither for a plain one; `outbound.placeCall` hands the dialer language+voiceId for an Indic agent and neither for a plain agent. Local api vitest flaked under the sandbox's iCloud eviction — CI (node) is the authoritative gate.
+
+**India voice — all four calling paths now language+voice aware end-to-end (widget + WhatsApp + Messenger live; PSTN API-side ready, voice `/calls/dial` deferred to Twilio go-live).**

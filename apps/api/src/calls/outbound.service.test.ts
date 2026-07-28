@@ -1,7 +1,7 @@
 import { isAppError } from '@vocaliq/shared';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaService } from '../db/prisma.service';
-import { type DialRequest, type Dialer } from './dialer';
+import type { DialRequest, Dialer } from './dialer';
 import { OutboundService } from './outbound.service';
 
 /**
@@ -22,9 +22,11 @@ class FakeDialer implements Dialer {
 // Seeded customer tenant (present after `prisma db seed`).
 const C1 = '00000000-0000-0000-0000-000000000003';
 const AGENT = '00000000-0000-0000-0000-0000001a0001';
+const HINDI_AGENT = '00000000-0000-0000-0000-0000001a0004';
 const CONTACT_DNC = '00000000-0000-0000-0000-0000001a0002';
 const CONTACT_OK = '00000000-0000-0000-0000-0000001a0003';
 const TO = '+15551230001';
+const HINDI_TO = '+15551230009';
 const DNC_PHONE = '+15559990000';
 
 const base = { agentId: AGENT, to: TO, consentBasis: 'EXPRESS_WRITTEN' as const };
@@ -35,6 +37,18 @@ beforeAll(async () => {
     where: { id: AGENT },
     create: { id: AGENT, tenantId: C1, name: 'Outbound Agent' },
     update: {},
+  });
+  // A Hindi (Indic) agent with a chosen Bulbul speaker — the Sarvam routing path.
+  await a.agent.upsert({
+    where: { id: HINDI_AGENT },
+    create: {
+      id: HINDI_AGENT,
+      tenantId: C1,
+      name: 'Hindi Outbound Agent',
+      languages: ['hi'],
+      persona: { sarvamVoice: 'priya' },
+    },
+    update: { languages: ['hi'], persona: { sarvamVoice: 'priya' } },
   });
   await a.contact.upsert({
     where: { id: CONTACT_DNC },
@@ -49,13 +63,13 @@ beforeAll(async () => {
 });
 
 afterEach(async () => {
-  await db.admin.call.deleteMany({ where: { agentId: AGENT } });
+  await db.admin.call.deleteMany({ where: { agentId: { in: [AGENT, HINDI_AGENT] } } });
 });
 
 afterAll(async () => {
-  await db.admin.call.deleteMany({ where: { agentId: AGENT } });
+  await db.admin.call.deleteMany({ where: { agentId: { in: [AGENT, HINDI_AGENT] } } });
   await db.admin.contact.deleteMany({ where: { id: { in: [CONTACT_DNC, CONTACT_OK] } } });
-  await db.admin.agent.deleteMany({ where: { id: AGENT } });
+  await db.admin.agent.deleteMany({ where: { id: { in: [AGENT, HINDI_AGENT] } } });
 });
 
 function svc(dialer: Dialer = new FakeDialer()) {
@@ -75,6 +89,21 @@ describe('OutboundService.placeCall', () => {
     expect(row?.contactId).toBe(CONTACT_OK);
     expect((dialer as FakeDialer).dispatched).toHaveLength(1);
     expect((dialer as FakeDialer).dispatched[0]?.to).toBe(TO);
+    // A plain (non-Indic) agent carries no Sarvam language/voice routing.
+    expect((dialer as FakeDialer).dispatched[0]?.language).toBeUndefined();
+    expect((dialer as FakeDialer).dispatched[0]?.voiceId).toBeUndefined();
+  });
+
+  it('hands the dialer the primary language + Bulbul voice for an Indic agent (India roadmap)', async () => {
+    const { service, dialer } = svc();
+    await service.placeCall(C1, {
+      agentId: HINDI_AGENT,
+      to: HINDI_TO,
+      consentBasis: 'EXPRESS_WRITTEN',
+    });
+    const d = (dialer as FakeDialer).dispatched[0];
+    expect(d?.language).toBe('hi'); // Indic primary → routes the call to Sarvam
+    expect(d?.voiceId).toBe('priya'); // …and the stored Bulbul speaker drives TTS
   });
 
   it('blocks a DNC-flagged contact (ForbiddenError, nothing dialed)', async () => {

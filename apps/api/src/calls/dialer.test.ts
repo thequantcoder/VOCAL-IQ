@@ -59,6 +59,22 @@ describe('HttpDialer', () => {
       to: '+15551234567',
       from: '+15559876543',
     });
+    // A plain call carries no Sarvam language/voice routing.
+    expect(body.language).toBeUndefined();
+    expect(body.voice_id).toBeUndefined();
+  });
+
+  it('forwards the Indic language + Bulbul voice to the voice /calls/dial body (India roadmap)', async () => {
+    const { fetchImpl, calls } = stubFetch({ ok: true });
+    await new HttpDialer({
+      voiceServiceUrl: 'http://voice:8000',
+      internalSecret: 'sek',
+      fetchImpl,
+    }).dial({ ...req, language: 'hi', voiceId: 'priya' });
+
+    const body = JSON.parse(calls[0]?.body ?? '{}');
+    expect(body.language).toBe('hi');
+    expect(body.voice_id).toBe('priya'); // snake_case for the Python voice service
   });
 
   it('is fail-soft on a non-2xx (logs via onError, never throws)', async () => {
