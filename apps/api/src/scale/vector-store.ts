@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { ProviderError } from '@vocaliq/shared';
 
 /**
@@ -73,24 +74,107 @@ export class InMemoryVectorStore implements VectorStore {
 }
 
 /**
- * Qdrant-backed store (gated). Selected when `QDRANT_URL` is set; the live HTTP client swaps into
- * this class. Until then it refuses use with a clear error so nothing silently loses data.
+ * Qdrant point ids must be a uint64 or a UUID — our ids are arbitrary strings, so we derive a stable
+ * UUID (SHA-256 → RFC-4122-shaped) and keep the original id in the payload. Deterministic, so re-upsert
+ * of the same logical id replaces the same point.
+ */
+function toPointId(id: string): string {
+  const h = createHash('sha256').update(id).digest('hex');
+  const variant = ((Number.parseInt(h[16] ?? '0', 16) & 0x3) | 0x8).toString(16);
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-5${h.slice(13, 16)}-${variant}${h.slice(17, 20)}-${h.slice(20, 32)}`;
+}
+
+/**
+ * Qdrant-backed store (gated) — selected when `QDRANT_URL` is set (with optional `QDRANT_API_KEY`).
+ * Points live in one Cosine collection (created lazily from the first vector's dimension); every point
+ * carries a `tenantId` payload field and search filters on it, so isolation holds exactly as in-memory.
+ * The original string id is preserved in the payload (`__id`) and returned as the hit id. HTTP fail →
+ * a typed `ProviderError` (nothing silently loses data). `fetch` is injectable for offline tests.
  */
 export class QdrantVectorStore implements VectorStore {
   readonly name = 'qdrant';
-  constructor(private readonly url: string) {}
-  async upsert(): Promise<void> {
-    throw new ProviderError(
-      `Qdrant store not yet wired (${this.url}); set up the client to enable.`,
-    );
+  private ensured = false;
+
+  constructor(
+    private readonly url: string,
+    private readonly apiKey?: string,
+    private readonly collection = 'vocaliq',
+    private readonly fetchImpl: typeof fetch = fetch,
+  ) {}
+
+  private headers(json: boolean): Record<string, string> {
+    return {
+      ...(json ? { 'content-type': 'application/json' } : {}),
+      ...(this.apiKey ? { 'api-key': this.apiKey } : {}),
+    };
   }
-  async search(): Promise<VectorHit[]> {
-    throw new ProviderError('Qdrant store not yet wired.');
+
+  /** Create the collection (Cosine, dim from the first vector) on first use; idempotent. */
+  private async ensureCollection(dim: number): Promise<void> {
+    if (this.ensured) return;
+    const existing = await this.fetchImpl(`${this.url}/collections/${this.collection}`, {
+      headers: this.headers(false),
+    });
+    if (!existing.ok) {
+      const created = await this.fetchImpl(`${this.url}/collections/${this.collection}`, {
+        method: 'PUT',
+        headers: this.headers(true),
+        body: JSON.stringify({ vectors: { size: dim, distance: 'Cosine' } }),
+      });
+      if (!created.ok) {
+        throw new ProviderError(`Qdrant collection create failed (${created.status}).`);
+      }
+    }
+    this.ensured = true;
+  }
+
+  async upsert(items: VectorItem[]): Promise<void> {
+    if (items.length === 0) return;
+    const dim = items[0]?.vector.length ?? 0;
+    if (dim === 0) throw new ProviderError('Qdrant upsert requires non-empty vectors.');
+    await this.ensureCollection(dim);
+    const points = items.map((it) => ({
+      id: toPointId(it.id),
+      vector: it.vector,
+      payload: { ...(it.payload ?? {}), __id: it.id, tenantId: it.tenantId },
+    }));
+    const res = await this.fetchImpl(
+      `${this.url}/collections/${this.collection}/points?wait=true`,
+      { method: 'PUT', headers: this.headers(true), body: JSON.stringify({ points }) },
+    );
+    if (!res.ok) throw new ProviderError(`Qdrant upsert failed (${res.status}).`);
+  }
+
+  async search(tenantId: string, vector: number[], topK: number): Promise<VectorHit[]> {
+    const res = await this.fetchImpl(`${this.url}/collections/${this.collection}/points/search`, {
+      method: 'POST',
+      headers: this.headers(true),
+      body: JSON.stringify({
+        vector,
+        limit: Math.max(0, topK),
+        filter: { must: [{ key: 'tenantId', match: { value: tenantId } }] },
+        with_payload: true,
+      }),
+    });
+    if (!res.ok) throw new ProviderError(`Qdrant search failed (${res.status}).`);
+    const body = (await res.json().catch(() => ({}))) as {
+      result?: Array<{ id: unknown; score: number; payload?: Record<string, unknown> }>;
+    };
+    return (body.result ?? []).map((r) => {
+      const payload = { ...(r.payload ?? {}) };
+      const origId = typeof payload.__id === 'string' ? payload.__id : String(r.id);
+      payload.__id = undefined;
+      payload.tenantId = undefined;
+      const clean = Object.fromEntries(Object.entries(payload).filter(([, v]) => v !== undefined));
+      const hit: VectorHit = { id: origId, score: r.score };
+      if (Object.keys(clean).length > 0) hit.payload = clean;
+      return hit;
+    });
   }
 }
 
 /** Select the vector store from env. Qdrant when configured (gated), else the in-memory default. */
 export function buildVectorStore(env: NodeJS.ProcessEnv = process.env): VectorStore {
-  if (env.QDRANT_URL) return new QdrantVectorStore(env.QDRANT_URL);
+  if (env.QDRANT_URL) return new QdrantVectorStore(env.QDRANT_URL, env.QDRANT_API_KEY);
   return new InMemoryVectorStore();
 }

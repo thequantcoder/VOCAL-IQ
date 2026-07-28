@@ -5087,3 +5087,16 @@ K. Build/CI: ✅ — typecheck + biome + ruff + web build + touched test suites 
 **Checks.** biome clean (4 files). Tests: shared schema accepts `trainingExamples` + rejects a malformed row; `openai-finetune-provider.test.ts` (pure-unit, injected fetch) — file-upload→job-create sequence + purpose/Bearer/training_file, the min-examples guard (no upload attempted), failure raises, and factory selection. Local api vitest wedged under iCloud startup — CI (node) is the gate.
 
 **PENDING-AUDIT:** fine-tune moved out of P1. Remaining P1: **PCI capture**, cloud KMS, spam-label lookup.
+
+---
+
+## Post-audit: real Qdrant vector store (P2)
+
+**Why.** `QdrantVectorStore.upsert/search` threw "not yet wired" — retrieval at scale only worked on the in-memory reference store. This implements the real Qdrant REST client behind the existing `VectorStore` seam, so retrieval swaps to Qdrant when `QDRANT_URL` is set with no change to callers (Qdrant REST shapes verified against the docs).
+
+- **`QdrantVectorStore`** (`apps/api/src/scale/vector-store.ts`): points live in one **Cosine** collection created lazily from the first vector's dimension (`GET /collections/{c}` probe → `PUT` create). `upsert` → `PUT /collections/{c}/points?wait=true` with each point's id mapped to a **deterministic UUID** (SHA-256; Qdrant ids must be uint64/UUID) and a payload carrying the original id (`__id`) + `tenantId`. `search` → `POST /points/search` with a `tenantId` filter (isolation holds exactly as in-memory) and maps hits back to the original id + a clean payload. Optional `QDRANT_API_KEY` → `api-key` header. Every non-2xx → a typed `ProviderError`. `fetch` injectable.
+- `buildVectorStore` passes `QDRANT_API_KEY`.
+
+**Checks.** biome clean. New pure-unit test `qdrant-store.test.ts` (injected fetch, no Qdrant): lazy collection create (Cosine, right dim) → point-upsert shape (UUID id + `__id`/`tenantId` payload), tenant-filtered search + hit mapping, typed error on failure, factory selection. Local api vitest wedged under iCloud startup — CI (node) is the gate.
+
+**PENDING-AUDIT:** Qdrant moved out of P2. (Remaining P2 highlight: non-HubSpot connectors.)

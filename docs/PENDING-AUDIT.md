@@ -33,9 +33,10 @@ Remaining P1 (still mock/Disabled even with the key set):
 
 ## 🟠 P2 — Buildable code gaps (no external key required to write)
 
+**✅ Resolved:** **Qdrant vector store** (`QdrantVectorStore` — real REST client, lazy Cosine collection + tenant-filtered search, #201).
+
 | Gap | File | Note |
 |---|---|---|
-| **Qdrant vector store (Day 62)** | `apps/api/src/scale/vector-store.ts:84,88` | `QdrantVectorStore.upsert/search` throw — HTTP client unimplemented; in-memory store works. Needs `QDRANT_URL` to run, but the client is code work. |
 | **Non-HubSpot connectors** | `apps/api/src/integrations/connectors/factory.ts:23` | Salesforce/Zendesk/Google/Zapier/Webhook are "framework-ready, not implemented" → return `null`, sync no-ops (`integrations.service.ts:186`). Only HubSpot built. UI shows "coming soon" (`web/.../integrations/page.tsx:189`). |
 | **Voice `/start` Call-row persistence** | `apps/voice/app/calls/router.py:61` | `TODO(Day 09 live)`: LiveKit path doesn't set tenant on the DB session / persist a `Call` row. |
 | **Voice `POST /calls/dial` endpoint** | *(not present)* | The PSTN dial endpoint that the api's `HttpDialer` already POSTs to (with `language`+`voice_id`, #196) is **not built**. Partly needs a funded number to verify (P3), but the endpoint + Twilio↔LiveKit media bridge is code. |
