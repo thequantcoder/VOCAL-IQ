@@ -7,7 +7,10 @@ import {
   RateLimitError,
   TERMINAL_CALL_STATUSES,
   ValidationError,
+  isIndianLanguage,
+  isSarvamVoice,
   phoneKey,
+  primaryLanguage,
 } from '@vocaliq/shared';
 import { z } from 'zod';
 import type { PrismaService } from '../db/prisma.service';
@@ -91,9 +94,25 @@ export class OutboundService {
     }
     const { agentId, to, contactId, flowVersionId, consentBasis, from } = parsed.data;
 
+    // India roadmap: an Indic-primary agent routes the outbound call to Sarvam with its Bulbul voice.
+    // Resolved inside the tx (RLS) and handed to the dialer below.
+    let dialLanguage: string | undefined;
+    let dialVoiceId: string | undefined;
+
     const call = await this.db.withTenant(tenantId, async (tx) => {
-      const agent = await tx.agent.findFirst({ where: { id: agentId }, select: { id: true } });
+      const agent = await tx.agent.findFirst({
+        where: { id: agentId },
+        select: { id: true, languages: true, persona: true },
+      });
       if (!agent) throw new NotFoundError('Agent not found');
+      dialLanguage = primaryLanguage(agent.languages);
+      // The stored Bulbul speaker only applies to a Sarvam (Indic-primary) call — gate it so a
+      // non-Indic agent never carries a stale voice onto the default TTS stack.
+      const rawPersona = (agent.persona ?? {}) as { sarvamVoice?: unknown };
+      const sarvamVoice =
+        typeof rawPersona.sarvamVoice === 'string' ? rawPersona.sarvamVoice : undefined;
+      dialVoiceId =
+        isIndianLanguage(dialLanguage) && isSarvamVoice(sarvamVoice) ? sarvamVoice : undefined;
 
       // ── DNC gate: explicit contact flag + phone-based suppression ──────────────
       if (contactId) {
@@ -166,6 +185,8 @@ export class OutboundService {
       to,
       ...(from ? { from } : {}),
       ...(flowVersionId ? { flowVersionId } : {}),
+      ...(dialLanguage ? { language: dialLanguage } : {}),
+      ...(dialVoiceId ? { voiceId: dialVoiceId } : {}),
     });
 
     return { callId: call.id, status: call.status, consentBasis };
