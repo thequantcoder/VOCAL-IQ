@@ -9,6 +9,7 @@ import {
   refundInputSchema,
 } from '@vocaliq/shared';
 import type { PrismaService } from '../db/prisma.service';
+import { type EmailSender, buildEmailSender } from '../email/email.service';
 
 /**
  * Pay-by-voice payments (Day 78). A customer of the tenant pays the tenant over a call. VocalIQ runs
@@ -73,8 +74,32 @@ export class DisabledReceiptSender implements ReceiptSender {
   }
 }
 
-export function buildReceiptSender(_env: NodeJS.ProcessEnv): ReceiptSender {
-  return new DisabledReceiptSender();
+/**
+ * Live receipt sender: emails the receipt via the shared Resend email sender (so a configured marketing
+ * domain doubles as the transactional-receipt channel). SMS receipts need a separate SMS sender that
+ * isn't wired yet, so an `sms`-channel receipt is skipped (best-effort — `maybeSendReceipt` only calls
+ * this when a channel + destination are set, and never throws on the result).
+ */
+export class EmailReceiptSender implements ReceiptSender {
+  readonly enabled = true;
+  constructor(private readonly email: EmailSender) {}
+  async send(input: { channel: 'email' | 'sms'; to: string; body: string }): Promise<void> {
+    if (input.channel !== 'email') return; // SMS receipts need an SMS sender (not configured)
+    await this.email.send({
+      to: input.to,
+      subject: 'Your VocalIQ payment receipt',
+      body: input.body,
+    });
+  }
+}
+
+/**
+ * Select the receipt sender from env. Reuses the email seam: when Resend is configured
+ * (`RESEND_API_KEY` + `MARKETING_EMAIL_FROM`), receipts email through it; otherwise disabled.
+ */
+export function buildReceiptSender(env: NodeJS.ProcessEnv = process.env): ReceiptSender {
+  const email = buildEmailSender(env);
+  return email.name === 'resend' ? new EmailReceiptSender(email) : new DisabledReceiptSender();
 }
 
 /** Prisma unique-constraint violation (P2002) — how a raced idempotent charge is detected. */
