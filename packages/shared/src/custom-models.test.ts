@@ -46,6 +46,35 @@ describe('customModelSchema', () => {
     });
     expect(ok.requestFineTune).toBe(false); // default
   });
+
+  it('accepts chat-format trainingExamples and rejects a malformed row', () => {
+    const ok = customModelSchema.parse({
+      name: 'Brand',
+      provider: 'OPENAI',
+      baseModel: 'gpt-4o-mini',
+      requestFineTune: true,
+      trainingExamples: [
+        {
+          messages: [
+            { role: 'user', content: 'hi' },
+            { role: 'assistant', content: 'hello' },
+          ],
+        },
+      ],
+      consent: { consentGiven: true, consentedBy: 'Jane', consentText: 'Yes' },
+    });
+    expect(ok.trainingExamples).toHaveLength(1);
+    // a row with a single message (needs ≥2) is rejected
+    expect(() =>
+      customModelSchema.parse({
+        name: 'Brand',
+        provider: 'OPENAI',
+        baseModel: 'gpt-4o-mini',
+        trainingExamples: [{ messages: [{ role: 'user', content: 'hi' }] }],
+        consent: { consentGiven: true, consentedBy: 'Jane', consentText: 'Yes' },
+      }),
+    ).toThrow();
+  });
 });
 
 describe('resolveModelRouting (pure routing)', () => {

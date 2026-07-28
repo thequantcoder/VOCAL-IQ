@@ -1,6 +1,7 @@
 import {
   type CustomModelProfile,
   type CustomModelProvider,
+  type FineTuneExample,
   NotFoundError,
   ValidationError,
   canCreateCustomModel,
@@ -22,9 +23,13 @@ import type { PrismaService } from '../db/prisma.service';
 /** Gated fine-tune seam — mirrors the Day-26 VoiceCloner. Disabled fallback keeps custom models working. */
 export interface FineTuneProvider {
   readonly enabled: boolean;
-  startFineTune(input: { tenantId: string; name: string; baseModel: string }): Promise<{
-    fineTuneId: string;
-  }>;
+  startFineTune(input: {
+    tenantId: string;
+    name: string;
+    baseModel: string;
+    /** The consented chat-format training rows. The live adapter enforces the provider's minimum. */
+    trainingExamples: FineTuneExample[];
+  }): Promise<{ fineTuneId: string }>;
 }
 
 export class DisabledFineTuneProvider implements FineTuneProvider {
@@ -36,8 +41,69 @@ export class DisabledFineTuneProvider implements FineTuneProvider {
   }
 }
 
-/** Build the fine-tune provider from env (gated). A real adapter swaps in when a key is present. */
-export function buildFineTuneProvider(_env: NodeJS.ProcessEnv): FineTuneProvider {
+/** OpenAI requires at least this many supervised examples to accept a fine-tuning job. */
+export const MIN_FINE_TUNE_EXAMPLES = 10;
+
+/**
+ * Live OpenAI fine-tune provider. `startFineTune` uploads the consented training rows as a JSONL file
+ * (`POST /v1/files`, `purpose=fine-tune`) and creates a job on the chosen base model
+ * (`POST /v1/fine_tuning/jobs`), returning the job id (`ftjob-…`) as the `fineTuneId` the service stores
+ * and later marks ready. Bearer key (never logged); `fetch` injectable for offline tests. Enforces the
+ * provider's example minimum up front with a clear error.
+ */
+export class OpenAiFineTuneProvider implements FineTuneProvider {
+  readonly enabled = true;
+  private readonly base = 'https://api.openai.com/v1';
+
+  constructor(
+    private readonly apiKey: string,
+    private readonly fetchImpl: typeof fetch = fetch,
+  ) {}
+
+  async startFineTune(input: {
+    tenantId: string;
+    name: string;
+    baseModel: string;
+    trainingExamples: FineTuneExample[];
+  }): Promise<{ fineTuneId: string }> {
+    if (input.trainingExamples.length < MIN_FINE_TUNE_EXAMPLES) {
+      throw new ValidationError(
+        `A provider fine-tune needs at least ${MIN_FINE_TUNE_EXAMPLES} training examples.`,
+      );
+    }
+    // 1. Upload the training set as a JSONL file (one chat-format row per line).
+    const jsonl = input.trainingExamples.map((e) => JSON.stringify(e)).join('\n');
+    const form = new FormData();
+    form.append('purpose', 'fine-tune');
+    form.append('file', new Blob([jsonl], { type: 'application/jsonl' }), `${input.name}.jsonl`);
+    const fileRes = await this.fetchImpl(`${this.base}/files`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${this.apiKey}` }, // no content-type: fetch sets the boundary
+      body: form,
+    });
+    if (!fileRes.ok) throw new ValidationError(`Fine-tune upload failed (${fileRes.status}).`);
+    const file = (await fileRes.json().catch(() => ({}))) as { id?: string };
+    if (!file.id) throw new ValidationError('Fine-tune upload did not return a file id.');
+
+    // 2. Create the fine-tuning job on the base model.
+    const jobRes = await this.fetchImpl(`${this.base}/fine_tuning/jobs`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${this.apiKey}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ training_file: file.id, model: input.baseModel }),
+    });
+    if (!jobRes.ok) throw new ValidationError(`Fine-tune job create failed (${jobRes.status}).`);
+    const job = (await jobRes.json().catch(() => ({}))) as { id?: string };
+    if (!job.id) throw new ValidationError('Fine-tune job did not return a job id.');
+    return { fineTuneId: job.id };
+  }
+}
+
+/**
+ * Build the fine-tune provider from env (gated). The live OpenAI provider swaps in when `OPENAI_API_KEY`
+ * is set (fine-tuning uses the same key); disabled otherwise, so a system-prompt custom model still works.
+ */
+export function buildFineTuneProvider(env: NodeJS.ProcessEnv = process.env): FineTuneProvider {
+  if (env.OPENAI_API_KEY) return new OpenAiFineTuneProvider(env.OPENAI_API_KEY);
   return new DisabledFineTuneProvider();
 }
 
@@ -108,6 +174,7 @@ export class CustomModelsService {
         tenantId,
         name: d.name,
         baseModel: d.baseModel,
+        trainingExamples: d.trainingExamples ?? [],
       });
       fineTuneId = job.fineTuneId;
       status = 'training';
