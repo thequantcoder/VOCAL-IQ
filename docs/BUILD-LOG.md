@@ -5100,3 +5100,21 @@ K. Build/CI: ✅ — typecheck + biome + ruff + web build + touched test suites 
 **Checks.** biome clean. New pure-unit test `qdrant-store.test.ts` (injected fetch, no Qdrant): lazy collection create (Cosine, right dim) → point-upsert shape (UUID id + `__id`/`tenantId` payload), tenant-filtered search + hit mapping, typed error on failure, factory selection. Local api vitest wedged under iCloud startup — CI (node) is the gate.
 
 **PENDING-AUDIT:** Qdrant moved out of P2. (Remaining P2 highlight: non-HubSpot connectors.)
+
+---
+
+## Post-audit: non-HubSpot CRM/automation connectors (P2)
+
+**Why.** Only HubSpot was built; `SALESFORCE/ZENDESK/GOOGLE/ZAPIER/WEBHOOK` returned `null` from the factory → a "connected but sync pending" no-op. This implements the ones with a real, verifiable contract behind the existing `Connector` seam (API shapes verified against Zendesk/Salesforce docs first), so a completed call now syncs to them.
+
+- **`WebhookConnector`** (WEBHOOK + Zapier catch-hooks — same shape): an authenticated JSON `POST` of the normalized `CallSyncPayload` to the tenant's `settings.url`; contact email echoed as the external ref.
+- **`ZendeskConnector`** (contacts + tickets): OAuth bearer against `https://{settings.subdomain}.zendesk.com`; `POST /api/v2/users/create_or_update.json` (keyed on email) + `POST /api/v2/tickets.json` (priority high on negative sentiment).
+- **`SalesforceConnector`** (contacts-only per `CONNECTOR_META`): bearer against `settings.instanceUrl`; SOQL find-by-email → `PATCH`/`POST /services/data/v59.0/sobjects/Contact` (mirrors the HubSpot find-by-email flow; `LastName` falls back to company → "Unknown").
+- **factory**: wires all four, returning `null` when the required setting (`url`/`subdomain`/`instanceUrl`) is absent (still "connected but sync pending"). `GOOGLE` stays `null` — `CONNECTOR_META` gives it no contact-sync capability by design.
+- **shared** `CONNECTOR_META`: `implemented` flipped to `true` for Salesforce/Zendesk/Zapier/Webhook (drives the UI + the `connect` gate). The "unimplemented provider" service test now points at `GOOGLE`.
+
+**Follow-up (UI):** the integrations connect form should collect each connector's required setting (`url`/`subdomain`/`instanceUrl`); until then a connect without it stores but stays sync-pending (the pre-existing null-connector behaviour, now reachable).
+
+**Checks.** biome clean (7 files). New `connectors.test.ts` (pure-unit, fake `HttpClient`): webhook POST + fail-soft, Zendesk user-upsert + ticket, Salesforce SOQL→PATCH (existing) and SOQL-empty→POST (create, LastName fallback), and factory selection incl. null when settings missing / for GOOGLE. Local api vitest wedged under iCloud startup — CI (node) is the gate.
+
+**PENDING-AUDIT:** connectors moved out of P2 (GOOGLE noted as intentionally unbuilt).
