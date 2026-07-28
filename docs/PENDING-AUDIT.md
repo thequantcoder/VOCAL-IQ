@@ -19,14 +19,15 @@ The **product is feature-complete**: every day-prompt (00–95), UX-Day (00–16
 
 These are the most important to know about: the DI factory inspects env but returns the Disabled/mock version regardless, so the feature never actually runs even when configured. Each needs a real adapter coded into the seam.
 
+**✅ Resolved (real adapter now coded — flips live on the key):** **SSO/WorkOS** (`WorkOsSsoProvider`, PR #198), **Marketing email/Resend** (`ResendEmailSender`, #198), **Video avatars/HeyGen** (`heygenAvatarProvider`, #198). Set the documented key(s) and these now hit the real provider.
+
+Remaining P1 (still mock/Disabled even with the key set):
+
 | Feature | File (factory) | What happens even when "configured" | To finish |
 |---|---|---|---|
-| **SSO / SAML (WorkOS)** | `apps/api/src/sso/sso-provider.ts:37-44` | `buildSsoProvider` returns `DisabledSsoProvider` even with `WORKOS_API_KEY` set → auth URL/callback throw. Enterprise login can't work. | Code `WorkOsSsoProvider` (config/JIT/SCIM already built + mock-tested). |
-| **Marketing email (Resend)** | `apps/api/src/email/email.service.ts:45-51` | `buildEmailSender` returns `DisabledEmailSender` even with `RESEND_API_KEY`+`MARKETING_EMAIL_FROM` → send fails; Message row still recorded/metered. | Code `ResendEmailSender`. |
 | **Provider fine-tune (Day 76)** | `apps/api/src/models/custom-models.service.ts:40-42` | `buildFineTuneProvider` ignores env, always Disabled → `startFineTune` throws. System-prompt "custom models" DO work. | Code a fine-tune provider adapter. |
 | **PCI pay-by-voice capture (Day 78)** | `apps/api/src/payments/payments.service.ts:59-61` | `buildPciCaptureProvider` ignores env, always Disabled → capture/charge/refund refuse. Card-detection + out-of-scope model built. | Code a PCI-DSS capture adapter (+ confirm PCI model, see P5). |
-| **Payment receipt sender** | `apps/api/src/payments/payments.service.ts:76-78` | `buildReceiptSender` ignores env, always Disabled → receipts silently never sent. | Code an email/SMS receipt adapter. |
-| **Video avatars (Day 92)** | `apps/api/src/avatars/avatar.service.ts:53-61` + `composition.ts:412` | With `AVATAR_PROVIDER_API_KEY` set, composition wires `mockAvatarProvider()` (returns `mock:<id>`), **not** a real vendor → sessions meter cost against a fake ref, **no real video**. Falls back to voice cleanly. | Code a HeyGen/D-ID/Tavus adapter. |
+| **Payment receipt sender** | `apps/api/src/payments/payments.service.ts:76-78` | `buildReceiptSender` ignores env, always Disabled → receipts silently never sent. | Code an email/SMS receipt adapter (could reuse the new Resend sender). |
 | **Cloud KMS envelope encryption (Day 57)** | `apps/api/src/crypto/envelope.ts` | `buildEncryptor` always returns `LocalMasterKeyProvider`; `KMS_KEY_ID` is referenced but never wired. `VAULT_MASTER_KEY` (local) works for self-host. | Code a cloud-KMS adapter behind `KMS_KEY_ID` (only needed for managed cloud). |
 | **Caller reputation / spam-label lookup (Day 69)** | `apps/api/src/reputation/reputation.service.ts` | External spam-label provider defaults to `async () => null`; score/warm-up/auto-rest still work from self-signals; attestation defaults `'A'`. | Inject a real spam-label/STIR-SHAKEN provider (`NUMBER_REPUTATION_API_KEY`). |
 

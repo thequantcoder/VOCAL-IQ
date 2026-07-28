@@ -5043,3 +5043,19 @@ K. Build/CI: ✅ — typecheck + biome + ruff + web build + touched test suites 
 **Checks.** biome clean (4 touched api files); tests: `HttpDialer` POSTs `language`+`voice_id` for an Indic dial and neither for a plain one; `outbound.placeCall` hands the dialer language+voiceId for an Indic agent and neither for a plain agent. Local api vitest flaked under the sandbox's iCloud eviction — CI (node) is the authoritative gate.
 
 **India voice — all four calling paths now language+voice aware end-to-end (widget + WhatsApp + Messenger live; PSTN API-side ready, voice `/calls/dial` deferred to Twilio go-live).**
+
+---
+
+## Post-audit: make 3 "advertised but inert" P1 seams real (WorkOS SSO · Resend email · HeyGen avatar)
+
+**Why.** `docs/PENDING-AUDIT.md` P1 flagged ~8 `build*` factories that returned a Disabled/mock impl **even when the documented env key was set** — the real adapter was never coded, so setting the key did nothing. This closes the three that need no external dependency to write (verified each provider's API against its official docs first — CLAUDE.md §15).
+
+- **SSO / WorkOS** (`apps/api/src/sso/sso-provider.ts`): new `WorkOsSsoProvider` — `getAuthorizationUrl` builds the hosted `/sso/authorize` redirect (keyed on the tenant's `connectionId`, `state`=tenantId); `validateCallback` exchanges the code at `POST /sso/token` (client_id+client_secret+grant_type+code, form-encoded) and normalizes the returned profile → `SsoProfile` (name from first/last, `idp_id`→idpUserId). `buildSsoProvider` returns it when BOTH `WORKOS_API_KEY` + `WORKOS_CLIENT_ID` are set. Safe `AuthError` on any non-2xx / unreachable / no-email.
+- **Marketing email / Resend** (`apps/api/src/email/email.service.ts`): new `ResendEmailSender` — `POST https://api.resend.com/emails` with a Bearer key, body as `html`; fail-soft `SENT`/`FAILED` (never throws; Message row still recorded/metered). `buildEmailSender` returns it when `RESEND_API_KEY` + `MARKETING_EMAIL_FROM` are set.
+- **Video avatars / HeyGen** (`apps/api/src/avatars/avatar.service.ts`): new `heygenAvatarProvider` — `x-api-key` auth; `startSession` = `POST /v1/streaming.new` → `streaming.start`, returns HeyGen's `session_id` as `providerRef`; `endSession` = `streaming.stop` (best-effort). `composition.ts` now wires it (replacing `mockAvatarProvider`) when `AVATAR_PROVIDER_API_KEY` is set; a start failure is caught and the call still falls back to voice. `mockAvatarProvider` kept for tests.
+
+**Pattern.** Each mirrors the established live-seam shape (real adapter + injected `fetch` + gated factory, like `StripeBillingProcessor` / `HttpDialer`): Disabled/unavailable with no key, real provider the moment the key is set — no change to the calling services.
+
+**Checks.** biome clean (7 files). New pure-unit tests (injected `fetch`, no DB): `resend-sender.test.ts` (endpoint/auth/body + SENT/FAILED + fail-soft + factory selection), `sso-provider.test.ts` (authorize URL, token exchange + profile mapping, safe errors, factory), `heygen-provider.test.ts` (new→start→stop sequence, x-api-key, session_id→providerRef, failure raises). Local api vitest wedged under the sandbox's iCloud startup — CI (node) is the authoritative gate.
+
+**PENDING-AUDIT updated:** these 3 moved out of P1 (now "resolved — flips live on the key"). Remaining P1: fine-tune, PCI capture + receipts, cloud KMS, spam-label lookup.

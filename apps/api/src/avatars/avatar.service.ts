@@ -60,6 +60,45 @@ export function mockAvatarProvider(): AvatarProvider {
   };
 }
 
+/**
+ * Live HeyGen Streaming-Avatar provider. `startSession` creates a session (`POST /v1/streaming.new`),
+ * starts it (`streaming.start`), and returns HeyGen's `session_id` as the `providerRef`; `endSession`
+ * stops it (`streaming.stop`, best-effort). Auth is the `x-api-key` header (never logged). `ready()` is
+ * true whenever a key is present — an actual start failure surfaces as a caught error and the service
+ * falls the call back to voice. `fetch` is injectable for offline tests.
+ */
+export function heygenAvatarProvider(
+  apiKey: string,
+  fetchImpl: typeof fetch = fetch,
+): AvatarProvider {
+  const base = 'https://api.heygen.com/v1';
+  async function post(path: string, body: Record<string, unknown>): Promise<unknown> {
+    const res = await fetchImpl(`${base}/${path}`, {
+      method: 'POST',
+      headers: { 'x-api-key': apiKey, 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new ValidationError(`Avatar provider error on ${path} (${res.status}).`);
+    return res.json().catch(() => ({}));
+  }
+  return {
+    ready: () => true,
+    async startSession({ providerAvatarId }) {
+      const created = (await post('streaming.new', {
+        quality: 'medium',
+        avatar_id: providerAvatarId,
+      })) as { data?: { session_id?: string } };
+      const sessionId = created.data?.session_id;
+      if (!sessionId) throw new ValidationError('Avatar provider did not return a session id.');
+      await post('streaming.start', { session_id: sessionId });
+      return { providerRef: sessionId };
+    },
+    async endSession({ providerRef }) {
+      await post('streaming.stop', { session_id: providerRef }).catch(() => {});
+    },
+  };
+}
+
 /** Resolves whether the tenant's plan entitles video avatars (wired to EntitlementsService in composition). */
 export type VideoEntitlement = (tenantId: string) => Promise<boolean>;
 
