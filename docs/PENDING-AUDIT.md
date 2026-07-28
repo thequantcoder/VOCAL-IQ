@@ -33,11 +33,10 @@ Remaining P1 (still mock/Disabled even with the key set):
 
 ## 🟠 P2 — Buildable code gaps (no external key required to write)
 
-**✅ Resolved:** **Qdrant vector store** (`QdrantVectorStore` — real REST client, lazy Cosine collection + tenant-filtered search, #201).
+**✅ Resolved:** **Qdrant vector store** (`QdrantVectorStore` — real REST client, lazy Cosine collection + tenant-filtered search, #201); **non-HubSpot connectors** (`Webhook`/`Zapier`, `Zendesk`, `Salesforce` connectors + factory wiring, #202 — `GOOGLE` intentionally stays unbuilt: `CONNECTOR_META` gives it no contact-sync capability).
 
 | Gap | File | Note |
 |---|---|---|
-| **Non-HubSpot connectors** | `apps/api/src/integrations/connectors/factory.ts:23` | Salesforce/Zendesk/Google/Zapier/Webhook are "framework-ready, not implemented" → return `null`, sync no-ops (`integrations.service.ts:186`). Only HubSpot built. UI shows "coming soon" (`web/.../integrations/page.tsx:189`). |
 | **Voice `/start` Call-row persistence** | `apps/voice/app/calls/router.py:61` | `TODO(Day 09 live)`: LiveKit path doesn't set tenant on the DB session / persist a `Call` row. |
 | **Voice `POST /calls/dial` endpoint** | *(not present)* | The PSTN dial endpoint that the api's `HttpDialer` already POSTs to (with `language`+`voice_id`, #196) is **not built**. Partly needs a funded number to verify (P3), but the endpoint + Twilio↔LiveKit media bridge is code. |
 | **Two worker outbound-dial seams** | `apps/workers/src/campaign-scheduler.ts:186`, `apps/workers/src/callback-dialer.ts:126` | `TODO(live)`: both mark the contact `CALLING`/`dialing` but never enqueue the real metered outbound call — need wiring through `OutboundService` (blocked on the `HttpDialer`→voice chain above). |

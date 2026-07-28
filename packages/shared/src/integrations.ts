@@ -27,23 +27,23 @@ export const CONNECTOR_META: Record<
   SALESFORCE: {
     label: 'Salesforce',
     capabilities: { contacts: true, tickets: false },
-    implemented: false,
+    implemented: true,
   },
   ZENDESK: {
     label: 'Zendesk',
     capabilities: { contacts: true, tickets: true },
-    implemented: false,
+    implemented: true,
   },
   GOOGLE: {
     label: 'Google',
     capabilities: { contacts: false, tickets: false },
     implemented: false,
   },
-  ZAPIER: { label: 'Zapier', capabilities: { contacts: true, tickets: false }, implemented: false },
+  ZAPIER: { label: 'Zapier', capabilities: { contacts: true, tickets: false }, implemented: true },
   WEBHOOK: {
     label: 'Webhook',
     capabilities: { contacts: true, tickets: false },
-    implemented: false,
+    implemented: true,
   },
 };
 

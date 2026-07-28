@@ -131,9 +131,10 @@ describe('IntegrationsService', () => {
   });
 
   it('rejects an unimplemented provider and a bad token', async () => {
-    await expect(
-      svc.connect(C1, { type: 'SALESFORCE', accessToken: 'longenough' }),
-    ).rejects.toSatisfy(isAppError);
+    // GOOGLE has no contact-sync capability by design → still not connectable.
+    await expect(svc.connect(C1, { type: 'GOOGLE', accessToken: 'longenough' })).rejects.toSatisfy(
+      isAppError,
+    );
     const badFactory: ConnectorFactory = () => ({ ...spyConnector, testAuth: async () => false });
     const badSvc = new IntegrationsService(db, badFactory);
     await expect(
