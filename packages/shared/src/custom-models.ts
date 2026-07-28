@@ -32,6 +32,16 @@ export const modelConsentSchema = z.object({
 });
 export type ModelConsent = z.infer<typeof modelConsentSchema>;
 
+/** One supervised chat-format training row (a fine-tune JSONL line): `{ messages: [...] }`. */
+export const fineTuneMessageSchema = z.object({
+  role: z.enum(['system', 'user', 'assistant']),
+  content: z.string().min(1).max(32_000),
+});
+export const fineTuneExampleSchema = z.object({
+  messages: z.array(fineTuneMessageSchema).min(2).max(100),
+});
+export type FineTuneExample = z.infer<typeof fineTuneExampleSchema>;
+
 export const customModelSchema = z.object({
   name: z.string().min(1).max(80),
   provider: z.enum(CUSTOM_MODEL_PROVIDERS),
@@ -40,6 +50,12 @@ export const customModelSchema = z.object({
   systemPrompt: z.string().max(8000).optional(),
   /** Request an actual provider fine-tune (gated on a configured fine-tune provider). */
   requestFineTune: z.boolean().default(false),
+  /**
+   * The tenant's consented training set (chat-format rows) — required in practice for a real provider
+   * fine-tune (the adapter enforces the provider's minimum); optional here so a system-prompt-only
+   * custom model needs none. Capped so an upload can't run away.
+   */
+  trainingExamples: z.array(fineTuneExampleSchema).max(50_000).optional(),
   consent: modelConsentSchema,
 });
 export type CustomModelInput = z.infer<typeof customModelSchema>;

@@ -5072,3 +5072,18 @@ K. Build/CI: ✅ — typecheck + biome + ruff + web build + touched test suites 
 **Checks.** biome clean (2 files). New pure-unit test `receipt-sender.test.ts` (no DB): email-channel emails with a subject, sms-channel skips without touching email, factory activates only when Resend is configured. Local api vitest wedged under iCloud startup — CI (node) is the authoritative gate.
 
 **PENDING-AUDIT:** payment receipts moved out of P1. Remaining P1: fine-tune, PCI capture, cloud KMS, spam-label lookup.
+
+---
+
+## Post-audit: real OpenAI provider fine-tune (`OpenAiFineTuneProvider`)
+
+**Why.** `buildFineTuneProvider` always returned Disabled → `requestFineTune` always threw "not configured". Unlike the other P1 seams (complete interfaces), this one couldn't be made real by only writing an adapter: `startFineTune({tenantId,name,baseModel})` carried **no training data**, and a real fine-tune is impossible without a dataset. So this is a small, honest **interface + schema extension** plus the OpenAI adapter (API shapes verified against OpenAI docs first).
+
+- **shared** (`custom-models.ts`): new `fineTuneMessageSchema` / `fineTuneExampleSchema` (OpenAI chat-format JSONL rows: `{messages:[{role,content}]}`) + `FineTuneExample` type; `customModelSchema` gains an **optional** `trainingExamples[]` (capped 50k). Optional (no refine) → a system-prompt-only custom model needs none, and the existing Disabled/stub tests stay green.
+- **api** (`custom-models.service.ts`): `FineTuneProvider.startFineTune` input gains `trainingExamples`. New `OpenAiFineTuneProvider` — uploads the rows as a JSONL file (`POST /v1/files`, `purpose=fine-tune`, multipart, Bearer) then creates the job (`POST /v1/fine_tuning/jobs` `{training_file, model}`), returning the `ftjob-…` id the service stores + later marks ready. Enforces OpenAI's `MIN_FINE_TUNE_EXAMPLES=10` up front. `buildFineTuneProvider` returns it when `OPENAI_API_KEY` is set. `create()` passes `trainingExamples ?? []`.
+
+**Backward-compat.** The zero-arg test stub + `DisabledFineTuneProvider` still satisfy the widened interface (fewer params is assignable); with no `OPENAI_API_KEY`, `requestFineTune` still hits Disabled's "not configured" error.
+
+**Checks.** biome clean (4 files). Tests: shared schema accepts `trainingExamples` + rejects a malformed row; `openai-finetune-provider.test.ts` (pure-unit, injected fetch) — file-upload→job-create sequence + purpose/Bearer/training_file, the min-examples guard (no upload attempted), failure raises, and factory selection. Local api vitest wedged under iCloud startup — CI (node) is the gate.
+
+**PENDING-AUDIT:** fine-tune moved out of P1. Remaining P1: **PCI capture**, cloud KMS, spam-label lookup.
