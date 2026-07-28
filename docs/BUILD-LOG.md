@@ -5059,3 +5059,16 @@ K. Build/CI: ✅ — typecheck + biome + ruff + web build + touched test suites 
 **Checks.** biome clean (7 files). New pure-unit tests (injected `fetch`, no DB): `resend-sender.test.ts` (endpoint/auth/body + SENT/FAILED + fail-soft + factory selection), `sso-provider.test.ts` (authorize URL, token exchange + profile mapping, safe errors, factory), `heygen-provider.test.ts` (new→start→stop sequence, x-api-key, session_id→providerRef, failure raises). Local api vitest wedged under the sandbox's iCloud startup — CI (node) is the authoritative gate.
 
 **PENDING-AUDIT updated:** these 3 moved out of P1 (now "resolved — flips live on the key"). Remaining P1: fine-tune, PCI capture + receipts, cloud KMS, spam-label lookup.
+
+---
+
+## Post-audit: wire PCI payment receipts to the Resend email seam
+
+**Why.** Another P1 seam: `buildReceiptSender` always returned `DisabledReceiptSender`, so a successful pay-by-voice charge never emailed the customer a receipt. Rather than a new provider, this reuses the Resend email sender shipped in #198 — a configured marketing domain now doubles as the transactional-receipt channel.
+
+- **`EmailReceiptSender`** (`apps/api/src/payments/payments.service.ts`): `enabled=true`; an `email`-channel receipt is sent via the injected `EmailSender` with subject "Your VocalIQ payment receipt" and the `buildReceipt(...)` line as the body. An `sms`-channel receipt is skipped (a dedicated SMS sender isn't wired) — best-effort, and `maybeSendReceipt` never throws on the result anyway.
+- **`buildReceiptSender(env)`** now returns `EmailReceiptSender(buildEmailSender(env))` when the email seam resolves to Resend (`name==='resend'`, i.e. `RESEND_API_KEY` + `MARKETING_EMAIL_FROM` set); `DisabledReceiptSender` otherwise. Composition already calls `buildReceiptSender(process.env)` — no wiring change.
+
+**Checks.** biome clean (2 files). New pure-unit test `receipt-sender.test.ts` (no DB): email-channel emails with a subject, sms-channel skips without touching email, factory activates only when Resend is configured. Local api vitest wedged under iCloud startup — CI (node) is the authoritative gate.
+
+**PENDING-AUDIT:** payment receipts moved out of P1. Remaining P1: fine-tune, PCI capture, cloud KMS, spam-label lookup.
