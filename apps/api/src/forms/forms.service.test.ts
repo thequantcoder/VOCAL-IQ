@@ -203,4 +203,26 @@ describe('FormsService', () => {
     // C1 is a child of R1 → RLS: child must NOT see the parent\'s row.
     await expect(svc.get(C1, parentForm.id)).rejects.toSatisfy(isAppError);
   });
+
+  it('submitForCall persists an in-call submission (no rate-limit) and rejects invalid captures', async () => {
+    const form = await makeForm(C1);
+    const ok = await svc.submitForCall(C1, form.id, {
+      full_name: 'Grace Hopper',
+      email: 'grace@example.com',
+    });
+    expect(ok.ok).toBe(true);
+    expect(ok.submissionId).toBeTruthy();
+
+    const contact = await db.admin.contact.findFirst({
+      where: { tenantId: C1, email: 'grace@example.com' },
+      select: { id: true, name: true },
+    });
+    expect(contact?.name).toBe('Grace Hopper');
+    if (contact) createdContacts.push(contact.id);
+
+    // A missing required field (email) → validation errors, nothing persisted.
+    const bad = await svc.submitForCall(C1, form.id, { full_name: 'No Email' });
+    expect(bad.ok).toBe(false);
+    expect(bad.errors?.length ?? 0).toBeGreaterThan(0);
+  });
 });

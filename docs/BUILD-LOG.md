@@ -5144,3 +5144,17 @@ No backend change (schema/mutation already carry `settings`). biome clean; web t
 **Remaining (clear follow-ups).** api wiring — resolve the referenced forms from the DB, call `expandFormNodesInGraph` at flow-compile, and persist a `FormSubmission` (via `buildFormSubmission` + `formConfigSchema`) after the conversation; and the web builder node (palette + a formId picker). The pure brain lands here first (mirrors how the other nodes were built config-first).
 
 **Checks.** biome clean (6 files). `form-node.test.ts` (pure): config validation, field prompts, legal var names, the expansion **compiles to a valid runnable flow** + a missing form leaves the node untouched, and submission mapping. Local shared vitest wedged under iCloud startup — CI (node) is the gate.
+
+---
+
+## In-call FORM node — api wiring (chat runtime + submission save)
+
+**What.** Wires the #204 shared foundation into the api so a FORM node actually runs + persists on the multichannel chat path (web chat + WhatsApp/SMS, which the api drives via `@vocaliq/shared`'s chat runtime). Voice runs the same expanded ask/capture flow too; its submission-save is the remaining follow-up.
+
+- **`chat.service`**: `loadFlow` now resolves every FORM node's Form fields from the DB (RLS-scoped), calls `expandFormNodesInGraph` before `compileFlow`, and returns the referenced forms. When a conversation **ends** (`start`/`turn` reach `done`, guarded so a no-op turn on an already-done state doesn't double-save), each referenced form's captured answers (`buildFormSubmission`) are persisted via an injected `FormSaver` port — best-effort, so a save hiccup never breaks the chat.
+- **`forms.service`**: new `submitForCall(tenantId, formId, values)` — the tenant + form are known from the call, so it skips the public rate-limit/clientKey; validates the captured values and persists the **same** Contact + Lead + FormSubmission (+ best-effort webhook/Sheet routing) as the public path. The persist+route logic was extracted into a shared private `persistAndRoute` (the public `submit` is behaviourally unchanged).
+- **composition**: `ChatService` is now constructed after `FormsService` and wired with `forms.submitForCall` as the save port.
+
+**Checks.** biome clean (5 files). Tests: `chat.service.test` drives a START→FORM→END flow — the FORM expands so `start` asks field 1, each turn answers + asks the next, and on completion a spy `FormSaver` receives `{ full_name, email }` for the referenced form; `forms.service.test` proves `submitForCall` persists a Contact + submission and returns validation errors (no persist) on a missing required field. Local api vitest wedged under iCloud startup — CI (node) is the gate.
+
+**Remaining.** web builder node (palette + a `formId` picker) so authors can place a FORM node on the canvas; voice-loop submission-save (the voice loop already runs the expanded ask/capture — it needs to report captured vars for `buildFormSubmission` at call-end).
