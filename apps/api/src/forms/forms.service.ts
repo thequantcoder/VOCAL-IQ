@@ -9,7 +9,7 @@ import {
   formConfigSchema,
   validateSubmission,
 } from '@vocaliq/shared';
-import { PrismaService } from '../db/prisma.service';
+import type { PrismaService } from '../db/prisma.service';
 import { signWebhook } from '../webhooks/webhook-sign';
 import { RateLimiter } from '../widget/rate-limiter';
 
@@ -264,8 +264,59 @@ export class FormsService {
     const result = validateSubmission(fields, values as Record<string, unknown>);
     if (!result.ok) return { ok: false, errors: result.errors };
 
-    const { cleaned } = result;
-    const tenantId = form.tenantId;
+    const submissionId = await this.persistAndRoute(
+      form.tenantId,
+      formId,
+      fields,
+      result.cleaned,
+      (form.routing ?? {}) as FormRouting,
+    );
+    return { ok: true, submissionId };
+  }
+
+  /**
+   * In-call form submission (in-call FORM node). The tenant + form are already known from the call, so
+   * this skips the public rate-limit/clientKey: it validates the captured values and persists the same
+   * Contact + Lead + FormSubmission (+ best-effort routing) as the public path. Returns validation
+   * errors WITHOUT persisting when the captured data is invalid (e.g. a required field went uncaptured).
+   */
+  async submitForCall(
+    tenantId: string,
+    formId: string,
+    values: Record<string, string>,
+  ): Promise<SubmitResult> {
+    const form = await this.db.withTenant(tenantId, (tx) =>
+      tx.form.findFirst({
+        where: { id: formId, active: true },
+        select: { id: true, fields: true, routing: true },
+      }),
+    );
+    if (!form) throw new NotFoundError('This form is not available.');
+    const fields = form.fields as FormField[];
+    const result = validateSubmission(fields, values);
+    if (!result.ok) return { ok: false, errors: result.errors };
+    const submissionId = await this.persistAndRoute(
+      tenantId,
+      formId,
+      fields,
+      result.cleaned,
+      (form.routing ?? {}) as FormRouting,
+    );
+    return { ok: true, submissionId };
+  }
+
+  /**
+   * Persist a validated submission (Contact + Lead + FormSubmission, tenant-scoped) then route it to
+   * the webhook/Sheet + optional Form-to-Call — best-effort, so a sink failure never loses the lead
+   * (self-audit E). Shared by the public `submit` and the in-call `submitForCall`.
+   */
+  private async persistAndRoute(
+    tenantId: string,
+    formId: string,
+    fields: FormField[],
+    cleaned: Record<string, string>,
+    routing: FormRouting,
+  ): Promise<string> {
     const identity = extractIdentity(fields, cleaned);
 
     const { submissionId, contactId } = await this.db.withTenant(tenantId, async (tx) => {
@@ -290,8 +341,6 @@ export class FormsService {
       return { submissionId: submission.id, contactId: contact.id };
     });
 
-    // Routing is best-effort and MUST NOT fail the submission (self-audit E).
-    const routing = (form.routing ?? {}) as FormRouting;
     const synced = await this.route(routing, cleaned);
     if (synced) {
       await this.db
@@ -301,8 +350,6 @@ export class FormsService {
         .catch(() => {});
     }
 
-    // Form-to-Call: if the form triggers a call + the submitter left a phone, dial them on the
-    // vetted outbound path. Best-effort — a dial failure never loses the captured lead.
     if (routing.triggerAgentId && identity.phone && this.dial) {
       await this.dial(tenantId, {
         agentId: routing.triggerAgentId,
@@ -311,7 +358,7 @@ export class FormsService {
       }).catch(() => {});
     }
 
-    return { ok: true, submissionId };
+    return submissionId;
   }
 
   /** Deliver a submission to the configured webhook + Sheet. Returns true if any sink ran. */

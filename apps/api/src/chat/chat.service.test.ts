@@ -14,6 +14,7 @@ const C1 = '00000000-0000-0000-0000-000000000003';
 const R1 = '00000000-0000-0000-0000-000000000002';
 const createdAgents: string[] = [];
 const createdFlows: string[] = [];
+const createdForms: string[] = [];
 
 // START(SSML opening) → LISTEN(capture reason) → DECISION(intent) → {booked | bye}.
 const GRAPH = {
@@ -74,9 +75,39 @@ async function publishedAgent(tenantId: string): Promise<string> {
   return agent.id;
 }
 
+/** Publish an agent whose flow is START → FORM(formId) → END (the in-call FORM node). */
+async function publishedFormAgent(tenantId: string, formId: string): Promise<string> {
+  const agent = await db.admin.agent.create({
+    data: { tenantId, name: 'Form Agent' },
+    select: { id: true },
+  });
+  createdAgents.push(agent.id);
+  const flow = await db.admin.flow.create({
+    data: { tenantId, agentId: agent.id, name: 'form', isActive: true },
+    select: { id: true },
+  });
+  createdFlows.push(flow.id);
+  const graph = {
+    nodes: [
+      { id: 'start', type: 'START', position: { x: 0, y: 0 }, data: { config: {} } },
+      { id: 'form', type: 'FORM', position: { x: 0, y: 100 }, data: { config: { formId } } },
+      { id: 'end', type: 'END', position: { x: 0, y: 200 }, data: { config: { outcome: 'done' } } },
+    ],
+    edges: [
+      { id: 'e1', source: 'start', target: 'form' },
+      { id: 'e2', source: 'form', target: 'end' },
+    ],
+  };
+  await db.admin.flowVersion.create({
+    data: { tenantId, flowId: flow.id, version: 1, graph, publishedAt: new Date() },
+  });
+  return agent.id;
+}
+
 afterAll(async () => {
   await db.admin.flow.deleteMany({ where: { id: { in: createdFlows } } });
   await db.admin.agent.deleteMany({ where: { id: { in: createdAgents } } });
+  await db.admin.form.deleteMany({ where: { id: { in: createdForms } } });
 });
 
 describe('ChatService', () => {
@@ -115,5 +146,45 @@ describe('ChatService', () => {
     const parentAgent = await publishedAgent(R1); // owned by the parent R1
     // The child C1 cannot see R1's agent → NotFound.
     await expect(svc.start(C1, parentAgent, 'CHAT')).rejects.toThrow(/Agent not found/);
+  });
+
+  it('runs an in-call FORM node: asks each field, captures answers, saves a submission on end', async () => {
+    const form = await db.admin.form.create({
+      data: {
+        tenantId: C1,
+        name: 'Signup',
+        active: true,
+        fields: [
+          { key: 'full_name', label: 'Full name', type: 'text', required: true },
+          { key: 'email', label: 'Email', type: 'email', required: true },
+        ],
+        routing: {},
+      },
+      select: { id: true },
+    });
+    createdForms.push(form.id);
+    const agentId = await publishedFormAgent(C1, form.id);
+
+    const saved: { formId: string; values: Record<string, string> }[] = [];
+    const chat = new ChatService(db, async (_t, formId, values) => {
+      saved.push({ formId, values });
+    });
+
+    // FORM expands to ask→listen per field: start asks field 1, each turn answers + asks the next.
+    const opened = await chat.start(C1, agentId, 'CHAT');
+    expect(opened.awaitingInput).toBe(true);
+    expect(opened.messages[0]?.text).toContain('full name'); // first field's question
+
+    const afterName = await chat.turn(C1, agentId, opened.state, 'Ada Lovelace');
+    expect(afterName.awaitingInput).toBe(true);
+    expect(afterName.messages[0]?.text.toLowerCase()).toContain('email'); // second field's question
+
+    const afterEmail = await chat.turn(C1, agentId, afterName.state, 'ada@x.com');
+    expect(afterEmail.done).toBe(true);
+
+    // On completion the captured answers are persisted as a submission for the referenced form.
+    expect(saved).toHaveLength(1);
+    expect(saved[0]?.formId).toBe(form.id);
+    expect(saved[0]?.values).toEqual({ full_name: 'Ada Lovelace', email: 'ada@x.com' });
   });
 });

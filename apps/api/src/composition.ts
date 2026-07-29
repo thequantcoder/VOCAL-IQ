@@ -207,7 +207,6 @@ export function createServices() {
 
   const cost = new CostService(db);
   const analytics = new AnalyticsService(db);
-  const chat = new ChatService(db);
   const apiKeys = new ApiKeyService(db);
   const opsToolkit = new OpsService(db, entitlements);
   const numbers = new NumbersService(db, entitlements);
@@ -248,6 +247,10 @@ export function createServices() {
         consentBasis: 'SOFT_OPT_IN',
       })
       .then((r) => ({ callId: r.callId })),
+  );
+  // Chat runtime: an in-call FORM node persists its captured answers via FormsService (PARITY-03).
+  const chat = new ChatService(db, (tid, formId, values) =>
+    forms.submitForCall(tid, formId, values),
   );
   const integrations = new IntegrationsService(db);
   const leads = new LeadsService(db);
