@@ -5118,3 +5118,13 @@ K. Build/CI: ✅ — typecheck + biome + ruff + web build + touched test suites 
 **Checks.** biome clean (7 files). New `connectors.test.ts` (pure-unit, fake `HttpClient`): webhook POST + fail-soft, Zendesk user-upsert + ticket, Salesforce SOQL→PATCH (existing) and SOQL-empty→POST (create, LastName fallback), and factory selection incl. null when settings missing / for GOOGLE. Local api vitest wedged under iCloud startup — CI (node) is the gate.
 
 **PENDING-AUDIT:** connectors moved out of P2 (GOOGLE noted as intentionally unbuilt).
+
+---
+
+## Connectors UI: collect each connector's required setting on connect
+
+**Why.** #202 made Salesforce/Zendesk/Webhook/Zapier live server-side, but the connect form only collected an access token — so a connect without the connector's required setting (`subdomain`/`instanceUrl`/`url`) stored a config the factory couldn't build (null → sync-pending). The backend + web mutation already accept `settings`; this wires the form.
+
+- **`ConnectForm`** (`apps/web/app/dashboard/integrations/page.tsx`): a per-type `CONNECT_FIELDS` map drives the extra inputs (Zendesk **subdomain**, Salesforce **instance URL**, Webhook/Zapier **URL**) and adapts the token label (HubSpot private-app token; Zendesk/Salesforce OAuth token; Webhook/Zapier "signing secret — sent as Authorization: Bearer"). The values go into the `settings` object on the existing connect mutation; **Connect** stays disabled until the token (≥8) **and** every required setting are filled.
+
+No backend change (schema/mutation already carry `settings`). biome clean; web typecheck/build validated in CI. This closes the #202 UI follow-up — the four new connectors are now connectable end-to-end from the dashboard.
