@@ -107,6 +107,7 @@ export const FlowNodeType = {
   SQUAD_HANDOFF: 'SQUAD_HANDOFF',
   PAYMENT: 'PAYMENT',
   CALLBACK: 'CALLBACK',
+  FORM: 'FORM',
   END: 'END',
 } as const;
 export type FlowNodeType = (typeof FlowNodeType)[keyof typeof FlowNodeType];
