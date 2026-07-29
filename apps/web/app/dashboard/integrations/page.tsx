@@ -108,6 +108,59 @@ const inputCls =
   'w-full rounded-vq border border-vq-border bg-vq-bg-base px-3 py-2 text-sm text-vq-text-hi focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vq-ring';
 
 /**
+ * Per-connector connect fields: the access-token label + any non-secret settings the backend needs to
+ * build the live connector (Zendesk `subdomain`, Salesforce `instanceUrl`, Webhook/Zapier `url`). Keyed
+ * by integration type; a type not listed just needs the access token (HubSpot).
+ */
+interface ConnectSetting {
+  key: string;
+  label: string;
+  placeholder: string;
+}
+const CONNECT_FIELDS: Record<
+  string,
+  { tokenLabel: string; tokenPlaceholder: string; settings: ConnectSetting[] }
+> = {
+  HUBSPOT: {
+    tokenLabel: 'Private-app token — stored sealed, never shown again',
+    tokenPlaceholder: 'pat-…',
+    settings: [],
+  },
+  ZENDESK: {
+    tokenLabel: 'OAuth access token — stored sealed, never shown again',
+    tokenPlaceholder: 'Zendesk OAuth token',
+    settings: [
+      { key: 'subdomain', label: 'Zendesk subdomain', placeholder: 'acme → acme.zendesk.com' },
+    ],
+  },
+  SALESFORCE: {
+    tokenLabel: 'OAuth access token — stored sealed, never shown again',
+    tokenPlaceholder: 'Salesforce access token',
+    settings: [
+      { key: 'instanceUrl', label: 'Instance URL', placeholder: 'https://acme.my.salesforce.com' },
+    ],
+  },
+  WEBHOOK: {
+    tokenLabel: 'Signing secret — sent as an Authorization: Bearer header',
+    tokenPlaceholder: 'a shared secret (≥ 8 chars)',
+    settings: [
+      { key: 'url', label: 'Webhook URL', placeholder: 'https://your-endpoint.example.com/hook' },
+    ],
+  },
+  ZAPIER: {
+    tokenLabel: 'Signing secret — sent as an Authorization: Bearer header',
+    tokenPlaceholder: 'a shared secret (≥ 8 chars)',
+    settings: [
+      {
+        key: 'url',
+        label: 'Zapier catch-hook URL',
+        placeholder: 'https://hooks.zapier.com/hooks/catch/…',
+      },
+    ],
+  },
+};
+
+/**
  * Integrations (Day 40): connect a CRM/helpdesk so completed calls sync the contact +
  * qualification + sentiment (and open a ticket on a bad call). HubSpot is live; others show
  * as "coming soon". Tokens are write-only — entered here, never shown again.
@@ -245,14 +298,30 @@ function ConnectForm({
   onDone: () => void;
 }) {
   const connect = useConnectIntegration();
+  const fields = CONNECT_FIELDS[connector.type] ?? {
+    tokenLabel: 'Access token — stored sealed, never shown again',
+    tokenPlaceholder: 'token',
+    settings: [],
+  };
   const [accessToken, setToken] = useState('');
+  const [settings, setSettings] = useState<Record<string, string>>({});
   const [ticketOnNegative, setTicket] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const missingSetting = fields.settings.some((s) => !settings[s.key]?.trim());
 
   async function submit() {
     setError(null);
     try {
-      await connect.mutateAsync({ type: connector.type, accessToken, ticketOnNegative });
+      const filled = Object.fromEntries(
+        fields.settings.map((s) => [s.key, settings[s.key]?.trim() ?? '']),
+      );
+      await connect.mutateAsync({
+        type: connector.type,
+        accessToken,
+        ticketOnNegative,
+        ...(fields.settings.length > 0 ? { settings: filled } : {}),
+      });
       onDone();
     } catch (e) {
       setError((e as Error).message);
@@ -263,14 +332,29 @@ function ConnectForm({
     <Card>
       <CardContent className="flex flex-col gap-3 py-4">
         <p className="font-medium text-sm text-vq-text-hi">Connect {connector.label}</p>
+        {fields.settings.map((s) => (
+          <label
+            key={s.key}
+            htmlFor={`integ-${s.key}`}
+            className="flex flex-col gap-1 text-vq-text-lo text-xs"
+          >
+            {s.label}
+            <Input
+              id={`integ-${s.key}`}
+              value={settings[s.key] ?? ''}
+              onChange={(e) => setSettings((prev) => ({ ...prev, [s.key]: e.target.value }))}
+              placeholder={s.placeholder}
+            />
+          </label>
+        ))}
         <label htmlFor="integ-token" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-          Access token (private-app / API token — stored sealed, never shown again)
+          {fields.tokenLabel}
           <Input
             id="integ-token"
             type="password"
             value={accessToken}
             onChange={(e) => setToken(e.target.value)}
-            placeholder="pat-…"
+            placeholder={fields.tokenPlaceholder}
           />
         </label>
         {connector.capabilities.tickets && (
@@ -285,7 +369,11 @@ function ConnectForm({
         )}
         {error && <p className="text-vq-danger text-xs">{error}</p>}
         <div className="flex gap-2">
-          <Button size="sm" disabled={accessToken.length < 8 || connect.isPending} onClick={submit}>
+          <Button
+            size="sm"
+            disabled={accessToken.length < 8 || missingSetting || connect.isPending}
+            onClick={submit}
+          >
             {connect.isPending ? 'Connecting…' : 'Connect'}
           </Button>
           <Button size="sm" variant="ghost" onClick={onDone}>
