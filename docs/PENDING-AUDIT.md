@@ -42,7 +42,7 @@ Remaining P1 (still mock/Disabled even with the key set):
 | **Two worker outbound-dial seams** | `apps/workers/src/campaign-scheduler.ts:186`, `apps/workers/src/callback-dialer.ts:126` | `TODO(live)`: both mark the contact `CALLING`/`dialing` but never enqueue the real metered outbound call — need wiring through `OutboundService` (blocked on the `HttpDialer`→voice chain above). |
 | **Stale doc comment** | `packages/provider-router/src/index.ts:130` | Says adapters "are stubs that throw not-implemented" — false; ElevenLabs/Deepgram/Twilio/LiveKit adapters are all built. Cleanup only. |
 | **Live abandon-rate feed (Day 79)** | predictive-dialer scheduler | Abandon rate hardcoded `0` until a live dialing feed exists. |
-| **Residual PARITY-03 in-call FORM node** | PARITY-INDEX #03 | Explicit deferred follow-up. |
+| **Residual PARITY-03 in-call FORM node** | PARITY-INDEX #03 | Shared foundation shipped (#204): `FlowNodeType.FORM` + config + compile-time expansion into SAY/LISTEN + submission helper. **Remaining:** api wiring (resolve forms + save `FormSubmission`) + web builder node UI. |
 
 ---
 

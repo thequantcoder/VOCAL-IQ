@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { callbackNodeConfigSchema } from './callback.js';
 import { FlowNodeType } from './enums.js';
 import type { FlowNode } from './flow-graph.js';
+import { formNodeConfigSchema } from './form-node.js';
 
 /**
  * Per-node config schemas + runtime contribution for the five core nodes (Day 18):
@@ -256,6 +257,7 @@ const CONFIG_SCHEMAS = {
   [FlowNodeType.SQUAD_HANDOFF]: squadHandoffConfigSchema,
   [FlowNodeType.PAYMENT]: paymentConfigSchema,
   [FlowNodeType.CALLBACK]: callbackNodeConfigSchema,
+  [FlowNodeType.FORM]: formNodeConfigSchema,
 } as const;
 
 /** The config schema for a node type, or null if the type has no config schema yet. */

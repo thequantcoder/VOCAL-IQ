@@ -5128,3 +5128,19 @@ K. Build/CI: ✅ — typecheck + biome + ruff + web build + touched test suites 
 - **`ConnectForm`** (`apps/web/app/dashboard/integrations/page.tsx`): a per-type `CONNECT_FIELDS` map drives the extra inputs (Zendesk **subdomain**, Salesforce **instance URL**, Webhook/Zapier **URL**) and adapts the token label (HubSpot private-app token; Zendesk/Salesforce OAuth token; Webhook/Zapier "signing secret — sent as Authorization: Bearer"). The values go into the `settings` object on the existing connect mutation; **Connect** stays disabled until the token (≥8) **and** every required setting are filled.
 
 No backend change (schema/mutation already carry `settings`). biome clean; web typecheck/build validated in CI. This closes the #202 UI follow-up — the four new connectors are now connectable end-to-end from the dashboard.
+
+---
+
+## In-call FORM node — shared foundation (PARITY-03 residual)
+
+**What.** The deferred PARITY-03 follow-up: a builder node that runs one of the tenant's saved Forms (Day 37) during a conversation — asks each field, captures the answer, and the host persists a `FormSubmission`. Ships the pure, channel-agnostic foundation.
+
+**Design — compile-time expansion (no runtime/voice-loop change).** Rather than a new runtime primitive, a FORM node **expands** into the standard `SAY` (ask) + `LISTEN` (capture) nodes every channel runtime already drives. So it works on voice, web chat, and messaging identically with **zero** change to the Python voice loop or the shared `chat-runtime` (self-audit A / golden rule #6).
+
+- **shared**: `FlowNodeType.FORM` (enum + `nodeTypeSchema` + `CONFIG_SCHEMAS`); `formNodeConfigSchema` (`formId`, `introPrompt?`, `confirmBeforeSave?`); new `form-node.ts` with `formFieldPrompt` (per-type question — select lists options, checkbox is yes/no), `formFieldVar` (guarantees a legal capture-var name), **`expandFormNodesInGraph(graph, forms)`** (replaces each FORM node with a SAY→LISTEN chain, one per field; preserves the FORM node's id as the first ask so incoming edges keep working, and moves its outgoing edges to the last capture), and `buildFormSubmission(fields, captured)` (maps captured vars → `{ fieldKey: value }`, omitting empties).
+
+**Guarantee.** The key test proves an expanded FORM node yields a graph that **`compileFlow` accepts as a valid runnable flow** (reachable, no dead-ends, END reachable) — so it can never author a broken call.
+
+**Remaining (clear follow-ups).** api wiring — resolve the referenced forms from the DB, call `expandFormNodesInGraph` at flow-compile, and persist a `FormSubmission` (via `buildFormSubmission` + `formConfigSchema`) after the conversation; and the web builder node (palette + a formId picker). The pure brain lands here first (mirrors how the other nodes were built config-first).
+
+**Checks.** biome clean (6 files). `form-node.test.ts` (pure): config validation, field prompts, legal var names, the expansion **compiles to a valid runnable flow** + a missing form leaves the node untouched, and submission mapping. Local shared vitest wedged under iCloud startup — CI (node) is the gate.

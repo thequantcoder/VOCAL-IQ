@@ -21,6 +21,7 @@ export const nodeTypeSchema = z.enum([
   FlowNodeType.SQUAD_HANDOFF,
   FlowNodeType.PAYMENT,
   FlowNodeType.CALLBACK,
+  FlowNodeType.FORM,
   FlowNodeType.END,
 ]);
 
