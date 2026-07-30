@@ -39,6 +39,7 @@ const PALETTE = [
   'SUBFLOW',
   'PAYMENT',
   'CALLBACK',
+  'FORM',
   'END',
 ] as const;
 

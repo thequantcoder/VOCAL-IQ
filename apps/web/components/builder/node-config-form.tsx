@@ -3,7 +3,7 @@
 import { VARIABLE_TYPES } from '@vocaliq/shared';
 import { Button, cn } from '@vocaliq/ui';
 import { Plus, X } from 'lucide-react';
-import { useKbs } from '../../lib/api';
+import { useForms, useKbs } from '../../lib/api';
 
 /**
  * Per-type config editor for the core nodes (Day 18). Edits a node's opaque `config`
@@ -611,6 +611,10 @@ export function NodeConfigForm({
     );
   }
 
+  if (nodeType === 'FORM') {
+    return <FormNodeForm config={config} set={set} />;
+  }
+
   return <p className="text-vq-text-lo text-xs">Configuration for this node arrives soon.</p>;
 }
 
@@ -649,6 +653,54 @@ function KnowledgeForm({ config, set }: { config: Config; set: (patch: Config) =
           onChange={(e) => set({ attribution: e.target.checked })}
         />
         Show source attribution
+      </label>
+    </div>
+  );
+}
+
+/**
+ * In-call FORM node (PARITY-03): pick one of the tenant's active Forms to run during the call. The
+ * runtime asks each field, captures the answer, and saves a submission when the conversation ends.
+ */
+function FormNodeForm({ config, set }: { config: Config; set: (patch: Config) => void }) {
+  const forms = useForms();
+  const active = (forms.data ?? []).filter((f) => f.active);
+  return (
+    <div className="flex flex-col gap-3">
+      <Labeled label="Form to run">
+        <select
+          className={field}
+          value={str(config.formId)}
+          onChange={(e) => set({ formId: e.target.value })}
+        >
+          <option value="">Select a form…</option>
+          {active.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.name}
+            </option>
+          ))}
+        </select>
+      </Labeled>
+      {forms.data && active.length === 0 ? (
+        <p className="text-vq-text-lo text-xs">
+          No active forms yet — build one under Forms, then pick it here.
+        </p>
+      ) : null}
+      <Labeled label="Intro line (optional)">
+        <input
+          className={field}
+          value={str(config.introPrompt)}
+          onChange={(e) => set({ introPrompt: e.target.value })}
+          placeholder="I'll take a few quick details."
+        />
+      </Labeled>
+      <label className="flex items-center gap-2 text-sm text-vq-text-hi">
+        <input
+          type="checkbox"
+          checked={config.confirmBeforeSave === true}
+          onChange={(e) => set({ confirmBeforeSave: e.target.checked })}
+        />
+        Read the answers back to confirm before saving
       </label>
     </div>
   );
