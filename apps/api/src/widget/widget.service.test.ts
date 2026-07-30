@@ -20,6 +20,9 @@ const WT = '00000000-0000-0000-0000-0000005a0001';
 const AGENT_PUB = '00000000-0000-0000-0000-0000005a0002';
 const AGENT_DRAFT = '00000000-0000-0000-0000-0000005a0003';
 const AGENT_HI = '00000000-0000-0000-0000-0000005a0004';
+const AGENT_FORM = '00000000-0000-0000-0000-0000005a0005';
+const W_FORM = '00000000-0000-0000-0000-0000005a0006';
+const W_FLOW = '00000000-0000-0000-0000-0000005a0007';
 
 const fakeMinter: TokenMinter = async (room, identity) => ({
   token: `tok-${room}-${identity}`,
@@ -67,6 +70,54 @@ beforeAll(async () => {
       persona: { systemPrompt: 'नमस्ते', sarvamVoice: 'priya' },
     },
     update: { status: 'PUBLISHED', languages: ['hi'], persona: { sarvamVoice: 'priya' } },
+  });
+  // An agent whose published flow has a FORM node — the voice ASK side (form-collection brief).
+  await a.agent.upsert({
+    where: { id: AGENT_FORM },
+    create: {
+      id: AGENT_FORM,
+      tenantId: WT,
+      name: 'Form Agent',
+      status: 'PUBLISHED',
+      persona: { systemPrompt: 'You are the signup assistant.' },
+    },
+    update: { status: 'PUBLISHED' },
+  });
+  await a.form.upsert({
+    where: { id: W_FORM },
+    create: {
+      id: W_FORM,
+      tenantId: WT,
+      name: 'Signup',
+      active: true,
+      fields: [{ key: 'full_name', label: 'Full name', type: 'text', required: true }],
+      routing: {},
+    },
+    update: { active: true },
+  });
+  await a.flow.upsert({
+    where: { id: W_FLOW },
+    create: { id: W_FLOW, tenantId: WT, agentId: AGENT_FORM, name: 'form', isActive: true },
+    update: {},
+  });
+  await a.flowVersion.create({
+    data: {
+      tenantId: WT,
+      flowId: W_FLOW,
+      version: 1,
+      publishedAt: new Date(),
+      graph: {
+        nodes: [
+          { id: 's', type: 'START', position: { x: 0, y: 0 }, data: { config: {} } },
+          { id: 'f', type: 'FORM', position: { x: 0, y: 1 }, data: { config: { formId: W_FORM } } },
+          { id: 'e', type: 'END', position: { x: 0, y: 2 }, data: { config: {} } },
+        ],
+        edges: [
+          { id: 'e1', source: 's', target: 'f' },
+          { id: 'e2', source: 'f', target: 'e' },
+        ],
+      },
+    },
   });
 });
 
@@ -123,9 +174,22 @@ describe('WidgetService.createSession', () => {
     expect(req?.callId).toBe(session.callId);
     expect(req?.agentId).toBe(AGENT_PUB);
     expect(req?.tenantId).toBe(WT);
-    // A plain English agent carries no Sarvam language/voice routing.
+    // A plain English agent carries no Sarvam language/voice routing and no composed prompt.
     expect(req?.language).toBeUndefined();
     expect(req?.voiceId).toBeUndefined();
+    expect(req?.systemPrompt).toBeUndefined();
+  });
+
+  it('dispatches a form-collection system prompt when the agent flow has a FORM node', async () => {
+    const dispatcher = new PendingVoiceDispatcher();
+    const s = new WidgetService(db, new RateLimiter(5, 60_000, () => 0), fakeMinter, dispatcher);
+    await s.createSession(AGENT_FORM, '8.8.8.8');
+
+    const req = dispatcher.dispatched[0];
+    // Persona prompt + the collection brief ride the dispatch so the voice agent asks the fields.
+    expect(req?.systemPrompt).toContain('You are the signup assistant.');
+    expect(req?.systemPrompt).toContain('"Signup"');
+    expect(req?.systemPrompt).toContain('Full name');
   });
 
   it('dispatches an Indic agent with its primary language + chosen Bulbul voice (India roadmap)', async () => {

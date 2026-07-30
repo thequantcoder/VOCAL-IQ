@@ -51,6 +51,7 @@ import { DisclosureService } from './disclosure/disclosure.service';
 import { EmailService, buildEmailSender } from './email/email.service';
 import { ExperimentsService } from './experiments/experiments.service';
 import { FlowsService } from './flows/flows.service';
+import { FormExtractionService } from './forms/form-extraction.service';
 import { FormsService } from './forms/forms.service';
 import { FraudService } from './fraud/fraud.service';
 import { AuditService } from './governance/audit.service';
@@ -202,7 +203,16 @@ export function createServices() {
           onError: (m) => console.warn(`[dialer] ${m}`),
         })
       : new PendingDialer();
-  const outbound = new OutboundService(db, dialer, (tid) => abuse.assess(tid), emitDomainEvent);
+  // Post-call form extraction (PARITY-03 voice leg) — built after RouterService/FormsService below;
+  // late-bound via a holder so the outbound disposition hook can reference it (fire-and-forget).
+  const formExtractionHolder: { svc?: FormExtractionService } = {};
+  const outbound = new OutboundService(
+    db,
+    dialer,
+    (tid) => abuse.assess(tid),
+    emitDomainEvent,
+    async (tid, callId) => formExtractionHolder.svc?.extractForCall(tid, callId),
+  );
   const instantDial = new InstantDialService(db, outbound, emitDomainEvent);
 
   const cost = new CostService(db);
@@ -337,6 +347,16 @@ export function createServices() {
   const encryptor = buildEncryptor(process.env);
   const keyPool = new KeyPoolService(db, encryptor);
   const routerSvc = new RouterService(db, keyPool);
+  // In-call FORM node, voice leg (PARITY-03): after a call reaches disposition, extract the form's
+  // answers from the transcript via the METERED router (rule #4) and persist through submitForCall.
+  const formExtraction = new FormExtractionService(
+    db,
+    async ({ tenantId, system, user }) =>
+      (await routerSvc.complete({ tenantId, system, messages: [{ role: 'user', content: user }] }))
+        .text,
+    (tid, formId, values) => forms.submitForCall(tid, formId, values),
+  );
+  formExtractionHolder.svc = formExtraction;
   const vault = new VaultService(db, encryptor);
   const routingDefaults = new RoutingDefaultsService(db);
   const featureFlags = new FeatureFlagsService(db, entitlements);

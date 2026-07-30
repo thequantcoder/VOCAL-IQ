@@ -46,6 +46,7 @@ export * from './flow-compiler.js';
 export * from './flow-graph.js';
 export * from './flow-node-config.js';
 export * from './form.js';
+export * from './form-extraction.js';
 export * from './form-node.js';
 export * from './fraud.js';
 export * from './i18n.js';
