@@ -80,6 +80,8 @@ export class OutboundService {
     ) => Promise<{ action: string; reasons: string[] }>,
     /** Optional webhook emitter: fires call.completed/call.failed when a call reaches disposition. */
     private readonly emit?: WebhookEmitter,
+    /** Optional post-call hook (e.g. in-call form extraction). Fire-and-forget — never blocks. */
+    private readonly onCallEnded?: (tenantId: string, callId: string) => Promise<unknown>,
   ) {}
 
   /**
@@ -238,6 +240,9 @@ export class OutboundService {
         ...(durationSec != null ? { durationSec } : {}),
       }).catch(() => {});
     }
+
+    // Post-call hook (in-call form extraction): fire-and-forget so disposition latency is unaffected.
+    if (this.onCallEnded) void this.onCallEnded(tenantId, callId).catch(() => {});
 
     return result;
   }

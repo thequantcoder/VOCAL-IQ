@@ -274,3 +274,36 @@ VocalIQ ka India play: ek **Indian-language agent** ki poori call **Sarvam AI** 
 | PSTN dialer language+voice plumbing (API side) | Outbound PSTN dial ab agent ki language + Bulbul voice `/calls/dial` body me bhejta hai — ready for voice-side go-live | ✅ (is PR me) |
 
 **Live test pending (`SARVAM_API_KEY` chahiye):** real Sarvam call verify (STT frame-encoding confirm). **Baaki:** voice-side `POST /calls/dial` endpoint (carrier-gated Twilio go-live — API side ready), full dashboard UI localization (translation content). *(Language+voice ab chaaro calling paths pe: web widget + WhatsApp + Messenger live, PSTN API-side ready.)*
+
+---
+
+## 📝 In-call FORM node — call ke dauraan form bharwana (PARITY-03 residual → complete)
+
+Flow builder me ek naya **"Form" node**: author canvas pe drag karke tenant ki koi **saved Form** (Day 37) chunta hai — call/chat ke dauraan agent har field poochta hai, jawab capture karta hai, aur end pe **FormSubmission + Contact + Lead** save hota hai (webhook/Sheet routing samet). Non-technical users ke liye — no JSON.
+
+| Piece | Kya hai | Status |
+|---|---|---|
+| Shared foundation | `FlowNodeType.FORM` + config + **compile-time expansion** (FORM → SAY/LISTEN chain) — koi runtime/voice-loop change nahi | ✅ merged (#204) |
+| API wiring (chat/messaging) | `chat.service` FORM nodes resolve+expand karta hai; conversation end pe `submitForCall` se save (deterministic ask/capture) | ✅ merged (#205) |
+| Web builder node | Palette me "Form" + config panel (form picker, intro line, confirm toggle) | ✅ merged (#206) |
+| Voice leg | Dispatch pe **collection brief** system prompt me (agent fields poochta hai) + post-call **metered LLM extraction** transcript se (`FormExtractionService` → `submitForCall`), `recordDisposition` hook se trigger | ✅ (is PR me) |
+
+**Voice note (honest):** voice loop LLM-driven hai (deterministic flow-nodes execute nahi karta), isliye voice pe Day-31 post-call-intel pattern use hota hai — prompt se collect, transcript se metered extraction. Extraction tab chalta hai jab call ka Transcript ho (widget leg ki transcript persistence voice go-live ke saath aati hai). FORM-less flow pe **zero LLM spend**.
+
+---
+
+## 🔧 Post-audit hardening — "advertised but inert" seams ab real (P1/P2 sweep)
+
+`docs/PENDING-AUDIT.md` (4-way audit, #197) ne pakda tha ki kuch DI factories key set hone pe bhi Disabled/mock return karti thi. Ab ye sab **real adapters** hain — key daalte hi live:
+
+| Seam | Live jab | PR |
+|---|---|---|
+| SSO / SAML (WorkOS) | `WORKOS_API_KEY` + `WORKOS_CLIENT_ID` | ✅ #198 |
+| Marketing email (Resend) | `RESEND_API_KEY` + `MARKETING_EMAIL_FROM` | ✅ #198 |
+| Video avatars (HeyGen streaming) | `AVATAR_PROVIDER_API_KEY` | ✅ #198 |
+| PCI payment receipts (email via Resend seam) | Resend configured | ✅ #199 |
+| Provider fine-tune (OpenAI JSONL upload + job) | `OPENAI_API_KEY` | ✅ #200 |
+| Qdrant vector store (REST client, tenant-filtered) | `QDRANT_URL` (+`QDRANT_API_KEY`) | ✅ #201 |
+| Salesforce / Zendesk / Webhook / Zapier connectors | token + setting (instanceUrl/subdomain/url) — connect form me fields (#203) | ✅ #202 |
+
+**Ab bhi partner/decision-gated:** PCI card-capture (PCI-DSS partner), cloud KMS (`KMS_KEY_ID`), spam-label/STIR-SHAKEN lookup.

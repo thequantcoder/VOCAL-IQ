@@ -42,7 +42,7 @@ Remaining P1 (still mock/Disabled even with the key set):
 | **Two worker outbound-dial seams** | `apps/workers/src/campaign-scheduler.ts:186`, `apps/workers/src/callback-dialer.ts:126` | `TODO(live)`: both mark the contact `CALLING`/`dialing` but never enqueue the real metered outbound call — need wiring through `OutboundService` (blocked on the `HttpDialer`→voice chain above). |
 | **Stale doc comment** | `packages/provider-router/src/index.ts:130` | Says adapters "are stubs that throw not-implemented" — false; ElevenLabs/Deepgram/Twilio/LiveKit adapters are all built. Cleanup only. |
 | **Live abandon-rate feed (Day 79)** | predictive-dialer scheduler | Abandon rate hardcoded `0` until a live dialing feed exists. |
-| **Residual PARITY-03 in-call FORM node** | PARITY-INDEX #03 | Shared foundation (#204) + api wiring (#205) + web builder node (#206): authors place a FORM node on the canvas + pick a form; `chat.service` expands it at compile and saves a `FormSubmission` at conversation-end — live for web-chat + messaging. **Only remaining:** voice-loop submission-save (voice already runs the expanded ask/capture; needs to report captured vars at call-end). |
+| **Residual PARITY-03 in-call FORM node** | PARITY-INDEX #03 | ✅ **COMPLETE across all channels** (#204–#207): shared expansion + api wiring + web builder node (web-chat/messaging, deterministic), and the voice leg (#207 — dispatch-time collection brief in the system prompt + post-call **metered** transcript extraction via `FormExtractionService` → `submitForCall`, triggered by the `recordDisposition` hook). Voice extraction runs whenever a Transcript exists (the widget leg's transcript persistence is part of the deferred voice go-live). |
 
 ---
 

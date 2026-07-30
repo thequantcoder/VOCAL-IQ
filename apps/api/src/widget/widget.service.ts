@@ -1,8 +1,10 @@
 import { LiveKitMedia } from '@vocaliq/provider-router';
 import {
+  type FormField,
   NotFoundError,
   ProviderError,
   RateLimitError,
+  buildFormCollectionBrief,
   isIndianLanguage,
   isSarvamVoice,
   primaryLanguage,
@@ -100,10 +102,21 @@ export class WidgetService {
       const language = primaryLanguage(agent.languages);
       // The picked Bulbul speaker only applies to a Sarvam (Indic) call; ignore it otherwise so a
       // stale voice never leaks onto the default (ElevenLabs) stack.
-      const persona = (agent.persona ?? {}) as { sarvamVoice?: unknown };
+      const persona = (agent.persona ?? {}) as { sarvamVoice?: unknown; systemPrompt?: unknown };
       const sarvamVoice = typeof persona.sarvamVoice === 'string' ? persona.sarvamVoice : undefined;
       const voiceId =
         isIndianLanguage(language) && isSarvamVoice(sarvamVoice) ? sarvamVoice : undefined;
+      // In-call FORM node (PARITY-03, voice ASK side): when the agent's flow has a configured FORM
+      // node, dispatch a composed system prompt (persona + collection brief) so the voice agent asks
+      // the fields; the post-call FormExtractionService then saves them. Only sent when a form exists
+      // (no behaviour change otherwise); fail-soft — a lookup hiccup never blocks the session.
+      const formBrief = await this.formCollectionBrief(agent.tenantId, agent.id).catch(
+        () => undefined,
+      );
+      const personaPrompt = typeof persona.systemPrompt === 'string' ? persona.systemPrompt : '';
+      const systemPrompt = formBrief
+        ? [personaPrompt, formBrief].filter(Boolean).join('\n\n')
+        : undefined;
       await this.dispatcher.dispatchAgent({
         tenantId: agent.tenantId,
         callId: call.id,
@@ -113,11 +126,53 @@ export class WidgetService {
         ...(language ? { language } : {}),
         // …and the agent's chosen Bulbul speaker drives its TTS voice.
         ...(voiceId ? { voiceId } : {}),
+        ...(systemPrompt ? { systemPrompt } : {}),
       });
     } catch {
       // swallowed by design — never fail an already-valid session on a dispatch hiccup.
     }
     return { callId: call.id, room, token, serverUrl, agentName: agent.name };
+  }
+
+  /**
+   * The form-collection brief for the agent's published flow, or undefined when it has no configured
+   * FORM node (the common case — two cheap indexed lookups). RLS-scoped (self-audit B).
+   */
+  private async formCollectionBrief(
+    tenantId: string,
+    agentId: string,
+  ): Promise<string | undefined> {
+    const forms = await this.db.withTenant(tenantId, async (tx) => {
+      const flow = await tx.flow.findFirst({ where: { agentId }, select: { id: true } });
+      const published = flow
+        ? await tx.flowVersion.findFirst({
+            where: { flowId: flow.id, publishedAt: { not: null } },
+            orderBy: { version: 'desc' },
+            select: { graph: true },
+          })
+        : null;
+      const nodes =
+        (
+          published?.graph as {
+            nodes?: Array<{ type?: string; data?: { config?: { formId?: unknown } } }>;
+          } | null
+        )?.nodes ?? [];
+      const formIds = [
+        ...new Set(
+          nodes
+            .filter((n) => n.type === 'FORM')
+            .map((n) => (typeof n.data?.config?.formId === 'string' ? n.data.config.formId : ''))
+            .filter((id) => id.length > 0),
+        ),
+      ];
+      if (formIds.length === 0) return [];
+      const rows = await tx.form.findMany({
+        where: { id: { in: formIds }, active: true },
+        select: { name: true, fields: true },
+      });
+      return rows.map((r) => ({ name: r.name, fields: r.fields as FormField[] }));
+    });
+    return forms.length > 0 ? buildFormCollectionBrief(forms) : undefined;
   }
 
   /** Public agent info for the widget shell (name + tenant branding for theming). */

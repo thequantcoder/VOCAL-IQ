@@ -19,6 +19,8 @@ export interface VoiceDispatchRequest {
   language?: string;
   /** Agent's chosen Sarvam Bulbul speaker (India roadmap): sets the TTS voice on the Sarvam stack. */
   voiceId?: string;
+  /** Composed system prompt (persona + in-call form-collection brief). Absent ⇒ the voice default. */
+  systemPrompt?: string;
 }
 
 export interface VoiceDispatcher {
@@ -78,6 +80,7 @@ export class HttpVoiceDispatcher implements VoiceDispatcher {
           room: req.room,
           ...(req.language ? { language: req.language } : {}),
           ...(req.voiceId ? { voice_id: req.voiceId } : {}),
+          ...(req.systemPrompt ? { system_prompt: req.systemPrompt } : {}),
         }),
         signal: controller.signal,
       });

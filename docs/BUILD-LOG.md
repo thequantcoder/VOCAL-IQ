@@ -5170,3 +5170,19 @@ No backend change (schema/mutation already carry `settings`). biome clean; web t
 - **`node-config-form.tsx`**: a `FORM` branch renders a new `FormNodeForm` — a **form picker** (`useForms`, active forms only, mirroring the Knowledge node's KB picker), an optional **intro line**, and a **"read answers back to confirm"** toggle — writing `formId` / `introPrompt` / `confirmBeforeSave` into the node config the shared `formNodeConfigSchema` validates.
 
 No backend change. biome clean; web typecheck/build validated in CI. **This completes the in-call FORM node for web-chat + messaging end-to-end** (author → run → capture → save). The one remaining piece is the voice-loop submission-save.
+
+---
+
+## In-call FORM node — voice leg (ask brief + post-call metered extraction)
+
+**Honest architecture note (investigated first).** The Python voice loop is **LLM-driven** — it does NOT execute the compiled SAY/LISTEN flow the chat runtime drives (no flow-node execution, no captured variables; `run_agent` even wires the loop's `emit`/`persist` callbacks as no-ops). So the deterministic ask/capture path can't run on voice. The correct voice design mirrors the codebase's own **Day-31 post-call-intel** pattern: collect via the prompt, extract from the transcript with a **metered** LLM, persist through the same validated path.
+
+- **ASK (dispatch-time)** — `shared/form-extraction.ts` `buildFormCollectionBrief`: when the agent's published flow has a configured FORM node, `widget.service` composes a system prompt (persona `systemPrompt` + the collection brief with per-field type hints/required markers) and dispatches it (`VoiceDispatchRequest.systemPrompt` → `system_prompt`; the voice `DispatchAgentRequest` already accepted it — **zero voice-service change**). Only sent when a form exists (no behaviour change otherwise); fail-soft.
+- **SAVE (post-call)** — new `FormExtractionService` (`apps/api/src/forms/form-extraction.service.ts`): RLS-scoped — call → agent's published flow → FORM formIds → active forms + the call transcript; per form, `buildFormExtractionPrompt` (strict JSON-only, exact keys, never invent) → **metered** `RouterService.complete` (rule #4) → tolerant `parseFormExtraction` (fences/prose/unknown keys/scalars) → `FormsService.submitForCall` (re-validates + persists Contact + Lead + FormSubmission + routing). A flow with no FORM node costs **zero LLM spend**; a missing transcript skips; every per-form failure is swallowed (extraction never breaks call teardown).
+- **Trigger** — `OutboundService` gained an optional `onCallEnded` hook, fired **fire-and-forget** after `recordDisposition` (disposition latency unaffected); wired in composition via a late-bound holder (FormExtraction is built after RouterService/FormsService).
+
+**Gated-live note.** The widget/dispatch voice leg does not persist transcripts yet (`run_agent` persist is a no-op; Day-09/12 live TODOs) — extraction runs whenever a Transcript row exists (the recording/transcription pipeline, or once the loop's persist callback is wired at voice go-live). The whole path is CI-proven against seeded transcripts.
+
+**Checks.** biome clean (10 files). Tests: shared (`form-extraction.test.ts`) — brief content, strict prompt, tolerant parse (fences/scalars/malformed ⇒ `{}`); api (`form-extraction.service.test.ts`, real Postgres) — extract+submit happy path (fields + transcript in the prompt, values submitted for the right form), **no_forms ⇒ zero LLM**, no transcript ⇒ skipped, submit failure swallowed; widget test — a FORM-flow agent dispatches the composed persona+brief prompt, a plain agent dispatches none. CI (node) is the gate.
+
+**Status — the in-call FORM node is now complete across ALL channels:** web chat + messaging (deterministic ask/capture, #204–#206) and voice (prompt-driven ask + metered post-call extraction, this PR).
