@@ -5158,3 +5158,15 @@ No backend change (schema/mutation already carry `settings`). biome clean; web t
 **Checks.** biome clean (5 files). Tests: `chat.service.test` drives a START→FORM→END flow — the FORM expands so `start` asks field 1, each turn answers + asks the next, and on completion a spy `FormSaver` receives `{ full_name, email }` for the referenced form; `forms.service.test` proves `submitForCall` persists a Contact + submission and returns validation errors (no persist) on a missing required field. Local api vitest wedged under iCloud startup — CI (node) is the gate.
 
 **Remaining.** web builder node (palette + a `formId` picker) so authors can place a FORM node on the canvas; voice-loop submission-save (the voice loop already runs the expanded ask/capture — it needs to report captured vars for `buildFormSubmission` at call-end).
+
+---
+
+## In-call FORM node — web builder node (place it on the canvas)
+
+**What.** The FORM node is now a first-class, placeable builder node — non-technical authors can drag it onto the flow canvas and pick which saved Form it runs, no JSON.
+
+- **`flow-nodes.tsx`** `NODE_META`: `FORM` registered (label "Form", cyan accent) so the node renders on the canvas.
+- **`flow-canvas.tsx`** `PALETTE`: `FORM` added → it appears in the add-node palette.
+- **`node-config-form.tsx`**: a `FORM` branch renders a new `FormNodeForm` — a **form picker** (`useForms`, active forms only, mirroring the Knowledge node's KB picker), an optional **intro line**, and a **"read answers back to confirm"** toggle — writing `formId` / `introPrompt` / `confirmBeforeSave` into the node config the shared `formNodeConfigSchema` validates.
+
+No backend change. biome clean; web typecheck/build validated in CI. **This completes the in-call FORM node for web-chat + messaging end-to-end** (author → run → capture → save). The one remaining piece is the voice-loop submission-save.
