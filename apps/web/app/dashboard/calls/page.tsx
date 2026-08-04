@@ -8,11 +8,13 @@ import { type FormEvent, type ReactNode, useState } from 'react';
 import { EmptyState, ErrorState, LoadingCard } from '../../../components/states';
 import { ChannelBadge, StatusBadge, formatDuration, formatUsd } from '../../../components/ui-bits';
 import { type CallListItem, useAgents, useCalls, usePlaceTestCall } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 import { useActionFeedback } from '../../../lib/use-action-feedback';
 import { useViewTransitionRouter } from '../../../lib/view-transitions';
 
 /** Summary infographic header — total calls, success rate, spend, avg duration. */
 function CallsSummary({ items }: { items: CallListItem[] }) {
+  const { t } = useI18n();
   const total = items.length;
   const completed = items.filter((c) => c.status.toUpperCase() === 'COMPLETED').length;
   const successRate = total ? Math.round((completed / total) * 100) : 0;
@@ -22,16 +24,16 @@ function CallsSummary({ items }: { items: CallListItem[] }) {
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <StatCard label="Calls" value={total} sentiment="neutral" />
+      <StatCard label={t('Calls')} value={total} sentiment="neutral" />
       <StatCard
-        label="Success rate"
+        label={t('Success rate')}
         value={successRate}
         format={(v) => `${Math.round(v)}%`}
         sentiment={successRate >= 70 ? 'good' : successRate >= 40 ? 'neutral' : 'bad'}
       />
-      <StatCard label="Spend" value={spend} format={formatUsd} sentiment="neutral" />
+      <StatCard label={t('Spend')} value={spend} format={formatUsd} sentiment="neutral" />
       <StatCard
-        label="Avg duration"
+        label={t('Avg duration')}
         value={avgDur}
         format={(v) => formatDuration(Math.round(v))}
         sentiment="neutral"
@@ -96,6 +98,7 @@ const CHANNEL_FILTERS = [
 ];
 
 export default function CallsPage() {
+  const { t } = useI18n();
   const [channel, setChannel] = useState('all');
   const calls = useCalls(channel === 'all' ? {} : { channel });
   const [filter, setFilter] = useState('all');
@@ -111,8 +114,10 @@ export default function CallsPage() {
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6">
       <header>
-        <h1 className="font-display font-semibold text-xl text-vq-text-hi">Calls</h1>
-        <p className="text-sm text-vq-text-lo">Place a test call and review transcripts + cost.</p>
+        <h1 className="font-display font-semibold text-xl text-vq-text-hi">{t('Calls')}</h1>
+        <p className="text-sm text-vq-text-lo">
+          {t('Place a test call and review transcripts + cost.')}
+        </p>
       </header>
 
       <PlaceTestCall />
@@ -123,8 +128,8 @@ export default function CallsPage() {
       <SegmentedControl
         value={channel}
         onValueChange={setChannel}
-        aria-label="Filter calls by channel"
-        options={CHANNEL_FILTERS}
+        aria-label={t('Filter calls by channel')}
+        options={CHANNEL_FILTERS.map((f) => ({ ...f, label: t(f.label) }))}
       />
 
       {/* Skeleton → content crossfade (UX-06): the loading placeholder fades into real data. */}
@@ -146,8 +151,8 @@ export default function CallsPage() {
         ) : items.length === 0 ? (
           <EmptyState
             illustration="no-calls"
-            title="No calls yet"
-            hint="Place a test call above to see it here."
+            title={t('No calls yet')}
+            hint={t('Place a test call above to see it here.')}
           />
         ) : (
           <div className="flex flex-col gap-3">
@@ -155,32 +160,32 @@ export default function CallsPage() {
               <SegmentedControl
                 value={filter}
                 onValueChange={setFilter}
-                aria-label="Filter calls by status"
-                options={FILTERS}
+                aria-label={t('Filter calls by status')}
+                options={FILTERS.map((f) => ({ ...f, label: t(f.label) }))}
               />
               <span className="text-vq-text-lo text-xs">
-                {filtered.length} of {items.length}
+                {t('{shown} of {total}', { shown: filtered.length, total: items.length })}
               </span>
             </div>
             <div className="overflow-hidden rounded-vq-card border border-vq-border">
               <table className="w-full text-sm">
-                <caption className="sr-only">Recent calls</caption>
+                <caption className="sr-only">{t('Recent calls')}</caption>
                 <thead className="bg-vq-bg-elevated text-left text-vq-text-lo text-xs">
                   <tr>
                     <th scope="col" className="px-4 py-2 font-medium">
-                      Status
+                      {t('Status')}
                     </th>
                     <th scope="col" className="px-4 py-2 font-medium">
-                      Agent
+                      {t('Agent')}
                     </th>
                     <th scope="col" className="px-4 py-2 font-medium">
-                      Direction
+                      {t('Direction')}
                     </th>
                     <th scope="col" className="px-4 py-2 font-medium">
-                      Duration
+                      {t('Duration')}
                     </th>
                     <th scope="col" className="px-4 py-2 text-right font-medium">
-                      Cost
+                      {t('Cost')}
                     </th>
                   </tr>
                 </thead>
@@ -239,6 +244,7 @@ export default function CallsPage() {
 }
 
 function PlaceTestCall() {
+  const { t } = useI18n();
   const agents = useAgents();
   const place = usePlaceTestCall();
   const { run, pending, success } = useActionFeedback();
@@ -258,11 +264,11 @@ function PlaceTestCall() {
           consentBasis: 'EXISTING_RELATIONSHIP',
         }),
       {
-        success: 'Call queued — it’ll appear below.',
+        success: t('Call queued — it’ll appear below.'),
         milestone: {
           key: 'first-call',
-          message: 'First call placed! 🎉',
-          description: 'Watch it land in the list below.',
+          message: t('First call placed! 🎉'),
+          description: t('Watch it land in the list below.'),
         },
       },
     );
@@ -276,14 +282,14 @@ function PlaceTestCall() {
       <CardContent className="pt-6">
         <form onSubmit={onSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <label className="flex flex-1 flex-col gap-1.5">
-            <span className="font-medium text-sm text-vq-text-hi">Agent</span>
+            <span className="font-medium text-sm text-vq-text-hi">{t('Agent')}</span>
             <select
               className={fieldClass}
               value={effectiveAgent}
               onChange={(e) => setAgentId(e.target.value)}
               disabled={noAgents}
             >
-              {noAgents ? <option value="">No agents — create one first</option> : null}
+              {noAgents ? <option value="">{t('No agents — create one first')}</option> : null}
               {agents.data?.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}
@@ -292,7 +298,7 @@ function PlaceTestCall() {
             </select>
           </label>
           <label htmlFor="test-to" className="flex flex-1 flex-col gap-1.5">
-            <span className="font-medium text-sm text-vq-text-hi">Destination</span>
+            <span className="font-medium text-sm text-vq-text-hi">{t('Destination')}</span>
             <Input
               id="test-to"
               type="tel"
@@ -311,7 +317,7 @@ function PlaceTestCall() {
             success={success}
             disabled={noAgents || !to.trim() || !effectiveAgent}
           >
-            <PhoneOutgoing size={16} /> Place test call
+            <PhoneOutgoing size={16} /> {t('Place test call')}
           </Button>
         </form>
       </CardContent>

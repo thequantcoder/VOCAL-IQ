@@ -5251,3 +5251,15 @@ No backend change. biome clean; web typecheck/build validated in CI. **This comp
 **Why Hindi-first, not all-10.** Page **prose** (full sentences) is where machine/first-pass translation quality across 9 regional scripts is least reliable — #211 already flagged "professional review before marketing non-Hindi." Shipping high-confidence Hindi + honest English fallback beats 9× medium-confidence sentences. Regional page copy is the documented next increment (the `t()` wrapping is already in place, so it's catalog-only work).
 
 **Checks.** biome clean (2 files). Web typecheck/build in CI. Manual: with `vq_locale=hi` the Overview renders fully in Hindi; other locales render English copy under a localized nav (fallback verified by the `translate` unit tests).
+
+---
+
+## Dashboard localization — page-level, increment 2: the Agents + Calls pages
+
+Continues the per-page rollout (#214) onto the two next-highest-traffic pages. Same pattern: wrap every visible string in `useI18n().t()` (English-as-key) + full Hindi; regional falls back to English gracefully.
+
+- **`app/dashboard/agents/page.tsx`**: header + subtitle, `Templates` / `New agent`, the empty-state (`No agents yet` + hint), and per-card copy — `Build` / `Chat`, the `More actions` aria-label, the `Guards` / `Learning` / `Memory` / `Tests` menu, `No recent calls`, and the `{n} calls · 7d` usage line (number kept, unit localized).
+- **`app/dashboard/calls/page.tsx`**: header, the 4 summary KPI labels (`Calls`/`Success rate`/`Spend`/`Avg duration`), both `SegmentedControl` filter sets (status `All/Completed/Failed` + channel `All/Phone/Web/WhatsApp`, localized at the render site via `options.map(t)`), both filter aria-labels, the empty-state, the `{shown} of {total}` count (**interpolated** — `t('{shown} of {total}', {…})`, Hindi word order `{total} में से {shown}`), the table headers (`Status/Agent/Direction/Duration/Cost` + caption), and the Place-Test-Call form (`Agent`/`Destination` labels, the no-agents option, `Place test call`, and the success + first-call-milestone toast copy). WhatsApp/PSTN stay untranslated (brand).
+- **`lib/i18n/catalogs.ts`**: ~35 new keys translated into Hindi; reuses the nav/Overview keys already present (`Agents`, `Calls`, `Build`, `Success rate`, `Create an agent`, …). Non-Hindi locales fall back to English per key (documented rollout).
+
+**Checks.** biome clean (3 files). Web typecheck/build in CI. Manual: `vq_locale=hi` renders both pages in Hindi (incl. the interpolated count in correct word order); other locales show English page copy under localized nav.

@@ -17,6 +17,7 @@ import Link from 'next/link';
 import { EmptyState, ErrorState, LoadingCard } from '../../../components/states';
 import { StatusBadge } from '../../../components/ui-bits';
 import { type AgentListItem, type CallListItem, useAgents, useCalls } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 /** Per-agent daily call counts over the last 8 days (for the mini usage sparkline). */
 function agentSparks(items: CallListItem[], days = 8): Record<string, number[]> {
@@ -40,6 +41,7 @@ function agentSparks(items: CallListItem[], days = 8): Record<string, number[]> 
 }
 
 export default function AgentsPage() {
+  const { t } = useI18n();
   const { data, isLoading, isError, error, refetch } = useAgents();
   const calls = useCalls();
   const sparks = agentSparks(calls.data?.items ?? []);
@@ -48,18 +50,20 @@ export default function AgentsPage() {
     <div className="mx-auto flex max-w-5xl flex-col gap-6">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="font-display font-semibold text-xl text-vq-text-hi">Agents</h1>
-          <p className="text-sm text-vq-text-lo">Prompt-based voice agents in this workspace.</p>
+          <h1 className="font-display font-semibold text-xl text-vq-text-hi">{t('Agents')}</h1>
+          <p className="text-sm text-vq-text-lo">
+            {t('Prompt-based voice agents in this workspace.')}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Link href="/dashboard/agents/templates">
             <Button variant="secondary" size="sm">
-              Templates
+              {t('Templates')}
             </Button>
           </Link>
           <Link href="/dashboard/agents/new">
             <Button variant="primary" size="sm">
-              <Plus size={16} /> New agent
+              <Plus size={16} /> {t('New agent')}
             </Button>
           </Link>
         </div>
@@ -77,12 +81,12 @@ export default function AgentsPage() {
         ) : !data || data.length === 0 ? (
           <EmptyState
             illustration="no-agents"
-            title="No agents yet"
-            hint="Create your first prompt-based agent to place a test call."
+            title={t('No agents yet')}
+            hint={t('Create your first prompt-based agent to place a test call.')}
             action={
               <Link href="/dashboard/agents/new">
                 <Button variant="primary" size="sm">
-                  <Plus size={16} /> Create an agent
+                  <Plus size={16} /> {t('Create an agent')}
                 </Button>
               </Link>
             }
@@ -102,6 +106,7 @@ export default function AgentsPage() {
 }
 
 function AgentCard({ agent, spark }: { agent: AgentListItem; spark?: number[] }) {
+  const { t } = useI18n();
   const callTotal = spark?.reduce((s, v) => s + v, 0) ?? 0;
   return (
     <Card className="vq-lift flex h-full flex-col gap-3 p-4 transition-colors hover:border-vq-violet/50">
@@ -133,12 +138,13 @@ function AgentCard({ agent, spark }: { agent: AgentListItem; spark?: number[] })
       {/* Mini usage sparkline. */}
       <div className="flex items-center justify-between border-vq-border border-t pt-3">
         <span className="text-vq-text-lo text-xs">
-          <span className="font-medium text-vq-text-hi tabular-nums">{callTotal}</span> calls · 7d
+          <span className="font-medium text-vq-text-hi tabular-nums">{callTotal}</span>{' '}
+          {t('calls · 7d')}
         </span>
         {spark && spark.length > 1 ? (
           <Sparkline data={spark} width={80} height={26} />
         ) : (
-          <span className="text-vq-text-lo text-xs">No recent calls</span>
+          <span className="text-vq-text-lo text-xs">{t('No recent calls')}</span>
         )}
       </div>
 
@@ -146,32 +152,32 @@ function AgentCard({ agent, spark }: { agent: AgentListItem; spark?: number[] })
       <div className="mt-auto flex items-center gap-2">
         <Link href={`/dashboard/agents/${agent.id}/builder`} className="flex-1">
           <Button variant="secondary" size="sm" className="w-full">
-            Build
+            {t('Build')}
           </Button>
         </Link>
         <Link href={`/dashboard/agents/${agent.id}/chat`} className="flex-1">
           <Button variant="ghost" size="sm" className="w-full">
-            Chat
+            {t('Chat')}
           </Button>
         </Link>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" aria-label="More actions">
+            <Button variant="ghost" size="sm" aria-label={t('More actions')}>
               <MoreHorizontal size={16} />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem asChild>
-              <Link href={`/dashboard/agents/${agent.id}/settings`}>Guards</Link>
+              <Link href={`/dashboard/agents/${agent.id}/settings`}>{t('Guards')}</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href={`/dashboard/agents/${agent.id}/learning`}>Learning</Link>
+              <Link href={`/dashboard/agents/${agent.id}/learning`}>{t('Learning')}</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href={`/dashboard/agents/${agent.id}/memory`}>Memory</Link>
+              <Link href={`/dashboard/agents/${agent.id}/memory`}>{t('Memory')}</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href={`/dashboard/agents/${agent.id}/tests`}>Tests</Link>
+              <Link href={`/dashboard/agents/${agent.id}/tests`}>{t('Tests')}</Link>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
