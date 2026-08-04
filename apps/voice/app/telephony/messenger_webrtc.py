@@ -30,6 +30,7 @@ from av import AudioFrame
 from av.audio.resampler import AudioResampler
 
 from app.loop.engine import ConversationLoop, LoopConfig
+from app.loop.transcript_reporter import TranscriptReporter
 from app.providers.select import build_and_apply
 from app.telephony.webrtc_audio import (
     FRAME_BYTES,
@@ -89,12 +90,22 @@ class MessengerMediaBridge:
     """
 
     def __init__(
-        self, *, stt_key: str, llm_key: str, tts_key: str, sarvam_key: str | None = None
+        self,
+        *,
+        stt_key: str,
+        llm_key: str,
+        tts_key: str,
+        sarvam_key: str | None = None,
+        api_internal_url: str | None = None,
+        internal_secret: str | None = None,
     ) -> None:
         self._stt_key = stt_key
         self._llm_key = llm_key
         self._tts_key = tts_key
         self._sarvam_key = sarvam_key  # India roadmap: Indic calls route to Sarvam when set
+        # Voice→api transcript reporting at call end (gated — both unset ⇒ reporting off).
+        self._api_internal_url = api_internal_url
+        self._internal_secret = internal_secret
         self._peers: dict[str, _Peer] = {}
 
     def _new_peer(self, call_id: str) -> _Peer:
@@ -131,14 +142,23 @@ class MessengerMediaBridge:
             elevenlabs_key=self._tts_key,
             sarvam_key=self._sarvam_key,
         )
+        # Transcript reporting (gated): collect each turn; at call end POST to the api's internal
+        # ingest so the post-call chain (intel/QA/search/FORM extraction) runs for Messenger calls.
+        reporter = TranscriptReporter(
+            tenant_id=config.tenant_id,
+            call_id=config.call_id,
+            api_url=self._api_internal_url,
+            secret=self._internal_secret,
+        )
         loop = ConversationLoop(
             stt=stack.stt,
             llm=stack.llm,
             tts=stack.tts,
             audio_out=peer.sink,
             config=config,
+            persist=reporter.persist,
         )
-        peer.tasks.append(asyncio.create_task(self._run_loop(call_id, loop, peer.caller)))
+        peer.tasks.append(asyncio.create_task(self._run_loop(call_id, loop, peer.caller, reporter)))
 
     async def answer(self, *, call_id: str, sdp_offer: str, config: LoopConfig) -> str:
         """Build the peer for a caller's SDP offer, start the AI loop, and return the SDP answer.
@@ -186,13 +206,19 @@ class MessengerMediaBridge:
             caller.close()
 
     async def _run_loop(
-        self, call_id: str, loop: ConversationLoop, caller: WebRtcCallerAudio
+        self,
+        call_id: str,
+        loop: ConversationLoop,
+        caller: WebRtcCallerAudio,
+        reporter: TranscriptReporter,
     ) -> None:
         try:
             await loop.run(caller.__aiter__())
         except Exception:  # never let a loop crash strand the peer
             log.exception("messenger loop failed for call %s", call_id)
         finally:
+            with contextlib.suppress(Exception):
+                await reporter.flush()
             await self.end(call_id)
 
     async def end(self, call_id: str) -> None:

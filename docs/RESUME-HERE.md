@@ -43,7 +43,7 @@
 1. **Voice `POST /calls/dial`** endpoint + Twilio↔LiveKit bridge (api side ready — `HttpDialer` language+voice_id bhejta hai). Twilio go-live ke saath.
 2. **Worker dial seams** (`campaign-scheduler`, `callback-dialer`) — `OutboundService` se wire (cross-app; direct Prisma se DNC/consent gates bypass honge — mat karna).
 3. **Dashboard localization** — 22 Indian languages + Day-68 locales (translation content; sirf `hi` scaffold hai).
-4. ~~Voice-loop transcript persist~~ ✅ **DONE (#209)** — `TranscriptReporter` (voice) → `POST /internal/voice/transcript` (api, internal-secret) → Transcript upsert + FORM extraction. Go-live: `API_INTERNAL_URL` (voice) + `VOICE_INTERNAL_SECRET` (dono taraf). **Follow-up:** WhatsApp/Messenger bridges me bhi reporter wire karna (bridge ctors + `get_bridge()` thread).
+4. ~~Voice-loop transcript persist~~ ✅ **DONE (#209 + #210)** — `TranscriptReporter` (voice) → `POST /internal/voice/transcript` (api, internal-secret, exact-ownership tenant guard) → Transcript upsert + FORM extraction. **Teeno voice paths wired:** LiveKit (`run_agent`) + WhatsApp + Messenger bridges. Go-live: `API_INTERNAL_URL` (voice) + `VOICE_INTERNAL_SECRET` (dono taraf). ⚠️ Latent (WAC-08 live leg): WA bridge me `offer()`/`apply_answer()` methods nahi hain par router unhe call karta hai — Meta-creds go-live pe banana.
 5. Chhota: `provider-router/src/index.ts:130` stale comment cleanup; `PROJECT-FEATURES-EXPLAINED.docx` regen (lxml sandbox me atka tha; `.md` current hai).
 
 ### C. 🤝 Partner/decision-gated (code se nahi banta)
