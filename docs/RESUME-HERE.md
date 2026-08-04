@@ -1,18 +1,17 @@
-# RESUME-HERE — session checkpoint (2026-07-30)
+# RESUME-HERE — session checkpoint (2026-08-04)
 
 > **Naye Claude session ke liye:** yahan se resume karo. Ye file har checkpoint pe update hoti hai.
 > Detail inventory: `docs/PENDING-AUDIT.md` (definitive "what's left") + `docs/BUILD-LOG.md` (per-increment log).
 
 ## 📍 Current state
 
-- **Branch/commit:** `main` @ `11eff6a` — local (`/Users/saransh/Documents/VOCAL-IQ`), GitHub (`thequantcoder/VOCAL-IQ`), sab sync. Working tree clean.
+- **Branch/commit:** `main` @ `58d63c4` (+ ye checkpoint commit) — local (`/Users/saransh/Documents/VOCAL-IQ`), GitHub (`thequantcoder/VOCAL-IQ`), sab sync. Working tree clean. Koi open PR nahi.
 - **Product:** feature-complete (Days 00–95 + UX + PARITY + WAC + MEC sab done). CI (node/voice/security) green on main.
-- **Last arc (PRs #193–#207, sab merged):**
-  - India voice COMPLETE: Sarvam backend (#190–192) + language picker (#193) + Bulbul voice-picker (#194) + WA/Messenger plumbing (#195) + PSTN API-side (#196). Gated on `SARVAM_API_KEY`.
-  - Definitive pending audit (#197) → `docs/PENDING-AUDIT.md`.
-  - P1 "advertised-but-inert" seams ab REAL: WorkOS SSO + Resend email + HeyGen avatar (#198), PCI receipts (#199), OpenAI fine-tune (#200).
-  - P2: Qdrant vector store (#201), Salesforce/Zendesk/Webhook/Zapier connectors (#202) + connect-form settings UI (#203).
-  - In-call FORM node COMPLETE all channels: shared expansion (#204) + api wiring (#205) + builder UI (#206) + voice leg (ask-brief + post-call metered extraction, #207).
+- **2026-08-04 session (PRs #209–#211, sab merged):**
+  - **#209 Voice transcript ingest** — voice `TranscriptReporter` → api `POST /internal/voice/transcript` (constant-time secret, **exact-ownership tenant guard**) → Transcript upsert → FORM extraction fire. Isse pehle production me Transcript rows koi banata hi nahi tha — poora post-call chain (intel/QA/search/FORM) voice pe dead tha.
+  - **#210 Bridges wired** — WhatsApp + Messenger WebRTC bridges me bhi reporter (teeno voice paths ab report karte hain). Go-live: `API_INTERNAL_URL` (voice) + `VOICE_INTERNAL_SECRET` (dono taraf).
+  - **#211 Dashboard nav l10n** — +9 India UI locales (bn/ta/te/mr/gu/kn/ml/pa/or); poori sidebar nav (~60 labels) 10 Indian languages me, English-as-key + per-key fallback.
+- **Pichhla arc (PRs #193–#208):** India voice complete (Sarvam end-to-end + pickers + all-4-path plumbing), definitive pending audit (#197), P1 seams real (WorkOS SSO/Resend/HeyGen/PCI-receipts/fine-tune #198–#200), P2 (Qdrant #201, connectors #202–#203), in-call FORM node all-channels (#204–#207), ye checkpoint file (#208).
 
 ## ⚠️ Is repo me kaam karne ka tarika (zaroori — warna time barbaad hoga)
 
@@ -56,6 +55,6 @@
 - Cost-attribution (rule #4) proof sirf live-keyed tests me (CI me skip) · `apps/mobile` + `packages/ui` zero tests · Sarvam STT wire-format unverified.
 
 ## ▶️ Suggested next moves (jab wapas aao)
-1. **Keys available?** → Section A se ek module uthao (suggestion: Stripe ya voice-AI keys → poora calling stack live).
-2. **No keys?** → Section B: dashboard localization (Hindi content) YA voice-loop transcript persist (FORM/intel ko widget pe live karta hai).
-3. Kisi bhi confusion pe: `docs/PENDING-AUDIT.md` + memory (`pending-audit`, `icloud-git-write-hang`) padho.
+1. **Keys available?** → Section A se ek module uthao (suggestion: Stripe ya voice-AI keys → poora calling stack live; `API_INTERNAL_URL`+`VOICE_INTERNAL_SECRET` bhi set karo taaki transcripts + post-call chain live ho).
+2. **No keys?** → **Page-level l10n**: top dashboard pages (Agents/Calls/Analytics/Settings) ke headers/buttons/states ko `t()` (English-as-key) me externalize + 10 India catalogs me translate — #211 ka established per-page pattern. Ya chhote cleanups (stale doc comment, `.docx` regen).
+3. Kisi bhi confusion pe: `docs/PENDING-AUDIT.md` + memory (`session-resume`, `pending-audit`, `icloud-git-write-hang`) padho.
