@@ -5186,3 +5186,18 @@ No backend change. biome clean; web typecheck/build validated in CI. **This comp
 **Checks.** biome clean (10 files). Tests: shared (`form-extraction.test.ts`) — brief content, strict prompt, tolerant parse (fences/scalars/malformed ⇒ `{}`); api (`form-extraction.service.test.ts`, real Postgres) — extract+submit happy path (fields + transcript in the prompt, values submitted for the right form), **no_forms ⇒ zero LLM**, no transcript ⇒ skipped, submit failure swallowed; widget test — a FORM-flow agent dispatches the composed persona+brief prompt, a plain agent dispatches none. CI (node) is the gate.
 
 **Status — the in-call FORM node is now complete across ALL channels:** web chat + messaging (deterministic ask/capture, #204–#206) and voice (prompt-driven ask + metered post-call extraction, this PR).
+
+---
+
+## Voice transcript persistence — voice→api ingest (closes the Day-09/12 write-side gap)
+
+**Why (audit finding).** NOTHING in production created Transcript rows — every consumer only updates/reads them (post-call intel, QA scoring, search indexing, transcription cleanup, and the new FORM extraction). The LiveKit voice leg's `run_agent` even wired the loop's `persist` callback as a no-op. So the entire post-call chain was starving on voice calls. (The voice config's `database_url` is unused — the voice service has no DB layer; persistence correctly belongs to the api.)
+
+- **voice** (`app/loop/transcript_reporter.py`, new): `TranscriptReporter` — the loop's per-turn `persist("user"/"assistant", text)` collects non-empty segments in memory; at call end `flush()` POSTs `{call_id, tenant_id, segments}` to `POST {api_internal_url}/internal/voice/transcript` with the SAME shared `x-internal-secret` as the api→voice hop. **Gated** (no `api_internal_url`/secret ⇒ no-op) + **fail-soft** (network/HTTP failure returns False, never raises into teardown). New config: `api_internal_url`. `run_agent` wires `persist=reporter.persist` + flushes in `finally`.
+- **api** (`calls/transcript-ingest.ts`, new): `TranscriptIngestService.ingest` — Zod-validated (`call_id`/`tenant_id` uuid, 1–5000 segments), then the claimed tenant is enforced by resolving the call **under that tenant's RLS scope** (cross-tenant writes impossible even with the secret — self-audit B) → `transcript.upsert` (a re-report replaces segments) → fire-and-forget `onIngested` → **form extraction** (`FormExtractionService.extractForCall`), completing the PARITY-03 voice leg end-to-end. Pure `checkInternalSecret` (constant-time, `gated`/`unauthorized`/`ok`) + an `ah`-wrapped handler mounted at `/internal/voice/transcript` in main.ts (503 until `VOICE_INTERNAL_SECRET`; 401 on mismatch — mirrors the voice side's `_authorize`).
+
+**Scope note.** The WhatsApp/Messenger WebRTC bridges also build their loops without `persist` — wiring them needs the reporter threaded through both bridge ctors + `get_bridge()`; deferred as an explicit follow-up (the LiveKit path — widget + PSTN dispatch — is what FORM extraction + intel needed first).
+
+**Checks.** biome clean (4 TS files); ruff clean (voice files). Tests: voice `test_transcript_reporter.py` (collects non-empty turns, exact endpoint/header/body, gated-off without url/secret, no-op on empty, swallows network errors + non-2xx); api `transcript-ingest.test.ts` (real Postgres — upsert create/replace, cross-tenant claim 404s, malformed report rejected, post-ingest hook fires; `checkInternalSecret` unit-proofed). CI (node + voice) is the gate.
+
+**Go-live:** set `API_INTERNAL_URL` (voice env) + `VOICE_INTERNAL_SECRET` (both sides) → voice-call transcripts land automatically, and post-call intel/QA/search/FORM extraction light up for voice.

@@ -37,6 +37,7 @@ import { CallsReadService } from './calls/calls-read.service';
 import { type Dialer, HttpDialer, PendingDialer } from './calls/dialer';
 import { InstantDialService } from './calls/instant-dial.service';
 import { OutboundService } from './calls/outbound.service';
+import { TranscriptIngestService } from './calls/transcript-ingest';
 import { CampaignsService } from './campaigns/campaigns.service';
 import { ChatService } from './chat/chat.service';
 import { CoachService } from './coach/coach.service';
@@ -357,6 +358,11 @@ export function createServices() {
     (tid, formId, values) => forms.submitForCall(tid, formId, values),
   );
   formExtractionHolder.svc = formExtraction;
+  // Voice→api transcript ingest: the voice loop reports its transcript at call end (internal-secret
+  // guarded); on ingest, fire the in-call form extraction so the voice FORM leg completes end-to-end.
+  const transcriptIngest = new TranscriptIngestService(db, (tid, callId) =>
+    formExtraction.extractForCall(tid, callId),
+  );
   const vault = new VaultService(db, encryptor);
   const routingDefaults = new RoutingDefaultsService(db);
   const featureFlags = new FeatureFlagsService(db, entitlements);
@@ -514,6 +520,7 @@ export function createServices() {
     templates,
     callsRead,
     transcription,
+    transcriptIngest,
     outbound,
     instantDial,
     cost,
