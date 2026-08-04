@@ -59,6 +59,7 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { useI18n } from '../lib/i18n/provider';
 
 export interface NavItem {
   href: string;
@@ -263,6 +264,7 @@ function NavLink({
   indicatorId: string;
 }) {
   const { animate } = useMotionLevel();
+  const { t } = useI18n(); // nav labels localize via English-as-key with per-key fallback
   const Icon = item.icon;
   return (
     <Link
@@ -296,7 +298,7 @@ function NavLink({
       >
         <Icon size={16} aria-hidden />
       </span>
-      <span className="relative z-10 truncate">{item.label}</span>
+      <span className="relative z-10 truncate">{t(item.label)}</span>
     </Link>
   );
 }
@@ -317,6 +319,7 @@ function NavSection({
   indicatorId: string;
 }) {
   const hasActive = group.items.some((i) => matchActive(pathname, i));
+  const { t } = useI18n();
   return (
     <div className="flex flex-col">
       <button
@@ -329,7 +332,7 @@ function NavSection({
           hasActive ? 'text-vq-violet' : 'text-vq-text-lo hover:text-vq-text-hi',
         )}
       >
-        {group.label}
+        {t(group.label)}
         <ChevronDown
           size={14}
           aria-hidden
