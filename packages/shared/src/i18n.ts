@@ -20,6 +20,16 @@ export const LOCALES: LocaleInfo[] = [
   { code: 'es', label: 'Español', intl: 'es-ES', rtl: false },
   { code: 'hi', label: 'हिन्दी', intl: 'hi-IN', rtl: false },
   { code: 'ar', label: 'العربية', intl: 'ar-SA', rtl: true },
+  // India roadmap: the Bulbul-TTS regional languages as UI locales (per-key English fallback).
+  { code: 'bn', label: 'বাংলা', intl: 'bn-IN', rtl: false },
+  { code: 'ta', label: 'தமிழ்', intl: 'ta-IN', rtl: false },
+  { code: 'te', label: 'తెలుగు', intl: 'te-IN', rtl: false },
+  { code: 'mr', label: 'मराठी', intl: 'mr-IN', rtl: false },
+  { code: 'gu', label: 'ગુજરાતી', intl: 'gu-IN', rtl: false },
+  { code: 'kn', label: 'ಕನ್ನಡ', intl: 'kn-IN', rtl: false },
+  { code: 'ml', label: 'മലയാളം', intl: 'ml-IN', rtl: false },
+  { code: 'pa', label: 'ਪੰਜਾਬੀ', intl: 'pa-IN', rtl: false },
+  { code: 'or', label: 'ଓଡ଼ିଆ', intl: 'or-IN', rtl: false },
 ];
 
 export const DEFAULT_LOCALE = 'en';

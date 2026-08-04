@@ -5214,3 +5214,17 @@ No backend change. biome clean; web typecheck/build validated in CI. **This comp
 **Observed latent gap (not this PR's scope):** the WhatsApp bridge has **no `offer()`/`apply_answer()` methods**, but `whatsapp_router`'s `/offer` + `/apply-answer` endpoints call them (`type: ignore[attr-defined]`) — the WAC-08 outbound live leg would AttributeError when first exercised. Fully live-gated today (needs Meta creds); logged for the WAC go-live.
 
 **Checks.** ruff clean. New `test_bridge_transcript_reporting.py` — `pytest.importorskip("aiortc")`-guarded (the bridge modules are pyright-checked in CI, pytest-exercised wherever the media stack is installed): ctor threads the reporting config; each bridge's `_run_loop` flushes the reporter at loop end (fake loop/caller/client — exact segments asserted). CI (voice pyright + node) is the gate.
+
+---
+
+## Dashboard localization — nav in 10 Indian languages (India roadmap, UI leg)
+
+**Audit finding (scoped honestly).** The Day-68 i18n *infrastructure* was complete (locale resolution, `translate` with per-key English fallback, provider + cookie + RTL, locale switcher) — but the catalog was an 11-key scaffold and only ONE of 119 dashboard components used `t()`. The dashboard was hardcoded English. Localizing all 119 files × 22 languages in one shot is neither feasible nor safe; this increment localizes the highest-visibility surface — the **entire sidebar navigation (~60 labels on every page)** — into the 10 Bulbul-TTS India languages.
+
+- **shared `i18n.ts`**: +9 UI locales — bn, ta, te, mr, gu, kn, ml, pa, or (native-script labels, `xx-IN` Intl tags, LTR) alongside en/es/hi/ar. The locale switcher lists `LOCALES` dynamically, so they appear with no UI change.
+- **`sidebar-nav.tsx`**: nav renders via `t(item.label)` / `t(group.label)` — the **English-as-key** pattern (`translate`'s fallback chain is `catalog[key] ?? en[key] ?? key`, so a missing entry renders the English label itself; partial catalogs degrade gracefully, and the NAV data structure is untouched).
+- **`catalogs.ts`**: the full ~60-label nav set translated for **hi (+ existing dotted keys) and bn/ta/te/mr/gu/kn/ml/pa/or** (+ `common.save/cancel/loading`, `locale.label` each). Editorial line: generic terms translated natively; brand/product nouns + acronyms (WhatsApp, Messenger, SIP, SSO, QA, BI) kept untranslated per standard l10n practice — `SSO` needs no entries at all (key === label). es/ar stay as-is (documented partial).
+
+**Remaining (explicitly not this increment).** Page-level strings across the 119 dashboard files (headers, buttons, empty/error states) still render English until externalized — the established pattern (`t()` + English-as-key) now makes that incremental per-page work. Professional review of the 9 non-Hindi catalogs recommended before marketing them as fully supported.
+
+**Checks.** biome clean; shared `i18n.test.ts` gained an India-locales assertion (supported + LTR + `xx-IN` Intl tags). Web typecheck/build in CI.

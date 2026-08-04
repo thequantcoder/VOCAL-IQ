@@ -3,6 +3,7 @@ import {
   formatMoneyMinor,
   isRtl,
   isSupportedLocale,
+  localeInfo,
   parseAcceptLanguage,
   resolveLocale,
   translate,
@@ -15,6 +16,14 @@ describe('locale support', () => {
     expect(isSupportedLocale('zz')).toBe(false);
     expect(isRtl('ar')).toBe(true);
     expect(isRtl('en')).toBe(false);
+  });
+
+  it('supports the India regional UI locales (LTR, xx-IN Intl tags)', () => {
+    for (const code of ['hi', 'bn', 'ta', 'te', 'mr', 'gu', 'kn', 'ml', 'pa', 'or']) {
+      expect(isSupportedLocale(code)).toBe(true);
+      expect(isRtl(code)).toBe(false);
+      expect(localeInfo(code).intl).toBe(`${code}-IN`);
+    }
   });
 });
 
