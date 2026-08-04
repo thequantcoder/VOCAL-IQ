@@ -43,7 +43,7 @@
 1. **Voice `POST /calls/dial`** endpoint + Twilio↔LiveKit bridge (api side ready — `HttpDialer` language+voice_id bhejta hai). Twilio go-live ke saath.
 2. **Worker dial seams** (`campaign-scheduler`, `callback-dialer`) — `OutboundService` se wire (cross-app; direct Prisma se DNC/consent gates bypass honge — mat karna).
 3. **Dashboard localization** — 22 Indian languages + Day-68 locales (translation content; sirf `hi` scaffold hai).
-4. **Voice-loop transcript persist** — `run_agent` ke `persist`/`emit` callbacks no-op hain; wire karne se FORM extraction + post-call intel widget calls pe bhi chalega.
+4. ~~Voice-loop transcript persist~~ ✅ **DONE (#209)** — `TranscriptReporter` (voice) → `POST /internal/voice/transcript` (api, internal-secret) → Transcript upsert + FORM extraction. Go-live: `API_INTERNAL_URL` (voice) + `VOICE_INTERNAL_SECRET` (dono taraf). **Follow-up:** WhatsApp/Messenger bridges me bhi reporter wire karna (bridge ctors + `get_bridge()` thread).
 5. Chhota: `provider-router/src/index.ts:130` stale comment cleanup; `PROJECT-FEATURES-EXPLAINED.docx` regen (lxml sandbox me atka tha; `.md` current hai).
 
 ### C. 🤝 Partner/decision-gated (code se nahi banta)

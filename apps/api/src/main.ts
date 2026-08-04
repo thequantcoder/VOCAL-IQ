@@ -22,6 +22,7 @@ import { planBuilderRoutes } from './billing/plan-builder.routes';
 import { biometricsRoutes } from './biometrics/biometrics.routes';
 import { callbacksRoutes } from './callbacks/callbacks.routes';
 import { callsRoutes } from './calls/calls.routes';
+import { transcriptIngestHandler } from './calls/transcript-ingest';
 import { campaignsRoutes } from './campaigns/campaigns.routes';
 import { chatRoutes } from './chat/chat.routes';
 import { coachRoutes } from './coach/coach.routes';
@@ -167,6 +168,9 @@ function bootstrap(): void {
   );
 
   app.use(express.json({ limit: '5mb' }));
+
+  // Voice→api transcript ingest — INTERNAL (X-Internal-Secret, gated until VOICE_INTERNAL_SECRET).
+  app.post('/internal/voice/transcript', transcriptIngestHandler(s.transcriptIngest));
 
   // ── Routes (mounted at the same paths the Nest controllers used) ──────────────
   app.use('/', healthRoutes());

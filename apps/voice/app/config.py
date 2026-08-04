@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     # internal endpoints are DISABLED (gated) rather than open. Never public.
     voice_internal_secret: str | None = None
 
+    # Base URL of the api (internal network) for the voice→api transcript report at call end
+    # (POST /internal/voice/transcript, same shared secret). Unset ⇒ reporting is gated off.
+    api_internal_url: str | None = None
+
     @property
     def livekit_configured(self) -> bool:
         return bool(self.livekit_url and self.livekit_api_key and self.livekit_api_secret)

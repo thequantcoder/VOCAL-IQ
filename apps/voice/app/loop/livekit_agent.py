@@ -18,7 +18,9 @@ from collections.abc import AsyncIterator
 
 from livekit import rtc
 
+from app.config import settings
 from app.loop.engine import AudioSink, ConversationLoop, LoopConfig
+from app.loop.transcript_reporter import TranscriptReporter
 from app.providers.select import build_and_apply
 
 SAMPLE_RATE = 16_000
@@ -146,16 +148,27 @@ async def run_agent(
         elevenlabs_key=tts_key,
         sarvam_key=sarvam_key,
     )
+    # Transcript reporting (gated): collect each turn; at call end POST the transcript to the api's
+    # internal ingest so the post-call chain (intel/QA/search/FORM extraction) runs for voice calls.
+    reporter = TranscriptReporter(
+        tenant_id=config.tenant_id,
+        call_id=config.call_id,
+        api_url=settings.api_internal_url,
+        secret=settings.voice_internal_secret,
+    )
     loop = ConversationLoop(
         stt=stack.stt,
         llm=stack.llm,
         tts=stack.tts,
         audio_out=audio_sink_factory(source),  # type: ignore[call-arg]
         config=config,
+        persist=reporter.persist,
     )
     try:
         await loop.run(caller.__aiter__())
     finally:
+        with contextlib.suppress(Exception):
+            await reporter.flush()
         caller.close()
         for task in reader_tasks:
             task.cancel()
