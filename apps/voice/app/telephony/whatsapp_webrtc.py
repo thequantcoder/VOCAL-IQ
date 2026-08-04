@@ -105,14 +105,9 @@ class WhatsAppMediaBridge:
         self._internal_secret = internal_secret
         self._peers: dict[str, _Peer] = {}
 
-    async def answer(self, *, call_id: str, sdp_offer: str, config: LoopConfig) -> str:
-        """Build the peer for a caller's SDP offer, start the AI loop, and return the SDP answer.
-
-        ICE is gathered before returning (non-trickle) so the answer Meta receives via `accept` already
-        carries candidates. Raises if `call_id` is already bridged (idempotency is the caller's job)."""
+    def _new_peer(self, call_id: str) -> _Peer:
         if call_id in self._peers:
             raise ValueError(f"call {call_id} already has a media peer")
-
         pc = RTCPeerConnection()
         caller = WhatsAppCallerAudio()
         sink = WhatsAppAudioSink()
@@ -132,12 +127,11 @@ class WhatsAppMediaBridge:
                 log.info("wa call %s connection %s", call_id, pc.connectionState)
                 await self.end(call_id)
 
-        await pc.setRemoteDescription(RTCSessionDescription(sdp=sdp_offer, type="offer"))
-        answer = await pc.createAnswer()
-        await pc.setLocalDescription(answer)
+        return peer
 
-        # Start the AI brain — its greeting queues in the sink and plays as soon as media connects.
-        # India-first: an Indic-language call routes end-to-end to Sarvam when keyed (else default).
+    def _start_loop(self, call_id: str, peer: _Peer, config: LoopConfig) -> None:
+        """Start the AI brain — its greeting queues in the sink and plays as soon as media connects.
+        India-first: an Indic-language call routes end-to-end to Sarvam when keyed (else default)."""
         stack = build_and_apply(
             config,
             deepgram_key=self._stt_key,
@@ -157,14 +151,41 @@ class WhatsAppMediaBridge:
             stt=stack.stt,
             llm=stack.llm,
             tts=stack.tts,
-            audio_out=sink,
+            audio_out=peer.sink,
             config=config,
             persist=reporter.persist,
         )
-        peer.tasks.append(asyncio.create_task(self._run_loop(call_id, loop, caller, reporter)))
+        peer.tasks.append(asyncio.create_task(self._run_loop(call_id, loop, peer.caller, reporter)))
 
-        assert pc.localDescription is not None
-        return pc.localDescription.sdp
+    async def answer(self, *, call_id: str, sdp_offer: str, config: LoopConfig) -> str:
+        """Build the peer for a caller's SDP offer, start the AI loop, and return the SDP answer.
+
+        ICE is gathered before returning (non-trickle) so the answer Meta receives via `accept` already
+        carries candidates. Raises if `call_id` is already bridged (idempotency is the caller's job)."""
+        peer = self._new_peer(call_id)
+        await peer.pc.setRemoteDescription(RTCSessionDescription(sdp=sdp_offer, type="offer"))
+        answer = await peer.pc.createAnswer()
+        await peer.pc.setLocalDescription(answer)
+        self._start_loop(call_id, peer, config)
+        assert peer.pc.localDescription is not None
+        return peer.pc.localDescription.sdp
+
+    async def offer(self, *, call_id: str, config: LoopConfig) -> str:
+        """Outbound (WAC-08): build the peer + business SDP OFFER and start the AI loop. The api dials
+        Meta with this offer; the user's answer arrives on the Connect webhook → `apply_answer`."""
+        peer = self._new_peer(call_id)
+        offer = await peer.pc.createOffer()
+        await peer.pc.setLocalDescription(offer)  # gathers ICE (non-trickle)
+        self._start_loop(call_id, peer, config)
+        assert peer.pc.localDescription is not None
+        return peer.pc.localDescription.sdp
+
+    async def apply_answer(self, call_id: str, sdp_answer: str) -> None:
+        """Outbound (WAC-08): apply the user's SDP answer (from the Connect webhook) to the media peer."""
+        peer = self._peers.get(call_id)
+        if peer is None:
+            return
+        await peer.pc.setRemoteDescription(RTCSessionDescription(sdp=sdp_answer, type="answer"))
 
     async def _pump_inbound(self, track: MediaStreamTrack, caller: WhatsAppCallerAudio) -> None:
         """Decode + resample the caller's OPUS (48 kHz) down to 16 kHz mono and feed the loop."""

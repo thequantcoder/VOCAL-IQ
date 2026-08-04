@@ -5228,3 +5228,13 @@ No backend change. biome clean; web typecheck/build validated in CI. **This comp
 **Remaining (explicitly not this increment).** Page-level strings across the 119 dashboard files (headers, buttons, empty/error states) still render English until externalized — the established pattern (`t()` + English-as-key) now makes that incremental per-page work. Professional review of the 9 non-Hindi catalogs recommended before marketing them as fully supported.
 
 **Checks.** biome clean; shared `i18n.test.ts` gained an India-locales assertion (supported + LTR + `xx-IN` Intl tags). Web typecheck/build in CI.
+
+---
+
+## WhatsApp bridge outbound signaling — `offer()` + `apply_answer()` (WAC-08 latent-crash fix)
+
+**Bug (found while wiring #210).** The `whatsapp_router` `/offer` + `/apply-answer` endpoints (WAC-08 outbound) call `bridge.offer(...)` / `bridge.apply_answer(...)` behind a `type: ignore[attr-defined]` (the bridge is typed `object`) — but `WhatsAppMediaBridge` **had no such methods** (only `answer` + `end`). The **Messenger** sibling already had both (MEC-08). So the WA outbound leg would `AttributeError` the first time it's exercised. Pyright couldn't catch it (the `object` typing + `type: ignore` masks it); it was purely latent behind the Meta-creds gate.
+
+- **`whatsapp_webrtc.py`**: refactored `answer()` to extract `_new_peer()` (peer + track + state-change wiring) and `_start_loop()` (provider stack + gated `TranscriptReporter` + loop + task) — matching the Messenger bridge's structure exactly — then added **`offer()`** (build peer → `createOffer` → `setLocalDescription` (non-trickle ICE) → start loop → return SDP) and **`apply_answer()`** (`setRemoteDescription(answer)`; unknown call = safe no-op). `answer()` is now the same 6-line shape as Messenger's. No router/behaviour change — the endpoints just stop crashing at runtime.
+
+**Checks.** ruff clean; method-presence verified (WA bridge now exposes `_new_peer/_start_loop/answer/offer/apply_answer/end`, symmetric with Messenger). Tests (`test_bridge_transcript_reporting.py`, `importorskip("aiortc")`): a **parity guard** asserting both bridges expose `offer`+`apply_answer` (this would have caught the bug), and a WA `offer()` smoke (stubbed loop) — returns a valid `v=0 … m=audio` SDP, registers the peer, and `apply_answer` on an unknown call no-ops. Still Meta-creds-gated for a live outbound call; this makes the plumbing correct + symmetric so WAC-08 go-live is a config flip, not a code gap.
