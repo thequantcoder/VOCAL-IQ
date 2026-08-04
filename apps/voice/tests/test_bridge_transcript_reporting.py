@@ -11,7 +11,7 @@ import pytest
 
 pytest.importorskip("aiortc")
 
-from app.loop.engine import ConversationLoop  # noqa: E402
+from app.loop.engine import ConversationLoop, LoopConfig  # noqa: E402
 from app.loop.transcript_reporter import TranscriptReporter  # noqa: E402
 from app.telephony.messenger_webrtc import MessengerMediaBridge  # noqa: E402
 from app.telephony.webrtc_audio import WebRtcCallerAudio  # noqa: E402
@@ -104,3 +104,29 @@ async def test_me_run_loop_flushes_reporter_at_loop_end() -> None:
     assert _FakeClient.calls[0]["json"]["segments"] == [
         {"role": "assistant", "text": "hello from messenger"}
     ]
+
+
+def test_both_bridges_expose_the_outbound_signaling_methods() -> None:
+    """WAC-08/MEC-08 parity: the routers call bridge.offer()/apply_answer() (behind a type: ignore),
+    so both bridges MUST have them — this guards the AttributeError the WA bridge would have raised."""
+    for cls in (WhatsAppMediaBridge, MessengerMediaBridge):
+        bridge = cls(stt_key="k", llm_key="k", tts_key="k")
+        assert callable(bridge.offer)
+        assert callable(bridge.apply_answer)
+
+
+async def test_wa_offer_produces_an_sdp_offer_and_registers_the_peer() -> None:
+    """The WAC-08 outbound leg: offer() builds the peer + a business SDP OFFER. The AI loop is stubbed
+    (real provider stack not needed) so this exercises only the new signaling path."""
+    bridge = WhatsAppMediaBridge(stt_key="k", llm_key="k", tts_key="k")
+    bridge._start_loop = lambda *_a, **_k: None  # type: ignore[method-assign]  # noqa: SLF001
+    config = LoopConfig(tenant_id="t1", call_id="c1", agent_id="a1")
+    try:
+        sdp = await bridge.offer(call_id="c1", config=config)
+        assert sdp.startswith("v=0")  # a valid session description
+        assert "m=audio" in sdp  # the agent audio track is offered
+        assert bridge.active() == 1  # peer registered under the call id
+        # apply_answer on an UNKNOWN call is a safe no-op (never raises).
+        await bridge.apply_answer("does-not-exist", "v=0\r\n")
+    finally:
+        await bridge.end("c1")
