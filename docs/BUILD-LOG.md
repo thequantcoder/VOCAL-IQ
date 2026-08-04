@@ -5201,3 +5201,16 @@ No backend change. biome clean; web typecheck/build validated in CI. **This comp
 **Checks.** biome clean (4 TS files); ruff clean (voice files). Tests: voice `test_transcript_reporter.py` (collects non-empty turns, exact endpoint/header/body, gated-off without url/secret, no-op on empty, swallows network errors + non-2xx); api `transcript-ingest.test.ts` (real Postgres — upsert create/replace, cross-tenant claim 404s, malformed report rejected, post-ingest hook fires; `checkInternalSecret` unit-proofed). CI (node + voice) is the gate.
 
 **Go-live:** set `API_INTERNAL_URL` (voice env) + `VOICE_INTERNAL_SECRET` (both sides) → voice-call transcripts land automatically, and post-call intel/QA/search/FORM extraction light up for voice.
+
+---
+
+## Transcript reporting — WhatsApp + Messenger bridges wired (#209 follow-up)
+
+**What.** The #209 `TranscriptReporter` now also rides the two WebRTC media bridges, so WhatsApp and Messenger calls report their transcripts to the api at call end too — post-call intel/QA/search/FORM extraction light up on all three voice paths (LiveKit + WA + Messenger) with the same gating.
+
+- **Both bridges** (`whatsapp_webrtc.py`, `messenger_webrtc.py`): ctor gains optional `api_internal_url` + `internal_secret` (both unset ⇒ reporting off — tests/live-gated behaviour unchanged); a `TranscriptReporter` is created at loop build (`answer()` on WA, `_start_loop` on Messenger), wired as the loop's `persist`, and **flushed in `_run_loop`'s `finally`** before peer teardown.
+- **Routers** (`get_bridge()` in both): pass `settings.api_internal_url` + `settings.voice_internal_secret`.
+
+**Observed latent gap (not this PR's scope):** the WhatsApp bridge has **no `offer()`/`apply_answer()` methods**, but `whatsapp_router`'s `/offer` + `/apply-answer` endpoints call them (`type: ignore[attr-defined]`) — the WAC-08 outbound live leg would AttributeError when first exercised. Fully live-gated today (needs Meta creds); logged for the WAC go-live.
+
+**Checks.** ruff clean. New `test_bridge_transcript_reporting.py` — `pytest.importorskip("aiortc")`-guarded (the bridge modules are pyright-checked in CI, pytest-exercised wherever the media stack is installed): ctor threads the reporting config; each bridge's `_run_loop` flushes the reporter at loop end (fake loop/caller/client — exact segments asserted). CI (voice pyright + node) is the gate.

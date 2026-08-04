@@ -78,6 +78,8 @@ def get_bridge() -> object:
             llm_key=settings.openai_api_key,
             tts_key=settings.elevenlabs_api_key,
             sarvam_key=settings.sarvam_api_key,
+            api_internal_url=settings.api_internal_url,
+            internal_secret=settings.voice_internal_secret,
         )
     return _bridge
 
