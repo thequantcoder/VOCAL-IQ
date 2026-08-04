@@ -9,6 +9,11 @@ import type { MessageCatalog } from '@vocaliq/shared';
  * Brand/product nouns (WhatsApp, Messenger, SIP, SSO, QA, BI) stay untranslated by convention.
  * Hand these files to translators (or a TMS like Crowdin/Locize). To add a locale: add its
  * LocaleInfo in shared/i18n.ts + a catalog entry here.
+ *
+ * Rollout state: the dashboard NAV is localized across all 10 India languages (+ es/ar partial).
+ * Page-level copy rolls out lead-language-first — the Overview (landing) page is fully Hindi; other
+ * locales fall back to the English source per key until a professional pass lands (graceful by
+ * design). Extend a page by wrapping its strings in `t()` (English-as-key) + adding translations.
  */
 export const catalogs: Record<string, MessageCatalog> = {
   en: {
@@ -105,6 +110,33 @@ export const catalogs: Record<string, MessageCatalog> = {
     'Sub-tenants': 'सब-टेनेंट',
     'Super-admin': 'सुपर-एडमिन',
     'White-label': 'व्हाइट-लेबल',
+    // Overview page (dashboard landing) — full Hindi set.
+    'Good morning': 'सुप्रभात',
+    'Good afternoon': 'शुभ दोपहर',
+    'Good evening': 'शुभ संध्या',
+    'Build a voice agent, place a call, see the transcript.':
+      'एक वॉइस एजेंट बनाएं, कॉल करें, ट्रांसक्रिप्ट देखें।',
+    'Create an agent': 'एजेंट बनाएं',
+    'Place a test call': 'टेस्ट कॉल करें',
+    'Calls (recent)': 'कॉल (हाल की)',
+    'Spend (recent)': 'खर्च (हाल का)',
+    'Success rate': 'सफलता दर',
+    'Recent activity': 'हाल की गतिविधि',
+    'View all': 'सभी देखें',
+    'No calls yet — place a test call to see activity here.':
+      'अभी तक कोई कॉल नहीं — यहाँ गतिविधि देखने के लिए एक टेस्ट कॉल करें।',
+    'What to do next': 'आगे क्या करें',
+    'View analytics': 'एनालिटिक्स देखें',
+    'Recent momentum': 'हाल की गति',
+    'Create your first agent': 'अपना पहला एजेंट बनाएं',
+    'Design a prompt-based voice agent in minutes, then place a test call.':
+      'मिनटों में एक प्रॉम्प्ट-आधारित वॉइस एजेंट बनाएं, फिर एक टेस्ट कॉल करें।',
+    'Place your first call': 'अपनी पहली कॉल करें',
+    'Run a test call to hear your agent and review the transcript + cost.':
+      'अपने एजेंट को सुनने और ट्रांसक्रिप्ट + लागत की समीक्षा के लिए एक टेस्ट कॉल करें।',
+    'Dig into your analytics': 'अपने एनालिटिक्स में गहराई से जाएं',
+    'You have calls flowing — explore trends, outcomes, and sentiment.':
+      'आपकी कॉल आ रही हैं — रुझान, परिणाम और भावना देखें।',
   },
   ar: {
     'nav.agents': 'الوكلاء',

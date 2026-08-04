@@ -11,6 +11,7 @@ import { OnboardingChecklist } from '../../components/onboarding-checklist';
 import { OnboardingWizard } from '../../components/onboarding-wizard';
 import { StatusBadge, formatUsd } from '../../components/ui-bits';
 import { type CallListItem, useAgents, useCalls } from '../../lib/api';
+import { useI18n } from '../../lib/i18n/provider';
 
 /** Bucket items into per-day counts over the last `n` days (oldest → newest). */
 function dailyCounts(items: CallListItem[], n = 8, pick: (c: CallListItem) => number = () => 1) {
@@ -47,6 +48,7 @@ function greeting(): string {
 
 /** Overview — the flagship surface: hero band + animated KPI row + live activity + smart next step. */
 export default function OverviewPage() {
+  const { t } = useI18n(); // page copy localizes via English-as-key + per-key fallback (see #211)
   const agents = useAgents();
   const calls = useCalls();
 
@@ -77,19 +79,19 @@ export default function OverviewPage() {
             <div className="flex items-center gap-5">
               <VoiceOrb state="idle" size={72} label="VocalIQ" />
               <div className="flex flex-col gap-2">
-                <span className="text-sm text-vq-text-lo">{greeting()} 👋</span>
+                <span className="text-sm text-vq-text-lo">{t(greeting())} 👋</span>
                 <h1 className="max-w-xl font-display font-semibold text-2xl text-vq-text-hi">
-                  Build a voice agent, place a call, see the transcript.
+                  {t('Build a voice agent, place a call, see the transcript.')}
                 </h1>
                 <div className="mt-1 flex flex-wrap gap-3">
                   <Link href="/dashboard/agents/new">
                     <Button variant="primary" size="md">
-                      Create an agent <ArrowRight size={16} />
+                      {t('Create an agent')} <ArrowRight size={16} />
                     </Button>
                   </Link>
                   <Link href="/dashboard/calls">
                     <Button variant="secondary" size="md">
-                      Place a test call
+                      {t('Place a test call')}
                     </Button>
                   </Link>
                 </div>
@@ -106,7 +108,7 @@ export default function OverviewPage() {
       <Stagger className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StaggerItem>
           <StatCard
-            label="Agents"
+            label={t('Agents')}
             value={agentCount}
             icon={<Bot size={15} />}
             spark={callSeries}
@@ -115,7 +117,7 @@ export default function OverviewPage() {
         </StaggerItem>
         <StaggerItem>
           <StatCard
-            label="Calls (recent)"
+            label={t('Calls (recent)')}
             value={items.length}
             icon={<PhoneCall size={15} />}
             delta={halfDelta(callSeries)}
@@ -125,7 +127,7 @@ export default function OverviewPage() {
         </StaggerItem>
         <StaggerItem>
           <StatCard
-            label="Spend (recent)"
+            label={t('Spend (recent)')}
             value={totalSpend}
             format={formatUsd}
             delta={halfDelta(spendSeries)}
@@ -136,7 +138,7 @@ export default function OverviewPage() {
         </StaggerItem>
         <StaggerItem>
           <StatCard
-            label="Success rate"
+            label={t('Success rate')}
             value={successRate}
             format={(v) => `${Math.round(v)}%`}
             delta={halfDelta(successSeries)}
@@ -152,15 +154,17 @@ export default function OverviewPage() {
         {/* Live activity feed. */}
         <Reveal className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <h2 className="font-display font-semibold text-lg text-vq-text-hi">Recent activity</h2>
+            <h2 className="font-display font-semibold text-lg text-vq-text-hi">
+              {t('Recent activity')}
+            </h2>
             <Link href="/dashboard/calls" className="text-sm text-vq-violet hover:underline">
-              View all
+              {t('View all')}
             </Link>
           </div>
           <Card className="divide-y divide-vq-border p-0">
             {recent.length === 0 ? (
               <p className="px-4 py-10 text-center text-sm text-vq-text-lo">
-                No calls yet — place a test call to see activity here.
+                {t('No calls yet — place a test call to see activity here.')}
               </p>
             ) : (
               recent.map((c) => (
@@ -199,6 +203,7 @@ export default function OverviewPage() {
 
 /** A contextual suggestion based on where the tenant is in the journey. */
 function NextStepCard({ agentCount, callCount }: { agentCount: number; callCount: number }) {
+  const { t } = useI18n();
   let title: string;
   let hint: string;
   let cta: ReactNode;
@@ -208,7 +213,7 @@ function NextStepCard({ agentCount, callCount }: { agentCount: number; callCount
     cta = (
       <Link href="/dashboard/agents/new">
         <Button size="sm">
-          <Bot size={15} /> Create an agent
+          <Bot size={15} /> {t('Create an agent')}
         </Button>
       </Link>
     );
@@ -218,7 +223,7 @@ function NextStepCard({ agentCount, callCount }: { agentCount: number; callCount
     cta = (
       <Link href="/dashboard/calls">
         <Button size="sm">
-          <PhoneOutgoing size={15} /> Place a test call
+          <PhoneOutgoing size={15} /> {t('Place a test call')}
         </Button>
       </Link>
     );
@@ -228,7 +233,7 @@ function NextStepCard({ agentCount, callCount }: { agentCount: number; callCount
     cta = (
       <Link href="/dashboard/analytics">
         <Button size="sm">
-          <ArrowRight size={15} /> View analytics
+          <ArrowRight size={15} /> {t('View analytics')}
         </Button>
       </Link>
     );
@@ -236,13 +241,13 @@ function NextStepCard({ agentCount, callCount }: { agentCount: number; callCount
   return (
     <Card className="relative isolate flex h-full flex-col gap-3 overflow-hidden p-5 before:absolute before:inset-0 before:-z-10 before:bg-gradient-to-br before:from-primary-500/10 before:to-accent-500/5">
       <span className="flex items-center gap-1.5 text-sm text-vq-text-lo">
-        <Sparkles size={15} className="text-vq-violet" /> What to do next
+        <Sparkles size={15} className="text-vq-violet" /> {t('What to do next')}
       </span>
-      <span className="font-display font-semibold text-lg text-vq-text-hi">{title}</span>
-      <p className="flex-1 text-sm text-vq-text-lo">{hint}</p>
+      <span className="font-display font-semibold text-lg text-vq-text-hi">{t(title)}</span>
+      <p className="flex-1 text-sm text-vq-text-lo">{t(hint)}</p>
       <div>{cta}</div>
       <div className="flex items-center gap-2 text-vq-text-lo text-xs">
-        <span>Recent momentum</span>
+        <span>{t('Recent momentum')}</span>
         <TrendDelta value={callCount > 0 ? 8.4 : 0} />
       </div>
     </Card>
