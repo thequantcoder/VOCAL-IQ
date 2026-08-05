@@ -12,6 +12,7 @@ import {
   useCustomModels,
   useDeleteCustomModel,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 const PROVIDERS: CustomModelProvider[] = ['OPENAI', 'ANTHROPIC', 'GEMINI', 'GROK', 'OPENROUTER'];
 const STATUS_COLOR: Record<string, string> = {
@@ -29,6 +30,7 @@ const SELECT_CLS =
  * your data) and each model is strictly private to your tenant.
  */
 export default function ModelsPage() {
+  const { t } = useI18n();
   const models = useCustomModels();
   const create = useCreateCustomModel();
   const del = useDeleteCustomModel();
@@ -72,29 +74,30 @@ export default function ModelsPage() {
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <BrainCircuit size={20} /> Custom models
+          <BrainCircuit size={20} /> {t('Custom models')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          Brand-perfect, domain-tuned models — a base LLM plus your brand voice, optionally a
-          provider fine-tune. Private to your tenant, and consent-recorded.
+          {t(
+            'Brand-perfect, domain-tuned models — a base LLM plus your brand voice, optionally a provider fine-tune. Private to your tenant, and consent-recorded.',
+          )}
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">New custom model</CardTitle>
+          <CardTitle className="text-base">{t('New custom model')}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <div className="flex flex-wrap gap-2">
             <Input
-              aria-label="Model name"
-              placeholder="e.g. ACME Brand Voice"
+              aria-label={t('Model name')}
+              placeholder={t('e.g. ACME Brand Voice')}
               className="min-w-48 flex-1"
               value={draft.name}
               onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
             />
             <select
-              aria-label="Provider"
+              aria-label={t('Provider')}
               className={SELECT_CLS}
               value={draft.provider}
               onChange={(e) =>
@@ -108,17 +111,17 @@ export default function ModelsPage() {
               ))}
             </select>
             <Input
-              aria-label="Base model"
-              placeholder="base model id"
+              aria-label={t('Base model')}
+              placeholder={t('base model id')}
               className="w-40"
               value={draft.baseModel}
               onChange={(e) => setDraft((d) => ({ ...d, baseModel: e.target.value }))}
             />
           </div>
           <textarea
-            aria-label="Brand system prompt"
+            aria-label={t('Brand system prompt')}
             className="min-h-20 rounded-vq border border-vq-border bg-transparent px-3 py-2 text-sm text-vq-text-hi"
-            placeholder="Brand tone / domain instructions applied on every completion…"
+            placeholder={t('Brand tone / domain instructions applied on every completion…')}
             value={draft.systemPrompt}
             onChange={(e) => setDraft((d) => ({ ...d, systemPrompt: e.target.value }))}
           />
@@ -128,8 +131,9 @@ export default function ModelsPage() {
               checked={draft.requestFineTune}
               onChange={(e) => setDraft((d) => ({ ...d, requestFineTune: e.target.checked }))}
             />
-            Request a provider fine-tune (needs a configured fine-tune provider; otherwise use the
-            brand prompt above)
+            {t(
+              'Request a provider fine-tune (needs a configured fine-tune provider; otherwise use the brand prompt above)',
+            )}
           </label>
 
           {/* Consent gate */}
@@ -141,12 +145,13 @@ export default function ModelsPage() {
                 checked={consentGiven}
                 onChange={(e) => setConsentGiven(e.target.checked)}
               />
-              I authorise creating a custom brand model, including training on our data where
-              applicable.
+              {t(
+                'I authorise creating a custom brand model, including training on our data where applicable.',
+              )}
             </label>
             <Input
-              aria-label="Authorised by"
-              placeholder="Authorised by (your name)"
+              aria-label={t('Authorised by')}
+              placeholder={t('Authorised by (your name)')}
               value={consentedBy}
               onChange={(e) => setConsentedBy(e.target.value)}
             />
@@ -161,7 +166,7 @@ export default function ModelsPage() {
             disabled={!canSubmit || create.isPending}
             onClick={submit}
           >
-            Create model
+            {t('Create model')}
           </Button>
         </CardContent>
       </Card>
@@ -171,7 +176,10 @@ export default function ModelsPage() {
       ) : models.isError ? (
         <ErrorState message={(models.error as Error).message} onRetry={() => models.refetch()} />
       ) : !models.data || models.data.length === 0 ? (
-        <EmptyState title="No custom models yet" hint="Create your first brand model above." />
+        <EmptyState
+          title={t('No custom models yet')}
+          hint={t('Create your first brand model above.')}
+        />
       ) : (
         <div className="flex flex-col gap-2">
           {models.data.map((m) => (
@@ -188,6 +196,7 @@ function ModelRow({
   onDelete,
   deleting,
 }: { m: CustomModel; onDelete: () => void; deleting: boolean }) {
+  const { t } = useI18n();
   return (
     <Card>
       <CardContent className="flex items-center justify-between py-3 text-sm">
@@ -201,12 +210,12 @@ function ModelRow({
             </span>
             {m.fineTuneId && (
               <span className="rounded-vq-pill border border-vq-border px-2 py-0.5 text-vq-text-lo text-xs">
-                fine-tuned
+                {t('fine-tuned')}
               </span>
             )}
           </span>
           <span className="text-vq-text-lo text-xs">
-            {m.provider} · {m.baseModel} · consent by {m.consentBy}
+            {m.provider} · {m.baseModel} · {t('consent by {name}', { name: m.consentBy })}
           </span>
         </div>
         <Button
@@ -214,7 +223,7 @@ function ModelRow({
           variant="ghost"
           disabled={deleting}
           onClick={onDelete}
-          aria-label="Delete model"
+          aria-label={t('Delete model')}
         >
           <Trash2 size={14} />
         </Button>

@@ -13,6 +13,7 @@ import {
   useIntelTrends,
   useSetIntelConfig,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 const TYPE_META: Record<SignalType, { label: string; color: string; bar: string }> = {
   objection: { label: 'Objections', color: 'text-vq-warn', bar: 'bg-vq-warn/70' },
@@ -35,14 +36,15 @@ const TYPES: SignalType[] = [
  * alertable at thresholds. Extraction is deterministic (no added LLM spend); this is the dashboard.
  */
 export default function IntelPage() {
+  const { t } = useI18n();
   const trends = useIntelTrends(30);
   const config = useIntelConfig();
   const setConfig = useSetIntelConfig();
   const checkAlerts = useCheckIntelAlerts();
   const [competitor, setCompetitor] = useState('');
 
-  const byType = (t: SignalType): SignalAggregate[] =>
-    (trends.data ?? []).filter((s) => s.type === t);
+  const byType = (sig: SignalType): SignalAggregate[] =>
+    (trends.data ?? []).filter((s) => s.type === sig);
   const competitors = config.data?.competitors ?? [];
 
   const addCompetitor = () => {
@@ -66,11 +68,12 @@ export default function IntelPage() {
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
           <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-            <Lightbulb size={20} /> Conversation intelligence
+            <Lightbulb size={20} /> {t('Conversation intelligence')}
           </h1>
           <p className="text-sm text-vq-text-lo">
-            What your callers are really telling you — objections, buying signals, competitors, and
-            churn risk, trended across every call. Last 30 days.
+            {t(
+              'What your callers are really telling you — objections, buying signals, competitors, and churn risk, trended across every call. Last 30 days.',
+            )}
           </p>
         </div>
         <Button
@@ -79,17 +82,18 @@ export default function IntelPage() {
           disabled={checkAlerts.isPending}
           onClick={() => checkAlerts.mutate()}
         >
-          <Bell size={14} /> Check alerts
+          <Bell size={14} /> {t('Check alerts')}
         </Button>
       </div>
 
       {checkAlerts.data && (
         <p className="text-sm text-vq-text-lo">
           {checkAlerts.data.fired.length === 0
-            ? 'No thresholds breached.'
-            : `${checkAlerts.data.fired.length} alert(s) fired: ${checkAlerts.data.fired
-                .map((f) => `${f.label} (${f.count})`)
-                .join(', ')}`}
+            ? t('No thresholds breached.')
+            : t('{n} alert(s) fired: {list}', {
+                n: checkAlerts.data.fired.length,
+                list: checkAlerts.data.fired.map((f) => `${f.label} (${f.count})`).join(', '),
+              })}
         </p>
       )}
 
@@ -99,18 +103,21 @@ export default function IntelPage() {
       ) : trends.isError ? (
         <ErrorState message={(trends.error as Error).message} onRetry={() => trends.refetch()} />
       ) : (trends.data ?? []).length === 0 ? (
-        <EmptyState title="No signals yet" hint="Signals appear here as calls are analysed." />
+        <EmptyState
+          title={t('No signals yet')}
+          hint={t('Signals appear here as calls are analysed.')}
+        />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {TYPES.map((t) => {
-            const rows = byType(t);
+          {TYPES.map((sig) => {
+            const rows = byType(sig);
             if (rows.length === 0) return null;
             const max = Math.max(...rows.map((r) => r.count));
             return (
-              <Card key={t}>
+              <Card key={sig}>
                 <CardHeader>
-                  <CardTitle className={`text-base ${TYPE_META[t].color}`}>
-                    {TYPE_META[t].label}
+                  <CardTitle className={`text-base ${TYPE_META[sig].color}`}>
+                    {t(TYPE_META[sig].label)}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-2">
@@ -121,7 +128,7 @@ export default function IntelPage() {
                       </span>
                       <div className="h-2 flex-1 overflow-hidden rounded-vq-pill bg-vq-surface">
                         <div
-                          className={`h-full rounded-vq-pill ${TYPE_META[t].bar}`}
+                          className={`h-full rounded-vq-pill ${TYPE_META[sig].bar}`}
                           style={{ width: `${Math.round((r.count / max) * 100)}%` }}
                         />
                       </div>
@@ -138,12 +145,13 @@ export default function IntelPage() {
       {/* Competitor watchlist */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Competitor watchlist</CardTitle>
+          <CardTitle className="text-base">{t('Competitor watchlist')}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <p className="text-vq-text-lo text-xs">
-            Add the competitors you want tracked — each mention across calls is trended above and
-            can be alerted on.
+            {t(
+              'Add the competitors you want tracked — each mention across calls is trended above and can be alerted on.',
+            )}
           </p>
           <div className="flex flex-wrap gap-2">
             {competitors.map((c) => (
@@ -154,7 +162,7 @@ export default function IntelPage() {
                 {c}
                 <button
                   type="button"
-                  aria-label={`Remove ${c}`}
+                  aria-label={t('Remove {name}', { name: c })}
                   onClick={() => removeCompetitor(c)}
                 >
                   <X size={12} />
@@ -162,13 +170,13 @@ export default function IntelPage() {
               </span>
             ))}
             {competitors.length === 0 && (
-              <span className="text-vq-text-lo text-sm">No competitors tracked yet.</span>
+              <span className="text-vq-text-lo text-sm">{t('No competitors tracked yet.')}</span>
             )}
           </div>
           <div className="flex gap-2">
             <Input
-              aria-label="Competitor name"
-              placeholder="e.g. Acme"
+              aria-label={t('Competitor name')}
+              placeholder={t('e.g. Acme')}
               value={competitor}
               onChange={(e) => setCompetitor(e.target.value)}
               onKeyDown={(e) => {
@@ -189,6 +197,7 @@ export default function IntelPage() {
 
 /** A filterable list of the raw mined signals — the drill-down feeding coaching + product. */
 function SignalExplorer() {
+  const { t } = useI18n();
   const [type, setType] = useState<string>('');
   const signals = useIntelSignals(type ? { type } : {});
 
@@ -196,17 +205,17 @@ function SignalExplorer() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between text-base">
-          <span>Signal explorer</span>
+          <span>{t('Signal explorer')}</span>
           <select
-            aria-label="Filter by type"
+            aria-label={t('Filter by type')}
             className="rounded-vq border border-vq-border bg-transparent px-2 py-1 text-sm text-vq-text-hi"
             value={type}
             onChange={(e) => setType(e.target.value)}
           >
-            <option value="">All types</option>
-            {TYPES.map((t) => (
-              <option key={t} value={t}>
-                {TYPE_META[t].label}
+            <option value="">{t('All types')}</option>
+            {TYPES.map((sig) => (
+              <option key={sig} value={sig}>
+                {t(TYPE_META[sig].label)}
               </option>
             ))}
           </select>
@@ -216,7 +225,7 @@ function SignalExplorer() {
         {signals.isLoading ? (
           <LoadingCard rows={3} />
         ) : !signals.data || signals.data.length === 0 ? (
-          <EmptyState title="No signals" hint="Mined signals will show here." />
+          <EmptyState title={t('No signals')} hint={t('Mined signals will show here.')} />
         ) : (
           <div className="flex flex-col divide-y divide-vq-border">
             {signals.data.map((s) => (

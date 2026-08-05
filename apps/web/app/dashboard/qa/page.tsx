@@ -13,9 +13,11 @@ import {
   useQaRubrics,
   useUpdateQaRubric,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 /** QA scoring (Day 43): build weighted rubrics + a coaching view of average scores. */
 export default function QaPage() {
+  const { t } = useI18n();
   const rubrics = useQaRubrics();
   const aggregate = useQaAggregate();
   const [creating, setCreating] = useState(false);
@@ -25,14 +27,14 @@ export default function QaPage() {
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-            <ClipboardCheck size={20} /> QA scoring
+            <ClipboardCheck size={20} /> {t('QA scoring')}
           </h1>
           <p className="text-sm text-vq-text-lo">
-            Score calls automatically against weighted rubrics; coach from the averages.
+            {t('Score calls automatically against weighted rubrics; coach from the averages.')}
           </p>
         </div>
         <Button size="sm" onClick={() => setCreating((v) => !v)}>
-          <Plus size={16} /> New rubric
+          <Plus size={16} /> {t('New rubric')}
         </Button>
       </div>
 
@@ -46,8 +48,8 @@ export default function QaPage() {
         <ErrorState message={(rubrics.error as Error).message} onRetry={() => rubrics.refetch()} />
       ) : !rubrics.data || rubrics.data.length === 0 ? (
         <EmptyState
-          title="No rubrics yet"
-          hint="Create a rubric of weighted criteria to score calls."
+          title={t('No rubrics yet')}
+          hint={t('Create a rubric of weighted criteria to score calls.')}
         />
       ) : (
         <div className="flex flex-col gap-3">
@@ -65,15 +67,16 @@ export default function QaPage() {
 }
 
 function CoachingView() {
+  const { t } = useI18n();
   const aggregate = useQaAggregate();
   const rubrics = useQaRubrics();
   if (!aggregate.data || aggregate.data.length === 0) return null;
-  const nameOf = (id: string) => rubrics.data?.find((r) => r.id === id)?.name ?? 'Rubric';
+  const nameOf = (id: string) => rubrics.data?.find((r) => r.id === id)?.name ?? t('Rubric');
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Coaching — average scores</CardTitle>
+        <CardTitle className="text-base">{t('Coaching — average scores')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {aggregate.data.map((agg) => (
@@ -82,7 +85,10 @@ function CoachingView() {
               <span className="font-medium text-sm text-vq-text-hi">{nameOf(agg.rubricId)}</span>
               <span className="font-mono text-sm text-vq-text-hi">
                 {agg.avgOverall.toFixed(1)}
-                <span className="text-vq-text-lo text-xs"> /100 · {agg.count} calls</span>
+                <span className="text-vq-text-lo text-xs">
+                  {' '}
+                  {t('/100 · {n} calls', { n: agg.count })}
+                </span>
               </span>
             </div>
             <div className="flex flex-col gap-1">
@@ -123,6 +129,7 @@ function RubricRow({
   rubric: QaRubric;
   avg?: { avgOverall: number; count: number };
 }) {
+  const { t } = useI18n();
   const update = useUpdateQaRubric();
   const del = useDeleteQaRubric();
 
@@ -133,8 +140,13 @@ function RubricRow({
           <div>
             <p className="font-medium text-vq-text-hi">{rubric.name}</p>
             <p className="text-vq-text-lo text-xs">
-              {rubric.criteria.length} criteria · sampling {Math.round(rubric.samplingRate * 100)}%
-              {avg ? ` · avg ${avg.avgOverall.toFixed(1)}/100 (${avg.count})` : ''}
+              {t('{n} criteria · sampling {p}%', {
+                n: rubric.criteria.length,
+                p: Math.round(rubric.samplingRate * 100),
+              })}
+              {avg
+                ? ` · ${t('avg {score}/100 ({count})', { score: avg.avgOverall.toFixed(1), count: avg.count })}`
+                : ''}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -146,7 +158,7 @@ function RubricRow({
                   update.mutate({ id: rubric.id, body: { active: e.target.checked } })
                 }
               />
-              Active
+              {t('Active')}
             </label>
             <Button
               size="sm"
@@ -186,6 +198,7 @@ const newDraft = (): CriterionDraft => ({
 });
 
 function CreateRubric({ onDone }: { onDone: () => void }) {
+  const { t } = useI18n();
   const create = useCreateQaRubric();
   const [name, setName] = useState('');
   const [samplingPct, setSamplingPct] = useState(100);
@@ -214,16 +227,16 @@ function CreateRubric({ onDone }: { onDone: () => void }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">New rubric</CardTitle>
+        <CardTitle className="text-base">{t('New rubric')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <Input
-          placeholder="Rubric name (e.g. Sales QA)"
+          placeholder={t('Rubric name (e.g. Sales QA)')}
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
         <label htmlFor="qa-sampling" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-          Sampling rate: {samplingPct}% of calls
+          {t('Sampling rate: {p}% of calls', { p: samplingPct })}
           <input
             id="qa-sampling"
             type="range"
@@ -236,18 +249,18 @@ function CreateRubric({ onDone }: { onDone: () => void }) {
 
         <div className="flex flex-col gap-2">
           <span className="text-vq-text-lo text-xs">
-            Criteria — key (lowercase_snake), description, weight
+            {t('Criteria — key (lowercase_snake), description, weight')}
           </span>
           {criteria.map((c) => (
             <div key={c.id} className="flex gap-2">
               <Input
-                placeholder="key"
+                placeholder={t('key')}
                 value={c.key}
                 onChange={(e) => setCriterion(c.id, { key: e.target.value })}
                 className="w-32"
               />
               <Input
-                placeholder="what to check for"
+                placeholder={t('what to check for')}
                 value={c.description}
                 onChange={(e) => setCriterion(c.id, { description: e.target.value })}
               />
@@ -274,7 +287,7 @@ function CreateRubric({ onDone }: { onDone: () => void }) {
             variant="secondary"
             onClick={() => setCriteria((cs) => [...cs, newDraft()])}
           >
-            <Plus size={14} /> Add criterion
+            <Plus size={14} /> {t('Add criterion')}
           </Button>
         </div>
 
@@ -283,10 +296,10 @@ function CreateRubric({ onDone }: { onDone: () => void }) {
         )}
         <div className="flex gap-2">
           <Button size="sm" disabled={!valid || create.isPending} onClick={submit}>
-            {create.isPending ? 'Creating…' : 'Create rubric'}
+            {create.isPending ? t('Creating…') : t('Create rubric')}
           </Button>
           <Button size="sm" variant="ghost" onClick={onDone}>
-            Cancel
+            {t('Cancel')}
           </Button>
         </div>
       </CardContent>
