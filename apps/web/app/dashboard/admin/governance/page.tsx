@@ -13,20 +13,22 @@ import {
   useSetFlag,
   useTenantFlags,
 } from '../../../../lib/api';
+import { useI18n } from '../../../../lib/i18n/provider';
 
 /**
  * Governance console (Day 58): feature flags (global + tenant), quota status, and the tamper-proof
  * audit log. Flag precedence is TENANT > PLAN > GLOBAL; the audit log is append-only.
  */
 export default function GovernancePage() {
+  const { t } = useI18n();
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <Flag size={20} /> Governance
+          <Flag size={20} /> {t('Governance')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          Feature flags, quotas, and the tamper-proof audit log.
+          {t('Feature flags, quotas, and the tamper-proof audit log.')}
         </p>
       </div>
 
@@ -45,11 +47,12 @@ const STATE_COLOR: Record<string, string> = {
 };
 
 function QuotaStrip() {
+  const { t } = useI18n();
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Gauge size={16} /> Quota usage
+          <Gauge size={16} /> {t('Quota usage')}
         </CardTitle>
       </CardHeader>
       <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -82,6 +85,7 @@ function QuotaCell({ resource }: { resource: (typeof RESOURCES)[number] }) {
 }
 
 function Flags() {
+  const { t } = useI18n();
   const globals = useGlobalFlags();
   const tenant = useTenantFlags();
   const setFlag = useSetFlag();
@@ -96,7 +100,7 @@ function Flags() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Flag size={16} /> Feature flags
+          <Flag size={16} /> {t('Feature flags')}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
@@ -112,23 +116,23 @@ function Flags() {
             onChange={(e) => setScope(e.target.value as 'GLOBAL' | 'TENANT')}
             className="rounded-vq border border-vq-border bg-vq-bg-base px-3 py-2 text-sm text-vq-text-hi"
           >
-            <option value="TENANT">Tenant</option>
-            <option value="GLOBAL">Global</option>
+            <option value="TENANT">{t('Tenant')}</option>
+            <option value="GLOBAL">{t('Global')}</option>
           </select>
           <label className="flex items-center gap-1 text-sm text-vq-text-lo">
             <input type="checkbox" checked={value} onChange={(e) => setValue(e.target.checked)} />
-            on
+            {t('on')}
           </label>
           <Button
             size="sm"
             disabled={!valid || setFlag.isPending}
             onClick={() => setFlag.mutate({ key, value, scope })}
           >
-            Set flag
+            {t('Set flag')}
           </Button>
         </div>
         {all.length === 0 ? (
-          <EmptyState title="No flags set" hint="Add a flag to gate a feature." />
+          <EmptyState title={t('No flags set')} hint={t('Add a flag to gate a feature.')} />
         ) : (
           <div className="flex flex-col divide-y divide-vq-border">
             {all.map((f) => (
@@ -168,6 +172,7 @@ function FlagRow({ flag }: { flag: FlagDto }) {
 }
 
 function AuditViewer() {
+  const { t } = useI18n();
   const [filter, setFilter] = useState('');
   const audit = useAuditLog(filter || undefined);
 
@@ -175,13 +180,13 @@ function AuditViewer() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <ScrollText size={16} /> Audit log
-          <span className="text-vq-text-lo text-xs">(append-only)</span>
+          <ScrollText size={16} /> {t('Audit log')}
+          <span className="text-vq-text-lo text-xs">{t('(append-only)')}</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <Input
-          placeholder="Filter by action (e.g. vault., superadmin., quota.)"
+          placeholder={t('Filter by action (e.g. vault., superadmin., quota.)')}
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           className="max-w-sm"
@@ -191,7 +196,10 @@ function AuditViewer() {
         ) : audit.isError ? (
           <ErrorState message={(audit.error as Error).message} onRetry={() => audit.refetch()} />
         ) : !audit.data || audit.data.length === 0 ? (
-          <EmptyState title="No audit entries" hint="Privileged actions will appear here." />
+          <EmptyState
+            title={t('No audit entries')}
+            hint={t('Privileged actions will appear here.')}
+          />
         ) : (
           <div className="flex flex-col divide-y divide-vq-border font-mono text-xs">
             {audit.data.map((a) => (

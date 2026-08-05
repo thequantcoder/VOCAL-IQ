@@ -4,6 +4,7 @@ import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@vocali
 import { Megaphone, Send } from 'lucide-react';
 import { useState } from 'react';
 import { type AnnouncementAudienceInput, useSendAnnouncement } from '../../../../lib/api';
+import { useI18n } from '../../../../lib/i18n/provider';
 
 /** The audience scopes offered by the compose UI (the explicit-tenant-list scope is API-only). */
 type UiScope = Exclude<AnnouncementAudienceInput['scope'], 'tenants'>;
@@ -23,6 +24,7 @@ const SEVERITIES = ['info', 'success', 'warning', 'critical'] as const;
  * tenant's notification center.
  */
 export default function AnnouncementsPage() {
+  const { t } = useI18n();
   const send = useSendAnnouncement();
   const [scope, setScope] = useState<UiScope>('all');
   const [targetId, setTargetId] = useState('');
@@ -57,21 +59,22 @@ export default function AnnouncementsPage() {
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <Megaphone size={20} /> Announcements
+          <Megaphone size={20} /> {t('Announcements')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          Broadcast a platform-wide message to a targeted set of tenants. Appears in each tenant's
-          notification center; every send is audited.
+          {t(
+            "Broadcast a platform-wide message to a targeted set of tenants. Appears in each tenant's notification center; every send is audited.",
+          )}
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Compose</CardTitle>
+          <CardTitle>{t('Compose')}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <span className="font-medium text-sm text-vq-text-hi">Audience</span>
+            <span className="font-medium text-sm text-vq-text-hi">{t('Audience')}</span>
             <div className="grid gap-2 sm:grid-cols-2">
               {SCOPES.map((s) => (
                 <button
@@ -84,8 +87,8 @@ export default function AnnouncementsPage() {
                       : 'border-vq-border text-vq-text-lo hover:border-vq-border-hi'
                   }`}
                 >
-                  <span className="block font-medium">{s.label}</span>
-                  <span className="text-xs">{s.hint}</span>
+                  <span className="block font-medium">{t(s.label)}</span>
+                  <span className="text-xs">{t(s.hint)}</span>
                 </button>
               ))}
             </div>
@@ -94,7 +97,7 @@ export default function AnnouncementsPage() {
           {needsId && (
             <label htmlFor="announce-target" className="flex flex-col gap-1.5">
               <span className="font-medium text-sm text-vq-text-hi">
-                {scope === 'reseller' ? 'Reseller tenant ID' : 'Plan ID'}
+                {scope === 'reseller' ? t('Reseller tenant ID') : t('Plan ID')}
               </span>
               <Input
                 id="announce-target"
@@ -106,7 +109,7 @@ export default function AnnouncementsPage() {
           )}
 
           <div className="flex flex-col gap-1.5">
-            <span className="font-medium text-sm text-vq-text-hi">Severity</span>
+            <span className="font-medium text-sm text-vq-text-hi">{t('Severity')}</span>
             <div className="flex gap-2">
               {SEVERITIES.map((s) => (
                 <button
@@ -126,13 +129,13 @@ export default function AnnouncementsPage() {
           </div>
 
           <label className="flex flex-col gap-1.5">
-            <span className="font-medium text-sm text-vq-text-hi">Message</span>
+            <span className="font-medium text-sm text-vq-text-hi">{t('Message')}</span>
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               maxLength={500}
               rows={3}
-              placeholder="Scheduled maintenance this Sunday 02:00–03:00 UTC…"
+              placeholder={t('Scheduled maintenance this Sunday 02:00–03:00 UTC…')}
               className="w-full rounded-vq border border-vq-border bg-vq-bg-base px-3 py-2 text-sm text-vq-text-hi focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vq-ring"
             />
             <span className="text-right text-vq-text-lo text-xs">{message.length}/500</span>
@@ -145,10 +148,12 @@ export default function AnnouncementsPage() {
               disabled={!message.trim() || (needsId && !targetId.trim())}
               onClick={onSend}
             >
-              <Send size={16} /> Publish
+              <Send size={16} /> {t('Publish')}
             </Button>
             {sent !== null && (
-              <span className="text-sm text-vq-success">Sent to {sent} tenant(s) ✓</span>
+              <span className="text-sm text-vq-success">
+                {t('Sent to {n} tenant(s) ✓', { n: sent })}
+              </span>
             )}
             {send.isError && (
               <span className="text-sm text-vq-danger">{(send.error as Error).message}</span>

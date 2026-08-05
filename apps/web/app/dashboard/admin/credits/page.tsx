@@ -4,6 +4,7 @@ import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@vocali
 import { CreditCard, Gift, Ticket } from 'lucide-react';
 import { useState } from 'react';
 import { type GrantKind, useCreatePromoCode, useGrantCredit } from '../../../../lib/api';
+import { useI18n } from '../../../../lib/i18n/provider';
 
 const KINDS: GrantKind[] = ['PROMO', 'BONUS', 'REFERRAL', 'MANUAL'];
 
@@ -13,15 +14,17 @@ const KINDS: GrantKind[] = ['PROMO', 'BONUS', 'REFERRAL', 'MANUAL'];
  * and never pay out as cash.
  */
 export default function AdminCreditsPage() {
+  const { t } = useI18n();
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <CreditCard size={20} /> Credits & promos
+          <CreditCard size={20} /> {t('Credits & promos')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          Grant bonus credits to a tenant or create a redeemable promo code. Both are audited;
-          credits are spent before paid balance and never withdraw as cash.
+          {t(
+            'Grant bonus credits to a tenant or create a redeemable promo code. Both are audited; credits are spent before paid balance and never withdraw as cash.',
+          )}
         </p>
       </div>
       <GrantCard />
@@ -31,6 +34,7 @@ export default function AdminCreditsPage() {
 }
 
 function GrantCard() {
+  const { t } = useI18n();
   const grant = useGrantCredit();
   const [tenantId, setTenantId] = useState('');
   const [kind, setKind] = useState<GrantKind>('BONUS');
@@ -51,7 +55,12 @@ function GrantCard() {
       },
       {
         onSuccess: (r) =>
-          setMsg(`Granted ${r.remainingCents / 100} credits (grant ${r.id.slice(0, 8)}…) ✓`),
+          setMsg(
+            t('Granted {n} credits (grant {id}…) ✓', {
+              n: r.remainingCents / 100,
+              id: r.id.slice(0, 8),
+            }),
+          ),
       },
     );
   }
@@ -60,11 +69,11 @@ function GrantCard() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Gift size={16} /> Grant credits to a tenant
+          <Gift size={16} /> {t('Grant credits to a tenant')}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        <Field label="Tenant ID">
+        <Field label={t('Tenant ID')}>
           <Input
             value={tenantId}
             onChange={(e) => setTenantId(e.target.value)}
@@ -72,10 +81,10 @@ function GrantCard() {
           />
         </Field>
         <div className="flex gap-3">
-          <Field label="Kind">
+          <Field label={t('Kind')}>
             <KindSelect value={kind} onChange={setKind} />
           </Field>
-          <Field label="Amount ($)">
+          <Field label={t('Amount ($)')}>
             <Input
               type="number"
               min={1}
@@ -85,10 +94,10 @@ function GrantCard() {
           </Field>
         </div>
         <div className="flex gap-3">
-          <Field label="Source / note">
+          <Field label={t('Source / note')}>
             <Input value={source} onChange={(e) => setSource(e.target.value)} />
           </Field>
-          <Field label="Expires (optional)">
+          <Field label={t('Expires (optional)')}>
             <Input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
           </Field>
         </div>
@@ -99,7 +108,7 @@ function GrantCard() {
             disabled={!tenantId.trim() || dollars <= 0}
             onClick={submit}
           >
-            Grant credits
+            {t('Grant credits')}
           </Button>
           {msg && <span className="text-vq-success text-sm">{msg}</span>}
           {grant.isError && (
@@ -112,6 +121,7 @@ function GrantCard() {
 }
 
 function PromoCodeCard() {
+  const { t } = useI18n();
   const create = useCreatePromoCode();
   const [code, setCode] = useState('');
   const [kind, setKind] = useState<GrantKind>('PROMO');
@@ -132,7 +142,7 @@ function PromoCodeCard() {
         ...(maxRedemptions ? { maxRedemptions: Number(maxRedemptions) } : {}),
         ...(expiresAt ? { expiresAt: new Date(expiresAt).toISOString() } : {}),
       },
-      { onSuccess: (r) => setMsg(`Created code ${r.code} ✓`) },
+      { onSuccess: (r) => setMsg(t('Created code {code} ✓', { code: r.code })) },
     );
   }
 
@@ -140,15 +150,15 @@ function PromoCodeCard() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Ticket size={16} /> Create a promo code
+          <Ticket size={16} /> {t('Create a promo code')}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <div className="flex gap-3">
-          <Field label="Code">
+          <Field label={t('Code')}>
             <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="LAUNCH50" />
           </Field>
-          <Field label="Amount ($)">
+          <Field label={t('Amount ($)')}>
             <Input
               type="number"
               min={1}
@@ -158,21 +168,21 @@ function PromoCodeCard() {
           </Field>
         </div>
         <div className="flex gap-3">
-          <Field label="Kind">
+          <Field label={t('Kind')}>
             <KindSelect value={kind} onChange={setKind} />
           </Field>
-          <Field label="Max redemptions (optional)">
+          <Field label={t('Max redemptions (optional)')}>
             <Input
               type="number"
               min={1}
               value={maxRedemptions}
               onChange={(e) => setMaxRedemptions(e.target.value)}
-              placeholder="unlimited"
+              placeholder={t('unlimited')}
             />
           </Field>
         </div>
         <div className="flex gap-3">
-          <Field label="Per-tenant limit">
+          <Field label={t('Per-tenant limit')}>
             <Input
               type="number"
               min={1}
@@ -180,7 +190,7 @@ function PromoCodeCard() {
               onChange={(e) => setPerTenantLimit(Number(e.target.value))}
             />
           </Field>
-          <Field label="Expires (optional)">
+          <Field label={t('Expires (optional)')}>
             <Input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
           </Field>
         </div>
@@ -191,7 +201,7 @@ function PromoCodeCard() {
             disabled={code.trim().length < 3 || dollars <= 0}
             onClick={submit}
           >
-            Create code
+            {t('Create code')}
           </Button>
           {msg && <span className="text-vq-success text-sm">{msg}</span>}
           {create.isError && (
