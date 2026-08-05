@@ -12,8 +12,10 @@ import {
   useReleaseNumber,
   useSearchNumbers,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 export default function PhoneNumbersPage() {
+  const { t } = useI18n();
   const owned = useOwnedNumbers();
 
   return (
@@ -21,15 +23,15 @@ export default function PhoneNumbersPage() {
       <header className="flex items-center justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-            <Hash size={20} /> Phone numbers
+            <Hash size={20} /> {t('Phone numbers')}
           </h1>
           <p className="text-sm text-vq-text-lo">
-            Search a carrier, buy a number, and manage the numbers your agents call from.
+            {t('Search a carrier, buy a number, and manage the numbers your agents call from.')}
           </p>
         </div>
         {owned.data && (
           <Badge variant={owned.data.live ? 'success' : 'warn'}>
-            {owned.data.live ? 'Live carrier' : 'Demo catalogue'}
+            {owned.data.live ? t('Live carrier') : t('Demo catalogue')}
           </Badge>
         )}
       </header>
@@ -37,7 +39,7 @@ export default function PhoneNumbersPage() {
       <BuyNumber />
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-display font-semibold text-lg text-vq-text-hi">Your numbers</h2>
+        <h2 className="font-display font-semibold text-lg text-vq-text-hi">{t('Your numbers')}</h2>
         <Crossfade
           swapKey={
             owned.isLoading
@@ -56,8 +58,8 @@ export default function PhoneNumbersPage() {
           ) : !owned.data || owned.data.items.length === 0 ? (
             <EmptyState
               illustration="no-calls"
-              title="No numbers yet"
-              hint="Search + buy a number above to start making calls."
+              title={t('No numbers yet')}
+              hint={t('Search + buy a number above to start making calls.')}
             />
           ) : (
             <Stagger className="flex flex-col gap-3">
@@ -86,6 +88,7 @@ function OwnedRow({
     monthlyCostUsd: number;
   };
 }) {
+  const { t } = useI18n();
   const release = useReleaseNumber();
   return (
     <Card className="vq-lift">
@@ -114,13 +117,15 @@ function OwnedRow({
           size="sm"
           loading={release.isPending}
           onClick={() => {
-            if (confirm(`Release ${number.e164}? This returns it to the carrier.`)) {
+            if (
+              confirm(t('Release {e164}? This returns it to the carrier.', { e164: number.e164 }))
+            ) {
               release.mutate(number.id);
             }
           }}
-          aria-label={`Release ${number.e164}`}
+          aria-label={t('Release {e164}', { e164: number.e164 })}
         >
-          <Trash2 size={15} /> Release
+          <Trash2 size={15} /> {t('Release')}
         </Button>
       </CardContent>
     </Card>
@@ -128,6 +133,7 @@ function OwnedRow({
 }
 
 function BuyNumber() {
+  const { t } = useI18n();
   const search = useSearchNumbers();
   const buy = useBuyNumber();
   const [areaCode, setAreaCode] = useState('');
@@ -144,7 +150,7 @@ function BuyNumber() {
       <CardContent className="flex flex-col gap-4 pt-6">
         <form onSubmit={onSearch} className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <label htmlFor="number-country" className="flex flex-col gap-1.5 sm:w-24">
-            <span className="font-medium text-sm text-vq-text-hi">Country</span>
+            <span className="font-medium text-sm text-vq-text-hi">{t('Country')}</span>
             <Input
               id="number-country"
               value={country}
@@ -153,17 +159,17 @@ function BuyNumber() {
             />
           </label>
           <label htmlFor="number-area-code" className="flex flex-1 flex-col gap-1.5">
-            <span className="font-medium text-sm text-vq-text-hi">Area code (optional)</span>
+            <span className="font-medium text-sm text-vq-text-hi">{t('Area code (optional)')}</span>
             <Input
               id="number-area-code"
               value={areaCode}
               onChange={(e) => setAreaCode(e.target.value)}
-              placeholder="e.g. 415"
+              placeholder={t('e.g. 415')}
               inputMode="numeric"
             />
           </label>
           <Button type="submit" variant="primary" size="md" loading={search.isPending}>
-            <Search size={16} /> Search numbers
+            <Search size={16} /> {t('Search numbers')}
           </Button>
         </form>
 
@@ -188,7 +194,7 @@ function BuyNumber() {
                   loading={buy.isPending && buy.variables?.e164 === r.e164}
                   onClick={() => buy.mutate({ e164: r.e164 })}
                 >
-                  Buy
+                  {t('Buy')}
                 </Button>
               </div>
             ))}

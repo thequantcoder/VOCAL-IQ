@@ -5355,3 +5355,20 @@ Batch 1 of the "grind the remaining ~65 pages" pass (per the user's "finish all 
 - **`catalogs.ts`**: ~50 new Hindi keys. Reuses `Search`/`Workflows`/`Payments`/`Number health`/`Agents`/`Templates`/`Creating…`/`Pause`/`All`/`Agent`. Duplicate-key scan clean.
 
 **Checks.** biome clean (7 files; auto-formatted 3). Web typecheck/build in CI. Progress: **17 of ~76 dashboard pages** now Hindi (nav all-10). ~59 pages remain — continuing in batches.
+
+---
+
+## Dashboard localization — page-level, increment 9: Callbacks + Phone numbers + SIP + Exports + Support + MCP
+
+Batch 2 of the remaining-pages grind. Six pages via `useI18n().t()` (English-as-key) + Hindi; ~85 new keys (many interpolated). Recurring policy held: enum-DATA status/priority chips + acronyms (SIP/CSV/BI/MCP/E.164/PCI) untranslated; `t` map/params renamed where they shadowed the hook (sip `tr`/`opt`, support `tk`, mcp `tool`).
+
+- **callbacks**: header + subtitle, `Schedule callback`, empty-state, the ScheduleCallback form (`Phone (E.164)`, `When`, `Caller timezone`, `Note (optional)`, `Scheduling…`/`Schedule`), row `{n} tries` + Cancel. Timezone list = data.
+- **phone-numbers**: header + subtitle, `Live carrier`/`Demo catalogue`, `Your numbers`, empty-state, the owned-row `Release` + its **interpolated** confirm/aria (`Release {e164}?`), and the BuyNumber form (`Country`, `Area code (optional)`, `Search numbers`, `Buy`).
+- **sip**: header + subtitle, `Add trunk`, empty-state, the trunk row (`no creds`, `{n} concurrent`, `Inbound`/`Outbound` titles + `in`/`out`), and the AddTrunk form (`Carrier`, `Trunk name`, `SIP host (default {host})`, auth fields, `Connecting…`).
+- **exports**: header + the API-hint (`<code>`s folded to one `t()` string), CreateExport (`Usage & cost`, `Generate CSV`, masking note), ExportsList (`{n} rows`), Schedules (`Daily`/`Weekly`, `Add schedule`, `active`/`paused`, `Resume`/`Delete`).
+- **support**: header + subtitle, `New ticket`, empty-state, WalletCard (`Credit balance`, `{amt} bonus`/`{amt} prepaid`), CreateTicket (`Subject`, `Describe the issue…`, `Priority`, `Create ticket`). Ticket status/priority chips = data.
+- **mcp**: header + subtitle, `Add server`, empty-state, the trust-label map (wrapped at render) + `{n}s timeout`/`auth set`/`Discover`, and the RegisterForm (`Server name`, `Trust context` + its 3 options, `Timeout (s, 5–120)`, auth header, `Adding…`).
+
+- **`catalogs.ts`**: ~85 new Hindi keys. Reuses `Callbacks`/`Phone numbers`/`SIP trunks`/`Support`/`Calls`/`Cancel`/`Delete`/`Pause`/`Creating…`/`No numbers yet`. Duplicate-key scan clean.
+
+**Checks.** biome clean (7 files; auto-formatted 2). Web typecheck/build in CI. Progress: **23 of ~76 dashboard pages** now Hindi. ~53 remain.

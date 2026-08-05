@@ -13,6 +13,7 @@ import {
   useTickets,
   useWallet,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 const NEXT_STATUS: Partial<Record<TicketStatus, TicketStatus[]>> = {
   OPEN: ['IN_PROGRESS', 'RESOLVED', 'CLOSED'],
@@ -23,6 +24,7 @@ const NEXT_STATUS: Partial<Record<TicketStatus, TicketStatus[]>> = {
 
 /** Support + credits (Day 49): in-platform ticketing and a wallet balance card. */
 export default function SupportPage() {
+  const { t } = useI18n();
   const tickets = useTickets();
   const [creating, setCreating] = useState(false);
 
@@ -31,12 +33,14 @@ export default function SupportPage() {
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-            <LifeBuoy size={20} /> Support
+            <LifeBuoy size={20} /> {t('Support')}
           </h1>
-          <p className="text-sm text-vq-text-lo">In-platform tickets and your credit balance.</p>
+          <p className="text-sm text-vq-text-lo">
+            {t('In-platform tickets and your credit balance.')}
+          </p>
         </div>
         <Button size="sm" onClick={() => setCreating((v) => !v)}>
-          <Plus size={16} /> New ticket
+          <Plus size={16} /> {t('New ticket')}
         </Button>
       </div>
 
@@ -49,13 +53,13 @@ export default function SupportPage() {
         <ErrorState message={(tickets.error as Error).message} onRetry={() => tickets.refetch()} />
       ) : !tickets.data || tickets.data.length === 0 ? (
         <EmptyState
-          title="No tickets"
-          hint="Open a ticket and our team (or your reseller) will help."
+          title={t('No tickets')}
+          hint={t('Open a ticket and our team (or your reseller) will help.')}
         />
       ) : (
         <div className="flex flex-col gap-3">
-          {tickets.data.map((t) => (
-            <TicketRow key={t.id} ticket={t} />
+          {tickets.data.map((tk) => (
+            <TicketRow key={tk.id} ticket={tk} />
           ))}
         </div>
       )}
@@ -64,6 +68,7 @@ export default function SupportPage() {
 }
 
 function WalletCard() {
+  const { t } = useI18n();
   const wallet = useWallet();
   if (!wallet.data) return null;
   const low = wallet.data.totalCents < 500;
@@ -71,7 +76,7 @@ function WalletCard() {
     <Card>
       <CardContent className="flex items-center justify-between py-3">
         <span className="flex items-center gap-2 text-sm text-vq-text-lo">
-          <Wallet size={16} /> Credit balance
+          <Wallet size={16} /> {t('Credit balance')}
         </span>
         <div className="text-right">
           <span
@@ -80,8 +85,8 @@ function WalletCard() {
             {formatUsd(wallet.data.totalCents / 100)}
           </span>
           <span className="block text-vq-text-lo text-xs">
-            {formatUsd(wallet.data.bonusCents / 100)} bonus ·{' '}
-            {formatUsd(wallet.data.prepaidCents / 100)} prepaid
+            {t('{amt} bonus', { amt: formatUsd(wallet.data.bonusCents / 100) })} ·{' '}
+            {t('{amt} prepaid', { amt: formatUsd(wallet.data.prepaidCents / 100) })}
           </span>
         </div>
       </CardContent>
@@ -90,6 +95,7 @@ function WalletCard() {
 }
 
 function TicketRow({ ticket }: { ticket: SupportTicket }) {
+  const { t } = useI18n();
   const setStatus = useSetTicketStatus();
   const options = NEXT_STATUS[ticket.status] ?? [];
   return (
@@ -123,6 +129,7 @@ function TicketRow({ ticket }: { ticket: SupportTicket }) {
 }
 
 function CreateTicket({ onDone }: { onDone: () => void }) {
+  const { t } = useI18n();
   const create = useCreateTicket();
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
@@ -137,22 +144,26 @@ function CreateTicket({ onDone }: { onDone: () => void }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">New ticket</CardTitle>
+        <CardTitle className="text-base">{t('New ticket')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        <Input placeholder="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} />
+        <Input
+          placeholder={t('Subject')}
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+        />
         <textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={3}
-          placeholder="Describe the issue…"
+          placeholder={t('Describe the issue…')}
           className="rounded-vq border border-vq-border bg-vq-bg-base px-3 py-2 text-sm text-vq-text-hi"
         />
         <label
           htmlFor="ticket-priority"
           className="flex items-center gap-2 text-vq-text-lo text-xs"
         >
-          Priority
+          {t('Priority')}
           <select
             id="ticket-priority"
             value={priority}
@@ -171,10 +182,10 @@ function CreateTicket({ onDone }: { onDone: () => void }) {
         )}
         <div className="flex gap-2">
           <Button size="sm" disabled={!subject.trim() || create.isPending} onClick={submit}>
-            {create.isPending ? 'Creating…' : 'Create ticket'}
+            {create.isPending ? t('Creating…') : t('Create ticket')}
           </Button>
           <Button size="sm" variant="ghost" onClick={onDone}>
-            Cancel
+            {t('Cancel')}
           </Button>
         </div>
       </CardContent>

@@ -11,6 +11,7 @@ import {
   useCancelCallback,
   useCreateCallback,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 const STATUS_COLOR: Record<string, string> = {
   scheduled: 'text-vq-cyan border-vq-cyan/40',
@@ -42,6 +43,7 @@ const COMMON_TZ = [
  * a call via the Callback flow node.
  */
 export default function CallbacksPage() {
+  const { t } = useI18n();
   const callbacks = useCallbacks();
   const create = useCreateCallback();
   const cancel = useCancelCallback();
@@ -52,14 +54,16 @@ export default function CallbacksPage() {
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-            <PhoneOutgoing size={20} /> Callbacks
+            <PhoneOutgoing size={20} /> {t('Callbacks')}
           </h1>
           <p className="text-sm text-vq-text-lo">
-            Call people back exactly when they asked — timezone-aware, within legal calling hours.
+            {t(
+              'Call people back exactly when they asked — timezone-aware, within legal calling hours.',
+            )}
           </p>
         </div>
         <Button size="sm" onClick={() => setScheduling((v) => !v)}>
-          Schedule callback
+          {t('Schedule callback')}
         </Button>
       </div>
 
@@ -74,8 +78,8 @@ export default function CallbacksPage() {
         />
       ) : !callbacks.data || callbacks.data.length === 0 ? (
         <EmptyState
-          title="No callbacks yet"
-          hint="Schedule one above, or add a Callback node to an agent flow."
+          title={t('No callbacks yet')}
+          hint={t('Schedule one above, or add a Callback node to an agent flow.')}
         />
       ) : (
         <div className="flex flex-col gap-2">
@@ -100,6 +104,7 @@ function ScheduleCallback({
   create: ReturnType<typeof useCreateCallback>;
   onDone: () => void;
 }) {
+  const { t } = useI18n();
   const [phone, setPhone] = useState('');
   const [when, setWhen] = useState('');
   const [timezone, setTimezone] = useState('UTC');
@@ -121,17 +126,17 @@ function ScheduleCallback({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Schedule a callback</CardTitle>
+        <CardTitle className="text-base">{t('Schedule a callback')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <Input
-          placeholder="Phone (E.164)"
+          placeholder={t('Phone (E.164)')}
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
         />
         <div className="flex flex-wrap gap-2">
           <label htmlFor="when" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-            When
+            {t('When')}
             <Input
               id="when"
               type="datetime-local"
@@ -140,7 +145,7 @@ function ScheduleCallback({
             />
           </label>
           <label htmlFor="tz" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-            Caller timezone
+            {t('Caller timezone')}
             <select
               id="tz"
               className={SELECT_CLS}
@@ -156,7 +161,7 @@ function ScheduleCallback({
           </label>
         </div>
         <Input
-          placeholder="Note (optional)"
+          placeholder={t('Note (optional)')}
           value={note}
           onChange={(e) => setNote(e.target.value)}
         />
@@ -165,10 +170,10 @@ function ScheduleCallback({
         )}
         <div className="flex gap-2">
           <Button size="sm" disabled={!phone || !when || create.isPending} onClick={submit}>
-            {create.isPending ? 'Scheduling…' : 'Schedule'}
+            {create.isPending ? t('Scheduling…') : t('Schedule')}
           </Button>
           <Button size="sm" variant="ghost" onClick={onDone}>
-            Cancel
+            {t('Cancel')}
           </Button>
         </div>
       </CardContent>
@@ -181,6 +186,7 @@ function CallbackRow({
   onCancel,
   cancelling,
 }: { cb: Callback; onCancel: () => void; cancelling: boolean }) {
+  const { t } = useI18n();
   const when = new Date(cb.requestedAt).toLocaleString('en-US', { timeZone: cb.timezone });
   return (
     <Card>
@@ -195,7 +201,7 @@ function CallbackRow({
             </span>
             {cb.attempts > 0 && (
               <span className="rounded-vq-pill border border-vq-border px-2 py-0.5 text-vq-text-lo text-xs">
-                {cb.attempts} tries
+                {t('{n} tries', { n: cb.attempts })}
               </span>
             )}
           </span>
@@ -205,7 +211,7 @@ function CallbackRow({
         </div>
         {cb.status === 'scheduled' && (
           <Button size="sm" variant="ghost" disabled={cancelling} onClick={onCancel}>
-            Cancel
+            {t('Cancel')}
           </Button>
         )}
       </CardContent>
