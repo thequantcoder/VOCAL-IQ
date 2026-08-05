@@ -17,6 +17,7 @@ import {
   useNotificationPrefs,
   useSetNotificationPrefs,
 } from '../../../../lib/api';
+import { useI18n } from '../../../../lib/i18n/provider';
 
 const EVENT_LABEL: Record<string, string> = {
   'call.completed': 'Call completed',
@@ -33,6 +34,7 @@ const CHANNEL_LABEL: Record<NotifyChannel, string> = { webhook: 'Webhook', slack
  * one stores an explicit `false`. Channels only show a cell for events they can actually deliver.
  */
 export default function NotificationsSettingsPage() {
+  const { t } = useI18n();
   const prefs = useNotificationPrefs();
   const save = useSetNotificationPrefs();
   const [draft, setDraft] = useState<NotificationPrefs>({});
@@ -54,11 +56,12 @@ export default function NotificationsSettingsPage() {
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <Bell size={20} /> Notifications
+          <Bell size={20} /> {t('Notifications')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          Choose which events notify each channel. This is a master switch on top of each channel's
-          own setup (webhook subscriptions, Slack config). Everything is on by default.
+          {t(
+            "Choose which events notify each channel. This is a master switch on top of each channel's own setup (webhook subscriptions, Slack config). Everything is on by default.",
+          )}
         </p>
       </div>
 
@@ -69,14 +72,14 @@ export default function NotificationsSettingsPage() {
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Event × channel</CardTitle>
+            <CardTitle className="text-base">{t('Event × channel')}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-vq-text-lo text-xs">
-                    <th className="pb-2 text-left font-medium">Event</th>
+                    <th className="pb-2 text-left font-medium">{t('Event')}</th>
                     {NOTIFY_CHANNELS.map((ch) => (
                       <th key={ch} className="px-3 pb-2 text-center font-medium">
                         {CHANNEL_LABEL[ch]}
@@ -87,7 +90,7 @@ export default function NotificationsSettingsPage() {
                 <tbody>
                   {NOTIFY_EVENTS.map((event) => (
                     <tr key={event} className="border-vq-border border-t">
-                      <td className="py-2 text-vq-text-hi">{EVENT_LABEL[event] ?? event}</td>
+                      <td className="py-2 text-vq-text-hi">{t(EVENT_LABEL[event] ?? event)}</td>
                       {NOTIFY_CHANNELS.map((ch) => {
                         const supported = (CHANNEL_EVENTS[ch] as readonly string[]).includes(event);
                         return (
@@ -95,7 +98,7 @@ export default function NotificationsSettingsPage() {
                             {supported ? (
                               <input
                                 type="checkbox"
-                                aria-label={`${EVENT_LABEL[event] ?? event} → ${CHANNEL_LABEL[ch]}`}
+                                aria-label={`${t(EVENT_LABEL[event] ?? event)} → ${CHANNEL_LABEL[ch]}`}
                                 checked={isNotificationEnabled(draft, event, ch)}
                                 onChange={() => toggle(event, ch)}
                                 className="size-4 accent-[var(--brand)]"
@@ -103,7 +106,7 @@ export default function NotificationsSettingsPage() {
                             ) : (
                               <span
                                 className="text-vq-text-lo text-xs"
-                                title="Not delivered on this channel"
+                                title={t('Not delivered on this channel')}
                               >
                                 —
                               </span>
@@ -127,9 +130,9 @@ export default function NotificationsSettingsPage() {
                   })
                 }
               >
-                Save preferences
+                {t('Save preferences')}
               </Button>
-              {saved && <span className="text-vq-success text-sm">Saved ✓</span>}
+              {saved && <span className="text-vq-success text-sm">{t('Saved ✓')}</span>}
               {save.isError && (
                 <span className="text-vq-danger text-sm">{(save.error as Error).message}</span>
               )}

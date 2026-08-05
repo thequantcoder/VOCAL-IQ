@@ -5,12 +5,14 @@ import { Swords, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { EmptyState, LoadingCard } from '../../../../components/states';
 import { useBattlecards, useCreateBattlecard, useDeleteBattlecard } from '../../../../lib/api';
+import { useI18n } from '../../../../lib/i18n/provider';
 
 /**
  * Battlecards (Day 90): tenant-authored competitor cards. When a caller mentions a competitor (by name
  * or a cue keyword), the Live Co-Pilot surfaces the card's talking points to the rep — agent-only.
  */
 export default function BattlecardsPage() {
+  const { t } = useI18n();
   const cards = useBattlecards();
   const create = useCreateBattlecard();
   const del = useDeleteBattlecard();
@@ -44,21 +46,22 @@ export default function BattlecardsPage() {
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <Swords size={20} /> Battlecards
+          <Swords size={20} /> {t('Battlecards')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          Competitor talking points your reps see live when a caller mentions a rival. Shown only on
-          the rep's screen — never to the caller.
+          {t(
+            "Competitor talking points your reps see live when a caller mentions a rival. Shown only on the rep's screen — never to the caller.",
+          )}
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">New battlecard</CardTitle>
+          <CardTitle className="text-base">{t('New battlecard')}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <label htmlFor="bc-competitor" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-            Competitor
+            {t('Competitor')}
             <Input
               id="bc-competitor"
               placeholder="Acme Dialer"
@@ -67,7 +70,7 @@ export default function BattlecardsPage() {
             />
           </label>
           <label htmlFor="bc-cues" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-            Trigger cues (comma-separated; the competitor name always triggers it)
+            {t('Trigger cues (comma-separated; the competitor name always triggers it)')}
             <Input
               id="bc-cues"
               placeholder="acme, currently using acme"
@@ -76,7 +79,7 @@ export default function BattlecardsPage() {
             />
           </label>
           <label className="flex flex-col gap-1 text-vq-text-lo text-xs">
-            Talking points (one per line)
+            {t('Talking points (one per line)')}
             <textarea
               className="min-h-24 rounded-vq border border-vq-border bg-transparent px-2 py-1.5 text-sm text-vq-text-hi"
               placeholder={'We include analytics they charge extra for.\nNo per-seat lock-in.'}
@@ -86,7 +89,7 @@ export default function BattlecardsPage() {
           </label>
           <div className="flex items-center gap-3">
             <Button size="sm" disabled={create.isPending || !competitor.trim()} onClick={submit}>
-              {create.isPending ? 'Adding…' : 'Add battlecard'}
+              {create.isPending ? t('Adding…') : t('Add battlecard')}
             </Button>
             {create.isError && (
               <span className="text-vq-danger text-xs">{(create.error as Error).message}</span>
@@ -96,11 +99,11 @@ export default function BattlecardsPage() {
       </Card>
 
       <div className="flex flex-col gap-2">
-        <h2 className="font-medium text-sm text-vq-text-hi">Your battlecards</h2>
+        <h2 className="font-medium text-sm text-vq-text-hi">{t('Your battlecards')}</h2>
         {cards.isLoading ? (
           <LoadingCard rows={2} />
         ) : !cards.data || cards.data.length === 0 ? (
-          <EmptyState title="No battlecards yet" hint="Add one above to arm your reps." />
+          <EmptyState title={t('No battlecards yet')} hint={t('Add one above to arm your reps.')} />
         ) : (
           <ul className="flex flex-col gap-2">
             {cards.data.map((c) => (
@@ -108,10 +111,12 @@ export default function BattlecardsPage() {
                 <Card className="px-4 py-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex flex-col gap-1">
-                      <span className="font-medium text-sm text-vq-text-hi">vs {c.competitor}</span>
+                      <span className="font-medium text-sm text-vq-text-hi">
+                        {t('vs {name}', { name: c.competitor })}
+                      </span>
                       {c.cues.length > 0 && (
                         <span className="text-vq-text-lo text-xs">
-                          Triggers: {c.cues.join(', ')}
+                          {t('Triggers:')} {c.cues.join(', ')}
                         </span>
                       )}
                       <ul className="mt-1 list-disc pl-4 text-sm text-vq-text-lo">

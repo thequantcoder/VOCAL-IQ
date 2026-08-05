@@ -13,12 +13,14 @@ import {
   useSetBiometricSettings,
   useVerifyVoiceprint,
 } from '../../../../lib/api';
+import { useI18n } from '../../../../lib/i18n/provider';
 
 /**
  * Voice biometrics (Day 91) — caller identity verification by voiceprint. Governance-first: OFF by
  * default, region deny-by-default, explicit consent + encryption at rest, every action audited.
  */
 export default function BiometricsSettingsPage() {
+  const { t } = useI18n();
   const settings = useBiometricSettings();
   const save = useSetBiometricSettings();
   const [form, setForm] = useState({
@@ -45,18 +47,20 @@ export default function BiometricsSettingsPage() {
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <Fingerprint size={20} /> Voice biometrics
+          <Fingerprint size={20} /> {t('Voice biometrics')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          Verify a caller's identity by voiceprint for secure flows (account access, banking). Off
-          by default; enrolments are consented, encrypted, and region-gated.
+          {t(
+            "Verify a caller's identity by voiceprint for secure flows (account access, banking). Off by default; enrolments are consented, encrypted, and region-gated.",
+          )}
         </p>
       </div>
 
       <p className="flex items-start gap-2 rounded-vq border border-vq-warning/40 bg-vq-warning/5 p-3 text-vq-text-lo text-xs">
-        <AlertTriangle size={14} className="mt-0.5 shrink-0 text-vq-warning" /> Biometric data is
-        heavily regulated (BIPA, GDPR Art. 9, and more). Only enable it in regions where you have
-        confirmed legality and captured explicit caller consent.
+        <AlertTriangle size={14} className="mt-0.5 shrink-0 text-vq-warning" />{' '}
+        {t(
+          'Biometric data is heavily regulated (BIPA, GDPR Art. 9, and more). Only enable it in regions where you have confirmed legality and captured explicit caller consent.',
+        )}
       </p>
 
       {settings.isLoading ? (
@@ -64,7 +68,7 @@ export default function BiometricsSettingsPage() {
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Policy</CardTitle>
+            <CardTitle className="text-base">{t('Policy')}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <label className="flex items-start gap-3">
@@ -75,12 +79,12 @@ export default function BiometricsSettingsPage() {
                 onChange={(e) => setForm({ ...form, enabled: e.target.checked })}
               />
               <span className="text-sm text-vq-text-lo">
-                <span className="text-vq-text-hi">Enable voice biometrics.</span> When off, no
-                enrolment or verification can run.
+                <span className="text-vq-text-hi">{t('Enable voice biometrics.')}</span>{' '}
+                {t('When off, no enrolment or verification can run.')}
               </span>
             </label>
             <label htmlFor="regions" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-              Allowed regions (comma-separated; empty = denied everywhere)
+              {t('Allowed regions (comma-separated; empty = denied everywhere)')}
               <Input
                 id="regions"
                 placeholder="US-NY, GB"
@@ -90,7 +94,7 @@ export default function BiometricsSettingsPage() {
             </label>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <label htmlFor="threshold" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-                Match threshold
+                {t('Match threshold')}
                 <Input
                   id="threshold"
                   type="number"
@@ -102,7 +106,7 @@ export default function BiometricsSettingsPage() {
                 />
               </label>
               <label htmlFor="liveness" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-                Min liveness
+                {t('Min liveness')}
                 <Input
                   id="liveness"
                   type="number"
@@ -114,7 +118,7 @@ export default function BiometricsSettingsPage() {
                 />
               </label>
               <label htmlFor="retention" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-                Retention (days)
+                {t('Retention (days)')}
                 <Input
                   id="retention"
                   type="number"
@@ -141,9 +145,9 @@ export default function BiometricsSettingsPage() {
                   })
                 }
               >
-                {save.isPending ? 'Saving…' : 'Save policy'}
+                {save.isPending ? t('Saving…') : t('Save policy')}
               </Button>
-              {save.isSuccess && <span className="text-vq-success text-xs">Saved ✓</span>}
+              {save.isSuccess && <span className="text-vq-success text-xs">{t('Saved ✓')}</span>}
               {save.isError && (
                 <span className="text-vq-danger text-xs">{(save.error as Error).message}</span>
               )}
@@ -160,6 +164,7 @@ export default function BiometricsSettingsPage() {
 
 /** A compact tool to enrol + verify a contact's voiceprint (uses an opaque audio-sample reference). */
 function EnrollVerifyTool({ enabled }: { enabled: boolean }) {
+  const { t } = useI18n();
   const enroll = useEnrollVoiceprint();
   const verify = useVerifyVoiceprint();
   const erase = useEraseVoiceprint();
@@ -171,29 +176,29 @@ function EnrollVerifyTool({ enabled }: { enabled: boolean }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Enrol / verify a caller</CardTitle>
+        <CardTitle className="text-base">{t('Enrol / verify a caller')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {!enabled && (
           <p className="text-vq-text-lo text-xs">
-            Enable + save the policy above before enrolling.
+            {t('Enable + save the policy above before enrolling.')}
           </p>
         )}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label htmlFor="contact" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-            Contact ID
+            {t('Contact ID')}
             <Input id="contact" value={contactId} onChange={(e) => setContactId(e.target.value)} />
           </label>
           <label htmlFor="region2" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-            Region
+            {t('Region')}
             <Input id="region2" value={region} onChange={(e) => setRegion(e.target.value)} />
           </label>
         </div>
         <label htmlFor="sample" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-          Audio sample reference
+          {t('Audio sample reference')}
           <Input
             id="sample"
-            placeholder="a voice-sample id captured on the call"
+            placeholder={t('a voice-sample id captured on the call')}
             value={sample}
             onChange={(e) => setSample(e.target.value)}
           />
@@ -210,14 +215,14 @@ function EnrollVerifyTool({ enabled }: { enabled: boolean }) {
               )
             }
           >
-            {enroll.isPending ? 'Enrolling…' : 'Enrol (consented)'}
+            {enroll.isPending ? t('Enrolling…') : t('Enrol (consented)')}
           </Button>
           <Button
             size="sm"
             disabled={!contactId || !sample || verify.isPending}
             onClick={() => verify.mutate({ contactId, region, sample }, { onSuccess: setResult })}
           >
-            {verify.isPending ? 'Verifying…' : 'Verify'}
+            {verify.isPending ? t('Verifying…') : t('Verify')}
           </Button>
           <Button
             size="sm"
@@ -228,7 +233,7 @@ function EnrollVerifyTool({ enabled }: { enabled: boolean }) {
               setResult(null);
             }}
           >
-            <Trash2 size={14} /> Erase
+            <Trash2 size={14} /> {t('Erase')}
           </Button>
         </div>
         {(enroll.isError || verify.isError) && (
@@ -237,7 +242,7 @@ function EnrollVerifyTool({ enabled }: { enabled: boolean }) {
           </span>
         )}
         {enroll.isSuccess && !result && (
-          <span className="text-vq-success text-xs">Voiceprint enrolled ✓</span>
+          <span className="text-vq-success text-xs">{t('Voiceprint enrolled ✓')}</span>
         )}
         {result && (
           <div
@@ -251,9 +256,11 @@ function EnrollVerifyTool({ enabled }: { enabled: boolean }) {
           >
             <p className="font-medium capitalize">{result.outcome.replace('_', ' ')}</p>
             <p className="text-vq-text-lo text-xs">
-              match {(result.score * 100).toFixed(0)}% · liveness{' '}
-              {(result.liveness * 100).toFixed(0)}%
-              {result.needsStepUp ? ' · step-up auth required' : ''}
+              {t('match {m}% · liveness {l}%', {
+                m: (result.score * 100).toFixed(0),
+                l: (result.liveness * 100).toFixed(0),
+              })}
+              {result.needsStepUp ? ` · ${t('step-up auth required')}` : ''}
             </p>
           </div>
         )}
@@ -264,17 +271,18 @@ function EnrollVerifyTool({ enabled }: { enabled: boolean }) {
 
 /** The immutable audit of every biometric action. */
 function AuditTrail() {
+  const { t } = useI18n();
   const audits = useBiometricAudits();
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Audit trail</CardTitle>
+        <CardTitle className="text-base">{t('Audit trail')}</CardTitle>
       </CardHeader>
       <CardContent>
         {audits.isLoading ? (
           <LoadingCard rows={2} />
         ) : !audits.data || audits.data.length === 0 ? (
-          <p className="text-vq-text-lo text-sm">No biometric activity yet.</p>
+          <p className="text-vq-text-lo text-sm">{t('No biometric activity yet.')}</p>
         ) : (
           <ul className="flex flex-col gap-1.5 text-sm">
             {audits.data.map((a) => (

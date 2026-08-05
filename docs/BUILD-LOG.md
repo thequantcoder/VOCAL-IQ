@@ -5413,3 +5413,20 @@ Batch 5 — two large Grow pages via `useI18n().t()` + Hindi; ~45 new keys. `t`-
 - **`catalogs.ts`**: ~45 new Hindi keys. Reuses `Cost`/`Name`/`Payment`/`When`/`Active`/`Note (optional)`/`Cancel`/`Saving…`/`Creating…`/`Revenue`(nav). `ROI`/`POST webhook` fall back (acronyms). Duplicate-key scan clean.
 
 **Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: **31 of ~76 dashboard pages** now Hindi. ~45 remain.
+
+---
+
+## Dashboard localization — page-level, increment 13: Settings cluster (6 pages)
+
+Batch 6 — the whole `settings/*` sub-tree that was still English: notifications, translation, compliance, SSO, biometrics, battlecards. All via `useI18n().t()` (English-as-key) + Hindi; ~75 new keys. `t`-shadow rename: compliance `templates.data.map((t))` → `tpl`. Pre-push `hi`-block dup-scan skipped 9 keys that already existed (`Notifications`/`Translation`/`Compliance`/`Provider`/`Voice biometrics`/`Contact ID`/`Adding…`/`Saving…`/`Save`).
+
+- **settings/notifications**: header + master-switch copy, `Event × channel`, the event-label map (`Call completed`/`Call failed`/`Lead created`/`Lead status changed`/`Campaign finished` wrapped at render, incl. the checkbox aria + the "—" cell title), `Save preferences`, `Saved ✓`. Channel labels (Webhook/Slack) = proper/technical.
+- **settings/translation**: header + subtitle, `Operator working language`, the enable checkbox, `Translate into`, save/`Saved ✓`. Language-option labels = data.
+- **settings/compliance**: header + subtitle and all four cards — AiDisclosure (`AI disclosure & calling rules`, `Compliance template`, `disclose`/`no disclosure`, `Custom disclosure line (optional)`, `Human keyword`), Residency (`Data residency`, `Strict egress…`, `Pin region`, `Current:`/`storage`), DNC (`Do-not-call list`, `Phone number to suppress`, `Suppress`/`Remove`, empty-state, `global` chip), Retention (`Retention & deletion`, the 3 day-window `Field`s, `Redact PII from transcripts`, `Save retention policy`). Template-detail figures = data.
+- **settings/sso**: header + subtitle, `Identity provider`, entryPoint/issuer placeholders, `Enable SSO login`/`Enable SCIM directory sync`, `Save SSO config`, the SCIM-token card copy, SP-metadata note. SAML/OIDC/WorkOS option values = acronyms.
+- **settings/biometrics**: header + subtitle + BIPA/GDPR notice, the Policy card (`Enable voice biometrics.` split copy, `Allowed regions…`, `Match threshold`/`Min liveness`/`Retention (days)`, `Save policy`), EnrollVerifyTool (`Enrol / verify a caller`, `Contact ID`/`Region`, `Audio sample reference`, enrol/verify/erase buttons, interpolated `match {m}% · liveness {l}%` + `step-up auth required`), AuditTrail. `outcome.replace` + audit rows = enum/instance DATA.
+- **settings/battlecards**: header + subtitle, `New battlecard`, `Competitor`, `Trigger cues…`, `Talking points (one per line)`, `Add battlecard`, `Your battlecards`, empty-state, interpolated `vs {name}` + `Triggers:`. Example placeholders (Acme Dialer, talking-point samples) = data.
+
+- **`catalogs.ts`**: ~75 new Hindi keys (6 section headers). Reuses `Save`/`Saving…`/`Adding…`/`Provider`/`Contact ID` + the 5 page-title nav keys. `Saved ✓` shared across notifications/translation/biometrics (one key). Duplicate-key scan clean.
+
+**Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: **37 of ~76 dashboard pages** now Hindi. ~39 remain.

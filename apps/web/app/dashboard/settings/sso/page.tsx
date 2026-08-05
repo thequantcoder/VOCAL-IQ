@@ -5,6 +5,7 @@ import { KeyRound, ShieldCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { LoadingCard } from '../../../../components/states';
 import { type SsoConfigureBody, useConfigureSso, useSsoConnection } from '../../../../lib/api';
+import { useI18n } from '../../../../lib/i18n/provider';
 
 const inputCls =
   'w-full rounded-vq border border-vq-border bg-vq-bg-base px-3 py-2 text-sm text-vq-text-hi focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vq-ring';
@@ -15,6 +16,7 @@ const inputCls =
  * WorkOS keys are set; config + SP metadata + the SCIM token work today.
  */
 export default function SsoSettingsPage() {
+  const { t } = useI18n();
   const conn = useSsoConnection();
   const configure = useConfigureSso();
   const [form, setForm] = useState<SsoConfigureBody>({
@@ -52,20 +54,20 @@ export default function SsoSettingsPage() {
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <ShieldCheck size={20} /> Enterprise SSO
+          <ShieldCheck size={20} /> {t('Enterprise SSO')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          Log your team in through your identity provider (SAML/OIDC) with directory sync.
+          {t('Log your team in through your identity provider (SAML/OIDC) with directory sync.')}
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Identity provider</CardTitle>
+          <CardTitle className="text-base">{t('Identity provider')}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <label className="flex flex-col gap-1 text-vq-text-lo text-xs">
-            Provider
+            {t('Provider')}
             <select
               value={form.config.provider}
               onChange={(e) =>
@@ -82,14 +84,14 @@ export default function SsoSettingsPage() {
             </select>
           </label>
           <Input
-            placeholder="IdP SSO URL (entryPoint)"
+            placeholder={t('IdP SSO URL (entryPoint)')}
             value={form.config.entryPoint}
             onChange={(e) =>
               setForm((f) => ({ ...f, config: { ...f.config, entryPoint: e.target.value } }))
             }
           />
           <Input
-            placeholder="IdP issuer / entity id"
+            placeholder={t('IdP issuer / entity id')}
             value={form.config.issuer}
             onChange={(e) =>
               setForm((f) => ({ ...f, config: { ...f.config, issuer: e.target.value } }))
@@ -102,7 +104,7 @@ export default function SsoSettingsPage() {
                 checked={form.enabled}
                 onChange={(e) => setForm((f) => ({ ...f, enabled: e.target.checked }))}
               />
-              Enable SSO login
+              {t('Enable SSO login')}
             </label>
             <label className="flex items-center gap-2 text-sm text-vq-text-lo">
               <input
@@ -110,7 +112,7 @@ export default function SsoSettingsPage() {
                 checked={form.scimEnabled}
                 onChange={(e) => setForm((f) => ({ ...f, scimEnabled: e.target.checked }))}
               />
-              Enable SCIM directory sync
+              {t('Enable SCIM directory sync')}
             </label>
           </div>
           {configure.isError && (
@@ -121,7 +123,7 @@ export default function SsoSettingsPage() {
             disabled={configure.isPending || !form.config.entryPoint || !form.config.issuer}
             onClick={save}
           >
-            {configure.isPending ? 'Saving…' : 'Save SSO config'}
+            {configure.isPending ? t('Saving…') : t('Save SSO config')}
           </Button>
         </CardContent>
       </Card>
@@ -130,13 +132,14 @@ export default function SsoSettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <KeyRound size={16} /> SCIM bearer token
+              <KeyRound size={16} /> {t('SCIM bearer token')}
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
             <p className="text-vq-text-lo text-xs">
-              Copy this now — it is shown only once and stored hashed. Use it as the bearer token in
-              your IdP&apos;s SCIM configuration.
+              {t(
+                "Copy this now — it is shown only once and stored hashed. Use it as the bearer token in your IdP's SCIM configuration.",
+              )}
             </p>
             <code className="break-all rounded-vq bg-vq-surface-2 px-3 py-2 font-mono text-vq-text-hi text-xs">
               {scimToken}
