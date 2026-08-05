@@ -18,6 +18,7 @@ import {
   useHistoricalAnalytics,
   useLiveAnalytics,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 /** ISO date (YYYY-MM-DD) `n` days before today, in local time. */
 function daysAgo(n: number): string {
@@ -34,6 +35,7 @@ const pct = (n: number) => `${Math.round(n * 100)}%`;
  * (`components/charts`), matching DESIGN-SYSTEM §5d — calm, data-dense, mono numbers.
  */
 export default function AnalyticsPage() {
+  const { t } = useI18n();
   const [from, setFrom] = useState(() => daysAgo(30));
   const [to, setTo] = useState(() => daysAgo(0));
   const [agentId, setAgentId] = useState('');
@@ -54,10 +56,10 @@ export default function AnalyticsPage() {
     <div className="mx-auto flex max-w-5xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <BarChart3 size={20} /> Analytics
+          <BarChart3 size={20} /> {t('Analytics')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          Live operations plus historical outcomes, sentiment, talk/listen and cost.
+          {t('Live operations plus historical outcomes, sentiment, talk/listen and cost.')}
         </p>
       </div>
 
@@ -66,7 +68,7 @@ export default function AnalyticsPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-end gap-3 rounded-vq-card border border-vq-border bg-vq-bg-elevated px-4 py-3">
-        <Field label="From" htmlFor="analytics-from">
+        <Field label={t('From')} htmlFor="analytics-from">
           <input
             id="analytics-from"
             type="date"
@@ -76,7 +78,7 @@ export default function AnalyticsPage() {
             className="rounded-vq border border-vq-border bg-transparent px-2 py-1.5 text-sm text-vq-text-hi"
           />
         </Field>
-        <Field label="To" htmlFor="analytics-to">
+        <Field label={t('To')} htmlFor="analytics-to">
           <input
             id="analytics-to"
             type="date"
@@ -86,14 +88,14 @@ export default function AnalyticsPage() {
             className="rounded-vq border border-vq-border bg-transparent px-2 py-1.5 text-sm text-vq-text-hi"
           />
         </Field>
-        <Field label="Agent" htmlFor="analytics-agent">
+        <Field label={t('Agent')} htmlFor="analytics-agent">
           <select
             id="analytics-agent"
             value={agentId}
             onChange={(e) => setAgentId(e.target.value)}
             className="rounded-vq border border-vq-border bg-transparent px-2 py-1.5 text-sm text-vq-text-hi"
           >
-            <option value="">All agents</option>
+            <option value="">{t('All agents')}</option>
             {(agents.data ?? []).map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}
@@ -123,8 +125,8 @@ export default function AnalyticsPage() {
         />
       ) : !historical.data || historical.data.totalCalls === 0 ? (
         <EmptyState
-          title="No calls in this range"
-          hint="Widen the date range or clear the agent filter."
+          title={t('No calls in this range')}
+          hint={t('Widen the date range or clear the agent filter.')}
         />
       ) : (
         <Historical data={historical.data} />
@@ -141,18 +143,19 @@ function daysAgoPlus(iso: string): string {
 }
 
 function LiveTiles({ snapshot, loading }: { snapshot?: LiveSnapshot; loading: boolean }) {
+  const { t } = useI18n();
   const s = snapshot;
   return (
     <section className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
       <Tile
-        label="Active calls"
+        label={t('Active calls')}
         value={loading ? '—' : String(s?.activeCalls ?? 0)}
         pulse={(s?.activeCalls ?? 0) > 0}
       />
-      <Tile label="Calls today" value={loading ? '—' : String(s?.callsToday ?? 0)} />
-      <Tile label="Minutes today" value={loading ? '—' : String(s?.minutesToday ?? 0)} />
-      <Tile label="Spend today" value={loading ? '—' : formatUsd(s?.spendTodayUsd ?? 0)} />
-      <Tile label="Success today" value={loading ? '—' : pct(s?.successRateToday ?? 0)} />
+      <Tile label={t('Calls today')} value={loading ? '—' : String(s?.callsToday ?? 0)} />
+      <Tile label={t('Minutes today')} value={loading ? '—' : String(s?.minutesToday ?? 0)} />
+      <Tile label={t('Spend today')} value={loading ? '—' : formatUsd(s?.spendTodayUsd ?? 0)} />
+      <Tile label={t('Success today')} value={loading ? '—' : pct(s?.successRateToday ?? 0)} />
     </section>
   );
 }
@@ -194,13 +197,14 @@ function BudgetBanner({ budget }: { budget: BudgetStatus }) {
 
 /** Weekly trend tiles: last-7-days total + the delta vs the prior 7 days (FOLLOWUP). */
 function TrendTiles({ data }: { data: HistoricalAnalytics }) {
+  const { t } = useI18n();
   const tiles = [
     {
-      label: 'Calls · last 7d',
+      label: t('Calls · last 7d'),
       t: windowedTrend(data.callsByDay, 7),
       fmt: (n: number) => String(Math.round(n)),
     },
-    { label: 'Cost · last 7d', t: windowedTrend(data.costByDay, 7), fmt: formatUsd },
+    { label: t('Cost · last 7d'), t: windowedTrend(data.costByDay, 7), fmt: formatUsd },
   ];
   if (tiles.every((x) => x.t.recent === 0)) return null;
 
@@ -218,7 +222,8 @@ function TrendTiles({ data }: { data: HistoricalAnalytics }) {
             </span>
             {x.t.deltaPct !== null && (
               <span className="text-vq-text-lo text-xs">
-                {x.t.deltaPct >= 0 ? '▲' : '▼'} {Math.abs(x.t.deltaPct)}% vs prior 7d
+                {x.t.deltaPct >= 0 ? '▲' : '▼'}{' '}
+                {t('{pct}% vs prior 7d', { pct: Math.abs(x.t.deltaPct) })}
               </span>
             )}
           </div>
@@ -229,6 +234,7 @@ function TrendTiles({ data }: { data: HistoricalAnalytics }) {
 }
 
 function Historical({ data }: { data: HistoricalAnalytics }) {
+  const { t } = useI18n();
   const outcomes = Object.entries(data.outcomes)
     .map(([label, value]) => ({ label, value }))
     .sort((a, b) => b.value - a.value);
@@ -245,16 +251,21 @@ function Historical({ data }: { data: HistoricalAnalytics }) {
     <div className="flex flex-col gap-6">
       {/* KPI infographics (count-up + sentiment glow). */}
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Total calls" value={data.totalCalls} spark={callsData} sentiment="good" />
-        <StatCard label="Minutes" value={data.totalMinutes} sentiment="neutral" />
         <StatCard
-          label="Success rate"
+          label={t('Total calls')}
+          value={data.totalCalls}
+          spark={callsData}
+          sentiment="good"
+        />
+        <StatCard label={t('Minutes')} value={data.totalMinutes} sentiment="neutral" />
+        <StatCard
+          label={t('Success rate')}
           value={Math.round(data.successRate * 100)}
           format={(v) => `${Math.round(v)}%`}
           sentiment={data.successRate >= 0.7 ? 'good' : data.successRate >= 0.4 ? 'neutral' : 'bad'}
         />
         <StatCard
-          label="Drop-off"
+          label={t('Drop-off')}
           value={Math.round(data.dropOffRate * 100)}
           format={(v) => `${Math.round(v)}%`}
           sentiment={data.dropOffRate <= 0.15 ? 'good' : 'bad'}
@@ -264,43 +275,47 @@ function Historical({ data }: { data: HistoricalAnalytics }) {
       <TrendTiles data={data} />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <ChartCard title="Calls per day">
+        <ChartCard title={t('Calls per day')}>
           <AreaTrend
             data={callsData}
             labels={callsLabels}
             color="var(--viz-1)"
-            label="Calls per day"
+            label={t('Calls per day')}
           />
         </ChartCard>
-        <ChartCard title="Cost per day">
+        <ChartCard title={t('Cost per day')}>
           <AreaTrend
             data={costData}
             labels={costLabels}
             color="var(--viz-5)"
             format={formatUsd}
-            label="Cost per day"
+            label={t('Cost per day')}
           />
         </ChartCard>
-        <ChartCard title="Outcomes">
-          <DonutBreakdown data={outcomes} centerLabel="Calls" />
+        <ChartCard title={t('Outcomes')}>
+          <DonutBreakdown data={outcomes} centerLabel={t('Calls')} />
         </ChartCard>
-        <ChartCard title="Sentiment over time">
+        <ChartCard title={t('Sentiment over time')}>
           {sentimentPoints.length > 0 ? (
             <div className="flex flex-col gap-3">
-              <SentimentRibbon points={sentimentPoints} height={16} label="Sentiment" />
+              <SentimentRibbon points={sentimentPoints} height={16} label={t('Sentiment')} />
               <div className="flex justify-between text-vq-text-lo text-xs">
                 <span>{callsLabels[0]}</span>
                 <span>{callsLabels[callsLabels.length - 1]}</span>
               </div>
             </div>
           ) : (
-            <p className="text-sm text-vq-text-lo">No sentiment scored in this range.</p>
+            <p className="text-sm text-vq-text-lo">{t('No sentiment scored in this range.')}</p>
           )}
         </ChartCard>
-        <ChartCard title="Talk vs listen">
-          <RatioBar ratio={data.talkListen.agentRatio} leftLabel="Agent" rightLabel="Caller" />
+        <ChartCard title={t('Talk vs listen')}>
+          <RatioBar
+            ratio={data.talkListen.agentRatio}
+            leftLabel={t('Agent')}
+            rightLabel={t('Caller')}
+          />
           <p className="mt-2 text-vq-text-lo text-xs">
-            Avg interruptions per call: {data.avgInterruptions.toFixed(1)}
+            {t('Avg interruptions per call: {n}', { n: data.avgInterruptions.toFixed(1) })}
           </p>
         </ChartCard>
       </div>

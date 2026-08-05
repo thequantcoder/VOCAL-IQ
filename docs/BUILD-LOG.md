@@ -5288,3 +5288,14 @@ Continues the per-page rollout (#214/#215). The lead-workspace page (table + kan
 - **`lib/i18n/catalogs.ts`**: ~15 new Hindi keys. As before, the lead **status/stage/score** values shown in badges are enum DATA (HOT/NEW/QUALIFIED…), left untranslated this pass — consistent with how call direction/channel were handled; a separate enum-display-mapping concern.
 
 **Checks.** biome clean (2 files). Web typecheck/build in CI. Manual: `vq_locale=hi` renders the Leads chrome (filters, toggle, table headers, empty-state) in Hindi; other locales fall back to English.
+
+---
+
+## Dashboard localization — page-level, increment 4: the Analytics page
+
+Continues the per-page rollout onto the analytics dashboard (live tiles + historical charts). Static UI copy via `useI18n().t()` (English-as-key) + full Hindi.
+
+- **`app/dashboard/analytics/page.tsx`**: header + subtitle; the date/agent filters (`From`/`To`/`Agent`/`All agents`); the empty-state; the 5 live tiles (`Active calls`/`Calls today`/`Minutes today`/`Spend today`/`Success today`); the weekly trend tiles (`Calls · last 7d`/`Cost · last 7d` + the **interpolated** `{pct}% vs prior 7d`); the KPI StatCards (`Total calls`/`Minutes`/`Success rate`/`Drop-off`); the five chart-card titles + chart labels (`Calls per day`/`Cost per day`/`Outcomes`/`Sentiment over time`/`Talk vs listen`, plus `Calls` donut center, `Sentiment` ribbon, `Agent`/`Caller` ratio, the no-sentiment line, and the **interpolated** `Avg interruptions per call: {n}`). `PDF` stays untranslated (acronym); budget-alert + error messages come from the api. Reuses `Analytics`/`Agent`/`Success rate`/`Calls` already in the catalog.
+- **`lib/i18n/catalogs.ts`**: ~28 new Hindi keys (two interpolated).
+
+**Checks.** biome clean (2 files). Web typecheck/build in CI. Manual: `vq_locale=hi` renders the Analytics chrome (filters, tiles, chart titles, KPI labels, interpolated trend/interruption lines) in Hindi; other locales fall back to English.
