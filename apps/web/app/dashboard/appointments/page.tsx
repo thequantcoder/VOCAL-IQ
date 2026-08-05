@@ -11,6 +11,7 @@ import {
   useBookAppointment,
   useSetAppointmentStatus,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 const TABS = ['BOOKED', 'RESCHEDULED', 'COMPLETED', 'CANCELLED'] as const;
 
@@ -23,6 +24,7 @@ const STATUS_STYLE: Record<string, string> = {
 
 /** Appointments (Day 36): stat cards + status tabs + list, with in-app booking. */
 export default function AppointmentsPage() {
+  const { t } = useI18n();
   const [tab, setTab] = useState<string>('BOOKED');
   const stats = useAppointmentStats();
   const list = useAppointments(tab);
@@ -31,37 +33,41 @@ export default function AppointmentsPage() {
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h1 className="font-display font-semibold text-xl text-vq-text-hi">Appointments</h1>
+        <h1 className="font-display font-semibold text-xl text-vq-text-hi">{t('Appointments')}</h1>
         <Button size="sm" onClick={() => setBooking((v) => !v)}>
-          <Plus size={16} /> Book
+          <Plus size={16} /> {t('Book')}
         </Button>
       </div>
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="Upcoming" value={stats.data?.upcoming} icon={<CalendarClock size={16} />} />
-        <Stat label="Booked" value={stats.data?.booked} icon={<CalendarCheck size={16} />} />
-        <Stat label="Completed" value={stats.data?.completed} icon={<Check size={16} />} />
-        <Stat label="Cancelled" value={stats.data?.cancelled} icon={<CalendarX size={16} />} />
+        <Stat
+          label={t('Upcoming')}
+          value={stats.data?.upcoming}
+          icon={<CalendarClock size={16} />}
+        />
+        <Stat label={t('Booked')} value={stats.data?.booked} icon={<CalendarCheck size={16} />} />
+        <Stat label={t('Completed')} value={stats.data?.completed} icon={<Check size={16} />} />
+        <Stat label={t('Cancelled')} value={stats.data?.cancelled} icon={<CalendarX size={16} />} />
       </div>
 
       {booking && <BookForm onDone={() => setBooking(false)} />}
 
-      {/* Status tabs */}
+      {/* Status tabs — labels are enum DATA (BOOKED/…), rendered lowercased. */}
       <div className="flex gap-2">
-        {TABS.map((t) => (
+        {TABS.map((tk) => (
           <button
-            key={t}
+            key={tk}
             type="button"
-            onClick={() => setTab(t)}
+            onClick={() => setTab(tk)}
             className={cn(
               'rounded-vq-pill border px-3 py-1 text-sm capitalize',
-              tab === t
+              tab === tk
                 ? 'border-vq-violet bg-vq-violet/10 text-vq-text-hi'
                 : 'border-vq-border text-vq-text-lo hover:text-vq-text-hi',
             )}
           >
-            {t.toLowerCase()}
+            {tk.toLowerCase()}
           </button>
         ))}
       </div>
@@ -71,7 +77,7 @@ export default function AppointmentsPage() {
       ) : list.isError ? (
         <ErrorState message={(list.error as Error).message} onRetry={() => list.refetch()} />
       ) : !list.data || list.data.length === 0 ? (
-        <EmptyState title={`No ${tab.toLowerCase()} appointments`} />
+        <EmptyState title={t('No {status} appointments', { status: tab.toLowerCase() })} />
       ) : (
         <div className="flex flex-col gap-2">
           {list.data.map((a) => (
@@ -97,6 +103,7 @@ function Stat({ label, value, icon }: { label: string; value?: number; icon: Rea
 }
 
 function AppointmentRow({ appt }: { appt: AppointmentDto }) {
+  const { t } = useI18n();
   const setStatus = useSetAppointmentStatus();
   const start = new Date(appt.startsAt);
   const when = start.toLocaleString(undefined, {
@@ -112,7 +119,7 @@ function AppointmentRow({ appt }: { appt: AppointmentDto }) {
     <Card>
       <CardContent className="flex items-center justify-between py-3">
         <div>
-          <p className="font-medium text-vq-text-hi">{appt.contactName ?? 'Unknown contact'}</p>
+          <p className="font-medium text-vq-text-hi">{appt.contactName ?? t('Unknown contact')}</p>
           <p className="text-vq-text-lo text-xs">{when}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -131,14 +138,14 @@ function AppointmentRow({ appt }: { appt: AppointmentDto }) {
                 variant="ghost"
                 onClick={() => setStatus.mutate({ id: appt.id, status: 'COMPLETED' })}
               >
-                Complete
+                {t('Complete')}
               </Button>
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => setStatus.mutate({ id: appt.id, status: 'CANCELLED' })}
               >
-                Cancel
+                {t('Cancel')}
               </Button>
             </>
           )}
@@ -149,6 +156,7 @@ function AppointmentRow({ appt }: { appt: AppointmentDto }) {
 }
 
 function BookForm({ onDone }: { onDone: () => void }) {
+  const { t } = useI18n();
   const book = useBookAppointment();
   const [contactId, setContactId] = useState('');
   const [startsAt, setStartsAt] = useState('');
@@ -166,15 +174,15 @@ function BookForm({ onDone }: { onDone: () => void }) {
   return (
     <Card>
       <CardContent className="flex flex-col gap-3 py-4">
-        <p className="text-sm text-vq-text-hi">Book an appointment</p>
+        <p className="text-sm text-vq-text-hi">{t('Book an appointment')}</p>
         <Input
-          placeholder="Contact ID"
+          placeholder={t('Contact ID')}
           value={contactId}
           onChange={(e) => setContactId(e.target.value)}
         />
         <div className="flex gap-3">
           <label htmlFor="start" className="flex flex-1 flex-col gap-1 text-xs text-vq-text-lo">
-            Starts
+            {t('Starts')}
             <Input
               id="start"
               type="datetime-local"
@@ -183,7 +191,7 @@ function BookForm({ onDone }: { onDone: () => void }) {
             />
           </label>
           <label htmlFor="end" className="flex flex-1 flex-col gap-1 text-xs text-vq-text-lo">
-            Ends
+            {t('Ends')}
             <Input
               id="end"
               type="datetime-local"
@@ -193,7 +201,7 @@ function BookForm({ onDone }: { onDone: () => void }) {
           </label>
         </div>
         <p className="text-vq-text-lo text-xs">
-          Google Calendar 2-way sync activates once <code>GOOGLE_OAUTH_*</code> is configured.
+          {t('Google Calendar 2-way sync activates once GOOGLE_OAUTH_* is configured.')}
         </p>
         {book.isError && <p className="text-xs text-vq-danger">{(book.error as Error).message}</p>}
         <div className="flex gap-2">
@@ -202,10 +210,10 @@ function BookForm({ onDone }: { onDone: () => void }) {
             disabled={!contactId || !startsAt || !endsAt || book.isPending}
             onClick={submit}
           >
-            {book.isPending ? 'Booking…' : 'Book'}
+            {book.isPending ? t('Booking…') : t('Book')}
           </Button>
           <Button size="sm" variant="ghost" onClick={onDone}>
-            Cancel
+            {t('Cancel')}
           </Button>
         </div>
       </CardContent>

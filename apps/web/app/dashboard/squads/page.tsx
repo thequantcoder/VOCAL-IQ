@@ -11,9 +11,11 @@ import {
   useDeleteSquad,
   useSquads,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 /** Squads (Day 27): chain specialist agents in one call with context-preserving handoffs. */
 export default function SquadsPage() {
+  const { t } = useI18n();
   const squads = useSquads();
   const del = useDeleteSquad();
   const [creating, setCreating] = useState(false);
@@ -23,15 +25,16 @@ export default function SquadsPage() {
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="flex items-center gap-2 font-display font-semibold text-xl text-vq-text-hi">
-            <Users size={20} /> Squads
+            <Users size={20} /> {t('Squads')}
           </h1>
           <p className="text-sm text-vq-text-lo">
-            Chain specialists (receptionist → booking → billing) in one call. Context travels across
-            handoffs, invisible to the caller.
+            {t(
+              'Chain specialists (receptionist → booking → billing) in one call. Context travels across handoffs, invisible to the caller.',
+            )}
           </p>
         </div>
         <Button size="sm" onClick={() => setCreating((v) => !v)}>
-          <Plus size={16} /> New squad
+          <Plus size={16} /> {t('New squad')}
         </Button>
       </div>
 
@@ -42,7 +45,10 @@ export default function SquadsPage() {
       ) : squads.isError ? (
         <ErrorState message={(squads.error as Error).message} onRetry={() => squads.refetch()} />
       ) : !squads.data || squads.data.length === 0 ? (
-        <EmptyState title="No squads yet" hint="Create one to route calls across specialists." />
+        <EmptyState
+          title={t('No squads yet')}
+          hint={t('Create one to route calls across specialists.')}
+        />
       ) : (
         <div className="flex flex-col gap-3">
           {squads.data.map((s) => (
@@ -50,7 +56,9 @@ export default function SquadsPage() {
               <CardContent className="flex items-center justify-between py-4">
                 <div>
                   <p className="font-medium text-vq-text-hi">{s.name}</p>
-                  <p className="text-xs text-vq-text-lo">{s.memberCount} specialists</p>
+                  <p className="text-xs text-vq-text-lo">
+                    {t('{n} specialists', { n: s.memberCount })}
+                  </p>
                 </div>
                 <Button
                   size="sm"
@@ -71,6 +79,7 @@ export default function SquadsPage() {
 
 /** Inline builder: name, pick member agents + roles, and define handoff rules between them. */
 function CreateSquad({ onDone }: { onDone: () => void }) {
+  const { t } = useI18n();
   const agents = useAgents();
   const create = useCreateSquad();
   const [name, setName] = useState('');
@@ -112,18 +121,22 @@ function CreateSquad({ onDone }: { onDone: () => void }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">New squad</CardTitle>
+        <CardTitle className="text-base">{t('New squad')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <Input placeholder="Squad name" value={name} onChange={(e) => setName(e.target.value)} />
+        <Input
+          placeholder={t('Squad name')}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
 
         <div className="flex flex-col gap-2">
-          <p className="text-xs text-vq-text-lo uppercase tracking-wide">Specialists</p>
+          <p className="text-xs text-vq-text-lo uppercase tracking-wide">{t('Specialists')}</p>
           {members.map((m, i) => (
             <div key={m.agentId} className="flex items-center gap-2">
               <span className="min-w-32 text-sm text-vq-text-hi">{agentName(m.agentId)}</span>
               <Input
-                placeholder="role (e.g. booking)"
+                placeholder={t('role (e.g. booking)')}
                 value={m.role}
                 onChange={(e) =>
                   setMembers((arr) =>
@@ -149,7 +162,7 @@ function CreateSquad({ onDone }: { onDone: () => void }) {
               value=""
               onChange={(e) => addMember(e.target.value)}
             >
-              <option value="">+ Add specialist…</option>
+              <option value="">{t('+ Add specialist…')}</option>
               {available.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}
@@ -161,7 +174,7 @@ function CreateSquad({ onDone }: { onDone: () => void }) {
 
         {members.length >= 2 && (
           <div className="flex flex-col gap-2">
-            <p className="text-xs text-vq-text-lo uppercase tracking-wide">Handoff rules</p>
+            <p className="text-xs text-vq-text-lo uppercase tracking-wide">{t('Handoff rules')}</p>
             {rules.map((r, i) => (
               <div key={`${r.fromAgentId}-${i}`} className="flex items-center gap-2 text-sm">
                 <select
@@ -179,9 +192,9 @@ function CreateSquad({ onDone }: { onDone: () => void }) {
                     </option>
                   ))}
                 </select>
-                <span className="text-vq-text-lo">on</span>
+                <span className="text-vq-text-lo">{t('on')}</span>
                 <Input
-                  placeholder="signal (e.g. booking)"
+                  placeholder={t('signal (e.g. booking)')}
                   value={r.on}
                   onChange={(e) =>
                     setRules((arr) =>
@@ -215,7 +228,7 @@ function CreateSquad({ onDone }: { onDone: () => void }) {
               </div>
             ))}
             <Button size="sm" variant="secondary" onClick={addRule}>
-              <Plus size={14} /> Add handoff rule
+              <Plus size={14} /> {t('Add handoff rule')}
             </Button>
           </div>
         )}
@@ -225,10 +238,10 @@ function CreateSquad({ onDone }: { onDone: () => void }) {
         )}
         <div className="flex gap-2">
           <Button size="sm" disabled={!canSubmit} onClick={submit}>
-            {create.isPending ? 'Saving…' : 'Create squad'}
+            {create.isPending ? t('Saving…') : t('Create squad')}
           </Button>
           <Button size="sm" variant="ghost" onClick={onDone}>
-            Cancel
+            {t('Cancel')}
           </Button>
         </div>
       </CardContent>
