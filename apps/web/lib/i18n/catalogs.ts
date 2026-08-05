@@ -179,6 +179,22 @@ export const catalogs: Record<string, MessageCatalog> = {
     'No agents — create one first': 'कोई एजेंट नहीं — पहले एक बनाएं',
     Destination: 'गंतव्य',
     'Place test call': 'टेस्ट कॉल करें',
+    // Leads page.
+    'Auto-scored pipeline from your calls. Drag cards to move stages.':
+      'आपकी कॉल से ऑटो-स्कोर की गई पाइपलाइन। स्टेज बदलने के लिए कार्ड खींचें।',
+    'All temperatures': 'सभी तापमान',
+    Hot: 'गर्म',
+    Warm: 'गुनगुना',
+    Cold: 'ठंडा',
+    Table: 'टेबल',
+    Kanban: 'कानबान',
+    'No leads yet': 'अभी तक कोई लीड नहीं',
+    'Leads appear here after calls are scored.': 'कॉल स्कोर होने के बाद लीड यहाँ दिखाई देती हैं।',
+    Unknown: 'अज्ञात',
+    Contact: 'संपर्क',
+    Stage: 'चरण',
+    Score: 'स्कोर',
+    Tags: 'टैग',
   },
   ar: {
     'nav.agents': 'الوكلاء',
