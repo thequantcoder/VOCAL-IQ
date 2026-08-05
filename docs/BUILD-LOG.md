@@ -5323,3 +5323,18 @@ Continues the per-page rollout onto the theme-customization page (preset gallery
 **Checks.** biome clean (2 files). Web typecheck/build in CI. Manual: `vq_locale=hi` renders the Appearance chrome (theme/controls/custom-colours/live-preview) in Hindi; the enum control chips stay in their canonical form.
 
 **Milestone:** with this, the primary Build/Run/Analyze/Grow/Settings surfaces (Overview, Agents, Calls, Leads, Analytics, Campaigns, Appearance) are Hindi-localized on top of the all-10-locale nav. Remaining pages continue via the same `t()` pattern; regional (non-Hindi) page copy is the documented catalog-only follow-up.
+
+---
+
+## Dashboard localization — page-level, increment 7: Desk + Appointments + Squads + Voices
+
+Four more surfaces in one pass (all independent, low-risk string-wrapping). Static UI copy via `useI18n().t()` (English-as-key) + full Hindi; ~85 new keys.
+
+- **`desk/page.tsx`**: header + subtitle, `My availability` + presence pills (`Available`/`Busy`/`Away`), `Transfer queue` + the 3 **interpolated** counts (`{n} waiting`, `{n} SLA breach`, `{n}s waiting`), the empty-state, `ringing you`, `Answer`/`Claim`, the live-call panel (`Live call`, `Caller`/`You`), and the copilot standby empty-state.
+- **`appointments/page.tsx`**: header + `Book`, the 4 stat labels (`Upcoming`/`Booked`/`Completed`(reused)/`Cancelled`), the **interpolated** empty-state `No {status} appointments`, `Unknown contact`, `Complete`/`Cancel`, and the BookForm (`Book an appointment`, `Contact ID`, `Starts`/`Ends`, the `GOOGLE_OAUTH_*` hint folded to one `t()` string, `Booking…`). The status TABS were renamed off the `t` identifier to avoid shadowing the i18n hook; tab + status-badge labels stay enum DATA.
+- **`squads/page.tsx`**: header + subtitle, `New squad`, empty-state, the **interpolated** `{n} specialists`, and the CreateSquad builder (`Squad name`, `Specialists`, `role (e.g. booking)`, `+ Add specialist…`, `Handoff rules`, `on`, `signal (e.g. booking)`, `Add handoff rule`, `Create squad`).
+- **`voices/page.tsx`**: header + subtitle, empty-state, the status chips (`preset`/`ready`/`pending`), `Stability` + `Approve clone`, and the consent-gated CloneCard (`Clone a voice`, `Voice name`, `Consenting person's name`, `Sample audio URL (consented)`, the full consent-confirmation sentence, `Cloning…`/`Create locked clone`). The gender filter (`all`/male/female/neutral) is enum DATA, untouched.
+
+- **`lib/i18n/catalogs.ts`**: ~85 new Hindi keys (6 interpolated). Reuses `Agent Desk`/`Appointments`/`Squads`/`Voices` (nav), `Caller` (Analytics), `Completed`/`Cancel`/`Saving…` (earlier pages). Duplicate-key scan of the `hi` block is clean; `On` (Settings, sound) vs `on` (Squads, handoff signal) are distinct case-sensitive keys — no collision.
+
+**Checks.** biome clean (5 files; auto-formatted 2). Web typecheck/build in CI. Manual: `vq_locale=hi` renders all four pages' chrome (incl. the interpolated queue counts + specialist counts) in Hindi; enum-data chips (appt tabs, voice gender, presence data) stay canonical.

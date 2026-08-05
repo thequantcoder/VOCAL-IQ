@@ -8,6 +8,7 @@ import { CoachPanel } from '../../../components/coach-panel';
 import { LiveCaptions } from '../../../components/live-captions';
 import { EmptyState, ErrorState, LoadingCard } from '../../../components/states';
 import { useDeskQueue, useSetPresence } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 const PRESENCE: { key: 'available' | 'away' | 'busy'; label: string; color: string }[] = [
   { key: 'available', label: 'Available', color: 'text-vq-success border-vq-success/40' },
@@ -21,6 +22,7 @@ const PRESENCE: { key: 'available' | 'away' | 'busy'; label: string; color: stri
  * existing LiveKit room (the realtime layer); this page owns presence + queue + wrap-up.
  */
 export default function DeskPage() {
+  const { t } = useI18n();
   const queue = useDeskQueue();
   const setPresence = useSetPresence();
   const [status, setStatus] = useState<'available' | 'away' | 'busy'>('away');
@@ -30,17 +32,17 @@ export default function DeskPage() {
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-            <Headphones size={20} /> Agent Desk
+            <Headphones size={20} /> {t('Agent Desk')}
           </h1>
           <p className="text-sm text-vq-text-lo">
-            Take escalated calls. Set yourself available to join the routing pool.
+            {t('Take escalated calls. Set yourself available to join the routing pool.')}
           </p>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">My availability</CardTitle>
+          <CardTitle className="text-base">{t('My availability')}</CardTitle>
         </CardHeader>
         <CardContent className="flex gap-2">
           {PRESENCE.map((p) => (
@@ -56,7 +58,7 @@ export default function DeskPage() {
                 status === p.key ? p.color : 'border-vq-border text-vq-text-lo'
               }`}
             >
-              {p.label}
+              {t(p.label)}
             </button>
           ))}
         </CardContent>
@@ -66,13 +68,16 @@ export default function DeskPage() {
         <CardHeader>
           <CardTitle className="flex items-center justify-between text-base">
             <span className="flex items-center gap-2">
-              <PhoneIncoming size={16} /> Transfer queue
+              <PhoneIncoming size={16} /> {t('Transfer queue')}
             </span>
             {queue.data && (
               <span className="text-vq-text-lo text-xs">
-                {queue.data.waiting} waiting
+                {t('{n} waiting', { n: queue.data.waiting })}
                 {queue.data.breached > 0 && (
-                  <span className="text-vq-danger"> · {queue.data.breached} SLA breach</span>
+                  <span className="text-vq-danger">
+                    {' · '}
+                    {t('{n} SLA breach', { n: queue.data.breached })}
+                  </span>
                 )}
               </span>
             )}
@@ -84,7 +89,7 @@ export default function DeskPage() {
           ) : queue.isError ? (
             <ErrorState message={(queue.error as Error).message} onRetry={() => queue.refetch()} />
           ) : !queue.data || queue.data.items.length === 0 ? (
-            <EmptyState title="No calls waiting" hint="Escalated calls will ring here." />
+            <EmptyState title={t('No calls waiting')} hint={t('Escalated calls will ring here.')} />
           ) : (
             <div className="flex flex-col divide-y divide-vq-border">
               {queue.data.items.map((it) => (
@@ -94,16 +99,16 @@ export default function DeskPage() {
                       {it.callId.slice(0, 8)}
                     </span>
                     <span className={it.slaBreached ? 'text-vq-danger' : 'text-vq-text-lo'}>
-                      {it.waitSeconds}s waiting
+                      {t('{n}s waiting', { n: it.waitSeconds })}
                     </span>
                     {it.assigned && (
                       <span className="rounded-vq-pill border border-vq-border px-2 py-0.5 text-vq-text-lo text-xs">
-                        ringing you
+                        {t('ringing you')}
                       </span>
                     )}
                   </div>
                   <Button size="sm" disabled={it.assigned && false}>
-                    {it.assigned ? 'Answer' : 'Claim'}
+                    {it.assigned ? t('Answer') : t('Claim')}
                   </Button>
                 </div>
               ))}
@@ -124,23 +129,29 @@ export default function DeskPage() {
             <Card>
               <CardContent className="flex flex-col items-center gap-4 py-5 sm:flex-row sm:justify-between">
                 <div className="flex items-center gap-3">
-                  <VoiceOrb state="listening" size={56} label="Live call" />
+                  <VoiceOrb state="listening" size={56} label={t('Live call')} />
                   <div className="flex flex-col">
-                    <span className="font-medium text-sm text-vq-text-hi">Live call</span>
+                    <span className="font-medium text-sm text-vq-text-hi">{t('Live call')}</span>
                     <span className="font-mono text-vq-text-lo text-xs">
                       {active.callId.slice(0, 8)}
                     </span>
                   </div>
                 </div>
-                <ConversationViz state="listening" callerLabel="Caller" agentLabel="You" />
+                <ConversationViz
+                  state="listening"
+                  callerLabel={t('Caller')}
+                  agentLabel={t('You')}
+                />
               </CardContent>
             </Card>
             <CoachPanel callId={active.callId} />
           </div>
         ) : (
           <EmptyState
-            title="Copilot stands by"
-            hint="When you take a call, live AI suggestions and KB answers appear here — visible only to you."
+            title={t('Copilot stands by')}
+            hint={t(
+              'When you take a call, live AI suggestions and KB answers appear here — visible only to you.',
+            )}
           />
         );
       })()}

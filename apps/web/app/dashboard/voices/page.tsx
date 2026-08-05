@@ -11,11 +11,13 @@ import {
   useUpdateVoiceSettings,
   useVoices,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 const GENDERS = ['', 'male', 'female', 'neutral'] as const;
 
 /** Voice library (Day 26): browse presets + private/cloned voices, tune, clone (gated). */
 export default function VoicesPage() {
+  const { t } = useI18n();
   const [gender, setGender] = useState('');
   const voices = useVoices(gender ? { gender } : {});
 
@@ -23,11 +25,12 @@ export default function VoicesPage() {
     <div className="mx-auto flex max-w-5xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-xl text-vq-text-hi">
-          <Mic size={20} /> Voice library
+          <Mic size={20} /> {t('Voice library')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          Preview presets, tune delivery, and clone a consented voice. Cloned voices stay locked
-          until an operator approves them.
+          {t(
+            'Preview presets, tune delivery, and clone a consented voice. Cloned voices stay locked until an operator approves them.',
+          )}
         </p>
       </div>
 
@@ -55,7 +58,7 @@ export default function VoicesPage() {
       ) : voices.isError ? (
         <ErrorState message={(voices.error as Error).message} onRetry={() => voices.refetch()} />
       ) : !voices.data || voices.data.length === 0 ? (
-        <EmptyState title="No voices match this filter" />
+        <EmptyState title={t('No voices match this filter')} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {voices.data.map((v) => (
@@ -68,6 +71,7 @@ export default function VoicesPage() {
 }
 
 function VoiceCard({ voice }: { voice: VoiceDto }) {
+  const { t } = useI18n();
   const update = useUpdateVoiceSettings();
   const approve = useApproveVoice();
   const [stability, setStability] = useState(voice.settings.stability);
@@ -79,15 +83,15 @@ function VoiceCard({ voice }: { voice: VoiceDto }) {
           <CardTitle>{voice.name}</CardTitle>
           {voice.isPreset ? (
             <span className="rounded-vq-pill border border-vq-border px-2 py-0.5 text-[11px] text-vq-text-lo uppercase">
-              preset
+              {t('preset')}
             </span>
           ) : voice.usable ? (
             <span className="flex items-center gap-1 text-[11px] text-vq-success uppercase">
-              <BadgeCheck size={13} /> ready
+              <BadgeCheck size={13} /> {t('ready')}
             </span>
           ) : (
             <span className="flex items-center gap-1 text-[11px] text-vq-warn uppercase">
-              <Lock size={13} /> pending
+              <Lock size={13} /> {t('pending')}
             </span>
           )}
         </div>
@@ -99,7 +103,7 @@ function VoiceCard({ voice }: { voice: VoiceDto }) {
         {!voice.isPreset && (
           <label className="flex flex-col gap-1 text-xs text-vq-text-lo">
             <span className="flex items-center gap-1">
-              <Sliders size={13} /> Stability {stability.toFixed(2)}
+              <Sliders size={13} /> {t('Stability')} {stability.toFixed(2)}
             </span>
             <input
               type="range"
@@ -119,7 +123,7 @@ function VoiceCard({ voice }: { voice: VoiceDto }) {
             disabled={approve.isPending}
             onClick={() => approve.mutate(voice.id)}
           >
-            <CheckCircle2 size={15} /> Approve clone
+            <CheckCircle2 size={15} /> {t('Approve clone')}
           </Button>
         )}
       </CardContent>
@@ -129,6 +133,7 @@ function VoiceCard({ voice }: { voice: VoiceDto }) {
 
 /** Cloning form — captures mandatory consent before creating a private (locked) voice. */
 function CloneCard() {
+  const { t } = useI18n();
   const clone = useCloneVoice();
   const [name, setName] = useState('');
   const [subjectName, setSubjectName] = useState('');
@@ -157,17 +162,21 @@ function CloneCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Clone a voice</CardTitle>
+        <CardTitle className="text-base">{t('Clone a voice')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        <Input placeholder="Voice name" value={name} onChange={(e) => setName(e.target.value)} />
         <Input
-          placeholder="Consenting person's name"
+          placeholder={t('Voice name')}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <Input
+          placeholder={t("Consenting person's name")}
           value={subjectName}
           onChange={(e) => setSubjectName(e.target.value)}
         />
         <Input
-          placeholder="Sample audio URL (consented)"
+          placeholder={t('Sample audio URL (consented)')}
           value={sampleUrl}
           onChange={(e) => setSampleUrl(e.target.value)}
         />
@@ -179,15 +188,16 @@ function CloneCard() {
             className="mt-0.5"
           />
           <span>
-            I confirm the person named above has given explicit consent for their voice to be cloned
-            and used by this agent.
+            {t(
+              'I confirm the person named above has given explicit consent for their voice to be cloned and used by this agent.',
+            )}
           </span>
         </label>
         {clone.isError && (
           <p className="text-xs text-vq-danger">{(clone.error as Error).message}</p>
         )}
         <Button size="sm" disabled={!canSubmit} onClick={submit}>
-          {clone.isPending ? 'Cloning…' : 'Create locked clone'}
+          {clone.isPending ? t('Cloning…') : t('Create locked clone')}
         </Button>
       </CardContent>
     </Card>
