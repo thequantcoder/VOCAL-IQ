@@ -223,6 +223,49 @@ export const catalogs: Record<string, MessageCatalog> = {
     Sentiment: 'भावना',
     'No sentiment scored in this range.': 'इस अवधि में कोई भावना स्कोर नहीं की गई।',
     'Avg interruptions per call: {n}': 'प्रति कॉल औसत व्यवधान: {n}',
+    // Campaigns page.
+    'Bulk outbound with CSV import, DNC suppression, pacing + retries.':
+      'CSV इम्पोर्ट, DNC सप्रेशन, पेसिंग + रिट्राई के साथ बल्क आउटबाउंड।',
+    'New campaign': 'नया कैंपेन',
+    'No campaigns yet': 'अभी तक कोई कैंपेन नहीं',
+    'Create one and import a contact list.': 'एक बनाएं और संपर्क सूची इम्पोर्ट करें।',
+    Import: 'इम्पोर्ट',
+    Dialer: 'डायलर',
+    Pause: 'रोकें',
+    // NOTE: 'Run' reuses the nav-group key ('संचालन') — English-as-key can't hold two senses of the
+    // same word (nav section vs. play button); the shared rendering is acceptable.
+    'Retry {n} failed': '{n} विफल को फिर से आज़माएं',
+    'Loading dialer…': 'डायलर लोड हो रहा है…',
+    'Dialer mode': 'डायलर मोड',
+    'Progressive (1:1)': 'प्रोग्रेसिव (1:1)',
+    'Power (N:1)': 'पावर (N:1)',
+    Predictive: 'प्रेडिक्टिव',
+    'One call per free agent': 'प्रति फ्री एजेंट एक कॉल',
+    'Several calls per free agent': 'प्रति फ्री एजेंट कई कॉल',
+    'Over-dials to fill agents — only while abandonment is monitored':
+      'एजेंट भरने के लिए ओवर-डायल — केवल जब तक परित्याग की निगरानी हो',
+    'Blended team — pace to live human-agent availability (otherwise pure-AI, paced to concurrency)':
+      'ब्लेंडेड टीम — लाइव मानव-एजेंट उपलब्धता के अनुसार पेस करें (अन्यथा प्योर-AI, कंकरेंसी के अनुसार)',
+    'Lines per agent (N:1)': 'प्रति एजेंट लाइनें (N:1)',
+    'Max abandon rate % (legal cap)': 'अधिकतम परित्याग दर % (कानूनी सीमा)',
+    'Predictive stays at safe 1:1 pacing until live dialing monitors abandonment — it never over-dials without enforcing this cap.':
+      'लाइव डायलिंग परित्याग की निगरानी करने तक प्रेडिक्टिव सुरक्षित 1:1 पेसिंग पर रहता है — यह इस सीमा को लागू किए बिना कभी ओवर-डायल नहीं करता।',
+    'Saving…': 'सहेजा जा रहा है…',
+    'Save dialer': 'डायलर सहेजें',
+    Close: 'बंद करें',
+    'Paste CSV with a phone column (name/email optional). Duplicates + DNC are suppressed automatically.':
+      'phone कॉलम वाली CSV पेस्ट करें (name/email वैकल्पिक)। डुप्लिकेट + DNC अपने आप सप्रेस हो जाते हैं।',
+    'Imported {imported} · {dup} dup · {suppressed} DNC · {invalid} invalid':
+      '{imported} इम्पोर्ट · {dup} डुप्लिकेट · {suppressed} DNC · {invalid} अमान्य',
+    'Importing…': 'इम्पोर्ट हो रहा है…',
+    'Import contacts': 'संपर्क इम्पोर्ट करें',
+    'Campaign name': 'कैंपेन का नाम',
+    'Select an agent…': 'एक एजेंट चुनें…',
+    'Pace / tick': 'पेस / टिक',
+    Concurrency: 'कंकरेंसी',
+    'Creating…': 'बनाया जा रहा है…',
+    'Create campaign': 'कैंपेन बनाएं',
+    Cancel: 'रद्द करें',
   },
   ar: {
     'nav.agents': 'الوكلاء',
