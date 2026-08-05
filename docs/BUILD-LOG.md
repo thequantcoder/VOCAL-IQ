@@ -5263,3 +5263,17 @@ Continues the per-page rollout (#214) onto the two next-highest-traffic pages. S
 - **`lib/i18n/catalogs.ts`**: ~35 new keys translated into Hindi; reuses the nav/Overview keys already present (`Agents`, `Calls`, `Build`, `Success rate`, `Create an agent`, …). Non-Hindi locales fall back to English per key (documented rollout).
 
 **Checks.** biome clean (3 files). Web typecheck/build in CI. Manual: `vq_locale=hi` renders both pages in Hindi (incl. the interpolated count in correct word order); other locales show English page copy under localized nav.
+
+---
+
+## Test coverage — `packages/ui` chart geometry (first tests in the package)
+
+`packages/ui` had **no test script and no vitest** (only build/typecheck/lint) — a zero-coverage gap flagged in the audit. Added the test harness + the first unit tests, targeting the **pure** module that backs every chart: `charts/geometry.ts` (`toPoints`/`linePath`/`areaPath` — no React, no DOM).
+
+- **`packages/ui/vitest.config.ts`** (new): `node` env, `include: src/**/*.test.ts` — mirrors `packages/shared`'s config, dependency-light (no jsdom; the React components stay covered by the web app's typecheck/build + e2e).
+- **`package.json`**: added `"test": "vitest run"` + the `vitest ^2.1.8` devDep (already used by `packages/shared`). `pnpm-lock.yaml` regenerated with `pnpm install --lockfile-only` (pnpm 10.33.0, matching CI) — a 5-line diff adding vitest to the `packages/ui` importer; CI's `--frozen-lockfile` install now matches, and turbo's `test` task picks up the new script.
+- **`charts/geometry.test.ts`** (new, 8 tests): `toPoints` — empty ⇒ `[]`, the y-flip (larger value → smaller y) + padding, a single point (step 0, no divide-by-zero), and a flat series (zero span ⇒ no NaN); `linePath` — empty ⇒ `''`, `M`-then-`L` at 2-dp; `areaPath` — empty ⇒ `''`, closes line → baseline → `Z`.
+
+**Verified locally** (in the non-iCloud `/tmp` mirror where the toolchain runs): `pnpm --filter @vocaliq/ui test` → **8 passed**. biome clean.
+
+**`apps/mobile` tests — deliberately deferred (honest note).** The mobile shell's only logic (`lib/api.ts`) imports `expo-secure-store` + `expo-constants` (native modules), so unit-testing it needs a React-Native/Expo test harness (jest-expo or vitest with RN module mocks) — a disproportionate infra addition (new runner + native mocks + lockfile churn) for a thin client. Tracked as a standalone follow-up rather than bolted on fragile-ly; the API contract it uses is already covered by the api's integration tests.
