@@ -19,6 +19,7 @@ import {
   useSetRetention,
   useSuppressions,
 } from '../../../../lib/api';
+import { useI18n } from '../../../../lib/i18n/provider';
 
 const inputCls =
   'w-full rounded-vq border border-vq-border bg-vq-bg-base px-3 py-2 text-sm text-vq-text-hi focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vq-ring';
@@ -28,14 +29,15 @@ const inputCls =
  * transcript-redaction. Enables regulated verticals — HIPAA/PCI/GDPR-style controls.
  */
 export default function CompliancePage() {
+  const { t } = useI18n();
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <ShieldAlert size={20} /> Compliance
+          <ShieldAlert size={20} /> {t('Compliance')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          Do-not-call, retention/auto-deletion, and PII redaction for regulated verticals.
+          {t('Do-not-call, retention/auto-deletion, and PII redaction for regulated verticals.')}
         </p>
       </div>
       <AiDisclosure />
@@ -47,6 +49,7 @@ export default function CompliancePage() {
 }
 
 function AiDisclosure() {
+  const { t } = useI18n();
   const config = useDisclosureConfig();
   const templates = useDisclosureTemplates();
   const save = useSetDisclosureConfig();
@@ -60,44 +63,45 @@ function AiDisclosure() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Megaphone size={16} /> AI disclosure &amp; calling rules
+          <Megaphone size={16} /> {t('AI disclosure & calling rules')}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <p className="text-vq-text-lo text-sm">
-          Region-aware "you're speaking with an AI" disclosure + a mandatory "press 1 for a human"
-          opt-out and calling-hour/frequency rules — enforced platform-wide.
+          {t(
+            'Region-aware "you\'re speaking with an AI" disclosure + a mandatory "press 1 for a human" opt-out and calling-hour/frequency rules — enforced platform-wide.',
+          )}
         </p>
         <label className="flex flex-col gap-1 text-vq-text-lo text-xs">
-          Compliance template
+          {t('Compliance template')}
           <select
             value={form.region}
             onChange={(e) => setForm((f) => ({ ...f, region: e.target.value }))}
             className={inputCls}
           >
-            {(templates.data ?? []).map((t) => (
-              <option key={t.key} value={t.key}>
-                {t.key} — {t.disclosureRequired ? 'disclose' : 'no disclosure'} ·{' '}
-                {t.callingHours.start}:00–
-                {t.callingHours.end}:00 · {t.maxAttemptsPerDay}/day
+            {(templates.data ?? []).map((tpl) => (
+              <option key={tpl.key} value={tpl.key}>
+                {tpl.key} — {tpl.disclosureRequired ? t('disclose') : t('no disclosure')} ·{' '}
+                {tpl.callingHours.start}:00–
+                {tpl.callingHours.end}:00 · {tpl.maxAttemptsPerDay}/day
               </option>
             ))}
           </select>
         </label>
         <Input
-          placeholder="Custom disclosure line (optional)"
+          placeholder={t('Custom disclosure line (optional)')}
           value={form.customText ?? ''}
           onChange={(e) => setForm((f) => ({ ...f, customText: e.target.value || undefined }))}
         />
         <div className="flex items-center gap-2">
-          <span className="text-vq-text-lo text-xs">Human keyword</span>
+          <span className="text-vq-text-lo text-xs">{t('Human keyword')}</span>
           <Input
             value={form.humanKeyword}
             onChange={(e) => setForm((f) => ({ ...f, humanKeyword: e.target.value }))}
             className="max-w-[8rem]"
           />
           <Button size="sm" disabled={save.isPending} onClick={() => save.mutate(form)}>
-            {save.isPending ? 'Saving…' : 'Save'}
+            {save.isPending ? t('Saving…') : t('Save')}
           </Button>
         </div>
       </CardContent>
@@ -106,6 +110,7 @@ function AiDisclosure() {
 }
 
 function Residency() {
+  const { t } = useI18n();
   const regions = useRegions();
   const current = useResidency();
   const save = useSetResidency();
@@ -123,13 +128,14 @@ function Residency() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Globe size={16} /> Data residency
+          <Globe size={16} /> {t('Data residency')}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <p className="text-vq-text-lo text-sm">
-          Pin your data + processing to a region. Recordings, transcripts, and voice infra stay
-          in-region.
+          {t(
+            'Pin your data + processing to a region. Recordings, transcripts, and voice infra stay in-region.',
+          )}
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <select
@@ -145,20 +151,20 @@ function Residency() {
           </select>
           <label className="flex items-center gap-2 text-sm text-vq-text-lo">
             <input type="checkbox" checked={strict} onChange={(e) => setStrict(e.target.checked)} />
-            Strict egress (no cross-jurisdiction processing)
+            {t('Strict egress (no cross-jurisdiction processing)')}
           </label>
           <Button
             size="sm"
             disabled={save.isPending || !region}
             onClick={() => save.mutate({ region, strictEgress: strict })}
           >
-            {save.isPending ? 'Saving…' : 'Pin region'}
+            {save.isPending ? t('Saving…') : t('Pin region')}
           </Button>
         </div>
         {current.data && (
           <p className="text-vq-text-lo text-xs">
-            Current: <span className="font-mono text-vq-text-hi">{current.data.region}</span> ·
-            storage <span className="font-mono">{current.data.storageHost}</span>
+            {t('Current:')} <span className="font-mono text-vq-text-hi">{current.data.region}</span>{' '}
+            · {t('storage')} <span className="font-mono">{current.data.storageHost}</span>
           </p>
         )}
       </CardContent>
@@ -167,6 +173,7 @@ function Residency() {
 }
 
 function Dnc() {
+  const { t } = useI18n();
   const list = useSuppressions();
   const add = useAddSuppression();
   const remove = useRemoveSuppression();
@@ -176,13 +183,13 @@ function Dnc() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <PhoneOff size={16} /> Do-not-call list
+          <PhoneOff size={16} /> {t('Do-not-call list')}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <Input
-            placeholder="Phone number to suppress"
+            placeholder={t('Phone number to suppress')}
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             className="max-w-xs"
@@ -195,7 +202,7 @@ function Dnc() {
               setPhone('');
             }}
           >
-            Suppress
+            {t('Suppress')}
           </Button>
         </div>
         {list.isLoading ? (
@@ -203,7 +210,10 @@ function Dnc() {
         ) : list.isError ? (
           <ErrorState message={(list.error as Error).message} onRetry={() => list.refetch()} />
         ) : !list.data || list.data.length === 0 ? (
-          <EmptyState title="No suppressed numbers" hint="Add numbers that must never be called." />
+          <EmptyState
+            title={t('No suppressed numbers')}
+            hint={t('Add numbers that must never be called.')}
+          />
         ) : (
           <div className="flex flex-col divide-y divide-vq-border">
             {list.data.map((s) => (
@@ -212,7 +222,7 @@ function Dnc() {
                   <span className="font-mono text-vq-text-hi">{s.phone}</span>
                   {s.global && (
                     <span className="rounded-vq-pill border border-vq-border px-2 py-0.5 text-vq-text-lo text-xs">
-                      global
+                      {t('global')}
                     </span>
                   )}
                   {s.reason && <span className="text-vq-text-lo text-xs">{s.reason}</span>}
@@ -224,7 +234,7 @@ function Dnc() {
                     disabled={remove.isPending}
                     onClick={() => remove.mutate({ phone: s.phone })}
                   >
-                    Remove
+                    {t('Remove')}
                   </Button>
                 )}
               </div>
@@ -237,6 +247,7 @@ function Dnc() {
 }
 
 function Retention() {
+  const { t } = useI18n();
   const policy = useRetention();
   const save = useSetRetention();
   const [form, setForm] = useState<RetentionPolicy>({
@@ -254,26 +265,26 @@ function Retention() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <ScrollText size={16} /> Retention &amp; deletion
+          <ScrollText size={16} /> {t('Retention & deletion')}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <p className="text-vq-text-lo text-sm">
-          Auto-delete data older than the window (0 = keep forever). Runs on a schedule.
+          {t('Auto-delete data older than the window (0 = keep forever). Runs on a schedule.')}
         </p>
         <div className="grid grid-cols-3 gap-3">
           <Field
-            label="Recordings (days)"
+            label={t('Recordings (days)')}
             value={form.recordingsDays}
             onChange={(v) => setForm((f) => ({ ...f, recordingsDays: v }))}
           />
           <Field
-            label="Transcripts (days)"
+            label={t('Transcripts (days)')}
             value={form.transcriptsDays}
             onChange={(v) => setForm((f) => ({ ...f, transcriptsDays: v }))}
           />
           <Field
-            label="Memory (days)"
+            label={t('Memory (days)')}
             value={form.memoryDays}
             onChange={(v) => setForm((f) => ({ ...f, memoryDays: v }))}
           />
@@ -284,10 +295,10 @@ function Retention() {
             checked={form.redactTranscripts}
             onChange={(e) => setForm((f) => ({ ...f, redactTranscripts: e.target.checked }))}
           />
-          Redact PII from transcripts
+          {t('Redact PII from transcripts')}
         </label>
         <Button size="sm" disabled={save.isPending} onClick={() => save.mutate(form)}>
-          {save.isPending ? 'Saving…' : 'Save retention policy'}
+          {save.isPending ? t('Saving…') : t('Save retention policy')}
         </Button>
       </CardContent>
     </Card>

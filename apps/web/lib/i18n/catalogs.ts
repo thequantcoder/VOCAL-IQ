@@ -745,6 +745,117 @@ export const catalogs: Record<string, MessageCatalog> = {
     'Task title': 'कार्य शीर्षक',
     'Notification message': 'सूचना संदेश',
     'Syncs the call to connected CRMs': 'कॉल को कनेक्टेड CRM में सिंक करता है',
+    // Notifications settings page.
+    "Choose which events notify each channel. This is a master switch on top of each channel's own setup (webhook subscriptions, Slack config). Everything is on by default.":
+      'चुनें कि कौन-से इवेंट किस चैनल को सूचित करें। यह हर चैनल के अपने सेटअप (webhook सब्सक्रिप्शन, Slack कॉन्फ़िग) के ऊपर एक मास्टर स्विच है। सब कुछ डिफ़ॉल्ट रूप से चालू है।',
+    'Event × channel': 'इवेंट × चैनल',
+    Event: 'इवेंट',
+    'Call completed': 'कॉल पूर्ण',
+    'Call failed': 'कॉल विफल',
+    'Lead created': 'लीड बनाई गई',
+    'Campaign finished': 'कैंपेन समाप्त',
+    'Not delivered on this channel': 'इस चैनल पर वितरित नहीं',
+    'Save preferences': 'प्राथमिकताएँ सहेजें',
+    'Saved ✓': 'सहेजा गया ✓',
+    // Translation settings page.
+    'Serve any language without multilingual staff — the caller is answered natively, while your operators see everything translated into their working language.':
+      'बहुभाषी स्टाफ़ के बिना किसी भी भाषा में सेवा दें — कॉलर को उसकी मूल भाषा में उत्तर मिलता है, जबकि आपके ऑपरेटर सब कुछ अपनी कार्यभाषा में अनुवादित देखते हैं।',
+    'Operator working language': 'ऑपरेटर कार्यभाषा',
+    'Enable real-time translation for operators': 'ऑपरेटरों के लिए रीयल-टाइम अनुवाद सक्षम करें',
+    'Translate into': 'इसमें अनुवाद करें',
+    // Compliance settings page.
+    'Do-not-call, retention/auto-deletion, and PII redaction for regulated verticals.':
+      'विनियमित क्षेत्रों के लिए डू-नॉट-कॉल, अवधारण/स्वतः-हटाना, और PII रिडैक्शन।',
+    'AI disclosure & calling rules': 'AI प्रकटीकरण और कॉलिंग नियम',
+    'Region-aware "you\'re speaking with an AI" disclosure + a mandatory "press 1 for a human" opt-out and calling-hour/frequency rules — enforced platform-wide.':
+      'क्षेत्र-सजग "आप एक AI से बात कर रहे हैं" प्रकटीकरण + एक अनिवार्य "मानव के लिए 1 दबाएँ" ऑप्ट-आउट और कॉलिंग-घंटे/आवृत्ति नियम — पूरे प्लेटफ़ॉर्म पर लागू।',
+    'Compliance template': 'अनुपालन टेम्पलेट',
+    disclose: 'प्रकट करें',
+    'no disclosure': 'कोई प्रकटीकरण नहीं',
+    'Custom disclosure line (optional)': 'कस्टम प्रकटीकरण पंक्ति (वैकल्पिक)',
+    'Human keyword': 'मानव कीवर्ड',
+    'Data residency': 'डेटा रेज़िडेंसी',
+    'Pin your data + processing to a region. Recordings, transcripts, and voice infra stay in-region.':
+      'अपने डेटा + प्रोसेसिंग को किसी क्षेत्र में पिन करें। रिकॉर्डिंग, ट्रांसक्रिप्ट और वॉइस इन्फ़्रा उसी क्षेत्र में रहते हैं।',
+    'Strict egress (no cross-jurisdiction processing)':
+      'सख़्त एग्रेस (कोई क्रॉस-क्षेत्राधिकार प्रोसेसिंग नहीं)',
+    'Pin region': 'क्षेत्र पिन करें',
+    'Current:': 'वर्तमान:',
+    storage: 'स्टोरेज',
+    'Do-not-call list': 'डू-नॉट-कॉल सूची',
+    'Phone number to suppress': 'दबाने के लिए फ़ोन नंबर',
+    Suppress: 'दबाएँ',
+    'No suppressed numbers': 'कोई दबाए गए नंबर नहीं',
+    'Add numbers that must never be called.': 'ऐसे नंबर जोड़ें जिन्हें कभी कॉल नहीं करना है।',
+    global: 'वैश्विक',
+    Remove: 'हटाएँ',
+    'Retention & deletion': 'अवधारण और हटाना',
+    'Auto-delete data older than the window (0 = keep forever). Runs on a schedule.':
+      'विंडो से पुराने डेटा को स्वतः हटाएँ (0 = हमेशा रखें)। एक शेड्यूल पर चलता है।',
+    'Recordings (days)': 'रिकॉर्डिंग (दिन)',
+    'Transcripts (days)': 'ट्रांसक्रिप्ट (दिन)',
+    'Memory (days)': 'मेमोरी (दिन)',
+    'Redact PII from transcripts': 'ट्रांसक्रिप्ट से PII रिडैक्ट करें',
+    'Save retention policy': 'अवधारण नीति सहेजें',
+    // Enterprise SSO settings page.
+    'Enterprise SSO': 'एंटरप्राइज़ SSO',
+    'Log your team in through your identity provider (SAML/OIDC) with directory sync.':
+      'अपनी टीम को अपने आइडेंटिटी प्रोवाइडर (SAML/OIDC) के माध्यम से डायरेक्टरी सिंक के साथ लॉग इन कराएँ।',
+    'Identity provider': 'आइडेंटिटी प्रोवाइडर',
+    'IdP SSO URL (entryPoint)': 'IdP SSO URL (एंट्रीपॉइंट)',
+    'IdP issuer / entity id': 'IdP जारीकर्ता / एंटिटी id',
+    'Enable SSO login': 'SSO लॉगिन सक्षम करें',
+    'Enable SCIM directory sync': 'SCIM डायरेक्टरी सिंक सक्षम करें',
+    'Save SSO config': 'SSO कॉन्फ़िग सहेजें',
+    'SCIM bearer token': 'SCIM बियरर टोकन',
+    "Copy this now — it is shown only once and stored hashed. Use it as the bearer token in your IdP's SCIM configuration.":
+      'इसे अभी कॉपी करें — यह केवल एक बार दिखाया जाता है और हैश करके संग्रहीत किया जाता है। इसे अपने IdP के SCIM कॉन्फ़िगरेशन में बियरर टोकन के रूप में उपयोग करें।',
+    // Voice biometrics settings page.
+    "Verify a caller's identity by voiceprint for secure flows (account access, banking). Off by default; enrolments are consented, encrypted, and region-gated.":
+      'सुरक्षित फ़्लो (खाता एक्सेस, बैंकिंग) के लिए वॉइसप्रिंट द्वारा कॉलर की पहचान सत्यापित करें। डिफ़ॉल्ट रूप से बंद; एनरोलमेंट सहमति-आधारित, एन्क्रिप्टेड और क्षेत्र-गेटेड हैं।',
+    'Biometric data is heavily regulated (BIPA, GDPR Art. 9, and more). Only enable it in regions where you have confirmed legality and captured explicit caller consent.':
+      'बायोमेट्रिक डेटा भारी रूप से विनियमित है (BIPA, GDPR अनु. 9, और अधिक)। इसे केवल उन क्षेत्रों में सक्षम करें जहाँ आपने वैधता की पुष्टि की है और स्पष्ट कॉलर सहमति ली है।',
+    Policy: 'नीति',
+    'Enable voice biometrics.': 'वॉइस बायोमेट्रिक्स सक्षम करें।',
+    'When off, no enrolment or verification can run.':
+      'बंद होने पर, कोई एनरोलमेंट या सत्यापन नहीं चल सकता।',
+    'Allowed regions (comma-separated; empty = denied everywhere)':
+      'अनुमत क्षेत्र (अल्पविराम-पृथक; खाली = हर जगह अस्वीकृत)',
+    'Match threshold': 'मैच थ्रेशोल्ड',
+    'Min liveness': 'न्यूनतम लाइवनेस',
+    'Retention (days)': 'अवधारण (दिन)',
+    'Save policy': 'नीति सहेजें',
+    'Enrol / verify a caller': 'कॉलर को एनरोल / सत्यापित करें',
+    'Enable + save the policy above before enrolling.':
+      'एनरोल करने से पहले ऊपर की नीति सक्षम करें और सहेजें।',
+    Region: 'क्षेत्र',
+    'Audio sample reference': 'ऑडियो नमूना संदर्भ',
+    'a voice-sample id captured on the call': 'कॉल पर कैप्चर की गई एक वॉइस-नमूना id',
+    'Enrolling…': 'एनरोल हो रहा है…',
+    'Enrol (consented)': 'एनरोल करें (सहमति सहित)',
+    'Verifying…': 'सत्यापित हो रहा है…',
+    Verify: 'सत्यापित करें',
+    Erase: 'मिटाएँ',
+    'Voiceprint enrolled ✓': 'वॉइसप्रिंट एनरोल हुआ ✓',
+    'match {m}% · liveness {l}%': 'मैच {m}% · लाइवनेस {l}%',
+    'step-up auth required': 'स्टेप-अप प्रमाणन आवश्यक',
+    'Audit trail': 'ऑडिट ट्रेल',
+    'No biometric activity yet.': 'अभी तक कोई बायोमेट्रिक गतिविधि नहीं।',
+    // Battlecards settings page.
+    Battlecards: 'बैटलकार्ड',
+    "Competitor talking points your reps see live when a caller mentions a rival. Shown only on the rep's screen — never to the caller.":
+      'प्रतिस्पर्धी बात-बिंदु जो आपके प्रतिनिधि तब लाइव देखते हैं जब कोई कॉलर किसी प्रतिद्वंद्वी का उल्लेख करता है। केवल प्रतिनिधि की स्क्रीन पर दिखता है — कभी कॉलर को नहीं।',
+    'New battlecard': 'नया बैटलकार्ड',
+    Competitor: 'प्रतिस्पर्धी',
+    'Trigger cues (comma-separated; the competitor name always triggers it)':
+      'ट्रिगर संकेत (अल्पविराम-पृथक; प्रतिस्पर्धी का नाम हमेशा इसे ट्रिगर करता है)',
+    'Talking points (one per line)': 'बात-बिंदु (प्रति पंक्ति एक)',
+    'Add battlecard': 'बैटलकार्ड जोड़ें',
+    'Your battlecards': 'आपके बैटलकार्ड',
+    'No battlecards yet': 'अभी तक कोई बैटलकार्ड नहीं',
+    'Add one above to arm your reps.': 'अपने प्रतिनिधियों को तैयार करने के लिए ऊपर एक जोड़ें।',
+    'vs {name}': '{name} के विरुद्ध',
+    'Triggers:': 'ट्रिगर:',
   },
   ar: {
     'nav.agents': 'الوكلاء',
