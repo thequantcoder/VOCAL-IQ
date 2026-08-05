@@ -17,6 +17,7 @@ import {
   useTestIntegration,
   useTestSlack,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 const SLACK_EVENTS: { key: keyof SlackConfig['events']; label: string }[] = [
   { key: 'call.completed', label: 'Call completed' },
@@ -29,6 +30,7 @@ const SLACK_EVENTS: { key: keyof SlackConfig['events']; label: string }[] = [
  * send a test. The URL is masked once saved (write-only, like other credentials).
  */
 function SlackNotifications() {
+  const { t } = useI18n();
   const cfg = useSlackConfig();
   const save = useSaveSlack();
   const test = useTestSlack();
@@ -44,22 +46,22 @@ function SlackNotifications() {
       <CardContent className="flex flex-col gap-3 py-4">
         <div className="flex items-center justify-between">
           <p className="flex items-center gap-2 font-medium text-vq-text-hi">
-            <Slack size={16} /> Slack notifications
+            <Slack size={16} /> {t('Slack notifications')}
           </p>
           {cfg.data?.connected && (
             <span className="flex items-center gap-1 rounded-vq-pill border border-vq-success/40 bg-vq-success/10 px-2 py-0.5 text-[11px] text-vq-success">
-              <CheckCircle2 size={12} /> connected
+              <CheckCircle2 size={12} /> {t('connected')}
             </span>
           )}
         </div>
         <p className="text-sm text-vq-text-lo">
-          Post per-event messages to a Slack channel via an Incoming Webhook URL.
+          {t('Post per-event messages to a Slack channel via an Incoming Webhook URL.')}
         </p>
         <Input
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder={cfg.data?.webhookUrl ?? 'https://hooks.slack.com/services/...'}
-          aria-label="Slack incoming webhook URL"
+          aria-label={t('Slack incoming webhook URL')}
         />
         <div className="flex flex-wrap gap-3">
           {SLACK_EVENTS.map((ev) => (
@@ -69,7 +71,7 @@ function SlackNotifications() {
                 checked={events[ev.key] !== false}
                 onChange={(e) => setEvents((prev) => ({ ...prev, [ev.key]: e.target.checked }))}
               />
-              {ev.label}
+              {t(ev.label)}
             </label>
           ))}
         </div>
@@ -82,7 +84,7 @@ function SlackNotifications() {
               save.mutate({ ...(url.trim() ? { webhookUrl: url.trim() } : {}), events })
             }
           >
-            Save
+            {t('Save')}
           </Button>
           <Button
             variant="ghost"
@@ -91,11 +93,11 @@ function SlackNotifications() {
             disabled={!cfg.data?.connected}
             onClick={() => test.mutate()}
           >
-            Send test
+            {t('Send test')}
           </Button>
           {test.data && (
             <span className="text-vq-text-lo text-xs">
-              {test.data.delivered ? 'Test sent ✓' : 'Delivery failed'}
+              {test.data.delivered ? t('Test sent ✓') : t('Delivery failed')}
             </span>
           )}
         </div>
@@ -166,6 +168,7 @@ const CONNECT_FIELDS: Record<
  * as "coming soon". Tokens are write-only — entered here, never shown again.
  */
 export default function IntegrationsPage() {
+  const { t } = useI18n();
   const catalog = useIntegrationCatalog();
   const connected = useIntegrations();
   const [connecting, setConnecting] = useState<ConnectorCatalogItem | null>(null);
@@ -176,11 +179,12 @@ export default function IntegrationsPage() {
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <Plug size={20} /> Integrations
+          <Plug size={20} /> {t('Integrations')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          Sync calls to your CRM / helpdesk — contact upsert, qualification + sentiment, and tickets
-          on negative calls.
+          {t(
+            'Sync calls to your CRM / helpdesk — contact upsert, qualification + sentiment, and tickets on negative calls.',
+          )}
         </p>
       </div>
 
@@ -188,13 +192,13 @@ export default function IntegrationsPage() {
 
       {connecting && <ConnectForm connector={connecting} onDone={() => setConnecting(null)} />}
 
-      <h2 className="font-display font-semibold text-lg text-vq-text-hi">CRM & Helpdesk</h2>
+      <h2 className="font-display font-semibold text-lg text-vq-text-hi">{t('CRM & Helpdesk')}</h2>
       {catalog.isLoading ? (
         <LoadingCard rows={4} />
       ) : catalog.isError ? (
         <ErrorState message={(catalog.error as Error).message} onRetry={() => catalog.refetch()} />
       ) : !catalog.data ? (
-        <EmptyState title="No connectors" />
+        <EmptyState title={t('No connectors')} />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {catalog.data.map((c) => (
@@ -220,6 +224,7 @@ function ConnectorCard({
   integration: IntegrationDto | null;
   onConnect: () => void;
 }) {
+  const { t } = useI18n();
   const test = useTestIntegration();
   const disconnect = useDisconnectIntegration();
   const [tested, setTested] = useState<boolean | null>(null);
@@ -231,15 +236,15 @@ function ConnectorCard({
           <p className="font-medium text-vq-text-hi">{connector.label}</p>
           {integration ? (
             <span className="flex items-center gap-1 rounded-vq-pill border border-vq-success/40 bg-vq-success/10 px-2 py-0.5 text-[11px] text-vq-success">
-              <CheckCircle2 size={12} /> connected
+              <CheckCircle2 size={12} /> {t('connected')}
             </span>
           ) : connector.implemented ? (
             <span className="rounded-vq-pill border border-vq-border px-2 py-0.5 text-[11px] text-vq-text-lo">
-              available
+              {t('available')}
             </span>
           ) : (
             <span className="rounded-vq-pill border border-vq-border px-2 py-0.5 text-[11px] text-vq-text-lo">
-              coming soon
+              {t('coming soon')}
             </span>
           )}
         </div>
@@ -247,12 +252,12 @@ function ConnectorCard({
         <div className="flex gap-3 text-vq-text-lo text-xs">
           {connector.capabilities.contacts && (
             <span className="flex items-center gap-1">
-              <Users size={13} /> Contacts
+              <Users size={13} /> {t('Contacts')}
             </span>
           )}
           {connector.capabilities.tickets && (
             <span className="flex items-center gap-1">
-              <Ticket size={13} /> Tickets
+              <Ticket size={13} /> {t('Tickets')}
             </span>
           )}
         </div>
@@ -264,16 +269,16 @@ function ConnectorCard({
               variant="ghost"
               onClick={() => test.mutate(integration.id, { onSuccess: (r) => setTested(r.ok) })}
             >
-              {test.isPending ? 'Testing…' : 'Test'}
+              {test.isPending ? t('Testing…') : t('Test')}
             </Button>
             {tested !== null && (
               <span className={cn('text-xs', tested ? 'text-vq-success' : 'text-vq-danger')}>
-                {tested ? 'auth OK' : 'auth failed'}
+                {tested ? t('auth OK') : t('auth failed')}
               </span>
             )}
             <button
               type="button"
-              aria-label="Disconnect"
+              aria-label={t('Disconnect')}
               onClick={() => disconnect.mutate(integration.id)}
               className="ml-auto rounded-vq p-1.5 text-vq-text-lo hover:text-vq-danger"
             >
@@ -282,7 +287,7 @@ function ConnectorCard({
           </div>
         ) : (
           <Button size="sm" disabled={!connector.implemented} onClick={onConnect}>
-            Connect
+            {t('Connect')}
           </Button>
         )}
       </CardContent>
@@ -297,6 +302,7 @@ function ConnectForm({
   connector: ConnectorCatalogItem;
   onDone: () => void;
 }) {
+  const { t } = useI18n();
   const connect = useConnectIntegration();
   const fields = CONNECT_FIELDS[connector.type] ?? {
     tokenLabel: 'Access token — stored sealed, never shown again',
@@ -331,30 +337,32 @@ function ConnectForm({
   return (
     <Card>
       <CardContent className="flex flex-col gap-3 py-4">
-        <p className="font-medium text-sm text-vq-text-hi">Connect {connector.label}</p>
+        <p className="font-medium text-sm text-vq-text-hi">
+          {t('Connect {name}', { name: connector.label })}
+        </p>
         {fields.settings.map((s) => (
           <label
             key={s.key}
             htmlFor={`integ-${s.key}`}
             className="flex flex-col gap-1 text-vq-text-lo text-xs"
           >
-            {s.label}
+            {t(s.label)}
             <Input
               id={`integ-${s.key}`}
               value={settings[s.key] ?? ''}
               onChange={(e) => setSettings((prev) => ({ ...prev, [s.key]: e.target.value }))}
-              placeholder={s.placeholder}
+              placeholder={t(s.placeholder)}
             />
           </label>
         ))}
         <label htmlFor="integ-token" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-          {fields.tokenLabel}
+          {t(fields.tokenLabel)}
           <Input
             id="integ-token"
             type="password"
             value={accessToken}
             onChange={(e) => setToken(e.target.value)}
-            placeholder={fields.tokenPlaceholder}
+            placeholder={t(fields.tokenPlaceholder)}
           />
         </label>
         {connector.capabilities.tickets && (
@@ -364,7 +372,7 @@ function ConnectForm({
               checked={ticketOnNegative}
               onChange={(e) => setTicket(e.target.checked)}
             />
-            Open a ticket automatically when a call ends negative
+            {t('Open a ticket automatically when a call ends negative')}
           </label>
         )}
         {error && <p className="text-vq-danger text-xs">{error}</p>}
@@ -374,10 +382,10 @@ function ConnectForm({
             disabled={accessToken.length < 8 || missingSetting || connect.isPending}
             onClick={submit}
           >
-            {connect.isPending ? 'Connecting…' : 'Connect'}
+            {connect.isPending ? t('Connecting…') : t('Connect')}
           </Button>
           <Button size="sm" variant="ghost" onClick={onDone}>
-            Cancel
+            {t('Cancel')}
           </Button>
         </div>
       </CardContent>

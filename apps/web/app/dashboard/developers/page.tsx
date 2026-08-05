@@ -18,28 +18,30 @@ import {
   useWebhookEvents,
   useWebhooks,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 /** Developer platform (Day 48): API keys, webhooks, and the OpenAPI spec + SDK. */
 export default function DevelopersPage() {
+  const { t } = useI18n();
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-8">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <KeyRound size={20} /> Developers
+          <KeyRound size={20} /> {t('Developers')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          Embed VocalIQ: API keys, webhooks, the{' '}
+          {t('Embed VocalIQ: API keys, webhooks, the')}{' '}
           <a
             href={`${API_URL}/v1/openapi.json`}
             target="_blank"
             rel="noreferrer"
             className="text-vq-violet underline"
           >
-            OpenAPI spec
+            {t('OpenAPI spec')}
           </a>
-          , and the <code>@vocaliq/sdk</code> TypeScript client.
+          {t(', and the')} <code>@vocaliq/sdk</code> {t('TypeScript client.')}
         </p>
       </div>
 
@@ -48,10 +50,10 @@ export default function DevelopersPage() {
         className="flex items-center justify-between rounded-vq border border-vq-border px-4 py-3 transition-colors hover:border-vq-brand/50"
       >
         <span className="flex items-center gap-2 text-sm text-vq-text-hi">
-          <Terminal size={16} className="text-vq-brand" /> Interactive API reference
+          <Terminal size={16} className="text-vq-brand" /> {t('Interactive API reference')}
         </span>
         <span className="text-vq-text-lo text-xs">
-          copy-ready curl + live “Try it” for every endpoint →
+          {t('copy-ready curl + live “Try it” for every endpoint →')}
         </span>
       </Link>
 
@@ -62,15 +64,16 @@ export default function DevelopersPage() {
 }
 
 function ApiKeysSection() {
+  const { t } = useI18n();
   const keys = useApiKeys();
   const [creating, setCreating] = useState(false);
 
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h2 className="font-medium text-sm text-vq-text-hi">API keys</h2>
+        <h2 className="font-medium text-sm text-vq-text-hi">{t('API keys')}</h2>
         <Button size="sm" onClick={() => setCreating((v) => !v)}>
-          <Plus size={14} /> New key
+          <Plus size={14} /> {t('New key')}
         </Button>
       </div>
       {creating && <CreateKey onDone={() => setCreating(false)} />}
@@ -79,7 +82,10 @@ function ApiKeysSection() {
       ) : keys.isError ? (
         <ErrorState message={(keys.error as Error).message} onRetry={() => keys.refetch()} />
       ) : !keys.data || keys.data.length === 0 ? (
-        <EmptyState title="No API keys" hint="Create a scoped key to call the public API." />
+        <EmptyState
+          title={t('No API keys')}
+          hint={t('Create a scoped key to call the public API.')}
+        />
       ) : (
         keys.data.map((k) => <KeyRow key={k.id} apiKey={k} />)
       )}
@@ -88,6 +94,7 @@ function ApiKeysSection() {
 }
 
 function KeyRow({ apiKey }: { apiKey: ApiKey }) {
+  const { t } = useI18n();
   const revoke = useRevokeApiKey();
   return (
     <Card>
@@ -102,7 +109,11 @@ function KeyRow({ apiKey }: { apiKey: ApiKey }) {
             <code className="text-vq-text-lo text-xs">{apiKey.prefix}…</code>
           </div>
           <span className="text-vq-text-lo text-xs">
-            {apiKey.scopes.join(', ')} · {apiKey.rateLimitPerMin}/min · {apiKey.requestCount} calls
+            {t('{scopes} · {rate}/min · {n} calls', {
+              scopes: apiKey.scopes.join(', '),
+              rate: apiKey.rateLimitPerMin,
+              n: apiKey.requestCount,
+            })}
           </span>
         </div>
         {!apiKey.revoked && (
@@ -112,7 +123,7 @@ function KeyRow({ apiKey }: { apiKey: ApiKey }) {
             disabled={revoke.isPending}
             onClick={() => revoke.mutate(apiKey.id)}
           >
-            Revoke
+            {t('Revoke')}
           </Button>
         )}
       </CardContent>
@@ -121,6 +132,7 @@ function KeyRow({ apiKey }: { apiKey: ApiKey }) {
 }
 
 function CreateKey({ onDone }: { onDone: () => void }) {
+  const { t } = useI18n();
   const create = useCreateApiKey();
   const [name, setName] = useState('');
   const [scopes, setScopes] = useState<ApiScope[]>(['agents:read']);
@@ -136,12 +148,14 @@ function CreateKey({ onDone }: { onDone: () => void }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">New API key</CardTitle>
+        <CardTitle className="text-base">{t('New API key')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {create.data ? (
           <div className="flex flex-col gap-2">
-            <p className="text-sm text-vq-success">Copy your key now — it won't be shown again.</p>
+            <p className="text-sm text-vq-success">
+              {t("Copy your key now — it won't be shown again.")}
+            </p>
             <div className="flex items-center gap-2 rounded-vq border border-vq-border bg-vq-bg-base px-3 py-2">
               <code className="flex-1 truncate font-mono text-sm text-vq-text-hi">
                 {create.data.key}
@@ -158,13 +172,13 @@ function CreateKey({ onDone }: { onDone: () => void }) {
               </Button>
             </div>
             <Button size="sm" onClick={onDone}>
-              Done
+              {t('Done')}
             </Button>
           </div>
         ) : (
           <>
             <Input
-              placeholder="Key name (e.g. Zapier)"
+              placeholder={t('Key name (e.g. Zapier)')}
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
@@ -193,10 +207,10 @@ function CreateKey({ onDone }: { onDone: () => void }) {
                 disabled={!name.trim() || scopes.length === 0 || create.isPending}
                 onClick={submit}
               >
-                {create.isPending ? 'Creating…' : 'Create key'}
+                {create.isPending ? t('Creating…') : t('Create key')}
               </Button>
               <Button size="sm" variant="ghost" onClick={onDone}>
-                Cancel
+                {t('Cancel')}
               </Button>
             </div>
           </>
@@ -207,6 +221,7 @@ function CreateKey({ onDone }: { onDone: () => void }) {
 }
 
 function WebhooksSection() {
+  const { t } = useI18n();
   const webhooks = useWebhooks();
   const events = useWebhookEvents();
   const create = useCreateWebhook();
@@ -226,7 +241,7 @@ function WebhooksSection() {
   return (
     <section className="flex flex-col gap-3">
       <h2 className="flex items-center gap-2 font-medium text-sm text-vq-text-hi">
-        <Webhook size={15} /> Webhooks
+        <Webhook size={15} /> {t('Webhooks')}
       </h2>
       <Card>
         <CardContent className="flex flex-col gap-3 py-4">
@@ -253,7 +268,7 @@ function WebhooksSection() {
           </div>
           {create.data && (
             <p className="break-all text-vq-success text-xs">
-              Signing secret (shown once): <code>{create.data.secret}</code>
+              {t('Signing secret (shown once):')} <code>{create.data.secret}</code>
             </p>
           )}
           {create.isError && (
@@ -265,7 +280,7 @@ function WebhooksSection() {
               disabled={!/^https?:\/\//.test(url) || selected.length === 0 || create.isPending}
               onClick={submit}
             >
-              <Plus size={14} /> Add webhook
+              <Plus size={14} /> {t('Add webhook')}
             </Button>
           </div>
         </CardContent>
