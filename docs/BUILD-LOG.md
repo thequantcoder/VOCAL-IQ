@@ -5400,3 +5400,16 @@ Batch 4 of the grind — three larger Analyze/Build pages via `useI18n().t()` + 
 - **`catalogs.ts`**: ~80 new Hindi keys. Reuses `Live sentiment`(nav)/`Benchmarking`/`Video avatars`/`Adding…`/`When`. Duplicate-key scan clean.
 
 **Checks.** biome clean (0 errors; 2 pre-existing non-null-assertion warnings in benchmarking, unchanged, non-blocking). Web typecheck/build in CI. Progress: **29 of ~76 dashboard pages** now Hindi. ~47 remain.
+
+---
+
+## Dashboard localization — page-level, increment 12: Revenue attribution + Automations
+
+Batch 5 — two large Grow pages via `useI18n().t()` + Hindi; ~45 new keys. `t`-shadow renames: revenue `const t = data.totals` → `tot`; automations `ACTION_LABELS.map((t))` → `act`. Dup caught pre-push: `Revenue` is a nav key — reused it (the `hi`-block dup-scan flagged it before CI).
+
+- **revenue**: header + subtitle, `Unattributed`, the truncation warning, the 5 portfolio stats (`Revenue`/`Cost`/`Profit`/`ROI`/`Deals`), `Funnel`, the RoiTables (`By agent`/`By campaign`/`By source` + headers `Name`/`Revenue`/`Cost`/`ROI`/`Deals`, empty-states, `{n} deals`), and RecordRevenue (`Amount (major units…)`, `Source` + `Manual`/`Payment`, `Agent (optional)`, `Save`). Funnel-stage/source values = enum DATA.
+- **automations**: header + subtitle, `New automation`, empty-state, the 3 event labels + 5 action labels (`ACTION_LABELS`/`EVENTS` wrapped at render), AutomationRow (`Active`, event label), CreateAutomation (`Automation name`, `When`, `Disposition filter (optional)`, `Then, in order:`, `Create automation`), ActionEditor (`Message channel`/`Message body`/`Task title`/`Notification message`/`Syncs the call to connected CRMs`). `describeAction` output = instance DATA.
+
+- **`catalogs.ts`**: ~45 new Hindi keys. Reuses `Cost`/`Name`/`Payment`/`When`/`Active`/`Note (optional)`/`Cancel`/`Saving…`/`Creating…`/`Revenue`(nav). `ROI`/`POST webhook` fall back (acronyms). Duplicate-key scan clean.
+
+**Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: **31 of ~76 dashboard pages** now Hindi. ~45 remain.

@@ -14,6 +14,7 @@ import {
   useDeleteAutomation,
   useSetAutomationActive,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 const EVENTS: { value: AutomationEventType; label: string }[] = [
   { value: 'call_ended', label: 'Call ended' },
@@ -46,6 +47,7 @@ function describeAction(a: AutomationAction): string {
 
 /** Cross-channel automations (Day 47): trigger → multi-step actions (call → text → CRM → task). */
 export default function AutomationsPage() {
+  const { t } = useI18n();
   const automations = useAutomations();
   const [creating, setCreating] = useState(false);
 
@@ -54,14 +56,16 @@ export default function AutomationsPage() {
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-            <Workflow size={20} /> Automations
+            <Workflow size={20} /> {t('Automations')}
           </h1>
           <p className="text-sm text-vq-text-lo">
-            Treat a call as one step in a bigger flow: a trigger fires an ordered set of actions.
+            {t(
+              'Treat a call as one step in a bigger flow: a trigger fires an ordered set of actions.',
+            )}
           </p>
         </div>
         <Button size="sm" onClick={() => setCreating((v) => !v)}>
-          <Plus size={16} /> New automation
+          <Plus size={16} /> {t('New automation')}
         </Button>
       </div>
 
@@ -76,8 +80,8 @@ export default function AutomationsPage() {
         />
       ) : !automations.data || automations.data.length === 0 ? (
         <EmptyState
-          title="No automations yet"
-          hint="Create a trigger → action flow, e.g. missed call → SMS → task."
+          title={t('No automations yet')}
+          hint={t('Create a trigger → action flow, e.g. missed call → SMS → task.')}
         />
       ) : (
         <div className="flex flex-col gap-3">
@@ -91,6 +95,7 @@ export default function AutomationsPage() {
 }
 
 function AutomationRow({ automation }: { automation: Automation }) {
+  const { t } = useI18n();
   const toggle = useSetAutomationActive();
   const del = useDeleteAutomation();
   const eventLabel = EVENTS.find((e) => e.value === automation.event)?.label ?? automation.event;
@@ -110,7 +115,7 @@ function AutomationRow({ automation }: { automation: Automation }) {
                 checked={automation.active}
                 onChange={(e) => toggle.mutate({ id: automation.id, active: e.target.checked })}
               />
-              Active
+              {t('Active')}
             </label>
             <Button
               size="sm"
@@ -124,7 +129,7 @@ function AutomationRow({ automation }: { automation: Automation }) {
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="flex items-center gap-1 rounded-vq-pill bg-vq-violet/10 px-2 py-0.5 text-vq-text-hi">
-            <Zap size={11} /> {eventLabel}
+            <Zap size={11} /> {t(eventLabel)}
             {filterBits.length > 0 ? ` · ${filterBits.join(', ')}` : ''}
           </span>
           {automation.actions.map((a, i) => (
@@ -145,6 +150,7 @@ type ActionDraft = AutomationAction & { _id: string };
 let seq = 0;
 
 function CreateAutomation({ onDone }: { onDone: () => void }) {
+  const { t } = useI18n();
   const create = useCreateAutomation();
   const [name, setName] = useState('');
   const [event, setEvent] = useState<AutomationEventType>('call_ended');
@@ -183,17 +189,17 @@ function CreateAutomation({ onDone }: { onDone: () => void }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">New automation</CardTitle>
+        <CardTitle className="text-base">{t('New automation')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <Input
-          placeholder="Automation name"
+          placeholder={t('Automation name')}
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
         <div className="flex flex-wrap gap-3">
           <label htmlFor="auto-event" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-            When
+            {t('When')}
             <select
               id="auto-event"
               value={event}
@@ -202,16 +208,16 @@ function CreateAutomation({ onDone }: { onDone: () => void }) {
             >
               {EVENTS.map((e) => (
                 <option key={e.value} value={e.value}>
-                  {e.label}
+                  {t(e.label)}
                 </option>
               ))}
             </select>
           </label>
           <label htmlFor="auto-disp" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-            Disposition filter (optional)
+            {t('Disposition filter (optional)')}
             <Input
               id="auto-disp"
-              placeholder="e.g. NO_ANSWER"
+              placeholder={t('e.g. NO_ANSWER')}
               value={disposition}
               onChange={(e) => setDisposition(e.target.value)}
               className="w-40"
@@ -220,7 +226,7 @@ function CreateAutomation({ onDone }: { onDone: () => void }) {
         </div>
 
         <div className="flex flex-col gap-2">
-          <span className="text-vq-text-lo text-xs">Then, in order:</span>
+          <span className="text-vq-text-lo text-xs">{t('Then, in order:')}</span>
           {actions.map((a) => (
             <ActionEditor
               key={a._id}
@@ -230,9 +236,9 @@ function CreateAutomation({ onDone }: { onDone: () => void }) {
             />
           ))}
           <div className="flex flex-wrap gap-1.5">
-            {(Object.keys(ACTION_LABELS) as ActionType[]).map((t) => (
-              <Button key={t} size="sm" variant="secondary" onClick={() => addAction(t)}>
-                <Plus size={12} /> {ACTION_LABELS[t]}
+            {(Object.keys(ACTION_LABELS) as ActionType[]).map((act) => (
+              <Button key={act} size="sm" variant="secondary" onClick={() => addAction(act)}>
+                <Plus size={12} /> {t(ACTION_LABELS[act])}
               </Button>
             ))}
           </div>
@@ -243,10 +249,10 @@ function CreateAutomation({ onDone }: { onDone: () => void }) {
         )}
         <div className="flex gap-2">
           <Button size="sm" disabled={!valid || create.isPending} onClick={submit}>
-            {create.isPending ? 'Creating…' : 'Create automation'}
+            {create.isPending ? t('Creating…') : t('Create automation')}
           </Button>
           <Button size="sm" variant="ghost" onClick={onDone}>
-            Cancel
+            {t('Cancel')}
           </Button>
         </div>
       </CardContent>
@@ -263,13 +269,14 @@ function ActionEditor({
   onChange: (a: AutomationAction) => void;
   onRemove: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="flex items-center gap-2">
-      <span className="w-28 shrink-0 text-vq-text-lo text-xs">{ACTION_LABELS[action.type]}</span>
+      <span className="w-28 shrink-0 text-vq-text-lo text-xs">{t(ACTION_LABELS[action.type])}</span>
       {action.type === 'send_message' && (
         <>
           <select
-            aria-label="Message channel"
+            aria-label={t('Message channel')}
             value={action.channel}
             onChange={(e) => onChange({ ...action, channel: e.target.value as 'SMS' | 'WHATSAPP' })}
             className="rounded-vq border border-vq-border bg-transparent px-2 py-1.5 text-sm text-vq-text-hi"
@@ -278,7 +285,7 @@ function ActionEditor({
             <option value="WHATSAPP">WhatsApp</option>
           </select>
           <Input
-            placeholder="Message body"
+            placeholder={t('Message body')}
             value={action.body ?? ''}
             onChange={(e) => onChange({ ...action, body: e.target.value })}
           />
@@ -293,20 +300,22 @@ function ActionEditor({
       )}
       {action.type === 'task' && (
         <Input
-          placeholder="Task title"
+          placeholder={t('Task title')}
           value={action.title}
           onChange={(e) => onChange({ ...action, title: e.target.value })}
         />
       )}
       {action.type === 'notify' && (
         <Input
-          placeholder="Notification message"
+          placeholder={t('Notification message')}
           value={action.message}
           onChange={(e) => onChange({ ...action, message: e.target.value })}
         />
       )}
       {action.type === 'crm_sync' && (
-        <span className="flex-1 text-vq-text-lo text-xs">Syncs the call to connected CRMs</span>
+        <span className="flex-1 text-vq-text-lo text-xs">
+          {t('Syncs the call to connected CRMs')}
+        </span>
       )}
       <Button size="sm" variant="ghost" onClick={onRemove}>
         <Trash2 size={13} />
