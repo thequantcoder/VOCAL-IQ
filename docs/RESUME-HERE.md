@@ -1,17 +1,21 @@
-# RESUME-HERE — session checkpoint (2026-08-04)
+# RESUME-HERE — session checkpoint (2026-08-05)
 
 > **Naye Claude session ke liye:** yahan se resume karo. Ye file har checkpoint pe update hoti hai.
 > Detail inventory: `docs/PENDING-AUDIT.md` (definitive "what's left") + `docs/BUILD-LOG.md` (per-increment log).
 
 ## 📍 Current state
 
-- **Branch/commit:** `main` @ `58d63c4` (+ ye checkpoint commit) — local (`/Users/saransh/Documents/VOCAL-IQ`), GitHub (`thequantcoder/VOCAL-IQ`), sab sync. Working tree clean. Koi open PR nahi.
+- **Branch/commit:** `main` @ `139b1ae` (+ ye checkpoint commit) — local (`/Users/saransh/Documents/VOCAL-IQ`), GitHub (`thequantcoder/VOCAL-IQ`), sab sync. Working tree clean. Koi open PR nahi.
 - **Product:** feature-complete (Days 00–95 + UX + PARITY + WAC + MEC sab done). CI (node/voice/security) green on main.
-- **2026-08-04 session (PRs #209–#211, sab merged):**
-  - **#209 Voice transcript ingest** — voice `TranscriptReporter` → api `POST /internal/voice/transcript` (constant-time secret, **exact-ownership tenant guard**) → Transcript upsert → FORM extraction fire. Isse pehle production me Transcript rows koi banata hi nahi tha — poora post-call chain (intel/QA/search/FORM) voice pe dead tha.
+- **2026-08-04/05 session (PRs #209–#216, sab merged):**
+  - **#209 Voice transcript ingest** — voice `TranscriptReporter` → api `POST /internal/voice/transcript` (constant-time secret, **exact-ownership tenant guard**) → Transcript upsert → FORM extraction. Isse pehle production me Transcript rows koi banata hi nahi tha — poora post-call chain (intel/QA/search/FORM) voice pe dead tha.
   - **#210 Bridges wired** — WhatsApp + Messenger WebRTC bridges me bhi reporter (teeno voice paths ab report karte hain). Go-live: `API_INTERNAL_URL` (voice) + `VOICE_INTERNAL_SECRET` (dono taraf).
-  - **#211 Dashboard nav l10n** — +9 India UI locales (bn/ta/te/mr/gu/kn/ml/pa/or); poori sidebar nav (~60 labels) 10 Indian languages me, English-as-key + per-key fallback.
-- **Pichhla arc (PRs #193–#208):** India voice complete (Sarvam end-to-end + pickers + all-4-path plumbing), definitive pending audit (#197), P1 seams real (WorkOS SSO/Resend/HeyGen/PCI-receipts/fine-tune #198–#200), P2 (Qdrant #201, connectors #202–#203), in-call FORM node all-channels (#204–#207), ye checkpoint file (#208).
+  - **#211 Nav l10n** — +9 India UI locales (bn/ta/te/mr/gu/kn/ml/pa/or); poori sidebar nav (~60 labels) 10 Indian languages me (English-as-key + per-key fallback).
+  - **#213 WhatsApp WAC-08 latent-crash fix** — WA bridge me `offer()`/`apply_answer()` add (router call karta tha par methods missing the → AttributeError); ab Messenger ke saath symmetric + parity-guard test.
+  - **#214–#215 Page-level l10n** — Overview, Agents, Calls pages ki strings `t()` me + full Hindi (regional English pe graceful fallback).
+  - **#216 packages/ui first tests** — vitest harness + `charts/geometry.ts` ke 8 pure-math tests (lockfile regen `/tmp` mirror me — niche B.6 note).
+  - (#212 = pichhla checkpoint refresh.)
+- **Pichhla arc (PRs #193–#208):** India voice complete (Sarvam end-to-end + pickers + all-4-path plumbing), definitive pending audit (#197), P1 seams real (WorkOS SSO/Resend/HeyGen/PCI-receipts/fine-tune #198–#200), P2 (Qdrant #201, connectors #202–#203), in-call FORM node all-channels (#204–#207), checkpoint (#208).
 
 ## ⚠️ Is repo me kaam karne ka tarika (zaroori — warna time barbaad hoga)
 
