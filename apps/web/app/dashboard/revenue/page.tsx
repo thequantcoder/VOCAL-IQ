@@ -12,6 +12,7 @@ import {
   useRecordRevenue,
   useRevenueDashboard,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 const SELECT_CLS =
   'rounded-vq border border-vq-border bg-transparent px-2 py-2 text-sm text-vq-text-hi';
@@ -22,22 +23,24 @@ const pct = (n: number | null) => (n === null ? '—' : `${n}%`);
  * per source, and the leads→calls→deals funnel — the numbers buyers care about, not just call counts.
  */
 export default function RevenuePage() {
+  const { t } = useI18n();
   const dash = useRevenueDashboard();
   const agents = useAgents();
   const agentName = (id: string) =>
     id === 'unattributed'
-      ? 'Unattributed'
+      ? t('Unattributed')
       : (agents.data?.find((a) => a.id === id)?.name ?? id.slice(0, 8));
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <TrendingUp size={20} /> Revenue attribution
+          <TrendingUp size={20} /> {t('Revenue attribution')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          Closed revenue attributed to agents, campaigns and sources — with ROI vs the metered cost
-          of the calls. Last 30 days.
+          {t(
+            'Closed revenue attributed to agents, campaigns and sources — with ROI vs the metered cost of the calls. Last 30 days.',
+          )}
         </p>
       </div>
 
@@ -58,32 +61,34 @@ function Dashboard({
   data,
   agentName,
 }: { data: RevenueDashboard; agentName: (id: string) => string }) {
-  const t = data.totals;
+  const { t } = useI18n();
+  const tot = data.totals;
   return (
     <div className="flex flex-col gap-6">
       {data.truncated && (
         <p className="rounded-vq border border-vq-warn/40 px-3 py-2 text-vq-warn text-xs">
-          Showing a partial window — there are more revenue events than the dashboard aggregates at
-          once; figures are a lower bound. Narrow the date range for exact numbers.
+          {t(
+            'Showing a partial window — there are more revenue events than the dashboard aggregates at once; figures are a lower bound. Narrow the date range for exact numbers.',
+          )}
         </p>
       )}
       {/* Portfolio totals */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-        <Stat label="Revenue" value={formatAmount(t.revenueCents, 'USD')} />
-        <Stat label="Cost" value={formatAmount(t.costCents, 'USD')} />
+        <Stat label={t('Revenue')} value={formatAmount(tot.revenueCents, 'USD')} />
+        <Stat label={t('Cost')} value={formatAmount(tot.costCents, 'USD')} />
         <Stat
-          label="Profit"
-          value={formatAmount(t.profitCents, 'USD')}
-          tone={t.profitCents >= 0 ? 'good' : 'bad'}
+          label={t('Profit')}
+          value={formatAmount(tot.profitCents, 'USD')}
+          tone={tot.profitCents >= 0 ? 'good' : 'bad'}
         />
-        <Stat label="ROI" value={pct(t.roiPercent)} />
-        <Stat label="Deals" value={String(t.deals)} />
+        <Stat label={t('ROI')} value={pct(tot.roiPercent)} />
+        <Stat label={t('Deals')} value={String(tot.deals)} />
       </div>
 
       {/* Funnel */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Funnel</CardTitle>
+          <CardTitle className="text-base">{t('Funnel')}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
           {data.funnel.map((f) => (
@@ -107,31 +112,31 @@ function Dashboard({
       </Card>
 
       {/* By agent — full ROI */}
-      <RoiTable title="By agent" rows={data.byAgent} label={agentName} showRoi />
+      <RoiTable title={t('By agent')} rows={data.byAgent} label={agentName} showRoi />
 
       {/* By campaign — revenue attribution (campaign cost isn't call-linked) */}
       <RoiTable
-        title="By campaign"
+        title={t('By campaign')}
         rows={data.byCampaign}
-        label={(id) => (id === 'unattributed' ? 'Unattributed' : id.slice(0, 8))}
+        label={(id) => (id === 'unattributed' ? t('Unattributed') : id.slice(0, 8))}
         showRoi={false}
       />
 
       {/* By source */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">By source</CardTitle>
+          <CardTitle className="text-base">{t('By source')}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-1 text-sm">
           {data.bySource.length === 0 ? (
-            <span className="text-vq-text-lo text-xs">No revenue recorded yet.</span>
+            <span className="text-vq-text-lo text-xs">{t('No revenue recorded yet.')}</span>
           ) : (
             data.bySource.map((s) => (
               <div key={s.source} className="flex justify-between">
                 <span className="text-vq-text-lo capitalize">{s.source}</span>
                 <span className="text-vq-text-hi">
                   {formatAmount(s.revenueCents, 'USD')}{' '}
-                  <span className="text-vq-text-lo">· {s.deals} deals</span>
+                  <span className="text-vq-text-lo">· {t('{n} deals', { n: s.deals })}</span>
                 </span>
               </div>
             ))
@@ -153,6 +158,7 @@ function RoiTable({
   label: (id: string) => string;
   showRoi: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <Card>
       <CardHeader>
@@ -160,15 +166,15 @@ function RoiTable({
       </CardHeader>
       <CardContent>
         {rows.length === 0 ? (
-          <span className="text-vq-text-lo text-xs">No revenue in this window.</span>
+          <span className="text-vq-text-lo text-xs">{t('No revenue in this window.')}</span>
         ) : (
           <div className="flex flex-col gap-1 text-sm">
             <div className="flex gap-2 border-vq-border border-b pb-1 text-vq-text-lo text-xs">
-              <span className="flex-1">Name</span>
-              <span className="w-24 text-right">Revenue</span>
-              {showRoi && <span className="w-24 text-right">Cost</span>}
-              {showRoi && <span className="w-16 text-right">ROI</span>}
-              <span className="w-14 text-right">Deals</span>
+              <span className="flex-1">{t('Name')}</span>
+              <span className="w-24 text-right">{t('Revenue')}</span>
+              {showRoi && <span className="w-24 text-right">{t('Cost')}</span>}
+              {showRoi && <span className="w-16 text-right">{t('ROI')}</span>}
+              <span className="w-14 text-right">{t('Deals')}</span>
             </div>
             {rows.map((r) => (
               <div key={r.key} className="flex items-center gap-2">
@@ -212,6 +218,7 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: 'go
 }
 
 function RecordRevenue() {
+  const { t } = useI18n();
   const record = useRecordRevenue();
   const agents = useAgents();
   const [open, setOpen] = useState(false);
@@ -237,19 +244,19 @@ function RecordRevenue() {
   if (!open) {
     return (
       <Button size="sm" className="self-start" onClick={() => setOpen(true)}>
-        Record revenue
+        {t('Record revenue')}
       </Button>
     );
   }
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Record revenue</CardTitle>
+        <CardTitle className="text-base">{t('Record revenue')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <div className="flex flex-wrap gap-2">
           <label htmlFor="amt" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-            Amount (major units, e.g. 199.00)
+            {t('Amount (major units, e.g. 199.00)')}
             <Input
               id="amt"
               type="number"
@@ -260,20 +267,20 @@ function RecordRevenue() {
             />
           </label>
           <label htmlFor="src" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-            Source
+            {t('Source')}
             <select
               id="src"
               className={SELECT_CLS}
               value={source}
               onChange={(e) => setSource(e.target.value as 'manual' | 'payment' | 'crm')}
             >
-              <option value="manual">Manual</option>
-              <option value="payment">Payment</option>
+              <option value="manual">{t('Manual')}</option>
+              <option value="payment">{t('Payment')}</option>
               <option value="crm">CRM</option>
             </select>
           </label>
           <label htmlFor="agt" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-            Agent (optional)
+            {t('Agent (optional)')}
             <select
               id="agt"
               className={SELECT_CLS}
@@ -290,7 +297,7 @@ function RecordRevenue() {
           </label>
         </div>
         <Input
-          placeholder="Note (optional)"
+          placeholder={t('Note (optional)')}
           value={note}
           onChange={(e) => setNote(e.target.value)}
         />
@@ -299,10 +306,10 @@ function RecordRevenue() {
         )}
         <div className="flex gap-2">
           <Button size="sm" disabled={!amount || record.isPending} onClick={submit}>
-            {record.isPending ? 'Saving…' : 'Save'}
+            {record.isPending ? t('Saving…') : t('Save')}
           </Button>
           <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
-            Cancel
+            {t('Cancel')}
           </Button>
         </div>
       </CardContent>
