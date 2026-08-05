@@ -367,6 +367,74 @@ export const catalogs: Record<string, MessageCatalog> = {
       'मैं पुष्टि करता हूँ कि ऊपर नामित व्यक्ति ने अपनी आवाज़ को इस एजेंट द्वारा क्लोन और उपयोग करने के लिए स्पष्ट सहमति दी है।',
     'Cloning…': 'क्लोन हो रहा है…',
     'Create locked clone': 'लॉक्ड क्लोन बनाएं',
+    // Search page.
+    'Transcript search': 'ट्रांसक्रिप्ट खोज',
+    'Search every call by keyword or meaning; click a result to jump to the moment.':
+      'हर कॉल को कीवर्ड या अर्थ से खोजें; उस क्षण पर जाने के लिए परिणाम पर क्लिक करें।',
+    'Index any transcripts not yet searchable': 'अभी तक खोजने योग्य न होने वाले ट्रांसक्रिप्ट इंडेक्स करें',
+    'Indexed {n}': '{n} इंडेक्स किए',
+    Reindex: 'फिर से इंडेक्स करें',
+    'e.g. refund, cancel my subscription, pricing objection…':
+      'जैसे रिफंड, मेरी सदस्यता रद्द करें, मूल्य आपत्ति…',
+    'Search query': 'खोज क्वेरी',
+    Hybrid: 'हाइब्रिड',
+    Keyword: 'कीवर्ड',
+    Semantic: 'सिमेंटिक',
+    'Search your calls': 'अपनी कॉल खोजें',
+    'Type a query above to search every transcript.':
+      'हर ट्रांसक्रिप्ट खोजने के लिए ऊपर एक क्वेरी टाइप करें।',
+    'No matches': 'कोई मेल नहीं',
+    'Try different words, or switch search mode.': 'अलग शब्द आज़माएं, या खोज मोड बदलें।',
+    // Workflows page.
+    'Automate whole business processes — trigger → conditions → actions (webhook, notify, task) → delays — with durable, observable runs.':
+      'पूरी व्यावसायिक प्रक्रियाएं ऑटोमेट करें — ट्रिगर → शर्तें → क्रियाएं (webhook, सूचना, कार्य) → देरी — टिकाऊ, अवलोकन-योग्य रन के साथ।',
+    'New workflow': 'नया वर्कफ़्लो',
+    'e.g. Post-call follow-up': 'जैसे कॉल-के-बाद फ़ॉलो-अप',
+    Create: 'बनाएं',
+    'No workflows yet': 'अभी तक कोई वर्कफ़्लो नहीं',
+    'Create one above to start automating.': 'ऑटोमेट करना शुरू करने के लिए ऊपर एक बनाएं।',
+    'on {event}': '{event} पर',
+    'no trigger yet': 'अभी तक कोई ट्रिगर नहीं',
+    Open: 'खोलें',
+    Edit: 'संपादित करें',
+    Delete: 'हटाएं',
+    // Latency page.
+    'Voice latency': 'वॉइस लेटेंसी',
+    'Per-stage p50 / p95 vs SLO over the last 24h. Lower is snappier.':
+      'पिछले 24 घंटों में प्रति-चरण p50 / p95 बनाम SLO. कम तेज़ है।',
+    'Speech-to-text': 'स्पीच-टू-टेक्स्ट',
+    'LLM (first token)': 'LLM (पहला टोकन)',
+    'TTS (first audio)': 'TTS (पहला ऑडियो)',
+    Network: 'नेटवर्क',
+    'End-to-end turn': 'एंड-टू-एंड टर्न',
+    'No latency samples yet': 'अभी तक कोई लेटेंसी सैंपल नहीं',
+    'Once calls run, per-turn latency will chart here.':
+      'कॉल चलने के बाद, प्रति-टर्न लेटेंसी यहाँ चार्ट होगी।',
+    '{n} turns': '{n} टर्न',
+    'SLO breached': 'SLO का उल्लंघन',
+    'within SLO': 'SLO के भीतर',
+    // Reputation (Number health) page.
+    'Caller reputation, STIR/SHAKEN, and warm-up — keep your numbers off "Scam Likely".':
+      'कॉलर प्रतिष्ठा, STIR/SHAKEN, और वार्म-अप — अपने नंबरों को "Scam Likely" से दूर रखें।',
+    'No numbers yet': 'अभी तक कोई नंबर नहीं',
+    'Assign a number to see its reputation.': 'इसकी प्रतिष्ठा देखने के लिए एक नंबर असाइन करें।',
+    'age {n}d': 'आयु {n} दिन',
+    'warm-up cap {n}/day': 'वार्म-अप कैप {n}/दिन',
+    resting: 'विश्राम में',
+    'Re-score': 'फिर से स्कोर करें',
+    // Payments page.
+    'Card payments taken over the phone. PCI-safe: the card is captured by a compliant provider — it never enters VocalIQ, the transcript, or the recording.':
+      'फ़ोन पर लिए गए कार्ड भुगतान। PCI-सुरक्षित: कार्ड एक अनुरूप प्रदाता द्वारा कैप्चर किया जाता है — यह कभी VocalIQ, ट्रांसक्रिप्ट या रिकॉर्डिंग में नहीं आता।',
+    'No payments yet': 'अभी तक कोई भुगतान नहीं',
+    'Add a Payment node to an agent flow to take payments on a call.':
+      'कॉल पर भुगतान लेने के लिए एजेंट फ़्लो में एक Payment नोड जोड़ें।',
+    Payment: 'भुगतान',
+    'refunded {amt}': '{amt} रिफंड किया',
+    Refund: 'रिफंड',
+    // Templates page.
+    'Start from a proven agent and customise it.': 'एक सिद्ध एजेंट से शुरू करें और उसे कस्टमाइज़ करें।',
+    'No templates available': 'कोई टेम्पलेट उपलब्ध नहीं',
+    'Use template': 'टेम्पलेट उपयोग करें',
   },
   ar: {
     'nav.agents': 'الوكلاء',

@@ -5338,3 +5338,20 @@ Four more surfaces in one pass (all independent, low-risk string-wrapping). Stat
 - **`lib/i18n/catalogs.ts`**: ~85 new Hindi keys (6 interpolated). Reuses `Agent Desk`/`Appointments`/`Squads`/`Voices` (nav), `Caller` (Analytics), `Completed`/`Cancel`/`Saving…` (earlier pages). Duplicate-key scan of the `hi` block is clean; `On` (Settings, sound) vs `on` (Squads, handoff signal) are distinct case-sensitive keys — no collision.
 
 **Checks.** biome clean (5 files; auto-formatted 2). Web typecheck/build in CI. Manual: `vq_locale=hi` renders all four pages' chrome (incl. the interpolated queue counts + specialist counts) in Hindi; enum-data chips (appt tabs, voice gender, presence data) stay canonical.
+
+---
+
+## Dashboard localization — page-level, increment 8: Search + Workflows + Latency + Reputation + Payments + Templates
+
+Batch 1 of the "grind the remaining ~65 pages" pass (per the user's "finish all no-keys work" directive). Six pages localized via `useI18n().t()` (English-as-key) + Hindi; ~50 new keys (several interpolated).
+
+- **search**: header + subtitle, reindex button (`Indexed {n}`/`Reindex`), query placeholder + aria, `Search`, the 3 modes (`Hybrid`/`Keyword`/`Semantic`), agent filter, both empty-states.
+- **workflows**: header + subtitle, `New workflow` + placeholder, `Create`, empty-state, the `on {event}`/`no trigger yet` line, `Open`/`Edit`/`Pause`/`Delete`. Status chip stays enum DATA.
+- **latency**: header + subtitle, the 5 stage labels (`STAGE_LABEL` wrapped at render), empty-state, `{n} turns`, `SLO breached`/`within SLO`. The p50/p95/ms metric line is data + units, untouched.
+- **reputation**: header + subtitle, empty-state, `age {n}d` / `warm-up cap {n}/day` / `resting`, `Re-score`. Label chips stay enum DATA.
+- **payments**: header + subtitle, empty-state, `Payment` fallback, `refunded {amt}`, `Refund`. Status chip + last4 stay data.
+- **templates**: back-link + header + subtitle, empty-state, `Use template`. The `t` map/param was renamed to `tpl` to avoid shadowing the i18n hook.
+
+- **`catalogs.ts`**: ~50 new Hindi keys. Reuses `Search`/`Workflows`/`Payments`/`Number health`/`Agents`/`Templates`/`Creating…`/`Pause`/`All`/`Agent`. Duplicate-key scan clean.
+
+**Checks.** biome clean (7 files; auto-formatted 3). Web typecheck/build in CI. Progress: **17 of ~76 dashboard pages** now Hindi (nav all-10). ~59 pages remain — continuing in batches.

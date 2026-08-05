@@ -4,6 +4,7 @@ import { Button, Card, CardContent, CardHeader, CardTitle } from '@vocaliq/ui';
 import { RefreshCw, ShieldCheck } from 'lucide-react';
 import { EmptyState, ErrorState, LoadingCard } from '../../../components/states';
 import { type NumberHealth, useNumberHealth, useRefreshReputation } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 const LABEL_COLOR: Record<string, string> = {
   clean: 'text-vq-success border-vq-success/40',
@@ -17,6 +18,7 @@ const LABEL_COLOR: Record<string, string> = {
  * carrier spam label (gated provider). Protecting answer rates is existential for outbound.
  */
 export default function ReputationPage() {
+  const { t } = useI18n();
   const health = useNumberHealth();
   const refresh = useRefreshReputation();
 
@@ -24,10 +26,10 @@ export default function ReputationPage() {
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <ShieldCheck size={20} /> Number health
+          <ShieldCheck size={20} /> {t('Number health')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          Caller reputation, STIR/SHAKEN, and warm-up — keep your numbers off "Scam Likely".
+          {t('Caller reputation, STIR/SHAKEN, and warm-up — keep your numbers off "Scam Likely".')}
         </p>
       </div>
 
@@ -36,7 +38,10 @@ export default function ReputationPage() {
       ) : health.isError ? (
         <ErrorState message={(health.error as Error).message} onRetry={() => health.refetch()} />
       ) : !health.data || health.data.length === 0 ? (
-        <EmptyState title="No numbers yet" hint="Assign a number to see its reputation." />
+        <EmptyState
+          title={t('No numbers yet')}
+          hint={t('Assign a number to see its reputation.')}
+        />
       ) : (
         <div className="flex flex-col gap-3">
           {health.data.map((n) => (
@@ -58,6 +63,7 @@ function Row({
   onRefresh,
   refreshing,
 }: { n: NumberHealth; onRefresh: () => void; refreshing: boolean }) {
+  const { t } = useI18n();
   return (
     <Card className={n.rested ? 'opacity-70' : ''}>
       <CardHeader>
@@ -72,12 +78,12 @@ function Row({
       </CardHeader>
       <CardContent className="flex items-center justify-between text-sm">
         <div className="flex flex-wrap gap-x-4 text-vq-text-lo text-xs">
-          <span>age {n.ageDays}d</span>
-          <span>warm-up cap {n.warmupCapToday}/day</span>
-          {n.rested && <span className="text-vq-danger">resting</span>}
+          <span>{t('age {n}d', { n: n.ageDays })}</span>
+          <span>{t('warm-up cap {n}/day', { n: n.warmupCapToday })}</span>
+          {n.rested && <span className="text-vq-danger">{t('resting')}</span>}
         </div>
         <Button size="sm" variant="ghost" disabled={refreshing} onClick={onRefresh}>
-          <RefreshCw size={14} /> Re-score
+          <RefreshCw size={14} /> {t('Re-score')}
         </Button>
       </CardContent>
     </Card>
