@@ -14,6 +14,7 @@ import {
   useResellerOverview,
   useSetResellerMarkup,
 } from '../../../../lib/api';
+import { useI18n } from '../../../../lib/i18n/provider';
 
 function currentPeriod(): string {
   const d = new Date();
@@ -27,6 +28,7 @@ function currentPeriod(): string {
  * platform → reseller → customer position explicit (DESIGN-SYSTEM §5e).
  */
 export default function ResellerDashboardPage() {
+  const { t } = useI18n();
   const [period, setPeriod] = useState(currentPeriod());
   const overview = useResellerOverview(period);
 
@@ -34,13 +36,13 @@ export default function ResellerDashboardPage() {
     <div className="mx-auto flex max-w-4xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <TrendingUp size={20} /> Revenue & margin
+          <TrendingUp size={20} /> {t('Revenue & margin')}
         </h1>
         <ScopeBanner />
       </div>
 
       <div className="flex items-center gap-2">
-        <span className="text-sm text-vq-text-lo">Period</span>
+        <span className="text-sm text-vq-text-lo">{t('Period')}</span>
         <Input
           type="month"
           value={period}
@@ -58,8 +60,8 @@ export default function ResellerDashboardPage() {
         />
       ) : !overview.data || overview.data.clientCount === 0 ? (
         <EmptyState
-          title="No billed usage this period"
-          hint="Once your customers run calls, revenue and margin will roll up here."
+          title={t('No billed usage this period')}
+          hint={t('Once your customers run calls, revenue and margin will roll up here.')}
         />
       ) : (
         <RevenueOverview data={overview.data} />
@@ -72,6 +74,7 @@ export default function ResellerDashboardPage() {
 
 /** Revenue + margin infographics — KPI cards, a margin gauge, a sub-tenant mix donut, and the table. */
 function RevenueOverview({ data }: { data: ResellerOverview }) {
+  const { t } = useI18n();
   const marginPct = Math.round(data.marginRate * 100);
   const mix = data.topClients.map((c) => ({
     label: c.name ?? c.childTenantId.slice(0, 8),
@@ -82,7 +85,7 @@ function RevenueOverview({ data }: { data: ResellerOverview }) {
       <Stagger className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StaggerItem>
           <StatCard
-            label="Revenue"
+            label={t('Revenue')}
             value={data.totalRevenueCents / 100}
             format={formatUsd}
             sentiment="neutral"
@@ -90,7 +93,7 @@ function RevenueOverview({ data }: { data: ResellerOverview }) {
         </StaggerItem>
         <StaggerItem>
           <StatCard
-            label="Provider cost"
+            label={t('Provider cost')}
             value={data.totalCostCents / 100}
             format={formatUsd}
             sentiment="neutral"
@@ -98,7 +101,7 @@ function RevenueOverview({ data }: { data: ResellerOverview }) {
         </StaggerItem>
         <StaggerItem>
           <StatCard
-            label="Margin"
+            label={t('Margin')}
             value={data.totalMarginCents / 100}
             format={formatUsd}
             sentiment="good"
@@ -106,7 +109,7 @@ function RevenueOverview({ data }: { data: ResellerOverview }) {
         </StaggerItem>
         <StaggerItem>
           <StatCard
-            label="Margin rate"
+            label={t('Margin rate')}
             value={marginPct}
             format={(v) => `${Math.round(v)}%`}
             sentiment={marginPct >= 30 ? 'good' : marginPct >= 15 ? 'neutral' : 'bad'}
@@ -116,18 +119,27 @@ function RevenueOverview({ data }: { data: ResellerOverview }) {
 
       <div className="grid gap-4 md:grid-cols-[auto_1fr]">
         <Card className="flex flex-col items-center gap-2 py-5">
-          <RadialGauge value={marginPct} size={132} label="Margin rate" color="var(--success)" />
-          <span className="text-vq-text-lo text-xs">Margin rate</span>
+          <RadialGauge
+            value={marginPct}
+            size={132}
+            label={t('Margin rate')}
+            color="var(--success)"
+          />
+          <span className="text-vq-text-lo text-xs">{t('Margin rate')}</span>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Sub-tenant revenue mix</CardTitle>
+            <CardTitle className="text-base">{t('Sub-tenant revenue mix')}</CardTitle>
           </CardHeader>
           <CardContent>
             {mix.length > 0 ? (
-              <DonutBreakdown data={mix} centerLabel="Revenue" format={(v) => formatUsd(v / 100)} />
+              <DonutBreakdown
+                data={mix}
+                centerLabel={t('Revenue')}
+                format={(v) => formatUsd(v / 100)}
+              />
             ) : (
-              <p className="text-sm text-vq-text-lo">No client revenue this period.</p>
+              <p className="text-sm text-vq-text-lo">{t('No client revenue this period.')}</p>
             )}
           </CardContent>
         </Card>
@@ -139,25 +151,27 @@ function RevenueOverview({ data }: { data: ResellerOverview }) {
 }
 
 function ScopeBanner() {
+  const { t } = useI18n();
   return (
     <div className="flex items-center gap-1 text-vq-text-lo text-xs">
-      <span className="rounded-vq-pill bg-vq-surface-2 px-2 py-0.5">Platform</span>
+      <span className="rounded-vq-pill bg-vq-surface-2 px-2 py-0.5">{t('Platform')}</span>
       <ChevronRight size={12} />
       <span className="rounded-vq-pill border border-vq-brand/40 px-2 py-0.5 text-vq-brand">
-        You (reseller)
+        {t('You (reseller)')}
       </span>
       <ChevronRight size={12} />
-      <span className="rounded-vq-pill bg-vq-surface-2 px-2 py-0.5">Your customers</span>
+      <span className="rounded-vq-pill bg-vq-surface-2 px-2 py-0.5">{t('Your customers')}</span>
     </div>
   );
 }
 
 function TopClients({ rows }: { rows: ResellerClientMargin[] }) {
+  const { t } = useI18n();
   const top = Math.max(1, ...rows.map((c) => c.revenueCents));
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Top clients by revenue</CardTitle>
+        <CardTitle className="text-base">{t('Top clients by revenue')}</CardTitle>
       </CardHeader>
       <CardContent>
         <Stagger className="flex flex-col divide-y divide-vq-border">
@@ -195,6 +209,7 @@ function TopClients({ rows }: { rows: ResellerClientMargin[] }) {
 }
 
 function MarkupCard() {
+  const { t } = useI18n();
   const markup = useResellerMarkup();
   const setMarkup = useSetResellerMarkup();
   const [pct, setPct] = useState<string>('');
@@ -209,13 +224,14 @@ function MarkupCard() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Percent size={16} /> Default markup
+          <Percent size={16} /> {t('Default markup')}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <p className="text-vq-text-lo text-sm">
-          Applied on top of provider cost when billing your customers' usage. A 40% markup on a $1
-          call charges the customer $1.40.
+          {t(
+            "Applied on top of provider cost when billing your customers' usage. A 40% markup on a $1 call charges the customer $1.40.",
+          )}
         </p>
         <div className="flex items-center gap-2">
           <Input
@@ -227,13 +243,13 @@ function MarkupCard() {
             onChange={(e) => setPct(e.target.value)}
             className="w-28"
           />
-          <span className="text-sm text-vq-text-lo">% markup</span>
+          <span className="text-sm text-vq-text-lo">{t('% markup')}</span>
           <Button
             size="sm"
             disabled={!valid || setMarkup.isPending}
             onClick={() => setMarkup.mutate(Math.round(parsed * 100))}
           >
-            {setMarkup.isPending ? 'Saving…' : 'Save'}
+            {setMarkup.isPending ? t('Saving…') : t('Save')}
           </Button>
         </div>
         {setMarkup.isError && (

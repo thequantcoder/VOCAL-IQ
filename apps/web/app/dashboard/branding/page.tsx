@@ -13,17 +13,19 @@ import {
   useRemoveDomain,
   useSetBranding,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 /** White-label settings (Day 52): brand the whole UI + serve on your own domain with SSL. */
 export default function BrandingPage() {
+  const { t } = useI18n();
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <Palette size={20} /> White-label
+          <Palette size={20} /> {t('White-label')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          Re-brand the entire app for your customers and serve it on your own domain.
+          {t('Re-brand the entire app for your customers and serve it on your own domain.')}
         </p>
       </div>
       <BrandingForm />
@@ -33,6 +35,7 @@ export default function BrandingPage() {
 }
 
 function BrandingForm() {
+  const { t } = useI18n();
   const branding = useBranding();
   const save = useSetBranding();
   const [name, setName] = useState('');
@@ -69,30 +72,34 @@ function BrandingForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Branding</CardTitle>
+        <CardTitle className="text-base">{t('Branding')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        <Input placeholder="Brand name" value={name} onChange={(e) => setName(e.target.value)} />
         <Input
-          placeholder="Logo URL (https://…)"
+          placeholder={t('Brand name')}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <Input
+          placeholder={t('Logo URL (https://…)')}
           value={logoUrl}
           onChange={(e) => setLogoUrl(e.target.value)}
         />
         <div className="flex flex-wrap gap-4">
-          <ColorField label="Primary" value={primaryColor} onChange={setPrimaryColor} />
-          <ColorField label="Accent" value={accentColor} onChange={setAccentColor} />
+          <ColorField label={t('Primary')} value={primaryColor} onChange={setPrimaryColor} />
+          <ColorField label={t('Accent')} value={accentColor} onChange={setAccentColor} />
         </div>
         <label className="flex items-center gap-2 text-vq-text-lo text-sm">
           <input type="checkbox" checked={hide} onChange={(e) => setHide(e.target.checked)} />
-          Hide the “VocalIQ” platform name (full white-label for your customers)
+          {t('Hide the “VocalIQ” platform name (full white-label for your customers)')}
         </label>
         {save.isError && <p className="text-vq-danger text-xs">{(save.error as Error).message}</p>}
         <div className="flex items-center gap-3">
           <Button size="sm" disabled={save.isPending} onClick={submit}>
-            {save.isPending ? 'Saving…' : 'Save branding'}
+            {save.isPending ? t('Saving…') : t('Save branding')}
           </Button>
           {save.isSuccess && (
-            <span className="text-vq-success text-xs">Saved — the app re-themes live.</span>
+            <span className="text-vq-success text-xs">{t('Saved — the app re-themes live.')}</span>
           )}
         </div>
       </CardContent>
@@ -130,6 +137,7 @@ const STATUS_LABEL: Record<DomainConfig['status'], string> = {
 };
 
 function DomainSection() {
+  const { t } = useI18n();
   const domain = useDomain();
   const provision = useProvisionDomain();
   const refresh = useRefreshDomain();
@@ -142,7 +150,7 @@ function DomainSection() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Globe size={16} /> Custom domain
+          <Globe size={16} /> {t('Custom domain')}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
@@ -154,7 +162,7 @@ function DomainSection() {
                 <span
                   className={`text-xs ${current.status === 'active' ? 'text-vq-success' : current.status === 'failed' ? 'text-vq-danger' : 'text-vq-text-lo'}`}
                 >
-                  {STATUS_LABEL[current.status]}
+                  {t(STATUS_LABEL[current.status])}
                 </span>
               </div>
               <div className="flex gap-2">
@@ -168,7 +176,7 @@ function DomainSection() {
                     size={14}
                     className={refresh.isPending ? 'animate-spin motion-reduce:animate-none' : ''}
                   />{' '}
-                  Check
+                  {t('Check')}
                 </Button>
                 <Button
                   size="sm"
@@ -181,7 +189,7 @@ function DomainSection() {
               </div>
             </div>
             <div className="rounded-vq border border-vq-border bg-vq-bg-base px-3 py-2 text-xs">
-              <p className="text-vq-text-lo">Point your domain here with a CNAME record:</p>
+              <p className="text-vq-text-lo">{t('Point your domain here with a CNAME record:')}</p>
               <code className="font-mono text-vq-text-hi">
                 {current.hostname} CNAME {current.cnameTarget}
               </code>
@@ -190,8 +198,9 @@ function DomainSection() {
         ) : (
           <>
             <p className="text-sm text-vq-text-lo">
-              Serve VocalIQ on your own hostname (e.g. <code>calls.your-brand.com</code>) with
-              automatic SSL.
+              {t(
+                'Serve VocalIQ on your own hostname (e.g. calls.your-brand.com) with automatic SSL.',
+              )}
             </p>
             <div className="flex gap-2">
               <Input
@@ -204,7 +213,7 @@ function DomainSection() {
                 disabled={!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(hostname) || provision.isPending}
                 onClick={() => provision.mutate(hostname.trim())}
               >
-                {provision.isPending ? 'Adding…' : 'Add domain'}
+                {provision.isPending ? t('Adding…') : t('Add domain')}
               </Button>
             </div>
             {provision.isError && (

@@ -5447,3 +5447,20 @@ Batch 7 — six super-admin consoles: announcements, credits & promos, fraud & a
 - **`catalogs.ts`**: ~95 new Hindi keys (6 section headers). Reuses `Kind`/`Provider`/`on`/`global`/`Edit`/`Adding…`/`Cancel`/`Saving…`/`Save` + `Governance`(nav). Duplicate-key scan clean.
 
 **Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: **43 of ~76 dashboard pages** now Hindi. ~33 remain.
+
+---
+
+## Dashboard localization — page-level, increment 15: Reseller / white-label / super-admin (6 pages)
+
+Batch 8 — the reseller + white-label + platform-owner surfaces: reseller Sub-tenants, admin Key vault, reseller Revenue-&-margin dashboard, Wallet, Branding/White-label, and the Super-admin console. All via `useI18n().t()` (English-as-key) + Hindi; ~110 new keys. `t`-shadow renames in admin/page: `TOOLS.map((t))` → `tool`, `tenants.items.map((t))` → `tn`. Pre-push `hi`-block dup-scan skipped 24 already-existing keys — notably every ToolHub label reuses a nav key (`Plans & pricing`/`Key vault`/`Key pool`/`Governance`/`Fraud & abuse`/`Announcements`/`Credits & promos`) plus `Sub-tenants`/`Wallet`/`White-label`/`Analytics`/`Primary`/`Accent`/`Active`/`All types`/`Revenue`/`Cost`/`Provider`/`Add key`/`Save`/`Cancel`/`Saving…`/`Adding…`/`on`. `biome check --write` normalized the catalog; 4 over-width JSX lines hand-wrapped.
+
+- **reseller** (Sub-tenants): header, `New customer`, empty-state, SubTenantRow (`Reactivate`/`Suspend`; status chip = DATA), CreateSubTenant form.
+- **admin/vault**: header, scope tabs (`My keys (BYOK)`/`Platform keys`), KeyRow (`Rotate`/`Revoke`; `platform`/`BYOK` chip left), AddKey (`Add platform key`/`Add BYOK key`, encrypted-key placeholder, `Encrypting…`). Provider list = DATA.
+- **reseller/dashboard**: header + ScopeBanner (`Platform`→`You (reseller)`→`Your customers`), `Period`, empty-state, the 4 StatCards + margin gauge + donut (`Sub-tenant revenue mix`), Top-clients table, MarkupCard (`Default markup`, `% markup`).
+- **wallet**: header, balance card (`Balance`, `promo`/`bonus`, `Reconciled`, `spend · 7d`), PromoCard (`Redeem`, interpolated redeem toast, GrantRow `of {amt}`/`expired`/`expires`; status chip = DATA), UsageCard (interpolated meters, anomaly note), AdvancedTierCard (`Advanced tier · {plan}`, `{a}/{b} features`, `premium`; feature labels = DATA), TopUpCard, MarginCard.
+- **branding**: header, BrandingForm (`Branding`, brand-name/logo, `Primary`/`Accent`, the hide-platform-name toggle, `Save branding`), DomainSection (STATUS_LABEL wrapped at render, `Custom domain`, `Check`, CNAME copy, `Add domain`).
+- **admin (super-admin console)**: header, VersionCard (badge labels + `Installed`/`Latest` + manifest note), ReadinessCard (`GO` falls back; `NO-GO · {n} blockers`, `{passed}/{total} checks passing`), ScaleCard (`Scale-out`, Kv labels, `on`/`off`), PlatformOverviewCards (4 StatCards incl. `Gross revenue · {period}`, `Tenant mix` donut, `{r} resellers · {c} customers`), SystemHealthCard (title; service/status = DATA), ToolHub (labels+hints, all label keys reuse nav), TenantManager (search/type filter, empty-state), TenantRow (`Impersonate`/`Reactivate`/`Suspend`, interpolated audited-grant + prompt).
+
+- **`catalogs.ts`**: ~110 new Hindi keys (6 section headers). Duplicate-key scan clean. `GO` intentionally omitted (falls back to English badge).
+
+**Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: **49 of ~76 dashboard pages** now Hindi. ~27 remain.

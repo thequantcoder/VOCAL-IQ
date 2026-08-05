@@ -20,6 +20,7 @@ import {
   useWalletDetail,
   useWalletGrants,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 /** Recent daily spend (billable) over the last `n` days, from the calls feed. */
 function spendSeries(items: CallListItem[], n = 8): number[] {
@@ -39,6 +40,7 @@ function spendSeries(items: CallListItem[], n = 8): number[] {
 
 /** Wallet + margins (Day 53): prepaid balance reconciled to the ledger + reseller margin. */
 export default function WalletPage() {
+  const { t } = useI18n();
   const wallet = useWalletDetail();
   const calls = useCalls();
   const budget = useBudget();
@@ -48,10 +50,10 @@ export default function WalletPage() {
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <Wallet size={20} /> Wallet
+          <Wallet size={20} /> {t('Wallet')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          Prepaid credits drain per minute. Every charge is an idempotent ledger entry.
+          {t('Prepaid credits drain per minute. Every charge is an idempotent ledger entry.')}
         </p>
       </div>
 
@@ -64,32 +66,32 @@ export default function WalletPage() {
           <Card className="relative isolate overflow-hidden before:absolute before:inset-0 before:-z-10 before:bg-gradient-to-br before:from-primary-500/12 before:to-accent-500/6">
             <CardContent className="flex items-center justify-between gap-4 py-4">
               <div className="flex flex-col gap-1">
-                <span className="text-vq-text-lo text-xs">Balance</span>
+                <span className="text-vq-text-lo text-xs">{t('Balance')}</span>
                 <span className="font-display font-semibold text-3xl text-vq-text-hi">
                   {formatUsd(wallet.data.balanceCents / 100)}
                 </span>
                 <span className="text-vq-text-lo text-xs">
                   {wallet.data.promoCents > 0 && (
                     <span className="text-vq-brand">
-                      +{formatUsd(wallet.data.promoCents / 100)} promo ·{' '}
+                      +{formatUsd(wallet.data.promoCents / 100)} {t('promo')} ·{' '}
                     </span>
                   )}
-                  {formatUsd(wallet.data.bonusCents / 100)} bonus · {wallet.data.currency}
+                  {formatUsd(wallet.data.bonusCents / 100)} {t('bonus')} · {wallet.data.currency}
                 </span>
               </div>
               <div className="flex flex-col items-end gap-2">
                 {wallet.data.reconciled && (
                   <span
                     className="flex items-center gap-1.5 text-vq-success text-xs"
-                    title="Cached balance ties out to the ledger sum"
+                    title={t('Cached balance ties out to the ledger sum')}
                   >
-                    <CheckCircle2 size={14} /> Reconciled
+                    <CheckCircle2 size={14} /> {t('Reconciled')}
                   </span>
                 )}
                 {spend.some((v) => v > 0) && (
                   <div className="flex flex-col items-end gap-0.5">
                     <Sparkline data={spend} color="var(--viz-5)" width={110} height={32} />
-                    <span className="text-vq-text-lo text-[0.7rem]">spend · 7d</span>
+                    <span className="text-vq-text-lo text-[0.7rem]">{t('spend · 7d')}</span>
                   </div>
                 )}
               </div>
@@ -108,6 +110,7 @@ export default function WalletPage() {
 
 /** Promo / bonus credits (PARITY-08): redeem a code + list active/spent grants with expiry. */
 function PromoCard() {
+  const { t } = useI18n();
   const grants = useWalletGrants();
   const redeem = useRedeemPromo();
   const [code, setCode] = useState('');
@@ -119,7 +122,7 @@ function PromoCard() {
     if (!c) return;
     redeem.mutate(c, {
       onSuccess: (r) => {
-        setMsg(`Added ${formatUsd(r.amountCents / 100)} in promo credits ✓`);
+        setMsg(t('Added {amt} in promo credits ✓', { amt: formatUsd(r.amountCents / 100) }));
         setCode('');
       },
     });
@@ -131,7 +134,7 @@ function PromoCard() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Gift size={16} /> Promotional credits
+          <Gift size={16} /> {t('Promotional credits')}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
@@ -141,7 +144,7 @@ function PromoCard() {
             <Input
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder="Enter a promo code"
+              placeholder={t('Enter a promo code')}
               className="flex-1"
               onKeyDown={(e) => e.key === 'Enter' && onRedeem()}
             />
@@ -151,7 +154,7 @@ function PromoCard() {
               onClick={onRedeem}
               loading={redeem.isPending}
             >
-              Redeem
+              {t('Redeem')}
             </Button>
           </div>
           {msg && <span className="text-vq-success text-xs">{msg}</span>}
@@ -159,7 +162,7 @@ function PromoCard() {
             <span className="text-vq-danger text-xs">{(redeem.error as Error).message}</span>
           )}
           <p className="text-vq-text-lo text-xs">
-            Promo credits are spent before your paid balance and never expire unless noted.
+            {t('Promo credits are spent before your paid balance and never expire unless noted.')}
           </p>
         </div>
 
@@ -176,6 +179,7 @@ function PromoCard() {
 }
 
 function GrantRow({ grant }: { grant: CreditGrant }) {
+  const { t } = useI18n();
   const expired = grant.expiresAt != null && new Date(grant.expiresAt).getTime() <= Date.now();
   const inactive = grant.revokedAt != null || expired || grant.remainingCents <= 0;
   const status = grant.revokedAt
@@ -192,12 +196,12 @@ function GrantRow({ grant }: { grant: CreditGrant }) {
         <span className={inactive ? 'text-vq-text-lo line-through' : 'text-vq-text-hi'}>
           {formatUsd(grant.remainingCents / 100)}{' '}
           <span className="text-vq-text-lo text-xs">
-            of {formatUsd(grant.amountCents / 100)} · {grant.source}
+            {t('of {amt}', { amt: formatUsd(grant.amountCents / 100) })} · {grant.source}
           </span>
         </span>
         {grant.expiresAt && (
           <span className="text-vq-text-lo text-[0.7rem]">
-            {expired ? 'expired' : 'expires'} {new Date(grant.expiresAt).toLocaleDateString()}
+            {expired ? t('expired') : t('expires')} {new Date(grant.expiresAt).toLocaleDateString()}
           </span>
         )}
       </div>
@@ -216,6 +220,7 @@ function GrantRow({ grant }: { grant: CreditGrant }) {
 
 /** Budget usage meters — today's + this month's spend vs their limits (UX-10c). */
 function UsageCard({ budget }: { budget: BudgetStatus }) {
+  const { t } = useI18n();
   // Derive the limit from spend ÷ pct (pct is the fraction of the cap used).
   const dailyMax =
     budget.dailyPct && budget.dailyPct > 0 ? budget.todaySpendUsd / budget.dailyPct : null;
@@ -227,12 +232,12 @@ function UsageCard({ budget }: { budget: BudgetStatus }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Budget usage</CardTitle>
+        <CardTitle className="text-base">{t('Budget usage')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {dailyMax != null && (
           <Meter
-            label={`Today · ${formatUsd(budget.todaySpendUsd)}`}
+            label={t('Today · {v}', { v: formatUsd(budget.todaySpendUsd) })}
             value={Math.round(budget.todaySpendUsd * 100)}
             max={Math.round(dailyMax * 100)}
             showValue={false}
@@ -240,14 +245,16 @@ function UsageCard({ budget }: { budget: BudgetStatus }) {
         )}
         {monthlyMax != null && (
           <Meter
-            label={`This month · ${formatUsd(budget.monthSpendUsd)}`}
+            label={t('This month · {v}', { v: formatUsd(budget.monthSpendUsd) })}
             value={Math.round(budget.monthSpendUsd * 100)}
             max={Math.round(monthlyMax * 100)}
             showValue={false}
           />
         )}
         {budget.anomaly && (
-          <p className="text-vq-warn text-xs">Spend anomaly detected — review recent activity.</p>
+          <p className="text-vq-warn text-xs">
+            {t('Spend anomaly detected — review recent activity.')}
+          </p>
         )}
       </CardContent>
     </Card>
@@ -256,6 +263,7 @@ function UsageCard({ budget }: { budget: BudgetStatus }) {
 
 /** The advanced-tier (Phase 6) feature entitlements for the current plan — Day 94. */
 function AdvancedTierCard() {
+  const { t } = useI18n();
   const sub = useSubscription();
   if (!sub.data) return null;
   const { planName, advancedFeatures } = sub.data.entitlements;
@@ -266,9 +274,9 @@ function AdvancedTierCard() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Sparkles size={16} /> Advanced tier · {planName}
+          <Sparkles size={16} /> {t('Advanced tier · {plan}', { plan: planName })}
           <span className="text-vq-text-lo text-xs">
-            {included}/{keys.length} features
+            {t('{a}/{b} features', { a: included, b: keys.length })}
           </span>
         </CardTitle>
       </CardHeader>
@@ -291,7 +299,7 @@ function AdvancedTierCard() {
               <span className="truncate">{meta?.label ?? k}</span>
               {meta?.heavy && (
                 <span className="ml-auto shrink-0 rounded-vq-pill border border-vq-border px-1.5 text-[10px] text-vq-text-lo">
-                  premium
+                  {t('premium')}
                 </span>
               )}
             </div>
@@ -303,6 +311,7 @@ function AdvancedTierCard() {
 }
 
 function TopUpCard() {
+  const { t } = useI18n();
   const topUp = useTopUp();
   const [dollars, setDollars] = useState(20);
 
@@ -316,7 +325,7 @@ function TopUpCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Add credits</CardTitle>
+        <CardTitle className="text-base">{t('Add credits')}</CardTitle>
       </CardHeader>
       <CardContent className="flex items-center gap-2">
         <span className="text-vq-text-lo">$</span>
@@ -328,7 +337,7 @@ function TopUpCard() {
           className="w-28"
         />
         <Button size="sm" disabled={topUp.isPending || dollars <= 0} onClick={add}>
-          <Plus size={14} /> {topUp.isPending ? 'Adding…' : 'Top up'}
+          <Plus size={14} /> {topUp.isPending ? t('Adding…') : t('Top up')}
         </Button>
         {topUp.isError && (
           <span className="text-vq-danger text-xs">{(topUp.error as Error).message}</span>
@@ -344,6 +353,7 @@ function currentPeriod(): string {
 }
 
 function MarginCard() {
+  const { t } = useI18n();
   const period = currentPeriod();
   const margin = useMarginReconcile(period);
   if (!margin.data || (margin.data.revenueCents === 0 && margin.data.costCents === 0)) return null;
@@ -351,12 +361,12 @@ function MarginCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Reseller margin · {period}</CardTitle>
+        <CardTitle className="text-base">{t('Reseller margin · {period}', { period })}</CardTitle>
       </CardHeader>
       <CardContent className="flex justify-between text-sm">
-        <Stat label="Revenue" cents={margin.data.revenueCents} />
-        <Stat label="Cost" cents={margin.data.costCents} />
-        <Stat label="Margin" cents={margin.data.marginCents} accent />
+        <Stat label={t('Revenue')} cents={margin.data.revenueCents} />
+        <Stat label={t('Cost')} cents={margin.data.costCents} />
+        <Stat label={t('Margin')} cents={margin.data.marginCents} accent />
       </CardContent>
     </Card>
   );
