@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
 import { EmptyState, ErrorState, LoadingCard } from '../../../components/states';
 import { type LeadListItem, useLeads, useMoveLeadStage } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 const STAGES = ['NEW', 'CONTACTED', 'QUALIFIED', 'BOOKED', 'LOST'] as const;
 
@@ -25,6 +26,7 @@ export default function LeadsPage() {
 }
 
 function LeadsWorkspace() {
+  const { t } = useI18n();
   const params = useSearchParams();
   const router = useRouter();
   const view = params.get('view') === 'table' ? 'table' : 'kanban';
@@ -42,9 +44,9 @@ function LeadsWorkspace() {
     <div className="mx-auto flex max-w-6xl flex-col gap-6">
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
-          <h1 className="font-display font-semibold text-xl text-vq-text-hi">Leads</h1>
+          <h1 className="font-display font-semibold text-xl text-vq-text-hi">{t('Leads')}</h1>
           <p className="text-sm text-vq-text-lo">
-            Auto-scored pipeline from your calls. Drag cards to move stages.
+            {t('Auto-scored pipeline from your calls. Drag cards to move stages.')}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -53,10 +55,10 @@ function LeadsWorkspace() {
             value={statusFilter}
             onChange={(e) => setParam('status', e.target.value)}
           >
-            <option value="">All temperatures</option>
-            <option value="HOT">Hot</option>
-            <option value="WARM">Warm</option>
-            <option value="COLD">Cold</option>
+            <option value="">{t('All temperatures')}</option>
+            <option value="HOT">{t('Hot')}</option>
+            <option value="WARM">{t('Warm')}</option>
+            <option value="COLD">{t('Cold')}</option>
           </select>
           <button
             type="button"
@@ -64,7 +66,7 @@ function LeadsWorkspace() {
             className="flex items-center gap-1 rounded-vq border border-vq-border px-3 py-1.5 text-sm text-vq-text-hi hover:border-vq-violet/60"
           >
             {view === 'kanban' ? <Table2 size={15} /> : <KanbanSquare size={15} />}
-            {view === 'kanban' ? 'Table' : 'Kanban'}
+            {view === 'kanban' ? t('Table') : t('Kanban')}
           </button>
         </div>
       </div>
@@ -76,8 +78,8 @@ function LeadsWorkspace() {
       ) : !leads.data || leads.data.length === 0 ? (
         <EmptyState
           illustration="no-leads"
-          title="No leads yet"
-          hint="Leads appear here after calls are scored."
+          title={t('No leads yet')}
+          hint={t('Leads appear here after calls are scored.')}
         />
       ) : view === 'kanban' ? (
         <Kanban leads={leads.data} />
@@ -98,6 +100,7 @@ function ScoreBadge({ lead }: { lead: LeadListItem }) {
 }
 
 function Kanban({ leads }: { leads: LeadListItem[] }) {
+  const { t } = useI18n();
   const move = useMoveLeadStage();
   const [dragId, setDragId] = useState<string | null>(null);
 
@@ -127,7 +130,7 @@ function Kanban({ leads }: { leads: LeadListItem[] }) {
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="truncate font-medium text-sm text-vq-text-hi">
-                    {lead.contactName ?? lead.phone ?? 'Unknown'}
+                    {lead.contactName ?? lead.phone ?? t('Unknown')}
                   </span>
                   <ScoreBadge lead={lead} />
                 </div>
@@ -150,18 +153,19 @@ function Kanban({ leads }: { leads: LeadListItem[] }) {
 }
 
 function LeadTable({ leads }: { leads: LeadListItem[] }) {
+  const { t } = useI18n();
   return (
     <Card>
       <CardContent className="p-0">
         <table className="w-full text-sm">
-          <caption className="sr-only">Leads</caption>
+          <caption className="sr-only">{t('Leads')}</caption>
           <thead>
             <tr className="border-vq-border border-b text-left text-vq-text-lo">
-              <th className="px-4 py-3 font-medium">Contact</th>
-              <th className="px-4 py-3 font-medium">Phone</th>
-              <th className="px-4 py-3 font-medium">Stage</th>
-              <th className="px-4 py-3 font-medium">Score</th>
-              <th className="px-4 py-3 font-medium">Tags</th>
+              <th className="px-4 py-3 font-medium">{t('Contact')}</th>
+              <th className="px-4 py-3 font-medium">{t('Phone')}</th>
+              <th className="px-4 py-3 font-medium">{t('Stage')}</th>
+              <th className="px-4 py-3 font-medium">{t('Score')}</th>
+              <th className="px-4 py-3 font-medium">{t('Tags')}</th>
             </tr>
           </thead>
           <tbody>

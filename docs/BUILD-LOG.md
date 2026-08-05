@@ -5277,3 +5277,14 @@ Continues the per-page rollout (#214) onto the two next-highest-traffic pages. S
 **Verified locally** (in the non-iCloud `/tmp` mirror where the toolchain runs): `pnpm --filter @vocaliq/ui test` → **8 passed**. biome clean.
 
 **`apps/mobile` tests — deliberately deferred (honest note).** The mobile shell's only logic (`lib/api.ts`) imports `expo-secure-store` + `expo-constants` (native modules), so unit-testing it needs a React-Native/Expo test harness (jest-expo or vitest with RN module mocks) — a disproportionate infra addition (new runner + native mocks + lockfile churn) for a thin client. Tracked as a standalone follow-up rather than bolted on fragile-ly; the API contract it uses is already covered by the api's integration tests.
+
+---
+
+## Dashboard localization — page-level, increment 3: the Leads page
+
+Continues the per-page rollout (#214/#215). The lead-workspace page (table + kanban views) now renders its static UI copy via `useI18n().t()` (English-as-key) + full Hindi.
+
+- **`app/dashboard/leads/page.tsx`**: header + subtitle, the temperature filter (`All temperatures` / `Hot` / `Warm` / `Cold`), the `Table`/`Kanban` view toggle, the empty-state, the kanban card `Unknown`-name fallback, and the table caption + headers (`Contact`/`Phone`/`Stage`/`Score`/`Tags`). Reuses `Leads` (nav) + `Phone` (Calls page) already in the catalog.
+- **`lib/i18n/catalogs.ts`**: ~15 new Hindi keys. As before, the lead **status/stage/score** values shown in badges are enum DATA (HOT/NEW/QUALIFIED…), left untranslated this pass — consistent with how call direction/channel were handled; a separate enum-display-mapping concern.
+
+**Checks.** biome clean (2 files). Web typecheck/build in CI. Manual: `vq_locale=hi` renders the Leads chrome (filters, toggle, table headers, empty-state) in Hindi; other locales fall back to English.
