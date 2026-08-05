@@ -5372,3 +5372,17 @@ Batch 2 of the remaining-pages grind. Six pages via `useI18n().t()` (English-as-
 - **`catalogs.ts`**: ~85 new Hindi keys. Reuses `Callbacks`/`Phone numbers`/`SIP trunks`/`Support`/`Calls`/`Cancel`/`Delete`/`Pause`/`Creating…`/`No numbers yet`. Duplicate-key scan clean.
 
 **Checks.** biome clean (7 files; auto-formatted 2). Web typecheck/build in CI. Progress: **23 of ~76 dashboard pages** now Hindi. ~53 remain.
+
+---
+
+## Dashboard localization — page-level, increment 10: Custom models + Conversation intelligence + QA scoring
+
+Batch 3 of the grind — three larger Build/Analyze pages via `useI18n().t()` (English-as-key) + Hindi; ~65 new keys (several interpolated). `t` shadow renamed in intel (`SignalType` map/param `t` → `sig`).
+
+- **models**: header + subtitle, the create-model form (name/provider/base-model + arias + placeholders, the brand-prompt textarea, the fine-tune + consent checkboxes, `Authorised by`, `Create model`), empty-state, and the row (`fine-tuned`, `consent by {name}`, delete aria). Provider list + status chips = enum DATA.
+- **intel**: header + subtitle, `Check alerts` + the **interpolated** `{n} alert(s) fired: {list}` / `No thresholds breached.`, the 5 `TYPE_META` signal labels (wrapped at render), the trends + `Competitor watchlist` (add/remove with interpolated `Remove {name}`), and the Signal explorer (`Filter by type`, `All types`, empty-states).
+- **qa**: header + subtitle, `New rubric`, empty-state, CoachingView (`Coaching — average scores`, interpolated `/100 · {n} calls`), RubricRow (interpolated `{n} criteria · sampling {p}%` + `avg {score}/100 ({count})`, `Active`), and CreateRubric (`Rubric name…`, `Sampling rate: {p}% of calls`, criteria fields, `Add criterion`, `Create rubric`).
+
+- **`catalogs.ts`**: ~65 new Hindi keys. Reuses `Custom models`/`QA scoring`/`Creating…`/`Cancel`/`Delete`. Duplicate-key scan clean (`Active` vs `active`, `Provider` are distinct).
+
+**Checks.** biome clean (4 files, zero fixes). Web typecheck/build in CI. Progress: **26 of ~76 dashboard pages** now Hindi. ~50 remain.
