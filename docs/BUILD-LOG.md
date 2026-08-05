@@ -5310,3 +5310,16 @@ Continues the per-page rollout onto the campaign manager (create / import / dial
 - **`lib/i18n/catalogs.ts`**: ~36 new Hindi keys (three interpolated). **English-as-key collision handled:** the campaign play-button `Run` reuses the nav-group `Run` (`संचालन`) — the same English word can't hold two senses (nav section vs. button); documented inline. A duplicate-key scan of the `hi` block confirms no other collisions.
 
 **Checks.** biome clean (2 files; caught + fixed the initial `Run` duplicate). Web typecheck/build in CI. Manual: `vq_locale=hi` renders the Campaigns chrome — incl. the dialer modes, the technical dialer copy, and the interpolated retry/import lines — in Hindi.
+
+---
+
+## Dashboard localization — page-level, increment 6: Settings › Appearance
+
+Continues the per-page rollout onto the theme-customization page (preset gallery + controls + custom colours + live preview). Static UI copy via `useI18n().t()` (English-as-key) + full Hindi.
+
+- **`app/dashboard/settings/appearance/page.tsx`**: header + subtitle + `Reset`; the `Theme` gallery + the "you've customised colours" note; the `Controls` card labels (`Mode`/`Corners`/`Density`/`Motion`/`Font`/`Sound effects`) + their aria-labels (`Colour mode`/`Corner radius`/`Motion level`) + the `On`/`Off` sound state; the `Custom colours` card (`optional` badge, the contrast-hint, the `Primary`/`Accent` color fields + their **interpolated** aria-labels `{label} colour` / `{label} hex`); and the `Live preview` (`Calls today`, `Success` gauge, `Primary`/`Secondary` demo buttons, `Preview` waveform). Enum-DATA control options (`light`/`dark`/`system`, `sm`/`md`/`lg`, `full`/`reduced`/`off`, …) come from `cap()` over shared enums — left untouched, consistent with the other pages; the lowercase badge-variant demo labels (`primary`/`accent`/`success`/`warn`) are design-token identifiers, also untouched.
+- **`lib/i18n/catalogs.ts`**: ~30 new Hindi keys (two interpolated aria templates). Reuses `Appearance` (nav) + `Calls today` (Analytics). Duplicate-key scan of the `hi` block confirms no collisions.
+
+**Checks.** biome clean (2 files). Web typecheck/build in CI. Manual: `vq_locale=hi` renders the Appearance chrome (theme/controls/custom-colours/live-preview) in Hindi; the enum control chips stay in their canonical form.
+
+**Milestone:** with this, the primary Build/Run/Analyze/Grow/Settings surfaces (Overview, Agents, Calls, Leads, Analytics, Campaigns, Appearance) are Hindi-localized on top of the all-10-locale nav. Remaining pages continue via the same `t()` pattern; regional (non-Hindi) page copy is the documented catalog-only follow-up.
