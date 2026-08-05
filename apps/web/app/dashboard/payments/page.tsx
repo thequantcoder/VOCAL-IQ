@@ -5,6 +5,7 @@ import { Button, Card, CardContent } from '@vocaliq/ui';
 import { CreditCard } from 'lucide-react';
 import { EmptyState, ErrorState, LoadingCard } from '../../../components/states';
 import { type Payment, usePayments, useRefundPayment } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 const STATUS_COLOR: Record<string, string> = {
   succeeded: 'text-vq-success border-vq-success/40',
@@ -21,6 +22,7 @@ const STATUS_COLOR: Record<string, string> = {
  * last four digits are ever shown here.
  */
 export default function PaymentsPage() {
+  const { t } = useI18n();
   const payments = usePayments();
   const refund = useRefundPayment();
 
@@ -28,11 +30,12 @@ export default function PaymentsPage() {
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <CreditCard size={20} /> Payments
+          <CreditCard size={20} /> {t('Payments')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          Card payments taken over the phone. PCI-safe: the card is captured by a compliant provider
-          — it never enters VocalIQ, the transcript, or the recording.
+          {t(
+            'Card payments taken over the phone. PCI-safe: the card is captured by a compliant provider — it never enters VocalIQ, the transcript, or the recording.',
+          )}
         </p>
       </div>
 
@@ -45,8 +48,8 @@ export default function PaymentsPage() {
         />
       ) : !payments.data || payments.data.length === 0 ? (
         <EmptyState
-          title="No payments yet"
-          hint="Add a Payment node to an agent flow to take payments on a call."
+          title={t('No payments yet')}
+          hint={t('Add a Payment node to an agent flow to take payments on a call.')}
         />
       ) : (
         <div className="flex flex-col gap-2">
@@ -69,6 +72,7 @@ function PaymentRow({
   onRefund,
   refunding,
 }: { p: Payment; onRefund: () => void; refunding: boolean }) {
+  const { t } = useI18n();
   const refundable =
     (p.status === 'succeeded' || p.status === 'partially_refunded') &&
     p.refundedCents < p.amountCents;
@@ -90,14 +94,15 @@ function PaymentRow({
             )}
           </span>
           <span className="text-vq-text-lo text-xs">
-            {p.description || 'Payment'}
-            {p.refundedCents > 0 && ` · refunded ${formatAmount(p.refundedCents, p.currency)}`}
+            {p.description || t('Payment')}
+            {p.refundedCents > 0 &&
+              ` · ${t('refunded {amt}', { amt: formatAmount(p.refundedCents, p.currency) })}`}
             {p.providerRef && ` · ${p.providerRef}`}
           </span>
         </div>
         {refundable && (
           <Button size="sm" variant="ghost" disabled={refunding} onClick={onRefund}>
-            Refund
+            {t('Refund')}
           </Button>
         )}
       </CardContent>

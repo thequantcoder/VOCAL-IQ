@@ -11,6 +11,7 @@ import {
   useSetWorkflowStatus,
   useWorkflows,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 const STATUS_COLOR: Record<string, string> = {
   draft: 'text-vq-text-lo border-vq-border',
@@ -23,6 +24,7 @@ const STATUS_COLOR: Record<string, string> = {
  * you wire trigger → conditions → actions → delays across systems. Active workflows fire on their event.
  */
 export default function WorkflowsPage() {
+  const { t } = useI18n();
   const workflows = useWorkflows();
   const create = useCreateWorkflow();
   const [name, setName] = useState('');
@@ -37,23 +39,24 @@ export default function WorkflowsPage() {
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <Workflow size={20} /> Workflows
+          <Workflow size={20} /> {t('Workflows')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          Automate whole business processes — trigger → conditions → actions (webhook, notify, task)
-          → delays — with durable, observable runs.
+          {t(
+            'Automate whole business processes — trigger → conditions → actions (webhook, notify, task) → delays — with durable, observable runs.',
+          )}
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">New workflow</CardTitle>
+          <CardTitle className="text-base">{t('New workflow')}</CardTitle>
         </CardHeader>
         <CardContent className="flex items-center gap-2">
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Post-call follow-up"
+            placeholder={t('e.g. Post-call follow-up')}
             onKeyDown={(e) => e.key === 'Enter' && submit()}
           />
           <Button
@@ -61,7 +64,7 @@ export default function WorkflowsPage() {
             disabled={name.trim().length === 0 || create.isPending}
             onClick={submit}
           >
-            {create.isPending ? 'Creating…' : 'Create'}
+            {create.isPending ? t('Creating…') : t('Create')}
           </Button>
         </CardContent>
       </Card>
@@ -74,7 +77,10 @@ export default function WorkflowsPage() {
           onRetry={() => workflows.refetch()}
         />
       ) : !workflows.data || workflows.data.length === 0 ? (
-        <EmptyState title="No workflows yet" hint="Create one above to start automating." />
+        <EmptyState
+          title={t('No workflows yet')}
+          hint={t('Create one above to start automating.')}
+        />
       ) : (
         <div className="flex flex-col gap-2">
           {workflows.data.map((wf) => (
@@ -103,6 +109,7 @@ function WorkflowRow({
   status: string;
   event: string | null;
 }) {
+  const { t } = useI18n();
   const setStatus = useSetWorkflowStatus(id);
   const del = useDeleteWorkflow();
   return (
@@ -116,7 +123,7 @@ function WorkflowRow({
             <span className={`rounded-vq-pill border px-2 py-0.5 ${STATUS_COLOR[status] ?? ''}`}>
               {status}
             </span>
-            {event ? `on ${event}` : 'no trigger yet'}
+            {event ? t('on {event}', { event }) : t('no trigger yet')}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -124,7 +131,7 @@ function WorkflowRow({
             href={`/dashboard/workflows/${id}`}
             className="rounded-vq border border-vq-border px-3 py-1.5 text-sm text-vq-text-hi hover:bg-vq-bg-base"
           >
-            {status === 'active' ? 'Open' : 'Edit'}
+            {status === 'active' ? t('Open') : t('Edit')}
           </Link>
           {status === 'active' && (
             <Button
@@ -133,11 +140,11 @@ function WorkflowRow({
               disabled={setStatus.isPending}
               onClick={() => setStatus.mutate('paused')}
             >
-              Pause
+              {t('Pause')}
             </Button>
           )}
           <Button size="sm" variant="ghost" disabled={del.isPending} onClick={() => del.mutate(id)}>
-            Delete
+            {t('Delete')}
           </Button>
         </div>
       </CardContent>

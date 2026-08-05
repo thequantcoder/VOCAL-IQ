@@ -11,6 +11,7 @@ import {
   useReindexTranscripts,
   useTranscriptSearch,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 const MODES: { value: SearchMode; label: string }[] = [
   { value: 'hybrid', label: 'Hybrid' },
@@ -20,6 +21,7 @@ const MODES: { value: SearchMode; label: string }[] = [
 
 /** Transcript search (Day 42): keyword (FTS) + semantic (pgvector) with jump-to-moment. */
 export default function SearchPage() {
+  const { t } = useI18n();
   const [draft, setDraft] = useState('');
   const [query, setQuery] = useState('');
   const [mode, setMode] = useState<SearchMode>('hybrid');
@@ -43,10 +45,10 @@ export default function SearchPage() {
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-            <Search size={20} /> Transcript search
+            <Search size={20} /> {t('Transcript search')}
           </h1>
           <p className="text-sm text-vq-text-lo">
-            Search every call by keyword or meaning; click a result to jump to the moment.
+            {t('Search every call by keyword or meaning; click a result to jump to the moment.')}
           </p>
         </div>
         <Button
@@ -54,13 +56,13 @@ export default function SearchPage() {
           variant="ghost"
           disabled={reindex.isPending}
           onClick={() => reindex.mutate()}
-          title="Index any transcripts not yet searchable"
+          title={t('Index any transcripts not yet searchable')}
         >
           <RefreshCw
             size={14}
             className={reindex.isPending ? 'animate-spin motion-reduce:animate-none' : ''}
           />
-          {reindex.data ? `Indexed ${reindex.data.indexed}` : 'Reindex'}
+          {reindex.data ? t('Indexed {n}', { n: reindex.data.indexed }) : t('Reindex')}
         </Button>
       </div>
 
@@ -69,11 +71,11 @@ export default function SearchPage() {
           <Input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="e.g. refund, cancel my subscription, pricing objection…"
-            aria-label="Search query"
+            placeholder={t('e.g. refund, cancel my subscription, pricing objection…')}
+            aria-label={t('Search query')}
           />
           <Button type="submit" disabled={!draft.trim()}>
-            <Search size={16} /> Search
+            <Search size={16} /> {t('Search')}
           </Button>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -87,19 +89,19 @@ export default function SearchPage() {
                   mode === m.value ? 'bg-vq-violet text-white' : 'text-vq-text-lo'
                 }`}
               >
-                {m.label}
+                {t(m.label)}
               </button>
             ))}
           </div>
           <label htmlFor="search-agent" className="flex items-center gap-2 text-vq-text-lo text-xs">
-            Agent
+            {t('Agent')}
             <select
               id="search-agent"
               value={agentId}
               onChange={(e) => setAgentId(e.target.value)}
               className="rounded-vq border border-vq-border bg-transparent px-2 py-1 text-sm text-vq-text-hi"
             >
-              <option value="">All</option>
+              <option value="">{t('All')}</option>
               {(agents.data ?? []).map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}
@@ -112,15 +114,18 @@ export default function SearchPage() {
 
       {!query ? (
         <EmptyState
-          title="Search your calls"
-          hint="Type a query above to search every transcript."
+          title={t('Search your calls')}
+          hint={t('Type a query above to search every transcript.')}
         />
       ) : results.isLoading ? (
         <LoadingCard rows={4} />
       ) : results.isError ? (
         <ErrorState message={(results.error as Error).message} onRetry={() => results.refetch()} />
       ) : !results.data || results.data.length === 0 ? (
-        <EmptyState title="No matches" hint="Try different words, or switch search mode." />
+        <EmptyState
+          title={t('No matches')}
+          hint={t('Try different words, or switch search mode.')}
+        />
       ) : (
         <div className="flex flex-col gap-2">
           {results.data.map((hit) => (

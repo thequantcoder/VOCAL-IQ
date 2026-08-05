@@ -8,18 +8,20 @@ import { useState } from 'react';
 import { EmptyState, ErrorState, LoadingCard } from '../../../../components/states';
 import { type AgentTemplateDto, useCloneTemplate } from '../../../../lib/api';
 import { useTemplates } from '../../../../lib/api';
+import { useI18n } from '../../../../lib/i18n/provider';
 
 /** Templates marketplace (Day 24) — clone a starter agent in one tap. */
 export default function TemplatesPage() {
+  const { t } = useI18n();
   const templates = useTemplates();
   const clone = useCloneTemplate();
   const router = useRouter();
   const [cloningId, setCloningId] = useState<string | null>(null);
 
-  async function useTemplate(t: AgentTemplateDto) {
-    setCloningId(t.id);
+  async function useTemplate(tpl: AgentTemplateDto) {
+    setCloningId(tpl.id);
     try {
-      const agent = await clone.mutateAsync({ id: t.id });
+      const agent = await clone.mutateAsync({ id: tpl.id });
       router.push(`/dashboard/agents/${agent.agentId}/builder`);
     } finally {
       setCloningId(null);
@@ -33,10 +35,12 @@ export default function TemplatesPage() {
           href="/dashboard/agents"
           className="flex w-fit items-center gap-1 text-sm text-vq-text-lo hover:text-vq-text-hi"
         >
-          <ArrowLeft size={16} /> Agents
+          <ArrowLeft size={16} /> {t('Agents')}
         </Link>
-        <h1 className="font-display font-semibold text-xl text-vq-text-hi">Templates</h1>
-        <p className="text-sm text-vq-text-lo">Start from a proven agent and customise it.</p>
+        <h1 className="font-display font-semibold text-xl text-vq-text-hi">{t('Templates')}</h1>
+        <p className="text-sm text-vq-text-lo">
+          {t('Start from a proven agent and customise it.')}
+        </p>
       </div>
 
       {templates.isLoading ? (
@@ -47,32 +51,32 @@ export default function TemplatesPage() {
           onRetry={() => templates.refetch()}
         />
       ) : !templates.data || templates.data.length === 0 ? (
-        <EmptyState title="No templates available" />
+        <EmptyState title={t('No templates available')} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
-          {templates.data.map((t) => (
-            <Card key={t.id} className="flex flex-col">
+          {templates.data.map((tpl) => (
+            <Card key={tpl.id} className="flex flex-col">
               <CardHeader>
                 <span className="w-fit rounded-vq-pill border border-vq-border px-2 py-0.5 text-[11px] text-vq-text-lo uppercase tracking-wide">
-                  {t.category}
+                  {tpl.category}
                 </span>
-                <CardTitle className="mt-1">{t.name}</CardTitle>
+                <CardTitle className="mt-1">{tpl.name}</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-1 flex-col justify-between gap-4">
                 <div className="flex flex-col gap-2">
-                  <p className="text-sm text-vq-text-lo">{t.description}</p>
+                  <p className="text-sm text-vq-text-lo">{tpl.description}</p>
                   <p className="text-vq-text-lo text-xs">
-                    {t.type.toLowerCase()} · {t.languages.join(', ')} · {t.persona.tone}
+                    {tpl.type.toLowerCase()} · {tpl.languages.join(', ')} · {tpl.persona.tone}
                   </p>
                 </div>
                 <Button
                   variant="primary"
                   size="sm"
                   className="w-fit"
-                  disabled={cloningId === t.id}
-                  onClick={() => useTemplate(t)}
+                  disabled={cloningId === tpl.id}
+                  onClick={() => useTemplate(tpl)}
                 >
-                  <Sparkles size={14} /> {cloningId === t.id ? 'Creating…' : 'Use template'}
+                  <Sparkles size={14} /> {cloningId === tpl.id ? t('Creating…') : t('Use template')}
                 </Button>
               </CardContent>
             </Card>
