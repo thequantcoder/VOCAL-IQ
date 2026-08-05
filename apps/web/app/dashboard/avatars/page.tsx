@@ -12,12 +12,14 @@ import {
   useEndAvatarSession,
   useStartAvatarSession,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 /**
  * Digital-human / video avatars (Day 92). Curate a stock/custom avatar catalogue (custom needs likeness
  * consent) and start a session — video when the plan entitles it, else an automatic voice fallback.
  */
 export default function AvatarsPage() {
+  const { t } = useI18n();
   const avatars = useAvatars();
   const create = useCreateAvatar();
   const del = useDeleteAvatar();
@@ -50,41 +52,42 @@ export default function AvatarsPage() {
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <UserSquare2 size={20} /> Video avatars
+          <UserSquare2 size={20} /> {t('Video avatars')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          A photoreal digital human that speaks your agent's responses on video — for reception,
-          kiosks, and premium support. Video is plan-gated; sessions fall back to voice
-          automatically.
+          {t(
+            "A photoreal digital human that speaks your agent's responses on video — for reception, kiosks, and premium support. Video is plan-gated; sessions fall back to voice automatically.",
+          )}
         </p>
       </div>
 
       <p className="flex items-start gap-2 rounded-vq border border-vq-border bg-vq-surface/40 p-3 text-vq-text-lo text-xs">
-        <Info size={14} className="mt-0.5 shrink-0" /> Custom avatars use a real person's likeness
-        and require explicit consent to add. Video minutes are billed by the second on eligible
-        plans.
+        <Info size={14} className="mt-0.5 shrink-0" />{' '}
+        {t(
+          "Custom avatars use a real person's likeness and require explicit consent to add. Video minutes are billed by the second on eligible plans.",
+        )}
       </p>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Add an avatar</CardTitle>
+          <CardTitle className="text-base">{t('Add an avatar')}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label htmlFor="av-name" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-              Name
+              {t('Name')}
               <Input
                 id="av-name"
-                placeholder="Ava (reception)"
+                placeholder={t('Ava (reception)')}
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
             </label>
             <label htmlFor="av-pid" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-              Provider avatar id
+              {t('Provider avatar id')}
               <Input
                 id="av-pid"
-                placeholder="provider's avatar/actor id"
+                placeholder={t("provider's avatar/actor id")}
                 value={form.providerAvatarId}
                 onChange={(e) => setForm({ ...form, providerAvatarId: e.target.value })}
               />
@@ -92,15 +95,15 @@ export default function AvatarsPage() {
           </div>
           <div className="flex flex-wrap items-center gap-4">
             <label htmlFor="av-kind" className="flex items-center gap-2 text-vq-text-lo text-xs">
-              Kind
+              {t('Kind')}
               <select
                 id="av-kind"
                 className="rounded-vq border border-vq-border bg-transparent px-2 py-1.5 text-sm text-vq-text-hi"
                 value={form.kind}
                 onChange={(e) => setForm({ ...form, kind: e.target.value })}
               >
-                <option value="stock">Stock</option>
-                <option value="custom">Custom (real likeness)</option>
+                <option value="stock">{t('Stock')}</option>
+                <option value="custom">{t('Custom (real likeness)')}</option>
               </select>
             </label>
             {form.kind === 'custom' && (
@@ -110,7 +113,7 @@ export default function AvatarsPage() {
                   checked={form.consent}
                   onChange={(e) => setForm({ ...form, consent: e.target.checked })}
                 />
-                I have this person's consent to use their likeness
+                {t("I have this person's consent to use their likeness")}
               </label>
             )}
           </div>
@@ -120,7 +123,7 @@ export default function AvatarsPage() {
               disabled={create.isPending || !form.name.trim() || !form.providerAvatarId.trim()}
               onClick={add}
             >
-              {create.isPending ? 'Adding…' : 'Add avatar'}
+              {create.isPending ? t('Adding…') : t('Add avatar')}
             </Button>
             {create.isError && (
               <span className="text-vq-danger text-xs">{(create.error as Error).message}</span>
@@ -130,11 +133,11 @@ export default function AvatarsPage() {
       </Card>
 
       <div className="flex flex-col gap-2">
-        <h2 className="font-medium text-sm text-vq-text-hi">Catalogue</h2>
+        <h2 className="font-medium text-sm text-vq-text-hi">{t('Catalogue')}</h2>
         {avatars.isLoading ? (
           <LoadingCard rows={2} />
         ) : !avatars.data || avatars.data.length === 0 ? (
-          <EmptyState title="No avatars yet" hint="Add a stock or custom avatar above." />
+          <EmptyState title={t('No avatars yet')} hint={t('Add a stock or custom avatar above.')} />
         ) : (
           <ul className="flex flex-col gap-2">
             {avatars.data.map((a) => (
@@ -144,7 +147,7 @@ export default function AvatarsPage() {
                     <span className="font-medium text-sm text-vq-text-hi">{a.name}</span>
                     <span className="text-vq-text-lo text-xs">
                       {a.kind}
-                      {a.likenessConsentAt ? ' · consent on file' : ''} · {a.provider}
+                      {a.likenessConsentAt ? ` · ${t('consent on file')}` : ''} · {a.provider}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -159,7 +162,7 @@ export default function AvatarsPage() {
                         )
                       }
                     >
-                      <Video size={14} /> Start
+                      <Video size={14} /> {t('Start')}
                     </Button>
                     <Button
                       size="sm"
@@ -181,18 +184,20 @@ export default function AvatarsPage() {
         <Card className={session.mode === 'video' ? 'border-vq-accent/50' : 'border-vq-warning/40'}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <Video size={16} /> Session · {session.mode}
+              <Video size={16} /> {t('Session · {mode}', { mode: session.mode })}
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
             {session.fallback ? (
               <p className="text-sm text-vq-warning">
-                Fell back to voice ({session.fallbackReason?.replace('_', ' ')}). The caller is
-                still served — enable a video-eligible plan to use the avatar.
+                {t(
+                  'Fell back to voice ({reason}). The caller is still served — enable a video-eligible plan to use the avatar.',
+                  { reason: session.fallbackReason?.replace('_', ' ') ?? '' },
+                )}
               </p>
             ) : (
               <p className="text-sm text-vq-success">
-                Video avatar streaming ({session.providerRef}).
+                {t('Video avatar streaming ({ref}).', { ref: session.providerRef ?? '' })}
               </p>
             )}
             <div className="flex items-center gap-3">
@@ -202,7 +207,7 @@ export default function AvatarsPage() {
                 disabled={end.isPending || session.status === 'ended'}
                 onClick={() => end.mutate(session.id, { onSuccess: setSession })}
               >
-                {session.status === 'ended' ? 'Ended' : 'End session'}
+                {session.status === 'ended' ? t('Ended') : t('End session')}
               </Button>
               {session.status === 'ended' && (
                 <span className="text-vq-text-lo text-xs">

@@ -12,6 +12,7 @@ import {
   usePeerBenchmark,
   useUpdateBenchmarkSettings,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 const SELECT_CLS =
   'rounded-vq border border-vq-border bg-transparent px-2 py-1.5 text-sm text-vq-text-hi';
@@ -29,15 +30,17 @@ function fmt(key: string, v: number | null | undefined): string {
  * against anonymized peer averages for your industry (only ever shown as aggregates over ≥5 peers).
  */
 export default function BenchmarkingPage() {
+  const { t } = useI18n();
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <Trophy size={20} /> Benchmarking
+          <Trophy size={20} /> {t('Benchmarking')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          See what “good” looks like: compare your agents internally, and against anonymized
-          industry peers.
+          {t(
+            'See what "good" looks like: compare your agents internally, and against anonymized industry peers.',
+          )}
         </p>
       </div>
 
@@ -49,6 +52,7 @@ export default function BenchmarkingPage() {
 }
 
 function SettingsCard() {
+  const { t } = useI18n();
   const settings = useBenchmarkSettings();
   const update = useUpdateBenchmarkSettings();
   const s = settings.data;
@@ -56,12 +60,13 @@ function SettingsCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Peer benchmarking</CardTitle>
+        <CardTitle className="text-base">{t('Peer benchmarking')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <p className="text-sm text-vq-text-lo">
-          Opt in to contribute anonymized aggregates and unlock peer benchmarks. Your raw data is
-          never shared — only averages over a cohort of at least 5 opted-in tenants.
+          {t(
+            'Opt in to contribute anonymized aggregates and unlock peer benchmarks. Your raw data is never shared — only averages over a cohort of at least 5 opted-in tenants.',
+          )}
         </p>
         <div className="flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-2 text-sm text-vq-text-hi">
@@ -73,10 +78,10 @@ function SettingsCard() {
                 update.mutate({ optIn: e.target.checked, industry: s?.industry ?? 'other' })
               }
             />
-            Opt in to peer benchmarking
+            {t('Opt in to peer benchmarking')}
           </label>
           <label htmlFor="industry" className="flex items-center gap-2 text-sm text-vq-text-lo">
-            Industry
+            {t('Industry')}
             <select
               id="industry"
               className={SELECT_CLS}
@@ -100,12 +105,13 @@ function SettingsCard() {
 }
 
 function InternalCard() {
+  const { t } = useI18n();
   const internal = useInternalBenchmark();
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Your agents (last 30 days)</CardTitle>
+        <CardTitle className="text-base">{t('Your agents (last 30 days)')}</CardTitle>
       </CardHeader>
       <CardContent>
         {internal.isLoading ? (
@@ -116,7 +122,10 @@ function InternalCard() {
             onRetry={() => internal.refetch()}
           />
         ) : !internal.data || internal.data.agents.length === 0 ? (
-          <EmptyState title="No agent data yet" hint="Run some calls to compare your agents." />
+          <EmptyState
+            title={t('No agent data yet')}
+            hint={t('Run some calls to compare your agents.')}
+          />
         ) : (
           <div className="flex flex-col gap-4">
             {BENCHMARK_METRICS.map((m) => {
@@ -127,9 +136,9 @@ function InternalCard() {
               return (
                 <div key={m.key} className="flex flex-col gap-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-vq-text-hi">{m.label}</span>
+                    <span className="text-vq-text-hi">{t(m.label)}</span>
                     <span className="text-vq-text-lo">
-                      best: {internal.data!.best[m.key] ? '★' : '—'}
+                      {t('best:')} {internal.data!.best[m.key] ? '★' : '—'}
                     </span>
                   </div>
                   <BarChart data={data} format={(n) => fmt(m.key, n)} />
@@ -145,13 +154,14 @@ function InternalCard() {
 }
 
 function PeerCard() {
+  const { t } = useI18n();
   const peers = usePeerBenchmark();
   const settings = useBenchmarkSettings();
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Industry peers (anonymized)</CardTitle>
+        <CardTitle className="text-base">{t('Industry peers (anonymized)')}</CardTitle>
       </CardHeader>
       <CardContent>
         {peers.isLoading ? (
@@ -159,27 +169,38 @@ function PeerCard() {
         ) : peers.isError ? (
           <ErrorState message={(peers.error as Error).message} onRetry={() => peers.refetch()} />
         ) : !peers.data ? (
-          <EmptyState title="No peer data" hint="" />
+          <EmptyState title={t('No peer data')} hint="" />
         ) : !peers.data.available ? (
           <p className="text-sm text-vq-text-lo">
             {peers.data.reason === 'opt_in_required'
-              ? 'Opt in above to see how you compare against anonymized industry peers.'
-              : `Not enough opted-in peers in ${settings.data?.industry?.replace(/_/g, ' ') ?? 'your industry'} yet — peer data appears once at least 5 tenants have opted in (privacy protection). Currently ${peers.data.cohortSize}.`}
+              ? t('Opt in above to see how you compare against anonymized industry peers.')
+              : t(
+                  'Not enough opted-in peers in {industry} yet — peer data appears once at least 5 tenants have opted in (privacy protection). Currently {n}.',
+                  {
+                    industry: settings.data?.industry?.replace(/_/g, ' ') ?? t('your industry'),
+                    n: peers.data.cohortSize,
+                  },
+                )}
           </p>
         ) : (
           <div className="flex flex-col gap-4">
             <p className="text-xs text-vq-text-lo">
-              Averaged over {peers.data.cohortSize} opted-in{' '}
-              {peers.data.industry.replace(/_/g, ' ')} tenants.
+              {t('Averaged over {n} opted-in {industry} tenants.', {
+                n: peers.data.cohortSize,
+                industry: peers.data.industry.replace(/_/g, ' '),
+              })}
             </p>
             {peers.data.metrics.map((pm) => {
               const meta = BENCHMARK_METRICS.find((m) => m.key === pm.key);
               return (
                 <div key={pm.key} className="flex flex-col gap-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-vq-text-hi">{meta?.label ?? pm.key}</span>
+                    <span className="text-vq-text-hi">{meta ? t(meta.label) : pm.key}</span>
                     <span className="text-vq-text-lo">
-                      you: {fmt(pm.key, pm.self)} · peer median: {fmt(pm.key, pm.peer.median)}
+                      {t('you: {self} · peer median: {median}', {
+                        self: fmt(pm.key, pm.self),
+                        median: fmt(pm.key, pm.peer.median),
+                      })}
                     </span>
                   </div>
                   <PercentileBar percentile={pm.percentile} />
@@ -195,6 +216,7 @@ function PeerCard() {
 }
 
 function PercentileBar({ percentile }: { percentile: number }) {
+  const { t } = useI18n();
   const good = percentile >= 50;
   return (
     <div className="flex items-center gap-2">
@@ -208,18 +230,19 @@ function PercentileBar({ percentile }: { percentile: number }) {
         />
       </div>
       <span className="w-24 shrink-0 text-right font-mono text-vq-text-hi text-xs">
-        {percentile.toFixed(0)}th pct
+        {t('{n}th pct', { n: percentile.toFixed(0) })}
       </span>
     </div>
   );
 }
 
 function Recommendations({ recs }: { recs: BenchmarkRecommendation[] }) {
+  const { t } = useI18n();
   if (recs.length === 0) return null;
   return (
     <div className="flex flex-col gap-1 border-vq-border border-t pt-3">
       <span className="flex items-center gap-1 text-vq-text-lo text-xs">
-        <Lightbulb size={13} /> Recommendations
+        <Lightbulb size={13} /> {t('Recommendations')}
       </span>
       {recs.map((r) => (
         <p
