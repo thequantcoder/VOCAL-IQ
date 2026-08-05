@@ -11,6 +11,7 @@ import {
   useRotateVaultKey,
   useVaultKeys,
 } from '../../../../lib/api';
+import { useI18n } from '../../../../lib/i18n/provider';
 
 const inputCls =
   'w-full rounded-vq border border-vq-border bg-vq-bg-base px-3 py-2 text-sm text-vq-text-hi focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vq-ring';
@@ -23,6 +24,7 @@ const PROVIDERS = ['OPENAI', 'ANTHROPIC', 'GEMINI', 'DEEPGRAM', 'ELEVENLABS', 'T
  * keys. Scope tabs switch between them.
  */
 export default function VaultPage() {
+  const { t } = useI18n();
   const [scope, setScope] = useState<'platform' | 'tenant'>('tenant');
   const keys = useVaultKeys(scope);
   const [adding, setAdding] = useState(false);
@@ -32,14 +34,14 @@ export default function VaultPage() {
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-            <Shield size={20} /> Key vault
+            <Shield size={20} /> {t('Key vault')}
           </h1>
           <p className="text-sm text-vq-text-lo">
-            Provider secrets, envelope-encrypted at rest. Never shown again after entry.
+            {t('Provider secrets, envelope-encrypted at rest. Never shown again after entry.')}
           </p>
         </div>
         <Button size="sm" onClick={() => setAdding((v) => !v)}>
-          <Plus size={16} /> Add key
+          <Plus size={16} /> {t('Add key')}
         </Button>
       </div>
 
@@ -53,7 +55,7 @@ export default function VaultPage() {
               scope === s ? 'border-vq-brand/50 text-vq-brand' : 'border-vq-border text-vq-text-lo'
             }`}
           >
-            {s === 'tenant' ? 'My keys (BYOK)' : 'Platform keys'}
+            {s === 'tenant' ? t('My keys (BYOK)') : t('Platform keys')}
           </button>
         ))}
       </div>
@@ -65,7 +67,10 @@ export default function VaultPage() {
       ) : keys.isError ? (
         <ErrorState message={(keys.error as Error).message} onRetry={() => keys.refetch()} />
       ) : !keys.data || keys.data.length === 0 ? (
-        <EmptyState title="No keys yet" hint="Add a provider key — it will be encrypted at rest." />
+        <EmptyState
+          title={t('No keys yet')}
+          hint={t('Add a provider key — it will be encrypted at rest.')}
+        />
       ) : (
         <div className="flex flex-col gap-3">
           {keys.data.map((k) => (
@@ -78,6 +83,7 @@ export default function VaultPage() {
 }
 
 function KeyRow({ vaultKey }: { vaultKey: VaultKey }) {
+  const { t } = useI18n();
   const rotate = useRotateVaultKey();
   const revoke = useRevokeVaultKey();
   const [rotating, setRotating] = useState(false);
@@ -104,7 +110,7 @@ function KeyRow({ vaultKey }: { vaultKey: VaultKey }) {
           </div>
           <div className="flex items-center gap-2">
             <Button size="sm" variant="ghost" onClick={() => setRotating((v) => !v)}>
-              <RefreshCw size={14} /> Rotate
+              <RefreshCw size={14} /> {t('Rotate')}
             </Button>
             <Button
               size="sm"
@@ -112,7 +118,7 @@ function KeyRow({ vaultKey }: { vaultKey: VaultKey }) {
               disabled={revoke.isPending}
               onClick={() => revoke.mutate(vaultKey.id)}
             >
-              <Trash2 size={14} /> Revoke
+              <Trash2 size={14} /> {t('Revoke')}
             </Button>
           </div>
         </div>
@@ -120,7 +126,7 @@ function KeyRow({ vaultKey }: { vaultKey: VaultKey }) {
           <div className="flex items-center gap-2">
             <Input
               type="password"
-              placeholder="New key value"
+              placeholder={t('New key value')}
               value={newKey}
               onChange={(e) => setNewKey(e.target.value)}
             />
@@ -129,7 +135,7 @@ function KeyRow({ vaultKey }: { vaultKey: VaultKey }) {
               disabled={rotate.isPending || newKey.trim().length < 8}
               onClick={doRotate}
             >
-              Save
+              {t('Save')}
             </Button>
           </div>
         )}
@@ -139,6 +145,7 @@ function KeyRow({ vaultKey }: { vaultKey: VaultKey }) {
 }
 
 function AddKey({ scope, onDone }: { scope: 'platform' | 'tenant'; onDone: () => void }) {
+  const { t } = useI18n();
   const add = useAddVaultKey();
   const [provider, setProvider] = useState(PROVIDERS[0] as string);
   const [apiKey, setApiKey] = useState('');
@@ -154,12 +161,12 @@ function AddKey({ scope, onDone }: { scope: 'platform' | 'tenant'; onDone: () =>
     <Card>
       <CardHeader>
         <CardTitle className="text-base">
-          Add {scope === 'platform' ? 'platform' : 'BYOK'} key
+          {scope === 'platform' ? t('Add platform key') : t('Add BYOK key')}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <label className="flex flex-col gap-1 text-vq-text-lo text-xs">
-          Provider
+          {t('Provider')}
           <select
             value={provider}
             onChange={(e) => setProvider(e.target.value)}
@@ -174,17 +181,17 @@ function AddKey({ scope, onDone }: { scope: 'platform' | 'tenant'; onDone: () =>
         </label>
         <Input
           type="password"
-          placeholder="API key (stored encrypted, never shown again)"
+          placeholder={t('API key (stored encrypted, never shown again)')}
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
         />
         {add.isError && <p className="text-vq-danger text-xs">{(add.error as Error).message}</p>}
         <div className="flex gap-2">
           <Button size="sm" disabled={!valid || add.isPending} onClick={submit}>
-            {add.isPending ? 'Encrypting…' : 'Add key'}
+            {add.isPending ? t('Encrypting…') : t('Add key')}
           </Button>
           <Button size="sm" variant="ghost" onClick={onDone}>
-            Cancel
+            {t('Cancel')}
           </Button>
         </div>
       </CardContent>

@@ -36,6 +36,7 @@ import {
   useSetAdminTenantStatus,
   useUpdateStatus,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 function currentPeriod(): string {
   const d = new Date();
@@ -48,14 +49,15 @@ function currentPeriod(): string {
  * hub to the other platform tools. Every panel is served by SUPER_ADMIN-gated endpoints.
  */
 export default function SuperAdminPage() {
+  const { t } = useI18n();
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <Shield size={20} /> Super-admin console
+          <Shield size={20} /> {t('Super-admin console')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          Platform-wide control plane — every tenant, all revenue, system health.
+          {t('Platform-wide control plane — every tenant, all revenue, system health.')}
         </p>
       </div>
 
@@ -72,21 +74,22 @@ export default function SuperAdminPage() {
 
 /** Self-host version + "Check for Updates" (PARITY-11) — reports only, never auto-applies. */
 function VersionCard() {
+  const { t } = useI18n();
   const status = useUpdateStatus();
   if (!status.data) return null;
   const s = status.data;
   const badge = !s.reachable
-    ? { label: "couldn't check", cls: 'border-vq-border text-vq-text-lo' }
+    ? { label: t("couldn't check"), cls: 'border-vq-border text-vq-text-lo' }
     : s.updateAvailable
-      ? { label: 'update available', cls: 'border-vq-warn/40 text-vq-warn' }
-      : { label: 'up to date', cls: 'border-vq-success/40 text-vq-success' };
+      ? { label: t('update available'), cls: 'border-vq-warn/40 text-vq-warn' }
+      : { label: t('up to date'), cls: 'border-vq-success/40 text-vq-success' };
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between text-base">
           <span className="flex items-center gap-2">
-            <Download size={16} /> Version
+            <Download size={16} /> {t('Version')}
           </span>
           <span className={`rounded-vq-pill border px-2 py-0.5 text-xs ${badge.cls}`}>
             {badge.label}
@@ -95,15 +98,16 @@ function VersionCard() {
       </CardHeader>
       <CardContent className="flex flex-col gap-1.5 text-sm">
         <div className="flex items-center gap-4">
-          <Kv label="Installed" value={s.current} />
-          {s.latest && <Kv label="Latest" value={s.latest} />}
+          <Kv label={t('Installed')} value={s.current} />
+          {s.latest && <Kv label={t('Latest')} value={s.latest} />}
         </div>
         {s.updateAvailable && (
           <>
             {s.belowMinCompatible && (
               <p className="text-vq-warn text-xs">
-                Your version is below the minimum for a direct upgrade — upgrade in steps (see
-                notes).
+                {t(
+                  'Your version is below the minimum for a direct upgrade — upgrade in steps (see notes).',
+                )}
               </p>
             )}
             {s.notes && <p className="text-vq-text-lo text-xs">{s.notes}</p>}
@@ -114,15 +118,15 @@ function VersionCard() {
                 rel="noreferrer"
                 className="text-vq-violet text-xs underline"
               >
-                View changelog & upgrade steps →
+                {t('View changelog & upgrade steps →')}
               </a>
             )}
           </>
         )}
         {!s.reachable && (
           <p className="text-vq-text-lo text-xs">
-            No release manifest configured/reachable — set <code>UPDATE_MANIFEST_URL</code> to
-            enable update checks.
+            {t('No release manifest configured/reachable — set')} <code>UPDATE_MANIFEST_URL</code>{' '}
+            {t('to enable update checks.')}
           </p>
         )}
       </CardContent>
@@ -131,6 +135,7 @@ function VersionCard() {
 }
 
 function ReadinessCard() {
+  const { t } = useI18n();
   const readiness = useLaunchReadiness();
   if (!readiness.data) return null;
   const r = readiness.data;
@@ -139,22 +144,20 @@ function ReadinessCard() {
       <CardHeader>
         <CardTitle className="flex items-center justify-between text-base">
           <span className="flex items-center gap-2">
-            <Rocket size={16} /> Launch readiness
+            <Rocket size={16} /> {t('Launch readiness')}
           </span>
           <span
             className={`rounded-vq-pill border px-2 py-0.5 text-xs ${
               r.go ? 'border-vq-success/40 text-vq-success' : 'border-vq-danger/40 text-vq-danger'
             }`}
           >
-            {r.go
-              ? 'GO'
-              : `NO-GO · ${r.blockersFailed} blocker${r.blockersFailed === 1 ? '' : 's'}`}
+            {r.go ? t('GO') : t('NO-GO · {n} blockers', { n: r.blockersFailed })}
           </span>
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-1">
         <span className="text-vq-text-lo text-xs">
-          {r.passed}/{r.total} checks passing
+          {t('{passed}/{total} checks passing', { passed: r.passed, total: r.total })}
         </span>
         {r.results
           .filter((x) => !x.passed)
@@ -173,6 +176,7 @@ function ReadinessCard() {
 }
 
 function ScaleCard() {
+  const { t } = useI18n();
   const scale = useScaleStatus();
   if (!scale.data) return null;
   const { backends, regions } = scale.data;
@@ -180,14 +184,17 @@ function ScaleCard() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Server size={16} /> Scale-out
+          <Server size={16} /> {t('Scale-out')}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-        <Kv label="Analytics" value={backends.analytics} />
-        <Kv label="Vectors" value={backends.vectors} />
-        <Kv label="Multi-region voice" value={backends.multiRegionVoice ? 'on' : 'off'} />
-        <Kv label="Voice regions" value={regions.map((r) => r.id).join(', ')} />
+        <Kv label={t('Analytics')} value={backends.analytics} />
+        <Kv label={t('Vectors')} value={backends.vectors} />
+        <Kv
+          label={t('Multi-region voice')}
+          value={backends.multiRegionVoice ? t('on') : t('off')}
+        />
+        <Kv label={t('Voice regions')} value={regions.map((r) => r.id).join(', ')} />
       </CardContent>
     </Card>
   );
@@ -203,6 +210,7 @@ function Kv({ label, value }: { label: string; value: string }) {
 }
 
 function PlatformOverviewCards() {
+  const { t } = useI18n();
   const period = currentPeriod();
   const overview = useAdminOverview(period);
   if (overview.isLoading) return <LoadingCard rows={1} />;
@@ -214,9 +222,9 @@ function PlatformOverviewCards() {
   const o = overview.data;
   const marginPct = Math.round(o.marginRate * 100);
   const mix = [
-    { label: 'Active', value: o.tenants.active, color: 'var(--success)' },
-    { label: 'Trial', value: o.tenants.trial, color: 'var(--info)' },
-    { label: 'Suspended', value: o.tenants.suspended, color: 'var(--danger)' },
+    { label: t('Active'), value: o.tenants.active, color: 'var(--success)' },
+    { label: t('Trial'), value: o.tenants.trial, color: 'var(--info)' },
+    { label: t('Suspended'), value: o.tenants.suspended, color: 'var(--danger)' },
   ].filter((s) => s.value > 0);
 
   return (
@@ -224,7 +232,7 @@ function PlatformOverviewCards() {
       <Stagger className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StaggerItem>
           <StatCard
-            label={`Gross revenue · ${period}`}
+            label={t('Gross revenue · {period}', { period })}
             value={o.grossRevenueCents / 100}
             format={formatUsd}
             sentiment="neutral"
@@ -232,7 +240,7 @@ function PlatformOverviewCards() {
         </StaggerItem>
         <StaggerItem>
           <StatCard
-            label="Provider cost"
+            label={t('Provider cost')}
             value={o.providerCostCents / 100}
             format={formatUsd}
             sentiment="neutral"
@@ -240,7 +248,7 @@ function PlatformOverviewCards() {
         </StaggerItem>
         <StaggerItem>
           <StatCard
-            label="Total margin"
+            label={t('Total margin')}
             value={o.totalMarginCents / 100}
             format={formatUsd}
             delta={marginPct}
@@ -249,7 +257,7 @@ function PlatformOverviewCards() {
         </StaggerItem>
         <StaggerItem>
           <StatCard
-            label="Tenants"
+            label={t('Tenants')}
             value={o.tenants.total}
             icon={<Building2 size={15} />}
             sentiment="neutral"
@@ -260,12 +268,15 @@ function PlatformOverviewCards() {
       {mix.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Tenant mix</CardTitle>
+            <CardTitle className="text-base">{t('Tenant mix')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <DonutBreakdown data={mix} centerLabel="Tenants" size={148} />
+            <DonutBreakdown data={mix} centerLabel={t('Tenants')} size={148} />
             <p className="mt-2 text-vq-text-lo text-xs">
-              {o.tenants.resellers} resellers · {o.tenants.customers} customers
+              {t('{r} resellers · {c} customers', {
+                r: o.tenants.resellers,
+                c: o.tenants.customers,
+              })}
             </p>
           </CardContent>
         </Card>
@@ -281,6 +292,7 @@ const HEALTH_COLOR: Record<string, string> = {
 };
 
 function SystemHealthCard() {
+  const { t } = useI18n();
   const health = useAdminHealth();
   if (!health.data) return null;
   const { overall, services } = health.data;
@@ -289,7 +301,7 @@ function SystemHealthCard() {
       <CardHeader>
         <CardTitle className="flex items-center justify-between text-base">
           <span className="flex items-center gap-2">
-            <Activity size={16} /> System health
+            <Activity size={16} /> {t('System health')}
           </span>
           <span
             className={`rounded-vq-pill border px-2 py-0.5 text-xs ${HEALTH_COLOR[overall] ?? ''}`}
@@ -363,16 +375,17 @@ const TOOLS = [
 ] as const;
 
 function ToolHub() {
+  const { t } = useI18n();
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      {TOOLS.map((t) => (
-        <Link key={t.href} href={t.href}>
+      {TOOLS.map((tool) => (
+        <Link key={tool.href} href={tool.href}>
           <Card className="transition-colors hover:border-vq-brand/50">
             <CardContent className="flex items-center gap-3 py-3">
-              <t.icon size={18} className="text-vq-brand" />
+              <tool.icon size={18} className="text-vq-brand" />
               <div className="flex flex-col">
-                <span className="font-medium text-sm text-vq-text-hi">{t.label}</span>
-                <span className="text-vq-text-lo text-xs">{t.hint}</span>
+                <span className="font-medium text-sm text-vq-text-hi">{t(tool.label)}</span>
+                <span className="text-vq-text-lo text-xs">{t(tool.hint)}</span>
               </div>
             </CardContent>
           </Card>
@@ -383,6 +396,7 @@ function ToolHub() {
 }
 
 function TenantManager() {
+  const { t } = useI18n();
   const [query, setQuery] = useState('');
   const [type, setType] = useState('');
   const tenants = useAdminTenants({
@@ -394,13 +408,13 @@ function TenantManager() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Building2 size={16} /> Tenants
+          <Building2 size={16} /> {t('Tenants')}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <Input
-            placeholder="Search name or slug…"
+            placeholder={t('Search name or slug…')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="max-w-xs"
@@ -410,10 +424,10 @@ function TenantManager() {
             onChange={(e) => setType(e.target.value)}
             className="rounded-vq border border-vq-border bg-vq-bg-base px-3 py-2 text-sm text-vq-text-hi"
           >
-            <option value="">All types</option>
-            <option value="RESELLER">Resellers</option>
-            <option value="CUSTOMER">Customers</option>
-            <option value="PLATFORM">Platform</option>
+            <option value="">{t('All types')}</option>
+            <option value="RESELLER">{t('Resellers')}</option>
+            <option value="CUSTOMER">{t('Customers')}</option>
+            <option value="PLATFORM">{t('Platform')}</option>
           </select>
         </div>
 
@@ -425,12 +439,12 @@ function TenantManager() {
             onRetry={() => tenants.refetch()}
           />
         ) : !tenants.data || tenants.data.items.length === 0 ? (
-          <EmptyState title="No tenants match" hint="Try a different search or filter." />
+          <EmptyState title={t('No tenants match')} hint={t('Try a different search or filter.')} />
         ) : (
           <Stagger className="flex flex-col divide-y divide-vq-border">
-            {tenants.data.items.map((t) => (
-              <StaggerItem key={t.id}>
-                <TenantRow tenant={t} />
+            {tenants.data.items.map((tn) => (
+              <StaggerItem key={tn.id}>
+                <TenantRow tenant={tn} />
               </StaggerItem>
             ))}
           </Stagger>
@@ -448,6 +462,7 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 function TenantRow({ tenant }: { tenant: AdminTenantRow }) {
+  const { t } = useI18n();
   const setStatus = useSetAdminTenantStatus();
   const impersonate = useImpersonate();
   const [grantMsg, setGrantMsg] = useState<string | null>(null);
@@ -455,11 +470,13 @@ function TenantRow({ tenant }: { tenant: AdminTenantRow }) {
   const isPlatform = tenant.type === 'PLATFORM';
 
   async function doImpersonate() {
-    const reason = window.prompt('Reason for impersonating (audited):');
+    const reason = window.prompt(t('Reason for impersonating (audited):'));
     if (!reason || reason.trim().length < 3) return;
     const grant = await impersonate.mutateAsync({ tenantId: tenant.id, reason: reason.trim() });
     setGrantMsg(
-      `Grant issued (expires in ${Math.round(grant.expiresInSeconds / 60)} min) — audited.`,
+      t('Grant issued (expires in {min} min) — audited.', {
+        min: Math.round(grant.expiresInSeconds / 60),
+      }),
     );
   }
 
@@ -484,7 +501,7 @@ function TenantRow({ tenant }: { tenant: AdminTenantRow }) {
               disabled={impersonate.isPending}
               onClick={doImpersonate}
             >
-              <UserCog size={14} /> Impersonate
+              <UserCog size={14} /> {t('Impersonate')}
             </Button>
           )}
           {!isPlatform &&
@@ -495,7 +512,7 @@ function TenantRow({ tenant }: { tenant: AdminTenantRow }) {
                 disabled={setStatus.isPending}
                 onClick={() => setStatus.mutate({ id: tenant.id, action: 'reactivate' })}
               >
-                <Play size={14} /> Reactivate
+                <Play size={14} /> {t('Reactivate')}
               </Button>
             ) : (
               <Button
@@ -504,7 +521,7 @@ function TenantRow({ tenant }: { tenant: AdminTenantRow }) {
                 disabled={setStatus.isPending}
                 onClick={() => setStatus.mutate({ id: tenant.id, action: 'suspend' })}
               >
-                <Pause size={14} /> Suspend
+                <Pause size={14} /> {t('Suspend')}
               </Button>
             ))}
         </div>

@@ -11,9 +11,11 @@ import {
   useSetSubTenantStatus,
   useSubTenants,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 /** Reseller console (Day 51): provision + manage your own isolated sub-tenants. */
 export default function ResellerPage() {
+  const { t } = useI18n();
   const subs = useSubTenants();
   const [creating, setCreating] = useState(false);
 
@@ -22,14 +24,14 @@ export default function ResellerPage() {
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-            <Building2 size={20} /> Sub-tenants
+            <Building2 size={20} /> {t('Sub-tenants')}
           </h1>
           <p className="text-sm text-vq-text-lo">
-            Provision, suspend, and manage your customers — each fully isolated.
+            {t('Provision, suspend, and manage your customers — each fully isolated.')}
           </p>
         </div>
         <Button size="sm" onClick={() => setCreating((v) => !v)}>
-          <Plus size={16} /> New customer
+          <Plus size={16} /> {t('New customer')}
         </Button>
       </div>
 
@@ -41,8 +43,8 @@ export default function ResellerPage() {
         <ErrorState message={(subs.error as Error).message} onRetry={() => subs.refetch()} />
       ) : !subs.data || subs.data.length === 0 ? (
         <EmptyState
-          title="No customers yet"
-          hint="Provision your first sub-tenant to get started."
+          title={t('No customers yet')}
+          hint={t('Provision your first sub-tenant to get started.')}
         />
       ) : (
         <Stagger className="flex flex-col gap-3">
@@ -58,6 +60,7 @@ export default function ResellerPage() {
 }
 
 function SubTenantRow({ sub }: { sub: SubTenant }) {
+  const { t } = useI18n();
   const setStatus = useSetSubTenantStatus();
   const suspended = sub.status === 'SUSPENDED';
   return (
@@ -90,7 +93,7 @@ function SubTenantRow({ sub }: { sub: SubTenant }) {
             disabled={setStatus.isPending}
             onClick={() => setStatus.mutate({ id: sub.id, action: 'reactivate' })}
           >
-            <Play size={14} /> Reactivate
+            <Play size={14} /> {t('Reactivate')}
           </Button>
         ) : (
           <Button
@@ -99,7 +102,7 @@ function SubTenantRow({ sub }: { sub: SubTenant }) {
             disabled={setStatus.isPending}
             onClick={() => setStatus.mutate({ id: sub.id, action: 'suspend' })}
           >
-            <Pause size={14} /> Suspend
+            <Pause size={14} /> {t('Suspend')}
           </Button>
         )}
       </CardContent>
@@ -108,6 +111,7 @@ function SubTenantRow({ sub }: { sub: SubTenant }) {
 }
 
 function CreateSubTenant({ onDone }: { onDone: () => void }) {
+  const { t } = useI18n();
   const create = useCreateSubTenant();
   const [name, setName] = useState('');
   const [ownerEmail, setOwnerEmail] = useState('');
@@ -123,32 +127,33 @@ function CreateSubTenant({ onDone }: { onDone: () => void }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">New customer</CardTitle>
+        <CardTitle className="text-base">{t('New customer')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <Input
-          placeholder="Customer / workspace name"
+          placeholder={t('Customer / workspace name')}
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
         <Input
-          placeholder="Owner email"
+          placeholder={t('Owner email')}
           value={ownerEmail}
           onChange={(e) => setOwnerEmail(e.target.value)}
         />
         <p className="text-vq-text-lo text-xs">
-          The owner receives an invite to set their password. The workspace is isolated under your
-          reseller account.
+          {t(
+            'The owner receives an invite to set their password. The workspace is isolated under your reseller account.',
+          )}
         </p>
         {create.isError && (
           <p className="text-vq-danger text-xs">{(create.error as Error).message}</p>
         )}
         <div className="flex gap-2">
           <Button size="sm" disabled={!valid || create.isPending} onClick={submit}>
-            {create.isPending ? 'Provisioning…' : 'Create customer'}
+            {create.isPending ? t('Provisioning…') : t('Create customer')}
           </Button>
           <Button size="sm" variant="ghost" onClick={onDone}>
-            Cancel
+            {t('Cancel')}
           </Button>
         </div>
       </CardContent>
