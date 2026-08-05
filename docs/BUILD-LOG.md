@@ -5299,3 +5299,14 @@ Continues the per-page rollout onto the analytics dashboard (live tiles + histor
 - **`lib/i18n/catalogs.ts`**: ~28 new Hindi keys (two interpolated).
 
 **Checks.** biome clean (2 files). Web typecheck/build in CI. Manual: `vq_locale=hi` renders the Analytics chrome (filters, tiles, chart titles, KPI labels, interpolated trend/interruption lines) in Hindi; other locales fall back to English.
+
+---
+
+## Dashboard localization — page-level, increment 5: the Campaigns page
+
+Continues the per-page rollout onto the campaign manager (create / import / dialer / run-monitor). Static UI copy via `useI18n().t()` (English-as-key) + full Hindi, including the dense dialer-config technical copy.
+
+- **`app/dashboard/campaigns/page.tsx`**: header + subtitle; `New campaign`; the empty-state; row actions (`Import`/`Dialer`/`Pause`/`Run` + the **interpolated** `Retry {n} failed`); the **DialerPanel** (`Dialer mode`, the 3 dialer modes + their hints localized at the render site via `t(m.label)`/`t(m.hint)`, the blended-team + predictive-cap explanatory copy, `Lines per agent (N:1)`, `Max abandon rate % (legal cap)`, `Loading dialer…`/`Saving…`/`Save dialer`/`Close`); the **ImportPanel** (the CSV hint — folded to a single `t()` string, dropping the inline `<code>` so Hindi word-order stays correct; the **4-var interpolated** import-result line; `Importing…`/`Import contacts`); and **CreateCampaign** (`Campaign name`, `Select an agent…`, `Pace / tick`, `Concurrency`, `Creating…`/`Create campaign`/`Cancel`). Domain acronyms (CSV, DNC, N:1, 1:1) stay untranslated; `contacts · STATUS` and `status: count` come from enum DATA (untouched).
+- **`lib/i18n/catalogs.ts`**: ~36 new Hindi keys (three interpolated). **English-as-key collision handled:** the campaign play-button `Run` reuses the nav-group `Run` (`संचालन`) — the same English word can't hold two senses (nav section vs. button); documented inline. A duplicate-key scan of the `hi` block confirms no other collisions.
+
+**Checks.** biome clean (2 files; caught + fixed the initial `Run` duplicate). Web typecheck/build in CI. Manual: `vq_locale=hi` renders the Campaigns chrome — incl. the dialer modes, the technical dialer copy, and the interpolated retry/import lines — in Hindi.

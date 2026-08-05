@@ -17,6 +17,7 @@ import {
   useSetCampaignDialer,
   useSetCampaignStatus,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 const SELECT_CLS =
   'rounded-vq border border-vq-border bg-transparent px-2 py-2 text-sm text-vq-text-hi';
@@ -32,6 +33,7 @@ const DIALER_MODES: { value: DialerMode; label: string; hint: string }[] = [
 
 /** Campaign manager (Day 28): create, import contacts, run/pause, and monitor live. */
 export default function CampaignsPage() {
+  const { t } = useI18n();
   const campaigns = useCampaigns();
   const [creating, setCreating] = useState(false);
 
@@ -40,14 +42,14 @@ export default function CampaignsPage() {
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="flex items-center gap-2 font-display font-semibold text-xl text-vq-text-hi">
-            <Megaphone size={20} /> Campaigns
+            <Megaphone size={20} /> {t('Campaigns')}
           </h1>
           <p className="text-sm text-vq-text-lo">
-            Bulk outbound with CSV import, DNC suppression, pacing + retries.
+            {t('Bulk outbound with CSV import, DNC suppression, pacing + retries.')}
           </p>
         </div>
         <Button size="sm" onClick={() => setCreating((v) => !v)}>
-          <Plus size={16} /> New campaign
+          <Plus size={16} /> {t('New campaign')}
         </Button>
       </div>
 
@@ -61,7 +63,10 @@ export default function CampaignsPage() {
           onRetry={() => campaigns.refetch()}
         />
       ) : !campaigns.data || campaigns.data.length === 0 ? (
-        <EmptyState title="No campaigns yet" hint="Create one and import a contact list." />
+        <EmptyState
+          title={t('No campaigns yet')}
+          hint={t('Create one and import a contact list.')}
+        />
       ) : (
         <div className="flex flex-col gap-3">
           {campaigns.data.map((c) => (
@@ -74,6 +79,7 @@ export default function CampaignsPage() {
 }
 
 function CampaignRow({ campaign }: { campaign: CampaignListItem }) {
+  const { t } = useI18n();
   const monitor = useCampaignMonitor(campaign.id);
   const setStatus = useSetCampaignStatus();
   const retryFailed = useRetryFailedCampaign(campaign.id);
@@ -94,10 +100,10 @@ function CampaignRow({ campaign }: { campaign: CampaignListItem }) {
           </div>
           <div className="flex gap-2">
             <Button size="sm" variant="secondary" onClick={() => setImporting((v) => !v)}>
-              <Upload size={14} /> Import
+              <Upload size={14} /> {t('Import')}
             </Button>
             <Button size="sm" variant="secondary" onClick={() => setDialing((v) => !v)}>
-              <Gauge size={14} /> Dialer
+              <Gauge size={14} /> {t('Dialer')}
             </Button>
             {running ? (
               <Button
@@ -105,14 +111,14 @@ function CampaignRow({ campaign }: { campaign: CampaignListItem }) {
                 variant="ghost"
                 onClick={() => setStatus.mutate({ id: campaign.id, status: 'PAUSED' })}
               >
-                <Pause size={14} /> Pause
+                <Pause size={14} /> {t('Pause')}
               </Button>
             ) : (
               <Button
                 size="sm"
                 onClick={() => setStatus.mutate({ id: campaign.id, status: 'RUNNING' })}
               >
-                <Play size={14} /> Run
+                <Play size={14} /> {t('Run')}
               </Button>
             )}
           </div>
@@ -135,7 +141,7 @@ function CampaignRow({ campaign }: { campaign: CampaignListItem }) {
                 disabled={retryFailed.isPending}
                 onClick={() => retryFailed.mutate()}
               >
-                <RotateCcw size={13} /> Retry {failedCount} failed
+                <RotateCcw size={13} /> {t('Retry {n} failed', { n: failedCount })}
               </Button>
             )}
           </div>
@@ -149,6 +155,7 @@ function CampaignRow({ campaign }: { campaign: CampaignListItem }) {
 }
 
 function DialerPanel({ campaignId, onDone }: { campaignId: string; onDone: () => void }) {
+  const { t } = useI18n();
   const detail = useCampaign(campaignId);
   const save = useSetCampaignDialer();
   const [cfg, setCfg] = useState<DialerConfig | null>(null);
@@ -156,7 +163,9 @@ function DialerPanel({ campaignId, onDone }: { campaignId: string; onDone: () =>
 
   if (detail.isLoading || !config) {
     return (
-      <div className="border-vq-border border-t pt-3 text-vq-text-lo text-xs">Loading dialer…</div>
+      <div className="border-vq-border border-t pt-3 text-vq-text-lo text-xs">
+        {t('Loading dialer…')}
+      </div>
     );
   }
   const set = <K extends keyof DialerConfig>(key: K, value: DialerConfig[K]) =>
@@ -165,16 +174,16 @@ function DialerPanel({ campaignId, onDone }: { campaignId: string; onDone: () =>
   return (
     <div className="flex flex-col gap-3 border-vq-border border-t pt-3">
       <div className="flex flex-col gap-1">
-        <span className="text-vq-text-lo text-xs">Dialer mode</span>
+        <span className="text-vq-text-lo text-xs">{t('Dialer mode')}</span>
         <select
-          aria-label="Dialer mode"
+          aria-label={t('Dialer mode')}
           className={SELECT_CLS}
           value={config.mode}
           onChange={(e) => set('mode', e.target.value as DialerMode)}
         >
           {DIALER_MODES.map((m) => (
             <option key={m.value} value={m.value}>
-              {m.label} — {m.hint}
+              {t(m.label)} — {t(m.hint)}
             </option>
           ))}
         </select>
@@ -186,13 +195,14 @@ function DialerPanel({ campaignId, onDone }: { campaignId: string; onDone: () =>
           checked={config.blended}
           onChange={(e) => set('blended', e.target.checked)}
         />
-        Blended team — pace to live human-agent availability (otherwise pure-AI, paced to
-        concurrency)
+        {t(
+          'Blended team — pace to live human-agent availability (otherwise pure-AI, paced to concurrency)',
+        )}
       </label>
 
       {config.mode === 'power' && (
         <label htmlFor="linesPerAgent" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-          Lines per agent (N:1)
+          {t('Lines per agent (N:1)')}
           <Input
             id="linesPerAgent"
             type="number"
@@ -206,7 +216,7 @@ function DialerPanel({ campaignId, onDone }: { campaignId: string; onDone: () =>
 
       {config.mode === 'predictive' && (
         <label htmlFor="maxAbandon" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-          Max abandon rate % (legal cap)
+          {t('Max abandon rate % (legal cap)')}
           <Input
             id="maxAbandon"
             type="number"
@@ -217,8 +227,9 @@ function DialerPanel({ campaignId, onDone }: { campaignId: string; onDone: () =>
             onChange={(e) => set('maxAbandonRatePercent', Number(e.target.value))}
           />
           <span className="text-[10px] text-vq-warn">
-            Predictive stays at safe 1:1 pacing until live dialing monitors abandonment — it never
-            over-dials without enforcing this cap.
+            {t(
+              'Predictive stays at safe 1:1 pacing until live dialing monitors abandonment — it never over-dials without enforcing this cap.',
+            )}
           </span>
         </label>
       )}
@@ -230,10 +241,10 @@ function DialerPanel({ campaignId, onDone }: { campaignId: string; onDone: () =>
           disabled={save.isPending}
           onClick={() => save.mutate({ id: campaignId, config }, { onSuccess: onDone })}
         >
-          {save.isPending ? 'Saving…' : 'Save dialer'}
+          {save.isPending ? t('Saving…') : t('Save dialer')}
         </Button>
         <Button size="sm" variant="ghost" onClick={onDone}>
-          Close
+          {t('Close')}
         </Button>
       </div>
     </div>
@@ -241,6 +252,7 @@ function DialerPanel({ campaignId, onDone }: { campaignId: string; onDone: () =>
 }
 
 function ImportPanel({ campaignId, onDone }: { campaignId: string; onDone: () => void }) {
+  const { t } = useI18n();
   const doImport = useImportContacts(campaignId);
   const [csv, setCsv] = useState('phone,name,email\n');
 
@@ -254,8 +266,9 @@ function ImportPanel({ campaignId, onDone }: { campaignId: string; onDone: () =>
   return (
     <div className="flex flex-col gap-2 border-vq-border border-t pt-3">
       <p className="text-xs text-vq-text-lo">
-        Paste CSV with a <code>phone</code> column (name/email optional). Duplicates + DNC are
-        suppressed automatically.
+        {t(
+          'Paste CSV with a phone column (name/email optional). Duplicates + DNC are suppressed automatically.',
+        )}
       </p>
       <textarea
         value={csv}
@@ -265,8 +278,12 @@ function ImportPanel({ campaignId, onDone }: { campaignId: string; onDone: () =>
       />
       {doImport.data && (
         <p className="text-xs text-vq-success">
-          Imported {doImport.data.imported} · {doImport.data.duplicates} dup ·{' '}
-          {doImport.data.suppressed} DNC · {doImport.data.invalid} invalid
+          {t('Imported {imported} · {dup} dup · {suppressed} DNC · {invalid} invalid', {
+            imported: doImport.data.imported,
+            dup: doImport.data.duplicates,
+            suppressed: doImport.data.suppressed,
+            invalid: doImport.data.invalid,
+          })}
         </p>
       )}
       {doImport.isError && (
@@ -274,10 +291,10 @@ function ImportPanel({ campaignId, onDone }: { campaignId: string; onDone: () =>
       )}
       <div className="flex gap-2">
         <Button size="sm" disabled={doImport.isPending} onClick={submit}>
-          {doImport.isPending ? 'Importing…' : 'Import contacts'}
+          {doImport.isPending ? t('Importing…') : t('Import contacts')}
         </Button>
         <Button size="sm" variant="ghost" onClick={onDone}>
-          Close
+          {t('Close')}
         </Button>
       </div>
     </div>
@@ -285,6 +302,7 @@ function ImportPanel({ campaignId, onDone }: { campaignId: string; onDone: () =>
 }
 
 function CreateCampaign({ onDone }: { onDone: () => void }) {
+  const { t } = useI18n();
   const agents = useAgents();
   const create = useCreateCampaign();
   const [name, setName] = useState('');
@@ -301,16 +319,20 @@ function CreateCampaign({ onDone }: { onDone: () => void }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">New campaign</CardTitle>
+        <CardTitle className="text-base">{t('New campaign')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        <Input placeholder="Campaign name" value={name} onChange={(e) => setName(e.target.value)} />
+        <Input
+          placeholder={t('Campaign name')}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
         <select
           className="rounded-vq border border-vq-border bg-transparent px-2 py-2 text-sm text-vq-text-hi"
           value={agentId}
           onChange={(e) => setAgentId(e.target.value)}
         >
-          <option value="">Select an agent…</option>
+          <option value="">{t('Select an agent…')}</option>
           {(agents.data ?? []).map((a) => (
             <option key={a.id} value={a.id}>
               {a.name}
@@ -319,7 +341,7 @@ function CreateCampaign({ onDone }: { onDone: () => void }) {
         </select>
         <div className="flex gap-3">
           <label htmlFor="pacing" className="flex flex-col gap-1 text-xs text-vq-text-lo">
-            Pace / tick
+            {t('Pace / tick')}
             <Input
               id="pacing"
               type="number"
@@ -328,7 +350,7 @@ function CreateCampaign({ onDone }: { onDone: () => void }) {
             />
           </label>
           <label htmlFor="concurrency" className="flex flex-col gap-1 text-xs text-vq-text-lo">
-            Concurrency
+            {t('Concurrency')}
             <Input
               id="concurrency"
               type="number"
@@ -342,10 +364,10 @@ function CreateCampaign({ onDone }: { onDone: () => void }) {
         )}
         <div className="flex gap-2">
           <Button size="sm" disabled={!name || !agentId || create.isPending} onClick={submit}>
-            {create.isPending ? 'Creating…' : 'Create campaign'}
+            {create.isPending ? t('Creating…') : t('Create campaign')}
           </Button>
           <Button size="sm" variant="ghost" onClick={onDone}>
-            Cancel
+            {t('Cancel')}
           </Button>
         </div>
       </CardContent>
