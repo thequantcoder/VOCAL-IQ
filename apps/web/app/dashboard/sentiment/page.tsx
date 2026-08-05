@@ -14,6 +14,7 @@ import {
   useSentimentEvents,
   useSentimentRules,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 const METRICS: { value: SentimentMetric; label: string }[] = [
   { value: 'sentimentScore', label: 'Sentiment (−1…1)' },
@@ -45,6 +46,7 @@ const SELECT_CLS =
  * right column is the real-time supervisor feed of what has fired.
  */
 export default function SentimentPage() {
+  const { t } = useI18n();
   const rules = useSentimentRules();
   const events = useSentimentEvents();
   const create = useCreateSentimentRule();
@@ -69,11 +71,12 @@ export default function SentimentPage() {
     <div className="mx-auto flex max-w-5xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <Activity size={20} /> Live sentiment actions
+          <Activity size={20} /> {t('Live sentiment actions')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          React to how a call feels — escalate angry callers, alert sales on buying intent, soften
-          the tone when things sour. Rules fire in real time, with a cooldown so nothing spams.
+          {t(
+            'React to how a call feels — escalate angry callers, alert sales on buying intent, soften the tone when things sour. Rules fire in real time, with a cooldown so nothing spams.',
+          )}
         </p>
       </div>
 
@@ -83,14 +86,14 @@ export default function SentimentPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Zap size={16} /> New rule
+                <Zap size={16} /> {t('New rule')}
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
               <div className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="text-vq-text-lo">When</span>
+                <span className="text-vq-text-lo">{t('When')}</span>
                 <select
-                  aria-label="Metric"
+                  aria-label={t('Metric')}
                   className={SELECT_CLS}
                   value={draft.metric}
                   onChange={(e) =>
@@ -99,23 +102,23 @@ export default function SentimentPage() {
                 >
                   {METRICS.map((m) => (
                     <option key={m.value} value={m.value}>
-                      {m.label}
+                      {t(m.label)}
                     </option>
                   ))}
                 </select>
                 <select
-                  aria-label="Operator"
+                  aria-label={t('Operator')}
                   className={SELECT_CLS}
                   value={draft.operator}
                   onChange={(e) =>
                     setDraft((d) => ({ ...d, operator: e.target.value as 'gt' | 'lt' }))
                   }
                 >
-                  <option value="gt">is above</option>
-                  <option value="lt">is below</option>
+                  <option value="gt">{t('is above')}</option>
+                  <option value="lt">{t('is below')}</option>
                 </select>
                 <Input
-                  aria-label="Threshold"
+                  aria-label={t('Threshold')}
                   type="number"
                   step="0.05"
                   min={-1}
@@ -126,9 +129,9 @@ export default function SentimentPage() {
                 />
               </div>
               <div className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="text-vq-text-lo">then</span>
+                <span className="text-vq-text-lo">{t('then')}</span>
                 <select
-                  aria-label="Action"
+                  aria-label={t('Action')}
                   className={SELECT_CLS}
                   value={draft.action}
                   onChange={(e) =>
@@ -137,13 +140,13 @@ export default function SentimentPage() {
                 >
                   {ACTIONS.map((a) => (
                     <option key={a.value} value={a.value}>
-                      {a.label}
+                      {t(a.label)}
                     </option>
                   ))}
                 </select>
-                <span className="text-vq-text-lo">cooldown</span>
+                <span className="text-vq-text-lo">{t('cooldown')}</span>
                 <Input
-                  aria-label="Cooldown seconds"
+                  aria-label={t('Cooldown seconds')}
                   type="number"
                   min={1}
                   max={3600}
@@ -151,11 +154,11 @@ export default function SentimentPage() {
                   value={draft.cooldownSec}
                   onChange={(e) => setDraft((d) => ({ ...d, cooldownSec: Number(e.target.value) }))}
                 />
-                <span className="text-vq-text-lo text-xs">sec</span>
+                <span className="text-vq-text-lo text-xs">{t('sec')}</span>
               </div>
               <Input
-                aria-label="Note"
-                placeholder="Optional note for supervisors / tone hint…"
+                aria-label={t('Note')}
+                placeholder={t('Optional note for supervisors / tone hint…')}
                 value={draft.note ?? ''}
                 onChange={(e) => setDraft((d) => ({ ...d, note: e.target.value }))}
               />
@@ -163,7 +166,7 @@ export default function SentimentPage() {
                 <p className="text-vq-danger text-xs">{(create.error as Error).message}</p>
               )}
               <Button size="sm" className="self-start" disabled={create.isPending} onClick={submit}>
-                Add rule
+                {t('Add rule')}
               </Button>
             </CardContent>
           </Card>
@@ -173,7 +176,10 @@ export default function SentimentPage() {
           ) : rules.isError ? (
             <ErrorState message={(rules.error as Error).message} onRetry={() => rules.refetch()} />
           ) : !rules.data || rules.data.length === 0 ? (
-            <EmptyState title="No rules yet" hint="Add your first sentiment trigger above." />
+            <EmptyState
+              title={t('No rules yet')}
+              hint={t('Add your first sentiment trigger above.')}
+            />
           ) : (
             <div className="flex flex-col gap-2">
               {rules.data.map((r) => (
@@ -191,12 +197,15 @@ export default function SentimentPage() {
         {/* Live supervisor feed */}
         <div className="flex flex-col gap-2">
           <h2 className="flex items-center gap-2 font-medium text-sm text-vq-text-hi">
-            <Bell size={15} /> Live alerts
+            <Bell size={15} /> {t('Live alerts')}
           </h2>
           {events.isLoading ? (
             <LoadingCard rows={4} />
           ) : !events.data || events.data.length === 0 ? (
-            <EmptyState title="Quiet for now" hint="Fired actions appear here in real time." />
+            <EmptyState
+              title={t('Quiet for now')}
+              hint={t('Fired actions appear here in real time.')}
+            />
           ) : (
             <div className="flex flex-col gap-2">
               {events.data.map((ev) => (
@@ -229,6 +238,7 @@ function RuleRow({
   onDelete,
   deleting,
 }: { r: SentimentRule; onDelete: () => void; deleting: boolean }) {
+  const { t } = useI18n();
   return (
     <Card>
       <CardContent className="flex items-center justify-between py-3 text-sm">
@@ -244,7 +254,8 @@ function RuleRow({
             </span>
           </span>
           <span className="text-vq-text-lo text-xs">
-            cooldown {r.cooldownSec}s{r.note ? ` · ${r.note}` : ''}
+            {t('cooldown {n}s', { n: r.cooldownSec })}
+            {r.note ? ` · ${r.note}` : ''}
           </span>
         </div>
         <Button
@@ -252,7 +263,7 @@ function RuleRow({
           variant="ghost"
           disabled={deleting}
           onClick={onDelete}
-          aria-label="Delete rule"
+          aria-label={t('Delete rule')}
         >
           <Trash2 size={14} />
         </Button>

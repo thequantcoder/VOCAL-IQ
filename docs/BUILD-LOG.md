@@ -5386,3 +5386,17 @@ Batch 3 of the grind — three larger Build/Analyze pages via `useI18n().t()` (E
 - **`catalogs.ts`**: ~65 new Hindi keys. Reuses `Custom models`/`QA scoring`/`Creating…`/`Cancel`/`Delete`. Duplicate-key scan clean (`Active` vs `active`, `Provider` are distinct).
 
 **Checks.** biome clean (4 files, zero fixes). Web typecheck/build in CI. Progress: **26 of ~76 dashboard pages** now Hindi. ~50 remain.
+
+---
+
+## Dashboard localization — page-level, increment 11: Live sentiment + Benchmarking + Video avatars
+
+Batch 4 of the grind — three larger Analyze/Build pages via `useI18n().t()` + Hindi; ~80 new keys (many interpolated). Two catalog gotchas handled: `When` collided with the callbacks key (reused one Hindi); the `then` key tripped biome `noThenProperty` (it's an i18n key, never awaited → `biome-ignore`).
+
+- **sentiment**: header + subtitle, the rule builder (`When`/`then`/`cooldown`, the 4 metric options + 5 action options wrapped at render, operator `is above`/`is below`, arias, `Add rule`), both empty-states (`No rules yet`, `Quiet for now`), `Live alerts`, and RuleRow (interpolated `cooldown {n}s`). Metric/action chips = enum DATA.
+- **benchmarking**: header + subtitle, SettingsCard (`Peer benchmarking` opt-in copy, `Industry`), InternalCard (`Your agents (last 30 days)`, `best:`, metric labels wrapped), PeerCard (the two interpolated peer-availability messages incl. `{industry}`/`{n}`, `Averaged over {n}…`, `you: {self} · peer median: {median}`), PercentileBar (`{n}th pct`), `Recommendations`. Industry options = data.
+- **avatars**: header + subtitle + likeness-consent notice, the add-avatar form (`Name`/`Kind`/`Stock`/`Custom (real likeness)`, the consent checkbox, `Add avatar`), `Catalogue` + empty-state, `consent on file`, `Start`, and the session card (interpolated `Session · {mode}`, the voice-fallback + streaming messages, `End session`).
+
+- **`catalogs.ts`**: ~80 new Hindi keys. Reuses `Live sentiment`(nav)/`Benchmarking`/`Video avatars`/`Adding…`/`When`. Duplicate-key scan clean.
+
+**Checks.** biome clean (0 errors; 2 pre-existing non-null-assertion warnings in benchmarking, unchanged, non-blocking). Web typecheck/build in CI. Progress: **29 of ~76 dashboard pages** now Hindi. ~47 remain.
