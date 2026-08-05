@@ -14,6 +14,7 @@ import {
   useSyncPlan,
   useUpdatePlan,
 } from '../../../../lib/api';
+import { useI18n } from '../../../../lib/i18n/provider';
 
 const inputCls =
   'w-full rounded-vq border border-vq-border bg-vq-bg-base px-3 py-2 text-sm text-vq-text-hi focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vq-ring';
@@ -35,6 +36,7 @@ const EMPTY: PlanInputBody = {
  * existing subscribers keep their terms; sync mirrors to Stripe (gated until keys are set).
  */
 export default function PlansPage() {
+  const { t } = useI18n();
   const plans = usePlans();
   const [creating, setCreating] = useState(false);
 
@@ -43,14 +45,14 @@ export default function PlansPage() {
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-            <Layers size={20} /> Plans &amp; pricing
+            <Layers size={20} /> {t('Plans & pricing')}
           </h1>
           <p className="text-sm text-vq-text-lo">
-            Build subscription tiers, limits, and overage rates — no code.
+            {t('Build subscription tiers, limits, and overage rates — no code.')}
           </p>
         </div>
         <Button size="sm" onClick={() => setCreating((v) => !v)}>
-          <Plus size={16} /> New plan
+          <Plus size={16} /> {t('New plan')}
         </Button>
       </div>
 
@@ -61,7 +63,7 @@ export default function PlansPage() {
       ) : plans.isError ? (
         <ErrorState message={(plans.error as Error).message} onRetry={() => plans.refetch()} />
       ) : !plans.data || plans.data.length === 0 ? (
-        <EmptyState title="No plans yet" hint="Create your first subscription tier." />
+        <EmptyState title={t('No plans yet')} hint={t('Create your first subscription tier.')} />
       ) : (
         <div className="flex flex-col gap-3">
           {plans.data.map((p) => (
@@ -74,6 +76,7 @@ export default function PlansPage() {
 }
 
 function PlanRow({ plan }: { plan: PlanDto }) {
+  const { t } = useI18n();
   const archive = useArchivePlan();
   const sync = useSyncPlan();
   const [editing, setEditing] = useState(false);
@@ -83,8 +86,8 @@ function PlanRow({ plan }: { plan: PlanDto }) {
     const res = await sync.mutateAsync(plan.id);
     setMsg(
       res.synced
-        ? 'Synced to Stripe.'
-        : 'Stripe not configured — plan saved locally, will sync when keys are set.',
+        ? t('Synced to Stripe.')
+        : t('Stripe not configured — plan saved locally, will sync when keys are set.'),
     );
   }
 
@@ -96,11 +99,11 @@ function PlanRow({ plan }: { plan: PlanDto }) {
             <span className="font-medium text-vq-text-hi">{plan.name}</span>
             <span className="text-vq-text-lo text-xs">v{plan.version}</span>
             <span className="rounded-vq-pill border border-vq-border px-2 py-0.5 text-vq-text-lo text-xs">
-              {plan.tenantId ? 'reseller' : 'global'}
+              {plan.tenantId ? t('reseller') : t('global')}
             </span>
             {!plan.active && (
               <span className="rounded-vq-pill border border-vq-border px-2 py-0.5 text-vq-text-lo text-xs">
-                archived
+                {t('archived')}
               </span>
             )}
           </div>
@@ -110,19 +113,19 @@ function PlanRow({ plan }: { plan: PlanDto }) {
           </span>
         </div>
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-vq-text-lo text-xs">
-          <span>{plan.includedMinutes} min incl.</span>
-          <span>{plan.agentLimit} agents</span>
-          <span>{plan.numberLimit} numbers</span>
+          <span>{t('{n} min incl.', { n: plan.includedMinutes })}</span>
+          <span>{t('{n} agents', { n: plan.agentLimit })}</span>
+          <span>{t('{n} numbers', { n: plan.numberLimit })}</span>
           <span>{plan.sipLimit} SIP</span>
-          <span>overage {formatUsd(plan.overageRatePerMin / 100)}/min</span>
+          <span>{t('overage {v}/min', { v: formatUsd(plan.overageRatePerMin / 100) })}</span>
         </div>
         {plan.active && (
           <div className="flex items-center gap-2">
             <Button size="sm" variant="secondary" onClick={() => setEditing((v) => !v)}>
-              Edit
+              {t('Edit')}
             </Button>
             <Button size="sm" variant="ghost" disabled={sync.isPending} onClick={doSync}>
-              <CloudUpload size={14} /> Sync
+              <CloudUpload size={14} /> {t('Sync')}
             </Button>
             <Button
               size="sm"
@@ -130,7 +133,7 @@ function PlanRow({ plan }: { plan: PlanDto }) {
               disabled={archive.isPending}
               onClick={() => archive.mutate(plan.id)}
             >
-              <Archive size={14} /> Archive
+              <Archive size={14} /> {t('Archive')}
             </Button>
           </div>
         )}
@@ -142,6 +145,7 @@ function PlanRow({ plan }: { plan: PlanDto }) {
 }
 
 function PlanEditor({ plan, onDone }: { plan?: PlanDto; onDone: () => void }) {
+  const { t } = useI18n();
   const create = useCreatePlan();
   const update = useUpdatePlan();
   const [form, setForm] = useState<PlanInputBody>(plan ? toForm(plan) : EMPTY);
@@ -163,68 +167,75 @@ function PlanEditor({ plan, onDone }: { plan?: PlanDto; onDone: () => void }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">{plan ? `Edit ${plan.name}` : 'New plan'}</CardTitle>
+        <CardTitle className="text-base">
+          {plan ? t('Edit {name}', { name: plan.name }) : t('New plan')}
+        </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <Input
-          placeholder="Plan name"
+          placeholder={t('Plan name')}
           value={form.name}
           onChange={(e) => set('name', e.target.value)}
         />
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <Field
-            label="Price / mo (cents)"
+            label={t('Price / mo (cents)')}
             value={form.priceMonthly}
             onChange={(v) => set('priceMonthly', v)}
           />
           <Field
-            label="Included minutes"
+            label={t('Included minutes')}
             value={form.includedMinutes}
             onChange={(v) => set('includedMinutes', v)}
           />
           <Field
-            label="Overage /min (cents)"
+            label={t('Overage /min (cents)')}
             value={form.overageRatePerMin}
             onChange={(v) => set('overageRatePerMin', v)}
           />
           <Field
-            label="Agent limit"
+            label={t('Agent limit')}
             value={form.agentLimit}
             onChange={(v) => set('agentLimit', v)}
           />
           <Field
-            label="Number limit"
+            label={t('Number limit')}
             value={form.numberLimit}
             onChange={(v) => set('numberLimit', v)}
           />
-          <Field label="SIP limit" value={form.sipLimit} onChange={(v) => set('sipLimit', v)} />
+          <Field
+            label={t('SIP limit')}
+            value={form.sipLimit}
+            onChange={(v) => set('sipLimit', v)}
+          />
         </div>
         {!plan && (
           <label className="flex flex-col gap-1 text-vq-text-lo text-xs">
-            Scope
+            {t('Scope')}
             <select
               value={scope}
               onChange={(e) => setScope(e.target.value as 'global' | 'own')}
               className={inputCls}
             >
-              <option value="global">Global (all tenants)</option>
-              <option value="own">My reseller only</option>
+              <option value="global">{t('Global (all tenants)')}</option>
+              <option value="own">{t('My reseller only')}</option>
             </select>
           </label>
         )}
         {plan && (
           <p className="text-vq-text-lo text-xs">
-            Changing pricing on a plan with active subscribers creates a new version — existing
-            subscribers keep their current terms.
+            {t(
+              'Changing pricing on a plan with active subscribers creates a new version — existing subscribers keep their current terms.',
+            )}
           </p>
         )}
         {err && <p className="text-vq-danger text-xs">{err.message}</p>}
         <div className="flex gap-2">
           <Button size="sm" disabled={busy || !form.name.trim()} onClick={submit}>
-            {busy ? 'Saving…' : plan ? 'Save' : 'Create plan'}
+            {busy ? t('Saving…') : plan ? t('Save') : t('Create plan')}
           </Button>
           <Button size="sm" variant="ghost" onClick={onDone}>
-            Cancel
+            {t('Cancel')}
           </Button>
         </div>
       </CardContent>

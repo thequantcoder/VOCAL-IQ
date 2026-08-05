@@ -11,6 +11,7 @@ import {
   useKeyPool,
   useSetPoolKeyActive,
 } from '../../../../lib/api';
+import { useI18n } from '../../../../lib/i18n/provider';
 
 const PROVIDERS = ['OPENAI', 'ANTHROPIC', 'DEEPGRAM', 'ELEVENLABS'];
 
@@ -23,6 +24,7 @@ const inputCls =
  * write-only — added here, never shown again.
  */
 export default function KeyPoolPage() {
+  const { t } = useI18n();
   const pool = useKeyPool();
   const [adding, setAdding] = useState(false);
 
@@ -31,15 +33,16 @@ export default function KeyPoolPage() {
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-            <KeyRound size={20} /> Platform key pool
+            <KeyRound size={20} /> {t('Platform key pool')}
           </h1>
           <p className="text-sm text-vq-text-lo">
-            Load-balanced managed keys. Traffic is spread by weight; a key that keeps failing is
-            ejected automatically, then re-probed.
+            {t(
+              'Load-balanced managed keys. Traffic is spread by weight; a key that keeps failing is ejected automatically, then re-probed.',
+            )}
           </p>
         </div>
         <Button size="sm" onClick={() => setAdding((v) => !v)}>
-          <Plus size={16} /> Add key
+          <Plus size={16} /> {t('Add key')}
         </Button>
       </div>
 
@@ -50,7 +53,10 @@ export default function KeyPoolPage() {
       ) : pool.isError ? (
         <ErrorState message={(pool.error as Error).message} onRetry={() => pool.refetch()} />
       ) : !pool.data || pool.data.length === 0 ? (
-        <EmptyState title="No pooled keys" hint="Managed calls fall back to the env key." />
+        <EmptyState
+          title={t('No pooled keys')}
+          hint={t('Managed calls fall back to the env key.')}
+        />
       ) : (
         <div className="flex flex-col gap-2">
           {pool.data.map((k) => (
@@ -63,6 +69,7 @@ export default function KeyPoolPage() {
 }
 
 function KeyRow({ k }: { k: KeyPoolDto }) {
+  const { t } = useI18n();
   const setActive = useSetPoolKeyActive();
   const del = useDeletePoolKey();
   const state = !k.active ? 'off' : k.ejected ? 'ejected' : 'healthy';
@@ -81,7 +88,7 @@ function KeyRow({ k }: { k: KeyPoolDto }) {
             <span className="font-mono text-vq-text-lo text-xs">{k.label ?? '••••'}</span>
           </p>
           <p className="text-vq-text-lo text-xs">
-            weight {k.weight} · {k.failureCount} recent failures
+            {t('weight {w} · {n} recent failures', { w: k.weight, n: k.failureCount })}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -93,11 +100,11 @@ function KeyRow({ k }: { k: KeyPoolDto }) {
             variant="ghost"
             onClick={() => setActive.mutate({ id: k.id, active: !k.active })}
           >
-            {k.active ? 'Disable' : 'Enable'}
+            {k.active ? t('Disable') : t('Enable')}
           </Button>
           <button
             type="button"
-            aria-label="Remove key"
+            aria-label={t('Remove key')}
             onClick={() => del.mutate(k.id)}
             className="rounded-vq p-1.5 text-vq-text-lo hover:text-vq-danger"
           >
@@ -110,6 +117,7 @@ function KeyRow({ k }: { k: KeyPoolDto }) {
 }
 
 function AddKey({ onDone }: { onDone: () => void }) {
+  const { t } = useI18n();
   const add = useAddPoolKey();
   const [provider, setProvider] = useState('OPENAI');
   const [apiKey, setApiKey] = useState('');
@@ -124,10 +132,10 @@ function AddKey({ onDone }: { onDone: () => void }) {
   return (
     <Card>
       <CardContent className="flex flex-col gap-3 py-4">
-        <p className="font-medium text-sm text-vq-text-hi">Add a platform key</p>
+        <p className="font-medium text-sm text-vq-text-hi">{t('Add a platform key')}</p>
         <div className="flex gap-3">
           <label htmlFor="kp-provider" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-            Provider
+            {t('Provider')}
             <select
               id="kp-provider"
               value={provider}
@@ -142,7 +150,7 @@ function AddKey({ onDone }: { onDone: () => void }) {
             </select>
           </label>
           <label htmlFor="kp-weight" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-            Weight
+            {t('Weight')}
             <input
               id="kp-weight"
               type="number"
@@ -155,7 +163,7 @@ function AddKey({ onDone }: { onDone: () => void }) {
           </label>
         </div>
         <label htmlFor="kp-key" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-          API key (stored sealed, never shown again)
+          {t('API key (stored sealed, never shown again)')}
           <Input
             id="kp-key"
             type="password"
@@ -167,10 +175,10 @@ function AddKey({ onDone }: { onDone: () => void }) {
         {add.isError && <p className="text-vq-danger text-xs">{(add.error as Error).message}</p>}
         <div className="flex gap-2">
           <Button size="sm" disabled={apiKey.length < 8 || add.isPending} onClick={submit}>
-            {add.isPending ? 'Adding…' : 'Add key'}
+            {add.isPending ? t('Adding…') : t('Add key')}
           </Button>
           <Button size="sm" variant="ghost" onClick={onDone}>
-            Cancel
+            {t('Cancel')}
           </Button>
         </div>
       </CardContent>

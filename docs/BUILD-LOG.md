@@ -5430,3 +5430,20 @@ Batch 6 — the whole `settings/*` sub-tree that was still English: notification
 - **`catalogs.ts`**: ~75 new Hindi keys (6 section headers). Reuses `Save`/`Saving…`/`Adding…`/`Provider`/`Contact ID` + the 5 page-title nav keys. `Saved ✓` shared across notifications/translation/biometrics (one key). Duplicate-key scan clean.
 
 **Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: **37 of ~76 dashboard pages** now Hindi. ~39 remain.
+
+---
+
+## Dashboard localization — page-level, increment 14: Admin/super-admin cluster (6 pages)
+
+Batch 7 — six super-admin consoles: announcements, credits & promos, fraud & abuse, platform key pool, governance, plans & pricing. All via `useI18n().t()` (English-as-key) + Hindi; ~95 new keys. No `t`-shadow renames needed. Pre-push `hi`-block dup-scan skipped 10 already-existing keys (`Kind`/`Provider`/`Governance`/`on`/`global`/`Edit`/`Adding…`/`Cancel`/`Saving…`/`Save`). Two over-width `EmptyState` + one `Field` line hand-wrapped to satisfy biome's formatter (local file-scoped catch, no CI round-trip).
+
+- **admin/announcements**: header + audit copy, `Compose`, the 4 audience `SCOPES` (label+hint wrapped at render), the reseller/plan target-id label, `Severity`, `Message`, `Publish`, interpolated `Sent to {n} tenant(s) ✓`. Severity values (info/success/warning/critical) = enum DATA.
+- **admin/credits**: header + audit copy, both cards (`Grant credits to a tenant`, `Create a promo code`) via the shared `Field` label, interpolated success toasts (`Granted {n} credits (grant {id}…) ✓`, `Created code {code} ✓`). `KindSelect` option values = enum DATA.
+- **admin/fraud**: header + subtitle, empty-state, the three resolution buttons (`Resume tenant`/`Dismiss (false positive)`/`Keep suspended`). `c.action`/`score`/reasons + `ACTION_COLOR` keys = DATA.
+- **admin/key-pool**: header + subtitle, `Add key`, empty-state, KeyRow (interpolated `weight {w} · {n} recent failures`, `Disable`/`Enable`, `Remove key` aria), AddKey (`Provider`/`Weight`/`API key (stored sealed…)`, add/cancel). Provider list + health chip (healthy/ejected/off) = DATA.
+- **admin/governance**: header + subtitle, QuotaStrip (`Quota usage`), Flags (`Feature flags`, Tenant/Global options, `on`, `Set flag`, empty-state), AuditViewer (`Audit log`, `(append-only)`, filter placeholder, empty-state). Quota resource/state + flag scope/value + audit rows = DATA.
+- **admin/plans**: header + subtitle, `New plan`, empty-state, PlanRow (reseller/global/archived chips, interpolated `{n} min incl.`/`{n} agents`/`{n} numbers`/`overage {v}/min`, Edit/Sync/Archive, the two Stripe-sync messages), PlanEditor (`Edit {name}`, `Plan name`, the 6 numeric `Field`s, `Scope` + its two options, the versioning note, save/create/cancel). `{n} SIP` left (acronym-dominated).
+
+- **`catalogs.ts`**: ~95 new Hindi keys (6 section headers). Reuses `Kind`/`Provider`/`on`/`global`/`Edit`/`Adding…`/`Cancel`/`Saving…`/`Save` + `Governance`(nav). Duplicate-key scan clean.
+
+**Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: **43 of ~76 dashboard pages** now Hindi. ~33 remain.
