@@ -12,6 +12,7 @@ import {
   useMcpServers,
   useRegisterMcpServer,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 const TRUST_LABEL: Record<TrustContext, string> = {
   HIGH: 'High — vetted, full access',
@@ -21,6 +22,7 @@ const TRUST_LABEL: Record<TrustContext, string> = {
 
 /** MCP / tool servers (Day 46): register external tool servers with a trust context + timeout. */
 export default function McpPage() {
+  const { t } = useI18n();
   const servers = useMcpServers();
   const [creating, setCreating] = useState(false);
 
@@ -29,15 +31,16 @@ export default function McpPage() {
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-            <Plug size={20} /> Tool servers (MCP)
+            <Plug size={20} /> {t('Tool servers (MCP)')}
           </h1>
           <p className="text-sm text-vq-text-lo">
-            Connect external tool / MCP servers. Untrusted servers only expose read-only tools;
-            every call is timeout-bounded and audited.
+            {t(
+              'Connect external tool / MCP servers. Untrusted servers only expose read-only tools; every call is timeout-bounded and audited.',
+            )}
           </p>
         </div>
         <Button size="sm" onClick={() => setCreating((v) => !v)}>
-          <Plus size={16} /> Add server
+          <Plus size={16} /> {t('Add server')}
         </Button>
       </div>
 
@@ -49,8 +52,8 @@ export default function McpPage() {
         <ErrorState message={(servers.error as Error).message} onRetry={() => servers.refetch()} />
       ) : !servers.data || servers.data.length === 0 ? (
         <EmptyState
-          title="No tool servers"
-          hint="Add an MCP server URL and choose its trust context."
+          title={t('No tool servers')}
+          hint={t('Add an MCP server URL and choose its trust context.')}
         />
       ) : (
         <div className="flex flex-col gap-3">
@@ -64,6 +67,7 @@ export default function McpPage() {
 }
 
 function ServerRow({ server }: { server: McpServer }) {
+  const { t } = useI18n();
   const discover = useDiscoverMcpTools();
   const del = useDeleteMcpServer();
   const untrusted = server.trustContext !== 'HIGH';
@@ -81,12 +85,12 @@ function ServerRow({ server }: { server: McpServer }) {
               )}
               <span className="font-medium text-vq-text-hi">{server.name}</span>
               <span className="rounded-vq-pill border border-vq-border px-2 py-0.5 text-vq-text-lo text-xs">
-                {TRUST_LABEL[server.trustContext]}
+                {t(TRUST_LABEL[server.trustContext])}
               </span>
             </div>
             <span className="truncate text-vq-text-lo text-xs">
-              {server.url} · {Math.round(server.timeoutMs / 1000)}s timeout
-              {server.hasAuth ? ' · auth set' : ''}
+              {server.url} · {t('{n}s timeout', { n: Math.round(server.timeoutMs / 1000) })}
+              {server.hasAuth ? ` · ${t('auth set')}` : ''}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -100,7 +104,7 @@ function ServerRow({ server }: { server: McpServer }) {
                 size={14}
                 className={discover.isPending ? 'animate-spin motion-reduce:animate-none' : ''}
               />{' '}
-              Discover
+              {t('Discover')}
             </Button>
             <Button
               size="sm"
@@ -114,18 +118,18 @@ function ServerRow({ server }: { server: McpServer }) {
         </div>
         {server.tools.length > 0 && (
           <div className="flex flex-wrap gap-1.5 border-vq-border border-t pt-2">
-            {server.tools.map((t) => (
+            {server.tools.map((tool) => (
               <span
-                key={t.name}
-                title={t.description}
+                key={tool.name}
+                title={tool.description}
                 className={`rounded-vq-pill border px-2 py-0.5 text-xs ${
-                  untrusted && !t.readOnly
+                  untrusted && !tool.readOnly
                     ? 'border-vq-border text-vq-text-lo line-through'
                     : 'border-vq-violet/30 text-vq-text-hi'
                 }`}
               >
-                {t.name}
-                {t.readOnly ? ' ·ro' : t.destructive ? ' ·!' : ''}
+                {tool.name}
+                {tool.readOnly ? ' ·ro' : tool.destructive ? ' ·!' : ''}
               </span>
             ))}
           </div>
@@ -139,6 +143,7 @@ function ServerRow({ server }: { server: McpServer }) {
 }
 
 function RegisterForm({ onDone }: { onDone: () => void }) {
+  const { t } = useI18n();
   const register = useRegisterMcpServer();
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
@@ -163,10 +168,14 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Add tool server</CardTitle>
+        <CardTitle className="text-base">{t('Add tool server')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        <Input placeholder="Server name" value={name} onChange={(e) => setName(e.target.value)} />
+        <Input
+          placeholder={t('Server name')}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
         <Input
           placeholder="https://mcp.example.com"
           value={url}
@@ -174,20 +183,20 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
         />
         <div className="flex flex-wrap gap-3">
           <label htmlFor="mcp-trust" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-            Trust context
+            {t('Trust context')}
             <select
               id="mcp-trust"
               value={trustContext}
               onChange={(e) => setTrust(e.target.value as TrustContext)}
               className="rounded-vq border border-vq-border bg-transparent px-2 py-1.5 text-sm text-vq-text-hi"
             >
-              <option value="UNKNOWN">Unknown (treated as low)</option>
-              <option value="LOW">Low — external, read-only</option>
-              <option value="HIGH">High — vetted, full access</option>
+              <option value="UNKNOWN">{t('Unknown (treated as low)')}</option>
+              <option value="LOW">{t('Low — external, read-only')}</option>
+              <option value="HIGH">{t('High — vetted, full access')}</option>
             </select>
           </label>
           <label htmlFor="mcp-timeout" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-            Timeout (s, 5–120)
+            {t('Timeout (s, 5–120)')}
             <Input
               id="mcp-timeout"
               type="number"
@@ -200,7 +209,7 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
           </label>
         </div>
         <Input
-          placeholder="Authorization header (optional, e.g. Bearer …)"
+          placeholder={t('Authorization header (optional, e.g. Bearer …)')}
           value={authHeader}
           onChange={(e) => setAuthHeader(e.target.value)}
         />
@@ -209,10 +218,10 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
         )}
         <div className="flex gap-2">
           <Button size="sm" disabled={!valid || register.isPending} onClick={submit}>
-            {register.isPending ? 'Adding…' : 'Add server'}
+            {register.isPending ? t('Adding…') : t('Add server')}
           </Button>
           <Button size="sm" variant="ghost" onClick={onDone}>
-            Cancel
+            {t('Cancel')}
           </Button>
         </div>
       </CardContent>
