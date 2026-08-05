@@ -28,6 +28,7 @@ import { RadialGauge, Sparkline, StatCard } from '@vocaliq/ui/charts';
 import { Reveal, Stagger, StaggerItem, useMotionLevel } from '@vocaliq/ui/motion';
 import { Check, Palette, RotateCcw } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { useI18n } from '../../../../lib/i18n/provider';
 import { setSoundEnabled, useSoundEnabled } from '../../../../lib/sound';
 import { resetUserTheme, setUserTheme, useUserTheme } from '../../../../lib/theme-store';
 
@@ -37,6 +38,7 @@ const SPARK = [6, 9, 7, 12, 10, 15, 13, 19];
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export default function AppearancePage() {
+  const { t } = useI18n();
   const theme = useUserTheme();
 
   return (
@@ -44,15 +46,16 @@ export default function AppearancePage() {
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-            <Palette size={20} /> Appearance
+            <Palette size={20} /> {t('Appearance')}
           </h1>
           <p className="text-sm text-vq-text-lo">
-            Make VocalIQ yours — pick a theme or craft your own. Changes apply instantly and save to
-            your account.
+            {t(
+              'Make VocalIQ yours — pick a theme or craft your own. Changes apply instantly and save to your account.',
+            )}
           </p>
         </div>
         <Button variant="secondary" size="sm" onClick={() => resetUserTheme()}>
-          <RotateCcw size={15} /> Reset
+          <RotateCcw size={15} /> {t('Reset')}
         </Button>
       </div>
 
@@ -71,11 +74,12 @@ export default function AppearancePage() {
 }
 
 function PresetGallery({ theme }: { theme: ThemeConfig }) {
+  const { t } = useI18n();
   const custom = Boolean(theme.colors.primary || theme.colors.accent || theme.colors.secondary);
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Theme</CardTitle>
+        <CardTitle className="text-base">{t('Theme')}</CardTitle>
       </CardHeader>
       <CardContent>
         <Stagger className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -90,7 +94,7 @@ function PresetGallery({ theme }: { theme: ThemeConfig }) {
         </Stagger>
         {custom && (
           <p className="mt-3 text-vq-text-lo text-xs">
-            You've customised colours below — pick a preset to reset them.
+            {t("You've customised colours below — pick a preset to reset them.")}
           </p>
         )}
       </CardContent>
@@ -124,18 +128,19 @@ function PresetCard({ preset, active }: { preset: ThemePreset; active: boolean }
 }
 
 function ModeAndControls({ theme }: { theme: ThemeConfig }) {
+  const { t } = useI18n();
   const { setTheme: setMode } = useTheme();
   const { setLevel } = useMotionLevel();
   const soundOn = useSoundEnabled();
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Controls</CardTitle>
+        <CardTitle className="text-base">{t('Controls')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <Control label="Mode">
+        <Control label={t('Mode')}>
           <SegmentedControl
-            aria-label="Colour mode"
+            aria-label={t('Colour mode')}
             value={theme.mode}
             onValueChange={(v) => {
               setMode(v);
@@ -144,25 +149,25 @@ function ModeAndControls({ theme }: { theme: ThemeConfig }) {
             options={COLOR_MODES.map((m) => ({ value: m, label: cap(m) }))}
           />
         </Control>
-        <Control label="Corners">
+        <Control label={t('Corners')}>
           <SegmentedControl
-            aria-label="Corner radius"
+            aria-label={t('Corner radius')}
             value={theme.radius}
             onValueChange={(v) => setUserTheme({ radius: v as ThemeConfig['radius'] })}
             options={RADII.map((r) => ({ value: r, label: cap(r) }))}
           />
         </Control>
-        <Control label="Density">
+        <Control label={t('Density')}>
           <SegmentedControl
-            aria-label="Density"
+            aria-label={t('Density')}
             value={theme.density}
             onValueChange={(v) => setUserTheme({ density: v as ThemeConfig['density'] })}
             options={DENSITIES.map((d) => ({ value: d, label: cap(d) }))}
           />
         </Control>
-        <Control label="Motion">
+        <Control label={t('Motion')}>
           <SegmentedControl
-            aria-label="Motion level"
+            aria-label={t('Motion level')}
             value={theme.motion}
             onValueChange={(v) => {
               setLevel(v as 'full' | 'reduced' | 'off');
@@ -171,23 +176,23 @@ function ModeAndControls({ theme }: { theme: ThemeConfig }) {
             options={MOTION_LEVELS.map((m) => ({ value: m, label: cap(m) }))}
           />
         </Control>
-        <Control label="Font">
+        <Control label={t('Font')}>
           <SegmentedControl
-            aria-label="Font"
+            aria-label={t('Font')}
             value={theme.font}
             onValueChange={(v) => setUserTheme({ font: v as ThemeConfig['font'] })}
             options={FONTS.map((f) => ({ value: f, label: cap(f) }))}
           />
         </Control>
-        <Control label="Sound effects">
+        <Control label={t('Sound effects')}>
           <div className="flex items-center gap-2">
             <Switch
               id="sound-toggle"
               checked={soundOn}
               onCheckedChange={setSoundEnabled}
-              aria-label="Sound effects"
+              aria-label={t('Sound effects')}
             />
-            <span className="text-vq-text-lo text-xs">{soundOn ? 'On' : 'Off'}</span>
+            <span className="text-vq-text-lo text-xs">{soundOn ? t('On') : t('Off')}</span>
           </div>
         </Control>
       </CardContent>
@@ -205,26 +210,28 @@ function Control({ label, children }: { label: string; children: React.ReactNode
 }
 
 function CustomColors({ theme }: { theme: ThemeConfig }) {
+  const { t } = useI18n();
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          Custom colours
-          <Badge variant="outline">optional</Badge>
+          {t('Custom colours')}
+          <Badge variant="outline">{t('optional')}</Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <p className="text-vq-text-lo text-sm">
-          Override the preset's brand colours. Text contrast is auto-corrected so labels stay
-          readable.
+          {t(
+            "Override the preset's brand colours. Text contrast is auto-corrected so labels stay readable.",
+          )}
         </p>
         <ColorField
-          label="Primary"
+          label={t('Primary')}
           value={theme.colors.primary ?? THEME_PRESET_SWATCHES[theme.preset].primary}
           onChange={(hex) => setUserTheme({ colors: { ...theme.colors, primary: hex } })}
         />
         <ColorField
-          label="Accent"
+          label={t('Accent')}
           value={theme.colors.accent ?? THEME_PRESET_SWATCHES[theme.preset].accent}
           onChange={(hex) => setUserTheme({ colors: { ...theme.colors, accent: hex } })}
         />
@@ -242,6 +249,7 @@ function ColorField({
   value: string;
   onChange: (hex: string) => void;
 }) {
+  const { t } = useI18n();
   const valid = /^#[0-9a-fA-F]{6}$/.test(value);
   return (
     <div className="flex items-center gap-3">
@@ -256,7 +264,7 @@ function ColorField({
           value={valid ? value : '#7c5cff'}
           onChange={(e) => onChange(e.target.value)}
           className="absolute inset-0 cursor-pointer opacity-0"
-          aria-label={`${label} colour`}
+          aria-label={t('{label} colour', { label })}
         />
       </label>
       <Input
@@ -265,7 +273,7 @@ function ColorField({
         invalid={!valid}
         onChange={(e) => onChange(e.target.value)}
         className="w-32"
-        aria-label={`${label} hex`}
+        aria-label={t('{label} hex', { label })}
       />
     </div>
   );
@@ -273,26 +281,33 @@ function ColorField({
 
 /** A mini-dashboard that re-skins live (it reads the same :root tokens the whole app does). */
 function LivePreview() {
+  const { t } = useI18n();
   return (
     <Reveal>
       <Card className="flex flex-col gap-4 p-4">
-        <span className="font-medium text-sm text-vq-text-hi">Live preview</span>
-        <StatCard label="Calls today" value={1284} delta={12.4} spark={SPARK} sentiment="good" />
+        <span className="font-medium text-sm text-vq-text-hi">{t('Live preview')}</span>
+        <StatCard
+          label={t('Calls today')}
+          value={1284}
+          delta={12.4}
+          spark={SPARK}
+          sentiment="good"
+        />
         <div className="flex items-center gap-3">
-          <RadialGauge value={82} size={72} label="Success" />
+          <RadialGauge value={82} size={72} label={t('Success')} />
           <div className="flex flex-1 flex-col gap-2">
             <Sparkline data={SPARK} />
             <div className="flex gap-2">
-              <Button size="sm">Primary</Button>
+              <Button size="sm">{t('Primary')}</Button>
               <Button size="sm" variant="secondary">
-                Secondary
+                {t('Secondary')}
               </Button>
             </div>
           </div>
         </div>
         <Separator />
         <div className="h-12">
-          <Waveform label="Preview" bars={24} />
+          <Waveform label={t('Preview')} bars={24} />
         </div>
         <div className="flex flex-wrap gap-1.5">
           <Badge variant="primary">primary</Badge>
