@@ -6,6 +6,7 @@ import { Clock, PhoneCall, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ErrorState, LoadingCard } from '../../../../components/states';
 import { useSaveWhatsappCallSettings, useWhatsappCallSettings } from '../../../../lib/api';
+import { useI18n } from '../../../../lib/i18n/provider';
 
 const SELECT =
   'rounded-vq border border-vq-border bg-vq-bg-base px-2 py-1.5 text-sm text-vq-text-hi';
@@ -29,6 +30,7 @@ const fromInput = (v: string) => v.replace(':', '').padEnd(4, '0').slice(0, 4);
  * codecs, and voicemail. Saves to the API which validates + syncs to Meta. Everything on by default.
  */
 export default function WhatsAppCallingSettingsPage() {
+  const { t } = useI18n();
   const query = useWhatsappCallSettings();
   const save = useSaveWhatsappCallSettings();
   const [s, setS] = useState<WhatsappCallSettings | null>(null);
@@ -69,24 +71,25 @@ export default function WhatsAppCallingSettingsPage() {
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <PhoneCall size={20} /> WhatsApp Calling
+          <PhoneCall size={20} /> {t('WhatsApp Calling')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          Let customers call your AI agent on WhatsApp. Configure when your line is open, the call
-          button, and voicemail. Saved changes sync to Meta.
+          {t(
+            'Let customers call your AI agent on WhatsApp. Configure when your line is open, the call button, and voicemail. Saved changes sync to Meta.',
+          )}
         </p>
       </div>
 
       <Card>
         <CardContent className="flex flex-col gap-4 py-4">
           <Row
-            label="Enable WhatsApp calling"
-            hint="Turn calling on for this number."
+            label={t('Enable WhatsApp calling')}
+            hint={t('Turn calling on for this number.')}
             control={<Switch checked={s.enabled} onCheckedChange={(v) => patch({ enabled: v })} />}
           />
           <Row
-            label="Show the call button"
-            hint="Off = users can’t start unsolicited calls (buttons/links still work)."
+            label={t('Show the call button')}
+            hint={t('Off = users can’t start unsolicited calls (buttons/links still work).')}
             control={
               <Switch
                 checked={s.callIconVisibility === 'DEFAULT'}
@@ -97,8 +100,8 @@ export default function WhatsAppCallingSettingsPage() {
             }
           />
           <Row
-            label="Auto-ask callback permission"
-            hint="When a user calls you, ask permission so you can call them back."
+            label={t('Auto-ask callback permission')}
+            hint={t('When a user calls you, ask permission so you can call them back.')}
             control={
               <Switch
                 checked={s.callbackPermission}
@@ -107,8 +110,8 @@ export default function WhatsAppCallingSettingsPage() {
             }
           />
           <Row
-            label="G.711 codec (legacy interop)"
-            hint="OPUS is always on; add G.711 only for PSTN-gateway interop."
+            label={t('G.711 codec (legacy interop)')}
+            hint={t('OPUS is always on; add G.711 only for PSTN-gateway interop.')}
             control={
               <Switch
                 checked={s.additionalCodecs.length > 0}
@@ -122,13 +125,13 @@ export default function WhatsAppCallingSettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Clock size={16} /> Business hours
+            <Clock size={16} /> {t('Business hours')}
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <Row
-            label="Restrict to business hours"
-            hint="Off = open 24×7. Outside hours users see chat / request-a-callback."
+            label={t('Restrict to business hours')}
+            hint={t('Off = open 24×7. Outside hours users see chat / request-a-callback.')}
             control={
               <Switch
                 checked={s.hours.enabled}
@@ -140,7 +143,7 @@ export default function WhatsAppCallingSettingsPage() {
             <>
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="wa-timezone" className="font-medium text-sm text-vq-text-hi">
-                  Timezone (IANA)
+                  {t('Timezone (IANA)')}
                 </label>
                 <Input
                   id="wa-timezone"
@@ -163,7 +166,7 @@ export default function WhatsAppCallingSettingsPage() {
                     >
                       {WA_DAYS.map((d) => (
                         <option key={d} value={d}>
-                          {DAY_LABEL[d]}
+                          {t(DAY_LABEL[d])}
                         </option>
                       ))}
                     </select>
@@ -177,7 +180,7 @@ export default function WhatsAppCallingSettingsPage() {
                       }}
                       className={SELECT}
                     />
-                    <span className="text-vq-text-lo text-xs">to</span>
+                    <span className="text-vq-text-lo text-xs">{t('to')}</span>
                     <input
                       type="time"
                       value={toInput(b.closeTime)}
@@ -190,7 +193,7 @@ export default function WhatsAppCallingSettingsPage() {
                     />
                     <button
                       type="button"
-                      aria-label="Remove hours block"
+                      aria-label={t('Remove hours block')}
                       onClick={() => patchHours({ weekly: week.filter((_, j) => j !== i) })}
                       className="ml-auto rounded-vq p-1 text-vq-text-lo hover:text-vq-danger"
                     >
@@ -211,7 +214,7 @@ export default function WhatsAppCallingSettingsPage() {
                     })
                   }
                 >
-                  <Plus size={14} /> Add hours (max 2 per day)
+                  <Plus size={14} /> {t('Add hours (max 2 per day)')}
                 </Button>
               </div>
             </>
@@ -221,12 +224,12 @@ export default function WhatsAppCallingSettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Voicemail</CardTitle>
+          <CardTitle className="text-base">{t('Voicemail')}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <Row
-            label="Enable voicemail"
-            hint="Rejected/timed-out calls leave a voicemail → captured as a lead."
+            label={t('Enable voicemail')}
+            hint={t('Rejected/timed-out calls leave a voicemail → captured as a lead.')}
             control={
               <Switch
                 checked={s.voicemail.enabled}
@@ -238,7 +241,7 @@ export default function WhatsAppCallingSettingsPage() {
           />
           {s.voicemail.enabled && (
             <label className="flex items-center gap-3 text-sm">
-              <span className="text-vq-text-hi">Ring for</span>
+              <span className="text-vq-text-hi">{t('Ring for')}</span>
               <input
                 type="number"
                 min={0}
@@ -247,7 +250,7 @@ export default function WhatsAppCallingSettingsPage() {
                 onChange={(e) => patchVoicemail({ timeoutSeconds: Number(e.target.value) })}
                 className={`${SELECT} w-20`}
               />
-              <span className="text-vq-text-lo">seconds before voicemail</span>
+              <span className="text-vq-text-lo">{t('seconds before voicemail')}</span>
             </label>
           )}
         </CardContent>
@@ -259,9 +262,9 @@ export default function WhatsAppCallingSettingsPage() {
           loading={save.isPending}
           onClick={() => save.mutate(s, { onSuccess: () => setSaved(true) })}
         >
-          Save settings
+          {t('Save settings')}
         </Button>
-        {saved && <span className="text-vq-success text-sm">Saved ✓</span>}
+        {saved && <span className="text-vq-success text-sm">{t('Saved ✓')}</span>}
         {save.isError && (
           <span className="text-vq-danger text-sm">{(save.error as Error).message}</span>
         )}

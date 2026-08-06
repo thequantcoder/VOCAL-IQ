@@ -5551,3 +5551,20 @@ Batch 14 — Agent › Multimodal chat, the Workflow-builder page shell, and the
 > **Scope note.** The dev-only **kitchen** component gallery (localhost-gated, "available in local development only") is intentionally NOT localized — it's an internal QA tool, never shipped to tenants. Remaining un-localized page files are the React-Flow **agents/[id]/builder** + **workflow-canvas** and the **whatsapp/messenger-calling** cluster (landing + click-to-call/entry-point/outbound sub-components + 2 settings + 2 live/[id]) — heavier, sub-component-dense surfaces for a later pass.
 
 **Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: **68 of ~75 shippable dashboard pages** now Hindi (kitchen excluded as dev-only). Remaining = the React-Flow builders + the calling cluster.
+
+---
+
+## Dashboard localization — page-level, increment 22: WhatsApp + Messenger Calling (4 pages)
+
+Batch 15 — the calling-channel landing + settings pages: WhatsApp Calling home, WhatsApp Calling settings, Messenger Calling home, Messenger Calling settings. All via `useI18n().t()` (English-as-key) + Hindi; ~65 new keys. No `t`-shadow renames. Pre-push `hi`-block dup-scan skipped 8 already-existing keys (`WhatsApp Calling`/`Messenger Calling` nav + `Calls today`/`Avg duration`/`Recent calls`/`View all`/`Unknown`/`Saved ✓`). biome flagged 1 over-width `<p>` + 2 double-quoted `hint=` strings (switched to single quotes — biome default; the `’` inside is a curly char, not a delimiter) — fixed.
+
+- **whatsapp-calling**: hero (`Calling enabled`/`Setup needed`, `Edit settings`, the 4 StatCards, interpolated `This month: {n} outbound min · pricing tier {tier}`, the 3-step onboarding + `Enable calling`), `Recent calls`/`View all`, empty-state, CallRow (`Unknown`; numbers = DATA).
+- **settings/whatsapp-calling**: header, the 4 toggle Rows (enable/call-button/callback/G.711), Business-hours card (`Timezone (IANA)`, day-of-week labels Mon–Sun wrapped at render, `to`, `Remove hours block`, `Add hours (max 2 per day)`), Voicemail card (`Ring for … seconds before voicemail`), `Save settings`/`Saved ✓`.
+- **messenger-calling**: hero (shared calling keys + `This month` + interpolated `{n} min`, Page-webhook note), `Recent calls`, empty-state, CallRow (interpolated `User {id}`, `Unknown`).
+- **settings/messenger-calling**: header, the 2 toggle Rows (enable/call-button), Availability-hours card (shares the day/`to`/hours keys), `Save settings`/`Saved ✓`.
+
+- **`catalogs.ts`**: ~65 new Hindi keys (2 section headers). Day-of-week Mon–Sun added once (shared by both settings pages). Duplicate-key scan clean.
+
+> **Scope note.** The calling **sub-components** (click-to-call-generator / entry-point-generator / outbound-call-card / calling-health) and the **live/[id]** in-call pages remain English, alongside the React-Flow **agents/[id]/builder** + **workflow-canvas** — the sub-component-dense / canvas surfaces deferred to a focused follow-up.
+
+**Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: **72 of ~75 shippable dashboard pages** now Hindi. Remaining = React-Flow builders + calling sub-components/live pages.
