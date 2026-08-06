@@ -5568,3 +5568,17 @@ Batch 15 — the calling-channel landing + settings pages: WhatsApp Calling home
 > **Scope note.** The calling **sub-components** (click-to-call-generator / entry-point-generator / outbound-call-card / calling-health) and the **live/[id]** in-call pages remain English, alongside the React-Flow **agents/[id]/builder** + **workflow-canvas** — the sub-component-dense / canvas surfaces deferred to a focused follow-up.
 
 **Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: **72 of ~75 shippable dashboard pages** now Hindi. Remaining = React-Flow builders + calling sub-components/live pages.
+
+---
+
+## Dashboard localization — page-level, increment 23: WhatsApp calling sub-components (3 files)
+
+Batch 16 — the WhatsApp Calling page's sub-components: calling-health widget, the consented-outbound card (permission inspector + dialer), and the click-to-call generator. All via `useI18n().t()` (English-as-key) + Hindi; ~55 new keys. No `t`-shadow renames. Pre-push `hi`-block dup-scan skipped 4 already-existing keys (`Agent`/`No agents — create one first`/`Check`/`Preview`). biome fixed a collapsible `<code>` line + a stray blank line I introduced.
+
+- **calling-health**: `Calling health`, the Meta-restriction banner (`Meta restricted your calling`, interpolated `lifts {date}` + the routed-to-phone note), `Pickup rate (7d)` + interpolated `{answered}/{attempts} answered`, `Throttled — low pickup`/`Healthy`, interpolated `{n} min · tier {tier}`. restriction.type = DATA.
+- **outbound-call-card**: `Call a customer on WhatsApp` + consent copy, `Customer WhatsApp number`/`Agent`/`Check`, `Request permission`/`Call now`, STATUS_BADGE labels (`No/Permanent/Temporary permission` wrapped at render), PermissionPanel (`Checking permission…`, `Ready to call`, interpolated caps line + `expires {date}`, `request cap reached`), the 7 `blockedReason()` strings wrapped at the call site via `t(blockedReason(...))` (fn still returns English keys). success toasts localized.
+- **click-to-call-generator**: `Click-to-call generator`, the context builder (`Intent`/`Campaign`/`Reference…`, custom-field arias, `Add custom field`), the live-payload Callouts (`Context too long`/`The agent will greet with this context`/`(no context — a plain call)`), the 3 output Tabs (`Deep link`/`QR code`/`Website button` + their hints + `Download SVG`), the message/template Callout. The generated website-button snippet + its preview label ("📞 Call us on WhatsApp") left English — it's copy-paste embed code for the tenant's own site.
+
+- **`catalogs.ts`**: ~55 new Hindi keys (3 section headers). Duplicate-key scan clean.
+
+**Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: the WhatsApp calling cluster is now fully Hindi (landing + settings + all 3 sub-components). Remaining l10n = Messenger sub-components (entry-point-generator, outbound-call-card), the calling live/[id] pages, and the React-Flow builders.

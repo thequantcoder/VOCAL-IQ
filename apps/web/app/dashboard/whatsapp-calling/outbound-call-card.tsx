@@ -10,6 +10,7 @@ import {
   useRequestWhatsappPermission,
   useWhatsappPermission,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 import { useActionFeedback } from '../../../lib/use-action-feedback';
 
 /**
@@ -30,6 +31,7 @@ const fieldClass =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vq-ring focus-visible:border-vq-violet/60';
 
 export function OutboundCallCard() {
+  const { t } = useI18n();
   const agents = useAgents();
   const [to, setTo] = useState('');
   const [checked, setChecked] = useState('');
@@ -46,14 +48,14 @@ export function OutboundCallCard() {
 
   async function onRequest() {
     await runRequest(() => request.mutateAsync({ waId: checked || to.trim() }), {
-      success: 'Permission request sent.',
+      success: t('Permission request sent.'),
     });
   }
 
   async function onCall() {
     const result = await runCall(
       () => place.mutateAsync({ to: checked || to.trim(), agentId: effectiveAgent }),
-      { success: 'Call placed — it’ll appear in the feed.' },
+      { success: t('Call placed — it’ll appear in the feed.') },
     );
     return result;
   }
@@ -62,18 +64,21 @@ export function OutboundCallCard() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <PhoneOutgoing size={16} /> Call a customer on WhatsApp
+          <PhoneOutgoing size={16} /> {t('Call a customer on WhatsApp')}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <p className="text-sm text-vq-text-lo">
-          Outbound WhatsApp calls need the customer’s permission. Check it here, request it if
-          needed, and place the call — the platform never dials without consent.
+          {t(
+            'Outbound WhatsApp calls need the customer’s permission. Check it here, request it if needed, and place the call — the platform never dials without consent.',
+          )}
         </p>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <label htmlFor="wa-outbound-to" className="flex flex-1 flex-col gap-1.5">
-            <span className="font-medium text-sm text-vq-text-hi">Customer WhatsApp number</span>
+            <span className="font-medium text-sm text-vq-text-hi">
+              {t('Customer WhatsApp number')}
+            </span>
             <Input
               id="wa-outbound-to"
               type="tel"
@@ -84,14 +89,14 @@ export function OutboundCallCard() {
             />
           </label>
           <label className="flex flex-1 flex-col gap-1.5">
-            <span className="font-medium text-sm text-vq-text-hi">Agent</span>
+            <span className="font-medium text-sm text-vq-text-hi">{t('Agent')}</span>
             <select
               className={fieldClass}
               value={effectiveAgent}
               onChange={(e) => setAgentId(e.target.value)}
               disabled={noAgents}
             >
-              {noAgents ? <option value="">No agents — create one first</option> : null}
+              {noAgents ? <option value="">{t('No agents — create one first')}</option> : null}
               {agents.data?.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}
@@ -106,7 +111,7 @@ export function OutboundCallCard() {
             onClick={() => setChecked(to.trim())}
             disabled={to.trim().length < 3}
           >
-            <Search size={16} /> Check
+            <Search size={16} /> {t('Check')}
           </Button>
         </div>
 
@@ -122,7 +127,7 @@ export function OutboundCallCard() {
               loading={requesting}
               disabled={!inspect.requestCaps.canRequest.allowed}
             >
-              <Send size={15} /> Request permission
+              <Send size={15} /> {t('Request permission')}
             </Button>
             <Button
               type="button"
@@ -132,7 +137,7 @@ export function OutboundCallCard() {
               loading={calling}
               disabled={!inspect.canCall.allowed || !effectiveAgent}
             >
-              <PhoneOutgoing size={15} /> Call now
+              <PhoneOutgoing size={15} /> {t('Call now')}
             </Button>
           </div>
         ) : null}
@@ -146,11 +151,12 @@ function PermissionPanel({
 }: {
   query: { data?: WhatsappPermissionInspect; isLoading: boolean; isError: boolean };
 }) {
+  const { t } = useI18n();
   if (query.isLoading) {
-    return <p className="text-sm text-vq-text-lo">Checking permission…</p>;
+    return <p className="text-sm text-vq-text-lo">{t('Checking permission…')}</p>;
   }
   if (query.isError || !query.data) {
-    return <p className="text-sm text-vq-danger">Couldn’t check permission. Try again.</p>;
+    return <p className="text-sm text-vq-danger">{t('Couldn’t check permission. Try again.')}</p>;
   }
   const { permission, canCall, requestCaps } = query.data;
   const badge = STATUS_BADGE[permission.status] ?? NO_PERMISSION_BADGE;
@@ -163,25 +169,33 @@ function PermissionPanel({
     <div className="flex flex-col gap-2 rounded-vq-card border border-vq-border bg-vq-bg-base p-3">
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant={badge.variant}>
-          <ShieldCheck size={13} /> {badge.label}
+          <ShieldCheck size={13} /> {t(badge.label)}
         </Badge>
-        {expires ? <span className="text-vq-text-lo text-xs">expires {expires}</span> : null}
+        {expires ? (
+          <span className="text-vq-text-lo text-xs">{t('expires {date}', { date: expires })}</span>
+        ) : null}
         {canCall.allowed ? (
-          <Badge variant="success">Ready to call</Badge>
+          <Badge variant="success">{t('Ready to call')}</Badge>
         ) : (
-          <span className="text-vq-warn text-xs">{blockedReason(canCall.reason)}</span>
+          <span className="text-vq-warn text-xs">{t(blockedReason(canCall.reason))}</span>
         )}
       </div>
       <p className="text-vq-text-lo text-xs">
-        {canCall.connectedLast24h}/100 calls today · permission requests: {requestCaps.sentLast24h}
-        /1 today, {requestCaps.sentLast7d}/2 this week
-        {requestCaps.canRequest.allowed ? '' : ' · request cap reached'}
+        {t(
+          '{connected}/100 calls today · permission requests: {req24}/1 today, {req7}/2 this week',
+          {
+            connected: canCall.connectedLast24h,
+            req24: requestCaps.sentLast24h,
+            req7: requestCaps.sentLast7d,
+          },
+        )}
+        {requestCaps.canRequest.allowed ? '' : ` · ${t('request cap reached')}`}
       </p>
     </div>
   );
 }
 
-/** Friendly copy for each pre-dial block reason (mirrors the api). */
+/** Friendly copy for each pre-dial block reason (mirrors the api). Returns an English key wrapped by t() at the call site. */
 function blockedReason(reason: string | undefined): string {
   switch (reason) {
     case 'dnc':

@@ -22,6 +22,7 @@ import {
 import { Download, Link2, Plus, QrCode, Send, Trash2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useMemo, useRef, useState } from 'react';
+import { useI18n } from '../../../lib/i18n/provider';
 
 const LABEL = 'font-medium text-sm text-vq-text-hi';
 const HINT = 'text-vq-text-lo text-xs';
@@ -44,6 +45,7 @@ function websiteSnippet(deepLink: string): string {
  * the `biz_payload` Meta echoes back so the AI agent greets with intent/campaign/reference (WAC-04).
  */
 export function ClickToCallGenerator() {
+  const { t } = useI18n();
   const [number, setNumber] = useState('');
   const [intent, setIntent] = useState('');
   const [campaign, setCampaign] = useState('');
@@ -86,7 +88,7 @@ export function ClickToCallGenerator() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Link2 size={16} /> Click-to-call generator
+          <Link2 size={16} /> {t('Click-to-call generator')}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
@@ -94,7 +96,7 @@ export function ClickToCallGenerator() {
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
             <label htmlFor="wa-number" className={LABEL}>
-              Your WhatsApp business number
+              {t('Your WhatsApp business number')}
             </label>
             <Input
               id="wa-number"
@@ -106,7 +108,7 @@ export function ClickToCallGenerator() {
           </div>
           <div className="flex flex-col gap-1.5">
             <label htmlFor="wa-intent" className={LABEL}>
-              Intent
+              {t('Intent')}
             </label>
             <Input
               id="wa-intent"
@@ -117,7 +119,7 @@ export function ClickToCallGenerator() {
           </div>
           <div className="flex flex-col gap-1.5">
             <label htmlFor="wa-campaign" className={LABEL}>
-              Campaign
+              {t('Campaign')}
             </label>
             <Input
               id="wa-campaign"
@@ -128,7 +130,7 @@ export function ClickToCallGenerator() {
           </div>
           <div className="flex flex-col gap-1.5">
             <label htmlFor="wa-reference" className={LABEL}>
-              Reference (order / booking id)
+              {t('Reference (order / booking id)')}
             </label>
             <Input
               id="wa-reference"
@@ -144,7 +146,7 @@ export function ClickToCallGenerator() {
           {custom.map((row, i) => (
             <div key={row.id} className="flex items-center gap-2">
               <Input
-                aria-label="Custom field key"
+                aria-label={t('Custom field key')}
                 value={row.key}
                 onChange={(e) =>
                   setCustom((c) => c.map((r, j) => (j === i ? { ...r, key: e.target.value } : r)))
@@ -153,7 +155,7 @@ export function ClickToCallGenerator() {
                 className="max-w-[10rem]"
               />
               <Input
-                aria-label="Custom field value"
+                aria-label={t('Custom field value')}
                 value={row.value}
                 onChange={(e) =>
                   setCustom((c) => c.map((r, j) => (j === i ? { ...r, value: e.target.value } : r)))
@@ -162,7 +164,7 @@ export function ClickToCallGenerator() {
               />
               <button
                 type="button"
-                aria-label="Remove custom field"
+                aria-label={t('Remove custom field')}
                 onClick={() => setCustom((c) => c.filter((_, j) => j !== i))}
                 className="rounded-vq p-1 text-vq-text-lo hover:text-vq-danger"
               >
@@ -178,35 +180,37 @@ export function ClickToCallGenerator() {
               setCustom((c) => [...c, { id: crypto.randomUUID(), key: '', value: '' }])
             }
           >
-            <Plus size={14} /> Add custom field
+            <Plus size={14} /> {t('Add custom field')}
           </Button>
         </div>
 
         {/* Live payload preview — what the agent will "know" when the call connects. */}
         {payloadError ? (
-          <Callout variant="danger" title="Context too long">
+          <Callout variant="danger" title={t('Context too long')}>
             {payloadError}
           </Callout>
         ) : (
-          <Callout variant="info" title="The agent will greet with this context">
-            <code className="break-all text-xs">{payload || '(no context — a plain call)'}</code>
+          <Callout variant="info" title={t('The agent will greet with this context')}>
+            <code className="break-all text-xs">{payload || t('(no context — a plain call)')}</code>
           </Callout>
         )}
 
         {!hasNumber && (
-          <p className={HINT}>Enter your WhatsApp business number above to generate the link.</p>
+          <p className={HINT}>
+            {t('Enter your WhatsApp business number above to generate the link.')}
+          </p>
         )}
 
         {hasNumber && (
           <Tabs defaultValue="link">
             <TabsList>
               <TabsTrigger value="link">
-                <Link2 size={14} /> Deep link
+                <Link2 size={14} /> {t('Deep link')}
               </TabsTrigger>
               <TabsTrigger value="qr">
-                <QrCode size={14} /> QR code
+                <QrCode size={14} /> {t('QR code')}
               </TabsTrigger>
-              <TabsTrigger value="button">Website button</TabsTrigger>
+              <TabsTrigger value="button">{t('Website button')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="link" className="flex flex-col gap-2 pt-3">
@@ -214,7 +218,7 @@ export function ClickToCallGenerator() {
                 <Input readOnly value={deepLink} mono className="text-xs" />
                 <CopyButton value={deepLink} />
               </div>
-              <p className={HINT}>Opens on mobile WhatsApp (not on desktop).</p>
+              <p className={HINT}>{t('Opens on mobile WhatsApp (not on desktop).')}</p>
             </TabsContent>
 
             <TabsContent value="qr" className="flex flex-col items-start gap-3 pt-3">
@@ -222,14 +226,16 @@ export function ClickToCallGenerator() {
                 <QRCodeSVG ref={qrRef} value={deepLink} size={168} marginSize={2} />
               </div>
               <Button size="sm" variant="secondary" onClick={downloadQr}>
-                <Download size={14} /> Download SVG
+                <Download size={14} /> {t('Download SVG')}
               </Button>
-              <p className={HINT}>Print on posters, flyers, or ads — scanning starts the call.</p>
+              <p className={HINT}>
+                {t('Print on posters, flyers, or ads — scanning starts the call.')}
+              </p>
             </TabsContent>
 
             <TabsContent value="button" className="flex flex-col gap-3 pt-3">
               <div>
-                <span className={LABEL}>Preview</span>
+                <span className={LABEL}>{t('Preview')}</span>
                 <div className="mt-1.5">
                   {/* Visual-only preview of the generated button (not interactive here). */}
                   <span className="inline-flex items-center gap-2 rounded-full bg-[#25D366] px-4 py-2.5 font-semibold text-sm text-white">
@@ -247,10 +253,12 @@ export function ClickToCallGenerator() {
           </Tabs>
         )}
 
-        <Callout variant="neutral" title="Send as a WhatsApp message or template?">
+        <Callout variant="neutral" title={t('Send as a WhatsApp message or template?')}>
           <span className="inline-flex items-center gap-1.5">
-            <Send size={13} /> Sending a `voice_call` button to a contact needs their calling
-            permission — that lands with consented outbound (WhatsApp permissions).
+            <Send size={13} />{' '}
+            {t(
+              'Sending a `voice_call` button to a contact needs their calling permission — that lands with consented outbound (WhatsApp permissions).',
+            )}
           </span>
         </Callout>
       </CardContent>
