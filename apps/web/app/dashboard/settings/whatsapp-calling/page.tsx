@@ -166,7 +166,7 @@ export default function WhatsAppCallingSettingsPage() {
                     >
                       {WA_DAYS.map((d) => (
                         <option key={d} value={d}>
-                          {t(DAY_LABEL[d])}
+                          {t(DAY_LABEL[d] ?? d)}
                         </option>
                       ))}
                     </select>

@@ -143,7 +143,7 @@ export default function MessengerCallingSettingsPage() {
                     >
                       {ME_DAYS.map((d) => (
                         <option key={d} value={d}>
-                          {t(DAY_LABEL[d])}
+                          {t(DAY_LABEL[d] ?? d)}
                         </option>
                       ))}
                     </select>
