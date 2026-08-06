@@ -23,6 +23,7 @@ import {
 import { Download, Link2, Plus, QrCode, Trash2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useMemo, useRef, useState } from 'react';
+import { useI18n } from '../../../lib/i18n/provider';
 
 const LABEL = 'font-medium text-sm text-vq-text-hi';
 const HINT = 'text-vq-text-lo text-xs';
@@ -46,6 +47,7 @@ function websiteSnippet(link: string): string {
  * campaign / reference (MEC-04). Messenger has no phone numbers — the entry point keys on the Page.
  */
 export function EntryPointGenerator() {
+  const { t } = useI18n();
   const [page, setPage] = useState('');
   const [intent, setIntent] = useState('');
   const [campaign, setCampaign] = useState('');
@@ -88,7 +90,7 @@ export function EntryPointGenerator() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Link2 size={16} /> Messenger call-link generator
+          <Link2 size={16} /> {t('Messenger call-link generator')}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
@@ -96,7 +98,7 @@ export function EntryPointGenerator() {
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
             <label htmlFor="me-page" className={LABEL}>
-              Your Facebook Page (username or id)
+              {t('Your Facebook Page (username or id)')}
             </label>
             <Input
               id="me-page"
@@ -107,7 +109,7 @@ export function EntryPointGenerator() {
           </div>
           <div className="flex flex-col gap-1.5">
             <label htmlFor="me-intent" className={LABEL}>
-              Intent
+              {t('Intent')}
             </label>
             <Input
               id="me-intent"
@@ -118,7 +120,7 @@ export function EntryPointGenerator() {
           </div>
           <div className="flex flex-col gap-1.5">
             <label htmlFor="me-campaign" className={LABEL}>
-              Campaign
+              {t('Campaign')}
             </label>
             <Input
               id="me-campaign"
@@ -129,7 +131,7 @@ export function EntryPointGenerator() {
           </div>
           <div className="flex flex-col gap-1.5">
             <label htmlFor="me-reference" className={LABEL}>
-              Reference (order / booking id)
+              {t('Reference (order / booking id)')}
             </label>
             <Input
               id="me-reference"
@@ -145,7 +147,7 @@ export function EntryPointGenerator() {
           {custom.map((row, i) => (
             <div key={row.id} className="flex items-center gap-2">
               <Input
-                aria-label="Custom field key"
+                aria-label={t('Custom field key')}
                 value={row.key}
                 onChange={(e) =>
                   setCustom((c) => c.map((r, j) => (j === i ? { ...r, key: e.target.value } : r)))
@@ -154,7 +156,7 @@ export function EntryPointGenerator() {
                 className="max-w-[10rem]"
               />
               <Input
-                aria-label="Custom field value"
+                aria-label={t('Custom field value')}
                 value={row.value}
                 onChange={(e) =>
                   setCustom((c) => c.map((r, j) => (j === i ? { ...r, value: e.target.value } : r)))
@@ -163,7 +165,7 @@ export function EntryPointGenerator() {
               />
               <button
                 type="button"
-                aria-label="Remove custom field"
+                aria-label={t('Remove custom field')}
                 onClick={() => setCustom((c) => c.filter((_, j) => j !== i))}
                 className="rounded-vq p-1 text-vq-text-lo hover:text-vq-danger"
               >
@@ -179,24 +181,24 @@ export function EntryPointGenerator() {
               setCustom((c) => [...c, { id: crypto.randomUUID(), key: '', value: '' }])
             }
           >
-            <Plus size={14} /> Add custom field
+            <Plus size={14} /> {t('Add custom field')}
           </Button>
         </div>
 
         {/* Live payload preview — what the agent will "know" when the call connects. */}
         {payloadError ? (
-          <Callout variant="danger" title="Context too long">
+          <Callout variant="danger" title={t('Context too long')}>
             {payloadError}
           </Callout>
         ) : (
-          <Callout variant="info" title="The agent will greet with this context">
-            <code className="break-all text-xs">{payload || '(no context — a plain call)'}</code>
+          <Callout variant="info" title={t('The agent will greet with this context')}>
+            <code className="break-all text-xs">{payload || t('(no context — a plain call)')}</code>
           </Callout>
         )}
 
         {!hasPage && (
           <p className={HINT}>
-            Enter your Facebook Page username or id above to generate the link.
+            {t('Enter your Facebook Page username or id above to generate the link.')}
           </p>
         )}
 
@@ -204,12 +206,12 @@ export function EntryPointGenerator() {
           <Tabs defaultValue="link">
             <TabsList>
               <TabsTrigger value="link">
-                <Link2 size={14} /> m.me link
+                <Link2 size={14} /> {t('m.me link')}
               </TabsTrigger>
               <TabsTrigger value="qr">
-                <QrCode size={14} /> QR code
+                <QrCode size={14} /> {t('QR code')}
               </TabsTrigger>
-              <TabsTrigger value="button">Website button</TabsTrigger>
+              <TabsTrigger value="button">{t('Website button')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="link" className="flex flex-col gap-2 pt-3">
@@ -218,7 +220,9 @@ export function EntryPointGenerator() {
                 <CopyButton value={link} />
               </div>
               <p className={HINT}>
-                Opens the Messenger chat with your Page; the audio call button starts the call.
+                {t(
+                  'Opens the Messenger chat with your Page; the audio call button starts the call.',
+                )}
               </p>
             </TabsContent>
 
@@ -227,14 +231,16 @@ export function EntryPointGenerator() {
                 <QRCodeSVG ref={qrRef} value={link} size={168} marginSize={2} />
               </div>
               <Button size="sm" variant="secondary" onClick={downloadQr}>
-                <Download size={14} /> Download SVG
+                <Download size={14} /> {t('Download SVG')}
               </Button>
-              <p className={HINT}>Print on posters, flyers, or ads — scanning opens Messenger.</p>
+              <p className={HINT}>
+                {t('Print on posters, flyers, or ads — scanning opens Messenger.')}
+              </p>
             </TabsContent>
 
             <TabsContent value="button" className="flex flex-col gap-3 pt-3">
               <div>
-                <span className={LABEL}>Preview</span>
+                <span className={LABEL}>{t('Preview')}</span>
                 <div className="mt-1.5">
                   {/* Visual-only preview of the generated button (not interactive here). */}
                   <span className="inline-flex items-center gap-2 rounded-full bg-[#0084FF] px-4 py-2.5 font-semibold text-sm text-white">
