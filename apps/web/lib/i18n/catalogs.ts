@@ -1679,6 +1679,29 @@ export const catalogs: Record<string, MessageCatalog> = {
     'Send as a WhatsApp message or template?': 'WhatsApp संदेश या टेम्पलेट के रूप में भेजें?',
     'Sending a `voice_call` button to a contact needs their calling permission — that lands with consented outbound (WhatsApp permissions).':
       'किसी संपर्क को `voice_call` बटन भेजने के लिए उनकी कॉलिंग अनुमति चाहिए — वह सहमति-आधारित आउटबाउंड (WhatsApp अनुमतियाँ) के साथ आता है।',
+    // Messenger calling — consented-outbound card + entry-point generator.
+    'Call a customer on Messenger': 'Messenger पर एक ग्राहक को कॉल करें',
+    'Outbound Messenger calls need the customer’s permission, granted from your Page. Paste their Page-Scoped ID (PSID), check the live permission, and place the call — the platform never dials without a live grant.':
+      'आउटबाउंड Messenger कॉल के लिए ग्राहक की अनुमति चाहिए, जो आपके Page से दी जाती है। उनका Page-Scoped ID (PSID) पेस्ट करें, लाइव अनुमति जाँचें, और कॉल करें — प्लेटफ़ॉर्म कभी बिना लाइव ग्रांट डायल नहीं करता।',
+    'Customer PSID': 'ग्राहक PSID',
+    '· live permission unavailable (gated)': '· लाइव अनुमति अनुपलब्ध (गेटेड)',
+    '{used}/{max} calls used · ': '{used}/{max} कॉल उपयोग · ',
+    '{n} consecutive unanswered': '{n} लगातार अनुत्तरित',
+    'no recent unanswered calls': 'कोई हालिया अनुत्तरित कॉल नहीं',
+    'No permission yet — the customer must grant it on the Page':
+      'अभी तक कोई अनुमति नहीं — ग्राहक को इसे Page पर देना होगा',
+    'Permission expired — it must be granted again': 'अनुमति समाप्त — इसे फिर से देना होगा',
+    'Meta’s call rate limit reached — try again later':
+      'Meta की कॉल दर सीमा पूरी — बाद में पुनः प्रयास करें',
+    'Messenger call-link generator': 'Messenger कॉल-लिंक जनरेटर',
+    'Your Facebook Page (username or id)': 'आपका Facebook Page (यूज़रनेम या id)',
+    'Enter your Facebook Page username or id above to generate the link.':
+      'लिंक जनरेट करने के लिए ऊपर अपना Facebook Page यूज़रनेम या id दर्ज करें।',
+    'm.me link': 'm.me लिंक',
+    'Opens the Messenger chat with your Page; the audio call button starts the call.':
+      'आपके Page के साथ Messenger चैट खोलता है; ऑडियो कॉल बटन कॉल शुरू करता है।',
+    'Print on posters, flyers, or ads — scanning opens Messenger.':
+      'पोस्टर, फ़्लायर, या विज्ञापनों पर प्रिंट करें — स्कैन करने से Messenger खुलता है।',
   },
   ar: {
     'nav.agents': 'الوكلاء',

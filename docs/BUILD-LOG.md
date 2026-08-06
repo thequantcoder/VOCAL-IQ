@@ -5582,3 +5582,16 @@ Batch 16 — the WhatsApp Calling page's sub-components: calling-health widget, 
 - **`catalogs.ts`**: ~55 new Hindi keys (3 section headers). Duplicate-key scan clean.
 
 **Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: the WhatsApp calling cluster is now fully Hindi (landing + settings + all 3 sub-components). Remaining l10n = Messenger sub-components (entry-point-generator, outbound-call-card), the calling live/[id] pages, and the React-Flow builders.
+
+---
+
+## Dashboard localization — page-level, increment 24: Messenger calling sub-components (2 files)
+
+Batch 17 — the Messenger Calling page's sub-components: the consented-outbound card (PSID permission inspector + dialer) and the entry-point (m.me call-link) generator. All via `useI18n().t()` (English-as-key) + Hindi; only ~16 new keys — the two are near-identical siblings of the WhatsApp sub-components, so the shared strings (Agent/Check/Call now/Checking permission…/Ready to call/expires {date}/STATUS_BADGE labels/Intent/Campaign/Reference/custom-field arias/Context-too-long/QR code/Website button/Download SVG/Preview + the DNC/paused/not-permitted block reasons) all reuse batch-16 keys (0 dup-scan collisions to add). No `t`-shadow renames; no index-signature `t(MAP[key])` bug (STATUS_BADGE has `?? NO_PERMISSION_BADGE`, blockedReason returns string). 2 over-width lines hand-wrapped.
+
+- **messenger outbound-call-card**: `Call a customer on Messenger` + PSID-permission copy, `Customer PSID`, PermissionPanel divergences (`· live permission unavailable (gated)`, interpolated `{used}/{max} calls used ·` + `{n} consecutive unanswered`/`no recent unanswered calls`), the 2 Messenger-specific block reasons (`No permission yet — the customer must grant it on the Page`, `Permission expired — it must be granted again`, `Meta’s call rate limit reached — try again later`).
+- **messenger entry-point-generator**: `Messenger call-link generator`, `Your Facebook Page (username or id)`, the Facebook-Page empty-state, the `m.me link` tab + its hint, `Print … scanning opens Messenger.`. Generated embed snippet + preview label ("💬 Call us on Messenger") left English (tenant's own embed code).
+
+- **`catalogs.ts`**: ~16 new Hindi keys (1 section header). Duplicate-key scan clean.
+
+**Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: **the entire WhatsApp + Messenger calling cluster is now fully Hindi** (both landing + settings + all 5 sub-components). Remaining l10n = the 2 calling live/[id] in-call pages + the React-Flow builders (agents/[id]/builder, workflow-canvas).
