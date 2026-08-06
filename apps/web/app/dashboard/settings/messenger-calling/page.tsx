@@ -6,6 +6,7 @@ import { Clock, MessageCircle, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ErrorState, LoadingCard } from '../../../../components/states';
 import { useMessengerCallSettings, useSaveMessengerCallSettings } from '../../../../lib/api';
+import { useI18n } from '../../../../lib/i18n/provider';
 
 const SELECT =
   'rounded-vq border border-vq-border bg-vq-bg-base px-2 py-1.5 text-sm text-vq-text-hi';
@@ -30,6 +31,7 @@ const fromInput = (v: string) => v.replace(':', '').padEnd(4, '0').slice(0, 4);
  * / SIP options (unlike WhatsApp).
  */
 export default function MessengerCallingSettingsPage() {
+  const { t } = useI18n();
   const query = useMessengerCallSettings();
   const save = useSaveMessengerCallSettings();
   const [s, setS] = useState<MessengerCallSettings | null>(null);
@@ -66,24 +68,25 @@ export default function MessengerCallingSettingsPage() {
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <MessageCircle size={20} /> Messenger Calling
+          <MessageCircle size={20} /> {t('Messenger Calling')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          Let customers call your AI agent on Messenger. Configure when your Page is open and the
-          call button. Saved changes sync to Meta.
+          {t(
+            'Let customers call your AI agent on Messenger. Configure when your Page is open and the call button. Saved changes sync to Meta.',
+          )}
         </p>
       </div>
 
       <Card>
         <CardContent className="flex flex-col gap-4 py-4">
           <Row
-            label="Enable Messenger calling"
-            hint="Turn calling on for this Page."
+            label={t('Enable Messenger calling')}
+            hint={t('Turn calling on for this Page.')}
             control={<Switch checked={s.enabled} onCheckedChange={(v) => patch({ enabled: v })} />}
           />
           <Row
-            label="Show the call button"
-            hint="Off = users can’t start unsolicited calls (m.me links still work)."
+            label={t('Show the call button')}
+            hint={t('Off = users can’t start unsolicited calls (m.me links still work).')}
             control={
               <Switch
                 checked={s.callButtonVisibility === 'DEFAULT'}
@@ -99,13 +102,13 @@ export default function MessengerCallingSettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Clock size={16} /> Availability hours
+            <Clock size={16} /> {t('Availability hours')}
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <Row
-            label="Restrict to availability hours"
-            hint="Off = open 24×7. Outside hours callers are declined gracefully."
+            label={t('Restrict to availability hours')}
+            hint={t('Off = open 24×7. Outside hours callers are declined gracefully.')}
             control={
               <Switch
                 checked={s.hours.enabled}
@@ -117,7 +120,7 @@ export default function MessengerCallingSettingsPage() {
             <>
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="me-timezone" className="font-medium text-sm text-vq-text-hi">
-                  Timezone (IANA)
+                  {t('Timezone (IANA)')}
                 </label>
                 <Input
                   id="me-timezone"
@@ -140,7 +143,7 @@ export default function MessengerCallingSettingsPage() {
                     >
                       {ME_DAYS.map((d) => (
                         <option key={d} value={d}>
-                          {DAY_LABEL[d]}
+                          {t(DAY_LABEL[d] ?? d)}
                         </option>
                       ))}
                     </select>
@@ -154,7 +157,7 @@ export default function MessengerCallingSettingsPage() {
                       }}
                       className={SELECT}
                     />
-                    <span className="text-vq-text-lo text-xs">to</span>
+                    <span className="text-vq-text-lo text-xs">{t('to')}</span>
                     <input
                       type="time"
                       value={toInput(b.closeTime)}
@@ -167,7 +170,7 @@ export default function MessengerCallingSettingsPage() {
                     />
                     <button
                       type="button"
-                      aria-label="Remove hours block"
+                      aria-label={t('Remove hours block')}
                       onClick={() => patchHours({ weekly: week.filter((_, j) => j !== i) })}
                       className="ml-auto rounded-vq p-1 text-vq-text-lo hover:text-vq-danger"
                     >
@@ -188,7 +191,7 @@ export default function MessengerCallingSettingsPage() {
                     })
                   }
                 >
-                  <Plus size={14} /> Add hours (max 2 per day)
+                  <Plus size={14} /> {t('Add hours (max 2 per day)')}
                 </Button>
               </div>
             </>
@@ -202,9 +205,9 @@ export default function MessengerCallingSettingsPage() {
           loading={save.isPending}
           onClick={() => save.mutate(s, { onSuccess: () => setSaved(true) })}
         >
-          Save settings
+          {t('Save settings')}
         </Button>
-        {saved && <span className="text-vq-success text-sm">Saved ✓</span>}
+        {saved && <span className="text-vq-success text-sm">{t('Saved ✓')}</span>}
         {save.isError && (
           <span className="text-vq-danger text-sm">{(save.error as Error).message}</span>
         )}

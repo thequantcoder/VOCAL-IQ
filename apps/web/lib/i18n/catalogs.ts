@@ -1542,6 +1542,81 @@ export const catalogs: Record<string, MessageCatalog> = {
     'Not scored yet. Run a rubric with “Score now”, or configure sampling in QA scoring.':
       'अभी तक स्कोर नहीं किया गया। “Score now” से एक रूब्रिक चलाएँ, या QA स्कोरिंग में सैंपलिंग कॉन्फ़िगर करें।',
     Telephony: 'टेलीफ़ोनी',
+    // WhatsApp Calling home + settings pages.
+    'Let customers reach your AI agent with a tap on WhatsApp — inbound is free, worldwide.':
+      'ग्राहकों को WhatsApp पर एक टैप से आपके AI एजेंट तक पहुँचने दें — इनबाउंड मुफ़्त है, दुनिया भर में।',
+    'Calling enabled': 'कॉलिंग सक्षम',
+    'Edit settings': 'सेटिंग्स संपादित करें',
+    Answered: 'उत्तर दिया',
+    'Cost today': 'आज की लागत',
+    'This month:': 'इस माह:',
+    '{n} outbound min': '{n} आउटबाउंड मिनट',
+    'pricing tier': 'मूल्य-निर्धारण टियर',
+    '1 (volume)': '1 (वॉल्यूम)',
+    'Setup needed': 'सेटअप आवश्यक',
+    'Turn on WhatsApp Calling': 'WhatsApp कॉलिंग चालू करें',
+    '1. Connect your WhatsApp Business number': '1. अपना WhatsApp Business नंबर कनेक्ट करें',
+    '2. Enable calling + set your business hours': '2. कॉलिंग सक्षम करें + अपने व्यावसायिक घंटे सेट करें',
+    '3. Share your click-to-call link (below) and take a test call':
+      '3. अपना क्लिक-टू-कॉल लिंक (नीचे) साझा करें और एक टेस्ट कॉल लें',
+    'Enable calling': 'कॉलिंग सक्षम करें',
+    'No WhatsApp calls yet — share your click-to-call link to get your first one.':
+      'अभी तक कोई WhatsApp कॉल नहीं — अपना पहला पाने के लिए अपना क्लिक-टू-कॉल लिंक साझा करें।',
+    'Let customers call your AI agent on WhatsApp. Configure when your line is open, the call button, and voicemail. Saved changes sync to Meta.':
+      'ग्राहकों को WhatsApp पर आपके AI एजेंट को कॉल करने दें। कॉन्फ़िगर करें कि आपकी लाइन कब खुली है, कॉल बटन, और वॉइसमेल। सहेजे गए बदलाव Meta में सिंक होते हैं।',
+    'Enable WhatsApp calling': 'WhatsApp कॉलिंग सक्षम करें',
+    'Turn calling on for this number.': 'इस नंबर के लिए कॉलिंग चालू करें।',
+    'Show the call button': 'कॉल बटन दिखाएँ',
+    'Off = users can’t start unsolicited calls (buttons/links still work).':
+      'बंद = उपयोगकर्ता बिना अनुरोध कॉल शुरू नहीं कर सकते (बटन/लिंक फिर भी काम करते हैं)।',
+    'Auto-ask callback permission': 'स्वतः कॉलबैक अनुमति माँगें',
+    'When a user calls you, ask permission so you can call them back.':
+      'जब कोई उपयोगकर्ता आपको कॉल करे, तो अनुमति माँगें ताकि आप उन्हें वापस कॉल कर सकें।',
+    'G.711 codec (legacy interop)': 'G.711 कोडेक (लीगेसी इंटरऑप)',
+    'OPUS is always on; add G.711 only for PSTN-gateway interop.':
+      'OPUS हमेशा चालू रहता है; G.711 केवल PSTN-गेटवे इंटरऑप के लिए जोड़ें।',
+    'Business hours': 'व्यावसायिक घंटे',
+    'Restrict to business hours': 'व्यावसायिक घंटों तक सीमित करें',
+    'Off = open 24×7. Outside hours users see chat / request-a-callback.':
+      'बंद = 24×7 खुला। घंटों के बाहर उपयोगकर्ता चैट / कॉलबैक-अनुरोध देखते हैं।',
+    'Timezone (IANA)': 'टाइमज़ोन (IANA)',
+    Mon: 'सोम',
+    Tue: 'मंगल',
+    Wed: 'बुध',
+    Thu: 'गुरु',
+    Fri: 'शुक्र',
+    Sat: 'शनि',
+    Sun: 'रवि',
+    to: 'तक',
+    'Remove hours block': 'घंटे ब्लॉक हटाएँ',
+    'Add hours (max 2 per day)': 'घंटे जोड़ें (प्रति दिन अधिकतम 2)',
+    Voicemail: 'वॉइसमेल',
+    'Enable voicemail': 'वॉइसमेल सक्षम करें',
+    'Rejected/timed-out calls leave a voicemail → captured as a lead.':
+      'अस्वीकृत/टाइम-आउट कॉल एक वॉइसमेल छोड़ती हैं → एक लीड के रूप में कैप्चर की जाती हैं।',
+    'Ring for': 'रिंग करें',
+    'seconds before voicemail': 'वॉइसमेल से पहले सेकंड',
+    'Save settings': 'सेटिंग्स सहेजें',
+    // Messenger Calling home + settings pages.
+    'Let customers reach your AI agent with a tap on Messenger — inbound is free.':
+      'ग्राहकों को Messenger पर एक टैप से आपके AI एजेंट तक पहुँचने दें — इनबाउंड मुफ़्त है।',
+    'This month': 'इस माह',
+    '{n} min': '{n} मिनट',
+    'Subscribe your Page’s Messenger webhook to the calling events to start taking calls, then share your call link below.':
+      'कॉल लेना शुरू करने के लिए अपने Page के Messenger webhook को कॉलिंग इवेंट पर सब्सक्राइब करें, फिर नीचे अपना कॉल लिंक साझा करें।',
+    'No Messenger calls yet — share your call link to get your first one.':
+      'अभी तक कोई Messenger कॉल नहीं — अपना पहला पाने के लिए अपना कॉल लिंक साझा करें।',
+    'User {id}': 'उपयोगकर्ता {id}',
+    'Let customers call your AI agent on Messenger. Configure when your Page is open and the call button. Saved changes sync to Meta.':
+      'ग्राहकों को Messenger पर आपके AI एजेंट को कॉल करने दें। कॉन्फ़िगर करें कि आपका Page कब खुला है और कॉल बटन। सहेजे गए बदलाव Meta में सिंक होते हैं।',
+    'Enable Messenger calling': 'Messenger कॉलिंग सक्षम करें',
+    'Turn calling on for this Page.': 'इस Page के लिए कॉलिंग चालू करें।',
+    'Off = users can’t start unsolicited calls (m.me links still work).':
+      'बंद = उपयोगकर्ता बिना अनुरोध कॉल शुरू नहीं कर सकते (m.me लिंक फिर भी काम करते हैं)।',
+    'Availability hours': 'उपलब्धता घंटे',
+    'Restrict to availability hours': 'उपलब्धता घंटों तक सीमित करें',
+    'Off = open 24×7. Outside hours callers are declined gracefully.':
+      'बंद = 24×7 खुला। घंटों के बाहर कॉलर्स को शालीनता से अस्वीकार किया जाता है।',
   },
   ar: {
     'nav.agents': 'الوكلاء',

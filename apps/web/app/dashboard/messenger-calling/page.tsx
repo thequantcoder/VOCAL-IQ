@@ -8,6 +8,7 @@ import { ErrorState, LoadingCard } from '../../../components/states';
 import { StatusBadge, formatDuration } from '../../../components/ui-bits';
 import type { MessengerCallRow } from '../../../lib/api';
 import { useMessengerCallOverview } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 import { EntryPointGenerator } from './entry-point-generator';
 import { OutboundCallCard } from './outbound-call-card';
 
@@ -17,6 +18,7 @@ import { OutboundCallCard } from './outbound-call-card';
  * generator. Messenger inbound calling is free-tier; the hero shows whether the Page is connected.
  */
 export default function MessengerCallingPage() {
+  const { t } = useI18n();
   const query = useMessengerCallOverview();
 
   if (query.isLoading || !query.data) {
@@ -37,10 +39,10 @@ export default function MessengerCallingPage() {
     <div className="mx-auto flex max-w-4xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <MessageCircle size={20} /> Messenger Calling
+          <MessageCircle size={20} /> {t('Messenger Calling')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          Let customers reach your AI agent with a tap on Messenger — inbound is free.
+          {t('Let customers reach your AI agent with a tap on Messenger — inbound is free.')}
         </p>
       </div>
 
@@ -49,34 +51,47 @@ export default function MessengerCallingPage() {
           <div className="flex items-center justify-between">
             {enabled ? (
               <Badge variant="success">
-                <CheckCircle2 size={13} /> Calling enabled
+                <CheckCircle2 size={13} /> {t('Calling enabled')}
               </Badge>
             ) : (
-              <Badge variant="warn">Setup needed</Badge>
+              <Badge variant="warn">{t('Setup needed')}</Badge>
             )}
             <Link
               href="/dashboard/settings/messenger-calling"
               className="text-sm text-vq-violet hover:underline"
             >
-              Edit settings
+              {t('Edit settings')}
             </Link>
           </div>
           <Waveform bars={40} className="h-10 opacity-60" aria-hidden />
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Calls today" value={stats.callsToday} icon={<PhoneCall size={15} />} />
             <StatCard
-              label="Answered"
+              label={t('Calls today')}
+              value={stats.callsToday}
+              icon={<PhoneCall size={15} />}
+            />
+            <StatCard
+              label={t('Answered')}
               value={stats.answeredToday}
               sentiment="good"
               icon={<CheckCircle2 size={15} />}
             />
-            <StatCard label="Avg duration" value={stats.avgDurationSec} format={formatDuration} />
-            <StatCard label="This month" value={monthly.minutes} format={(v) => `${v} min`} />
+            <StatCard
+              label={t('Avg duration')}
+              value={stats.avgDurationSec}
+              format={formatDuration}
+            />
+            <StatCard
+              label={t('This month')}
+              value={monthly.minutes}
+              format={(v) => t('{n} min', { n: v })}
+            />
           </div>
           {!enabled && (
             <p className="text-vq-text-lo text-xs">
-              Subscribe your Page’s Messenger webhook to the calling events to start taking calls,
-              then share your call link below.
+              {t(
+                'Subscribe your Page’s Messenger webhook to the calling events to start taking calls, then share your call link below.',
+              )}
             </p>
           )}
         </CardContent>
@@ -84,15 +99,15 @@ export default function MessengerCallingPage() {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Recent calls</CardTitle>
+          <CardTitle className="text-base">{t('Recent calls')}</CardTitle>
           <Link href="/dashboard/calls" className="text-sm text-vq-violet hover:underline">
-            View all
+            {t('View all')}
           </Link>
         </CardHeader>
         <CardContent>
           {recent.length === 0 ? (
             <p className="py-6 text-center text-sm text-vq-text-lo">
-              No Messenger calls yet — share your call link to get your first one.
+              {t('No Messenger calls yet — share your call link to get your first one.')}
             </p>
           ) : (
             <ul className="divide-y divide-vq-border">
@@ -112,6 +127,7 @@ export default function MessengerCallingPage() {
 }
 
 function CallRow({ call }: { call: MessengerCallRow }) {
+  const { t } = useI18n();
   const inbound = call.direction === 'USER_INITIATED';
   return (
     <li>
@@ -123,7 +139,7 @@ function CallRow({ call }: { call: MessengerCallRow }) {
           {inbound ? <PhoneIncoming size={16} /> : <PhoneOutgoing size={16} />}
         </span>
         <span className="flex-1 truncate text-sm text-vq-text-hi">
-          {call.psid ? `User ${call.psid.slice(-6)}` : 'Unknown'}
+          {call.psid ? t('User {id}', { id: call.psid.slice(-6) }) : t('Unknown')}
         </span>
         <StatusBadge status={call.status} />
         <span className="w-14 text-right text-vq-text-lo text-xs">
