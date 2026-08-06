@@ -8,9 +8,11 @@ import { useMemo } from 'react';
 import { ErrorState, LoadingCard } from '../../../../components/states';
 import { WorkflowCanvas } from '../../../../components/workflow-builder/workflow-canvas';
 import { useWorkflow } from '../../../../lib/api';
+import { useI18n } from '../../../../lib/i18n/provider';
 
 /** Workflow builder (Day 85): loads the graph and mounts the React Flow automation canvas. */
 export default function WorkflowBuilderPage() {
+  const { t } = useI18n();
   const params = useParams<{ workflowId: string }>();
   const workflowId = params?.workflowId ?? '';
   const { data, isLoading, isError, error, refetch } = useWorkflow(workflowId);
@@ -28,7 +30,7 @@ export default function WorkflowBuilderPage() {
           href="/dashboard/workflows"
           className="flex w-fit items-center gap-1 text-sm text-vq-text-lo hover:text-vq-text-hi"
         >
-          <ArrowLeft size={16} /> Workflows
+          <ArrowLeft size={16} /> {t('Workflows')}
         </Link>
         {data && <span className="font-medium text-sm text-vq-text-hi">{data.name}</span>}
       </div>
@@ -40,7 +42,7 @@ export default function WorkflowBuilderPage() {
       ) : data && graph ? (
         <WorkflowCanvas workflow={data} graph={graph} />
       ) : (
-        <ErrorState message="This workflow could not be loaded." onRetry={() => refetch()} />
+        <ErrorState message={t('This workflow could not be loaded.')} onRetry={() => refetch()} />
       )}
     </div>
   );

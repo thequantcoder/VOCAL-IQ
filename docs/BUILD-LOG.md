@@ -5535,3 +5535,19 @@ Batch 13 — the lead-capture Forms builder and the Agent › Test suite. All vi
 - **`catalogs.ts`**: ~55 new Hindi keys (2 section headers). Duplicate-key scan clean.
 
 **Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: **65 of ~76 dashboard pages** now Hindi. ~11 remain.
+
+---
+
+## Dashboard localization — page-level, increment 21: Chat + Workflow-builder shell + Call detail (3 pages)
+
+Batch 14 — Agent › Multimodal chat, the Workflow-builder page shell, and the Call detail view. All via `useI18n().t()` (English-as-key) + Hindi; ~40 new keys. No `t`-shadow renames (calls/[id] `TagRow`'s `tags.map((t))` is a plain tag string — TagRow has no `useI18n`, so no conflict; its `label` prop is translated at the call site). Pre-push `hi`-block dup-scan skipped 2 already-existing keys (`Start`/`Re-score`). biome caught 2 over-width lines (a `match {pct}%` span + the QA hint) — hand-wrapped.
+
+- **agents/[id]/chat**: `Multimodal chat` header, channel select (`Web chat`/`Voice (raw)` wrapped, WhatsApp/SMS fall back), `Restart`/`Start`, consistency note, empty-state, interpolated `Conversation ended · outcome: {outcome}`, reply input + `Send`. message bubbles = DATA.
+- **workflows/[workflowId]**: `Workflows` back-link + `This workflow could not be loaded.` fallback (the React-Flow `WorkflowCanvas` is a separate component, not localized here).
+- **calls/[id]**: `Calls` back-link + `Call not found.`, interpolated `Call with {name}` waveform label, TranscriptCard (`Transcript`, `Translating…`/`In {lang} · view original`/`Translate → {lang}`, `clean · raw`/`raw · clean`, no-transcript note, `Jump to this moment`), SourcesCard (`Knowledge sources`/`Knowledge base`/`match {pct}%`), IntelCard (`Call intelligence`, `Keywords`/`Topics`/`Entities`), QaCard (`QA scores`, `Scoring…`/`Re-score`/`Score now`, not-scored hint), CostCard (`Cost`, `Telephony`; STT/LLM/TTS = acronyms). direction/speaker/sentiment/segment/score content = DATA.
+
+- **`catalogs.ts`**: ~40 new Hindi keys (3 section headers). Duplicate-key scan clean.
+
+> **Scope note.** The dev-only **kitchen** component gallery (localhost-gated, "available in local development only") is intentionally NOT localized — it's an internal QA tool, never shipped to tenants. Remaining un-localized page files are the React-Flow **agents/[id]/builder** + **workflow-canvas** and the **whatsapp/messenger-calling** cluster (landing + click-to-call/entry-point/outbound sub-components + 2 settings + 2 live/[id]) — heavier, sub-component-dense surfaces for a later pass.
+
+**Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: **68 of ~75 shippable dashboard pages** now Hindi (kitchen excluded as dev-only). Remaining = the React-Flow builders + the calling cluster.

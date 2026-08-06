@@ -1503,6 +1503,45 @@ export const catalogs: Record<string, MessageCatalog> = {
     'LLM rubric, e.g. “Did the agent confirm the booking?” (optional)':
       'LLM रूब्रिक, जैसे “क्या एजेंट ने बुकिंग की पुष्टि की?” (वैकल्पिक)',
     'Add scenario': 'परिदृश्य जोड़ें',
+    // Agent › Multimodal chat page.
+    'Multimodal chat': 'मल्टीमॉडल चैट',
+    'Web chat': 'वेब चैट',
+    'Voice (raw)': 'वॉइस (रॉ)',
+    Restart: 'पुनः आरंभ करें',
+    'The same published flow drives every channel — switch channels and confirm the agent behaves consistently (voice keeps SSML; text strips it).':
+      'वही प्रकाशित फ़्लो हर चैनल को चलाता है — चैनल बदलें और पुष्टि करें कि एजेंट लगातार व्यवहार करता है (वॉइस SSML रखती है; टेक्स्ट हटा देता है)।',
+    'Press Start to begin the conversation.': 'बातचीत शुरू करने के लिए Start दबाएँ।',
+    'Conversation ended · outcome: {outcome}': 'बातचीत समाप्त · परिणाम: {outcome}',
+    'Type a reply…': 'एक उत्तर टाइप करें…',
+    'Start a session first': 'पहले एक सेशन शुरू करें',
+    'Your message': 'आपका संदेश',
+    // Workflow builder page.
+    'This workflow could not be loaded.': 'यह वर्कफ़्लो लोड नहीं किया जा सका।',
+    // Call detail page.
+    'Call not found.': 'कॉल नहीं मिली।',
+    'Call with {name}': '{name} के साथ कॉल',
+    Transcript: 'ट्रांसक्रिप्ट',
+    'Translating…': 'अनुवाद हो रहा है…',
+    'In {lang} · view original': '{lang} में · मूल देखें',
+    'Translate → {lang}': 'अनुवाद करें → {lang}',
+    'clean · raw': 'साफ़ · रॉ',
+    'raw · clean': 'रॉ · साफ़',
+    'No transcript yet — it’s captured live during the call.':
+      'अभी तक कोई ट्रांसक्रिप्ट नहीं — यह कॉल के दौरान लाइव कैप्चर होता है।',
+    'Jump to this moment': 'इस क्षण पर जाएँ',
+    'Knowledge sources': 'ज्ञान स्रोत',
+    'Knowledge base': 'ज्ञान आधार',
+    'match {pct}%': 'मैच {pct}%',
+    'Call intelligence': 'कॉल इंटेलिजेंस',
+    Keywords: 'कीवर्ड',
+    Topics: 'विषय',
+    Entities: 'एंटिटीज़',
+    'QA scores': 'QA स्कोर',
+    'Scoring…': 'स्कोरिंग…',
+    'Score now': 'अभी स्कोर करें',
+    'Not scored yet. Run a rubric with “Score now”, or configure sampling in QA scoring.':
+      'अभी तक स्कोर नहीं किया गया। “Score now” से एक रूब्रिक चलाएँ, या QA स्कोरिंग में सैंपलिंग कॉन्फ़िगर करें।',
+    Telephony: 'टेलीफ़ोनी',
   },
   ar: {
     'nav.agents': 'الوكلاء',
