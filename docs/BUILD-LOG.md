@@ -5522,3 +5522,16 @@ Batch 12 — the Live Co-Pilot (standalone rep tool) and multi-channel Messaging
 - **`catalogs.ts`**: ~50 new Hindi keys (2 section headers). Duplicate-key scan clean.
 
 **Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: **63 of ~76 dashboard pages** now Hindi. ~13 remain.
+
+---
+
+## Dashboard localization — page-level, increment 20: Forms + Agent test suite (2 pages)
+
+Batch 13 — the lead-capture Forms builder and the Agent › Test suite. All via `useI18n().t()` (English-as-key) + Hindi; ~55 new keys. `t`-shadow rename in forms: `FIELD_TYPES.map((t))` → `ft`. Pre-push `hi`-block dup-scan skipped 11 already-existing keys (`Forms`/`off`/`Leads`/`Edit`/`Disable`/`Enable`/`Copy`/`Close`/`Agent`/`Saving…`/`Cancel`). Pure-technical labels `Webhook URL` + `Google Sheet ID` intentionally omitted → fall back to English (no translatable words). biome clean first pass.
+
+- **forms**: header, `New form`, empty-state, FormRow (`live`/`off` chip, interpolated `{f} fields · {s} submissions`, `Leads`/`Edit`/`Disable`/`Enable`, `Copy` public URL), FormEditor (`Edit form`/`New form`, `Form name`, `Fields` + the field-row `Label`/type-select/`Required`, `Options, comma-separated`, `Add field`, Routing section, `Save changes`/`Create form`), Submissions (interpolated `Submissions · {name}`, `synced`/`stored`). FIELD_TYPES enum options + submission k/v = DATA.
+- **agents/[id]/tests**: `Agent` back-link, `Test suite`, `Scenario`/`Run suite`, empty-state, scenario rows (interpolated `{a} assertions · {c} caller turns`), ReportCard (`Last run`, interpolated `{p}/{total} passed ({pct}%)`), ScenarioResultRow (assertion labels = DATA), AddScenario (`Scenario name`, caller-lines + the 3 assertion inputs, `Add scenario`). outcome/assertion detail = DATA.
+
+- **`catalogs.ts`**: ~55 new Hindi keys (2 section headers). Duplicate-key scan clean.
+
+**Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: **65 of ~76 dashboard pages** now Hindi. ~11 remain.

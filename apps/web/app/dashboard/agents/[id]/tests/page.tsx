@@ -15,9 +15,11 @@ import {
   useRunSuite,
   useScenarios,
 } from '../../../../../lib/api';
+import { useI18n } from '../../../../../lib/i18n/provider';
 
 /** Agent testing suite (Day 33): scenarios + bulk grading against the published flow. */
 export default function AgentTestsPage() {
+  const { t } = useI18n();
   const params = useParams<{ id: string }>();
   const agentId = params?.id ?? '';
   const scenarios = useScenarios(agentId);
@@ -37,19 +39,19 @@ export default function AgentTestsPage() {
         href={`/dashboard/agents/${agentId}`}
         className="flex w-fit items-center gap-1 text-sm text-vq-text-lo hover:text-vq-text-hi"
       >
-        <ArrowLeft size={16} /> Agent
+        <ArrowLeft size={16} /> {t('Agent')}
       </Link>
 
       <div className="flex items-center justify-between">
         <h1 className="flex items-center gap-2 font-display font-semibold text-xl text-vq-text-hi">
-          <FlaskConical size={20} /> Test suite
+          <FlaskConical size={20} /> {t('Test suite')}
         </h1>
         <div className="flex gap-2">
           <Button size="sm" variant="secondary" onClick={() => setCreating((v) => !v)}>
-            <Plus size={16} /> Scenario
+            <Plus size={16} /> {t('Scenario')}
           </Button>
           <Button size="sm" onClick={run} disabled={runSuite.isPending}>
-            <Play size={16} /> {runSuite.isPending ? 'Running…' : 'Run suite'}
+            <Play size={16} /> {runSuite.isPending ? t('Running…') : t('Run suite')}
           </Button>
         </div>
       </div>
@@ -65,7 +67,7 @@ export default function AgentTestsPage() {
       {scenarios.isLoading ? (
         <LoadingCard rows={3} />
       ) : !scenarios.data || scenarios.data.length === 0 ? (
-        <EmptyState title="No scenarios yet" hint="Add one, then run the suite." />
+        <EmptyState title={t('No scenarios yet')} hint={t('Add one, then run the suite.')} />
       ) : (
         <div className="flex flex-col gap-2">
           {scenarios.data.map((s) => (
@@ -74,8 +76,10 @@ export default function AgentTestsPage() {
                 <div>
                   <p className="font-medium text-vq-text-hi">{s.name}</p>
                   <p className="text-xs text-vq-text-lo">
-                    {s.definition.assertions.length} assertions · {s.definition.caller.length}{' '}
-                    caller turns
+                    {t('{a} assertions · {c} caller turns', {
+                      a: s.definition.assertions.length,
+                      c: s.definition.caller.length,
+                    })}
                   </p>
                 </div>
                 <Button size="sm" variant="ghost" onClick={() => del.mutate(s.id)}>
@@ -91,14 +95,19 @@ export default function AgentTestsPage() {
 }
 
 function ReportCard({ report }: { report: SuiteReport }) {
+  const { t } = useI18n();
   const allPass = report.failed === 0;
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span>Last run</span>
+          <span>{t('Last run')}</span>
           <span className={cn('text-base', allPass ? 'text-vq-success' : 'text-vq-danger')}>
-            {report.passed}/{report.total} passed ({Math.round(report.passRate * 100)}%)
+            {t('{p}/{total} passed ({pct}%)', {
+              p: report.passed,
+              total: report.total,
+              pct: Math.round(report.passRate * 100),
+            })}
           </span>
         </CardTitle>
       </CardHeader>
@@ -142,6 +151,7 @@ function ScenarioResultRow({ result }: { result: ScenarioResult }) {
 
 /** Compact scenario builder: name + caller lines + a few common assertions. */
 function AddScenario({ agentId, onDone }: { agentId: string; onDone: () => void }) {
+  const { t } = useI18n();
   const create = useCreateScenario(agentId);
   const [name, setName] = useState('');
   const [caller, setCaller] = useState('');
@@ -170,12 +180,16 @@ function AddScenario({ agentId, onDone }: { agentId: string; onDone: () => void 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">New scenario</CardTitle>
+        <CardTitle className="text-base">{t('New scenario')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        <Input placeholder="Scenario name" value={name} onChange={(e) => setName(e.target.value)} />
+        <Input
+          placeholder={t('Scenario name')}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
         <label htmlFor="caller" className="flex flex-col gap-1 text-xs text-vq-text-lo">
-          Caller lines (one per row, add “ | intent” to route decisions)
+          {t('Caller lines (one per row, add “ | intent” to route decisions)')}
           <textarea
             id="caller"
             value={caller}
@@ -185,17 +199,17 @@ function AddScenario({ agentId, onDone }: { agentId: string; onDone: () => void 
           />
         </label>
         <Input
-          placeholder="Expected outcome (e.g. booked)"
+          placeholder={t('Expected outcome (e.g. booked)')}
           value={outcome}
           onChange={(e) => setOutcome(e.target.value)}
         />
         <Input
-          placeholder="Transcript must include… (optional)"
+          placeholder={t('Transcript must include… (optional)')}
           value={mustInclude}
           onChange={(e) => setMustInclude(e.target.value)}
         />
         <Input
-          placeholder="LLM rubric, e.g. “Did the agent confirm the booking?” (optional)"
+          placeholder={t('LLM rubric, e.g. “Did the agent confirm the booking?” (optional)')}
           value={rubric}
           onChange={(e) => setRubric(e.target.value)}
         />
@@ -204,10 +218,10 @@ function AddScenario({ agentId, onDone }: { agentId: string; onDone: () => void 
         )}
         <div className="flex gap-2">
           <Button size="sm" disabled={!name || create.isPending} onClick={submit}>
-            {create.isPending ? 'Saving…' : 'Add scenario'}
+            {create.isPending ? t('Saving…') : t('Add scenario')}
           </Button>
           <Button size="sm" variant="ghost" onClick={onDone}>
-            Cancel
+            {t('Cancel')}
           </Button>
         </div>
       </CardContent>

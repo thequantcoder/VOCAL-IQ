@@ -16,6 +16,7 @@ import {
   useSetFormActive,
   useUpdateForm,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 const FIELD_TYPES: FormFieldType[] = [
   'text',
@@ -33,6 +34,7 @@ const inputCls =
 
 /** Lead-capture form builder (Day 37): design public forms, route submissions, view leads. */
 export default function FormsPage() {
+  const { t } = useI18n();
   const forms = useForms();
   const [editing, setEditing] = useState<FormDto | null>(null);
   const [creating, setCreating] = useState(false);
@@ -43,11 +45,12 @@ export default function FormsPage() {
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-            <ClipboardList size={20} /> Forms
+            <ClipboardList size={20} /> {t('Forms')}
           </h1>
           <p className="text-sm text-vq-text-lo">
-            Public lead-capture forms. Submissions become contacts + leads and route to a webhook or
-            Google Sheet.
+            {t(
+              'Public lead-capture forms. Submissions become contacts + leads and route to a webhook or Google Sheet.',
+            )}
           </p>
         </div>
         <Button
@@ -58,7 +61,7 @@ export default function FormsPage() {
             setCreating((v) => !v);
           }}
         >
-          <Plus size={16} /> New form
+          <Plus size={16} /> {t('New form')}
         </Button>
       </div>
 
@@ -79,7 +82,7 @@ export default function FormsPage() {
       ) : forms.isError ? (
         <ErrorState message={(forms.error as Error).message} onRetry={() => forms.refetch()} />
       ) : !forms.data || forms.data.length === 0 ? (
-        <EmptyState title="No forms yet" hint="Build one to start capturing leads." />
+        <EmptyState title={t('No forms yet')} hint={t('Build one to start capturing leads.')} />
       ) : (
         <div className="flex flex-col gap-3">
           {forms.data.map((f) => (
@@ -112,6 +115,7 @@ function FormRow({
   onEdit: () => void;
   onView: () => void;
 }) {
+  const { t } = useI18n();
   const setActive = useSetFormActive();
   const del = useDeleteForm();
   const publicUrl =
@@ -132,30 +136,33 @@ function FormRow({
                     : 'border-vq-border text-vq-text-lo',
                 )}
               >
-                {form.active ? 'live' : 'off'}
+                {form.active ? t('live') : t('off')}
               </span>
             </p>
             <p className="text-vq-text-lo text-xs">
-              {form.fields.length} fields · {form.submissionCount} submissions
+              {t('{f} fields · {s} submissions', {
+                f: form.fields.length,
+                s: form.submissionCount,
+              })}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <Button size="sm" variant="ghost" onClick={onView}>
-              <Eye size={15} /> Leads
+              <Eye size={15} /> {t('Leads')}
             </Button>
             <Button size="sm" variant="ghost" onClick={onEdit}>
-              Edit
+              {t('Edit')}
             </Button>
             <Button
               size="sm"
               variant="ghost"
               onClick={() => setActive.mutate({ id: form.id, active: !form.active })}
             >
-              {form.active ? 'Disable' : 'Enable'}
+              {form.active ? t('Disable') : t('Enable')}
             </Button>
             <button
               type="button"
-              aria-label="Delete form"
+              aria-label={t('Delete form')}
               onClick={() => del.mutate(form.id)}
               className="rounded-vq p-1.5 text-vq-text-lo hover:text-vq-danger"
             >
@@ -170,7 +177,7 @@ function FormRow({
             variant="ghost"
             onClick={() => navigator.clipboard?.writeText(publicUrl)}
           >
-            Copy
+            {t('Copy')}
           </Button>
         </div>
       </CardContent>
@@ -181,6 +188,7 @@ function FormRow({
 const blankField = (): FormFieldDto => ({ key: '', label: '', type: 'text', required: false });
 
 function FormEditor({ initial, onDone }: { initial: FormDto | null; onDone: () => void }) {
+  const { t } = useI18n();
   const create = useCreateForm();
   const update = useUpdateForm();
   const [name, setName] = useState(initial?.name ?? '');
@@ -222,20 +230,22 @@ function FormEditor({ initial, onDone }: { initial: FormDto | null; onDone: () =
   return (
     <Card>
       <CardContent className="flex flex-col gap-4 py-5">
-        <p className="font-medium text-sm text-vq-text-hi">{initial ? 'Edit form' : 'New form'}</p>
+        <p className="font-medium text-sm text-vq-text-hi">
+          {initial ? t('Edit form') : t('New form')}
+        </p>
 
         <label htmlFor="form-name" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-          Form name
+          {t('Form name')}
           <Input
             id="form-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Contact us"
+            placeholder={t('Contact us')}
           />
         </label>
 
         <div className="flex flex-col gap-2">
-          <span className="text-vq-text-lo text-xs">Fields</span>
+          <span className="text-vq-text-lo text-xs">{t('Fields')}</span>
           {fields.map((f, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: field rows are positional, no stable id
             <div key={i} className="flex flex-col gap-2 rounded-vq border border-vq-border p-3">
@@ -243,7 +253,7 @@ function FormEditor({ initial, onDone }: { initial: FormDto | null; onDone: () =
                 <Input
                   value={f.label}
                   onChange={(e) => patch(i, { label: e.target.value })}
-                  placeholder="Label (e.g. Full name)"
+                  placeholder={t('Label (e.g. Full name)')}
                 />
                 <Input
                   value={f.key}
@@ -258,9 +268,9 @@ function FormEditor({ initial, onDone }: { initial: FormDto | null; onDone: () =
                   onChange={(e) => patch(i, { type: e.target.value as FormFieldType })}
                   className={cn(inputCls, 'max-w-[10rem]')}
                 >
-                  {FIELD_TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
+                  {FIELD_TYPES.map((ft) => (
+                    <option key={ft} value={ft}>
+                      {ft}
                     </option>
                   ))}
                 </select>
@@ -270,11 +280,11 @@ function FormEditor({ initial, onDone }: { initial: FormDto | null; onDone: () =
                     checked={f.required ?? false}
                     onChange={(e) => patch(i, { required: e.target.checked })}
                   />
-                  Required
+                  {t('Required')}
                 </label>
                 <button
                   type="button"
-                  aria-label="Remove field"
+                  aria-label={t('Remove field')}
                   onClick={() => setFields((fs) => fs.filter((_, idx) => idx !== i))}
                   className="ml-auto rounded-vq p-1.5 text-vq-text-lo hover:text-vq-danger"
                 >
@@ -285,7 +295,7 @@ function FormEditor({ initial, onDone }: { initial: FormDto | null; onDone: () =
                 <Input
                   value={(f.options ?? []).join(', ')}
                   onChange={(e) => patch(i, { options: e.target.value.split(',') })}
-                  placeholder="Options, comma-separated"
+                  placeholder={t('Options, comma-separated')}
                 />
               )}
             </div>
@@ -295,14 +305,14 @@ function FormEditor({ initial, onDone }: { initial: FormDto | null; onDone: () =
             variant="ghost"
             onClick={() => setFields((fs) => [...fs, blankField()])}
           >
-            <Plus size={15} /> Add field
+            <Plus size={15} /> {t('Add field')}
           </Button>
         </div>
 
         <div className="flex flex-col gap-2 border-vq-border border-t pt-3">
-          <span className="text-vq-text-lo text-xs">Routing (optional)</span>
+          <span className="text-vq-text-lo text-xs">{t('Routing (optional)')}</span>
           <label htmlFor="routing-webhook" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-            Webhook URL
+            {t('Webhook URL')}
             <Input
               id="routing-webhook"
               value={webhookUrl}
@@ -311,12 +321,12 @@ function FormEditor({ initial, onDone }: { initial: FormDto | null; onDone: () =
             />
           </label>
           <label htmlFor="routing-sheet" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-            Google Sheet ID
+            {t('Google Sheet ID')}
             <Input
               id="routing-sheet"
               value={sheetId}
               onChange={(e) => setSheetId(e.target.value)}
-              placeholder="Sheets sync activates once GOOGLE_OAUTH_* is configured"
+              placeholder={t('Sheets sync activates once GOOGLE_OAUTH_* is configured')}
             />
           </label>
         </div>
@@ -324,10 +334,10 @@ function FormEditor({ initial, onDone }: { initial: FormDto | null; onDone: () =
         {error && <p className="text-vq-danger text-xs">{error}</p>}
         <div className="flex gap-2">
           <Button size="sm" disabled={!name.trim() || pending} onClick={submit}>
-            {pending ? 'Saving…' : initial ? 'Save changes' : 'Create form'}
+            {pending ? t('Saving…') : initial ? t('Save changes') : t('Create form')}
           </Button>
           <Button size="sm" variant="ghost" onClick={onDone}>
-            Cancel
+            {t('Cancel')}
           </Button>
         </div>
       </CardContent>
@@ -336,14 +346,17 @@ function FormEditor({ initial, onDone }: { initial: FormDto | null; onDone: () =
 }
 
 function Submissions({ form, onClose }: { form: FormDto; onClose: () => void }) {
+  const { t } = useI18n();
   const subs = useFormSubmissions(form.id);
   return (
     <Card>
       <CardContent className="flex flex-col gap-3 py-4">
         <div className="flex items-center justify-between">
-          <p className="font-medium text-sm text-vq-text-hi">Submissions · {form.name}</p>
+          <p className="font-medium text-sm text-vq-text-hi">
+            {t('Submissions · {name}', { name: form.name })}
+          </p>
           <Button size="sm" variant="ghost" onClick={onClose}>
-            Close
+            {t('Close')}
           </Button>
         </div>
         {subs.isLoading ? (
@@ -351,14 +364,14 @@ function Submissions({ form, onClose }: { form: FormDto; onClose: () => void }) 
         ) : subs.isError ? (
           <ErrorState message={(subs.error as Error).message} onRetry={() => subs.refetch()} />
         ) : !subs.data || subs.data.length === 0 ? (
-          <EmptyState title="No submissions yet" />
+          <EmptyState title={t('No submissions yet')} />
         ) : (
           <div className="flex flex-col gap-2">
             {subs.data.map((s) => (
               <div key={s.id} className="rounded-vq border border-vq-border p-3 text-sm">
                 <div className="mb-1 flex items-center justify-between text-vq-text-lo text-xs">
                   <span>{new Date(s.createdAt).toLocaleString()}</span>
-                  <span>{s.synced ? 'synced' : 'stored'}</span>
+                  <span>{s.synced ? t('synced') : t('stored')}</span>
                 </div>
                 <dl className="grid grid-cols-[8rem_1fr] gap-x-3 gap-y-0.5">
                   {Object.entries(s.values).map(([k, v]) => (
