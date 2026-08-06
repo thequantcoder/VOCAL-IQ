@@ -12,6 +12,7 @@ import {
   useChatTurn,
   useStartChat,
 } from '../../../../../lib/api';
+import { useI18n } from '../../../../../lib/i18n/provider';
 
 const CHANNELS: { value: ChatChannel; label: string }[] = [
   { value: 'CHAT', label: 'Web chat' },
@@ -25,6 +26,7 @@ const CHANNELS: { value: ChatChannel; label: string }[] = [
  * channel. The same runtime powers voice + messaging — this proves text/chat consistency.
  */
 export default function AgentChatPage() {
+  const { t } = useI18n();
   const params = useParams<{ id: string }>();
   const agentId = params?.id ?? '';
   const [channel, setChannel] = useState<ChatChannel>('CHAT');
@@ -60,35 +62,36 @@ export default function AgentChatPage() {
         href={`/dashboard/agents/${agentId}`}
         className="flex items-center gap-1 text-sm text-vq-text-lo hover:text-vq-text-hi"
       >
-        <ArrowLeft size={16} /> Agent
+        <ArrowLeft size={16} /> {t('Agent')}
       </Link>
 
       <div className="flex items-center justify-between">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <MessagesSquare size={20} /> Multimodal chat
+          <MessagesSquare size={20} /> {t('Multimodal chat')}
         </h1>
         <div className="flex items-center gap-2">
           <select
-            aria-label="Channel"
+            aria-label={t('Channel')}
             value={channel}
             onChange={(e) => setChannel(e.target.value as ChatChannel)}
             className="rounded-vq border border-vq-border bg-transparent px-2 py-1.5 text-sm text-vq-text-hi"
           >
             {CHANNELS.map((c) => (
               <option key={c.value} value={c.value}>
-                {c.label}
+                {t(c.label)}
               </option>
             ))}
           </select>
           <Button size="sm" onClick={begin} disabled={start.isPending}>
-            {state ? 'Restart' : 'Start'}
+            {state ? t('Restart') : t('Start')}
           </Button>
         </div>
       </div>
 
       <p className="text-sm text-vq-text-lo">
-        The same published flow drives every channel — switch channels and confirm the agent behaves
-        consistently (voice keeps SSML; text strips it).
+        {t(
+          'The same published flow drives every channel — switch channels and confirm the agent behaves consistently (voice keeps SSML; text strips it).',
+        )}
       </p>
 
       {error && <p className="text-vq-danger text-sm">{error.message}</p>}
@@ -96,7 +99,9 @@ export default function AgentChatPage() {
       <Card>
         <CardContent className="flex min-h-[16rem] flex-col gap-2 py-4">
           {messages.length === 0 ? (
-            <p className="m-auto text-sm text-vq-text-lo">Press Start to begin the conversation.</p>
+            <p className="m-auto text-sm text-vq-text-lo">
+              {t('Press Start to begin the conversation.')}
+            </p>
           ) : (
             messages.map((m, i) => (
               <div
@@ -115,7 +120,9 @@ export default function AgentChatPage() {
           )}
           {done && (
             <p className="mt-2 text-center text-vq-text-lo text-xs">
-              Conversation ended · outcome: {state?.outcome ?? 'completed'}
+              {t('Conversation ended · outcome: {outcome}', {
+                outcome: state?.outcome ?? 'completed',
+              })}
             </p>
           )}
         </CardContent>
@@ -131,13 +138,13 @@ export default function AgentChatPage() {
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={state ? 'Type a reply…' : 'Start a session first'}
+          placeholder={state ? t('Type a reply…') : t('Start a session first')}
           disabled={!state || done}
-          aria-label="Your message"
+          aria-label={t('Your message')}
           className="flex-1 rounded-vq border border-vq-border bg-vq-bg-base px-3 py-2 text-sm text-vq-text-hi disabled:opacity-50"
         />
         <Button type="submit" disabled={!state || !input.trim() || done || turn.isPending}>
-          <Send size={16} /> Send
+          <Send size={16} /> {t('Send')}
         </Button>
       </form>
     </div>

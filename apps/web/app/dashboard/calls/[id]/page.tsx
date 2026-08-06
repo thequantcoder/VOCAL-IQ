@@ -33,6 +33,7 @@ import {
   useTranscriptTranslation,
   useTranslateTranscript,
 } from '../../../../lib/api';
+import { useI18n } from '../../../../lib/i18n/provider';
 
 const SENTIMENT_STYLE: Record<string, string> = {
   positive: 'text-vq-success border-vq-success/40 bg-vq-success/10',
@@ -41,6 +42,7 @@ const SENTIMENT_STYLE: Record<string, string> = {
 };
 
 export default function CallDetailPage() {
+  const { t } = useI18n();
   const params = useParams<{ id: string }>();
   const id = params?.id ?? '';
   const { data, isLoading, isError, error, refetch } = useCall(id);
@@ -77,7 +79,7 @@ export default function CallDetailPage() {
         href="/dashboard/calls"
         className="flex items-center gap-1 text-sm text-vq-text-lo hover:text-vq-text-hi"
       >
-        <ArrowLeft size={16} /> Calls
+        <ArrowLeft size={16} /> {t('Calls')}
       </Link>
 
       {isLoading ? (
@@ -85,7 +87,7 @@ export default function CallDetailPage() {
       ) : isError ? (
         <ErrorState message={(error as Error).message} onRetry={() => refetch()} />
       ) : !data ? (
-        <ErrorState message="Call not found." />
+        <ErrorState message={t('Call not found.')} />
       ) : (
         <>
           <header className="flex flex-wrap items-center justify-between gap-3">
@@ -106,7 +108,7 @@ export default function CallDetailPage() {
           </header>
 
           <div className="h-14 w-full max-w-sm">
-            <Waveform label={`Call with ${data.agent.name}`} bars={28} />
+            <Waveform label={t('Call with {name}', { name: data.agent.name })} bars={28} />
           </div>
 
           {data.recordingUrl ? (
@@ -157,6 +159,7 @@ function TranscriptCard({
   setShowClean: (fn: (v: boolean) => boolean) => void;
   seekTo: (ms: number) => void;
 }) {
+  const { t } = useI18n();
   const [translated, setTranslated] = useState(false);
   const lang = useOperatorLanguage();
   const target = lang.data?.targetLanguage ?? 'en';
@@ -171,7 +174,7 @@ function TranscriptCard({
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between gap-2">
-        <CardTitle>Transcript</CardTitle>
+        <CardTitle>{t('Transcript')}</CardTitle>
         <div className="flex items-center gap-2">
           {transcript && (
             <button
@@ -190,10 +193,10 @@ function TranscriptCard({
             >
               <Languages size={12} />
               {doTranslate.isPending
-                ? 'Translating…'
+                ? t('Translating…')
                 : translated
-                  ? `In ${languageLabel(target)} · view original`
-                  : `Translate → ${languageLabel(target)}`}
+                  ? t('In {lang} · view original', { lang: languageLabel(target) })
+                  : t('Translate → {lang}', { lang: languageLabel(target) })}
             </button>
           )}
           {clean && clean.length > 0 ? (
@@ -202,7 +205,7 @@ function TranscriptCard({
               onClick={() => setShowClean((v) => !v)}
               className="rounded-vq-pill border border-vq-border px-2.5 py-1 text-vq-text-lo text-xs hover:text-vq-text-hi"
             >
-              {showClean ? 'clean · raw' : 'raw · clean'}
+              {showClean ? t('clean · raw') : t('raw · clean')}
             </button>
           ) : null}
         </div>
@@ -215,7 +218,7 @@ function TranscriptCard({
                 <button
                   type="button"
                   onClick={() => seekTo(seg.startMs)}
-                  title="Jump to this moment"
+                  title={t('Jump to this moment')}
                   className="flex w-full flex-col gap-0.5 rounded-vq px-2 py-1 text-left hover:bg-vq-bg-elevated"
                 >
                   <span
@@ -233,7 +236,7 @@ function TranscriptCard({
           </ol>
         ) : (
           <p className="text-sm text-vq-text-lo">
-            No transcript yet — it’s captured live during the call.
+            {t('No transcript yet — it’s captured live during the call.')}
           </p>
         )}
       </CardContent>
@@ -243,19 +246,22 @@ function TranscriptCard({
 
 /** RAG source attribution (Day 39): which KB chunks the agent drew on during the call. */
 function SourcesCard({ transcript }: { transcript: NonNullable<CallDetail['transcript']> }) {
+  const { t } = useI18n();
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <BookMarked size={16} className="text-vq-cyan" /> Knowledge sources
+          <BookMarked size={16} className="text-vq-cyan" /> {t('Knowledge sources')}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
         {transcript.sources.map((s) => (
           <div key={s.chunkId} className="rounded-vq border border-vq-border p-3">
             <div className="mb-1 flex items-center justify-between text-vq-text-lo text-xs">
-              <span>{s.kbName ?? 'Knowledge base'}</span>
-              <span className="font-mono">match {Math.round(s.score * 100)}%</span>
+              <span>{s.kbName ?? t('Knowledge base')}</span>
+              <span className="font-mono">
+                {t('match {pct}%', { pct: Math.round(s.score * 100) })}
+              </span>
             </div>
             <p className="text-sm text-vq-text-hi">{s.snippet}</p>
           </div>
@@ -266,11 +272,12 @@ function SourcesCard({ transcript }: { transcript: NonNullable<CallDetail['trans
 }
 
 function IntelCard({ transcript }: { transcript: NonNullable<CallDetail['transcript']> }) {
+  const { t } = useI18n();
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Sparkles size={16} className="text-vq-violet" /> Call intelligence
+          <Sparkles size={16} className="text-vq-violet" /> {t('Call intelligence')}
           {transcript.sentiment && (
             <span
               className={cn(
@@ -285,11 +292,13 @@ function IntelCard({ transcript }: { transcript: NonNullable<CallDetail['transcr
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {transcript.summary && <p className="text-sm text-vq-text-hi">{transcript.summary}</p>}
-        {transcript.keywords.length > 0 && <TagRow label="Keywords" tags={transcript.keywords} />}
-        {transcript.topics.length > 0 && <TagRow label="Topics" tags={transcript.topics} />}
+        {transcript.keywords.length > 0 && (
+          <TagRow label={t('Keywords')} tags={transcript.keywords} />
+        )}
+        {transcript.topics.length > 0 && <TagRow label={t('Topics')} tags={transcript.topics} />}
         {transcript.entities.length > 0 && (
           <div className="flex flex-col gap-1">
-            <span className="text-vq-text-lo text-xs uppercase tracking-wide">Entities</span>
+            <span className="text-vq-text-lo text-xs uppercase tracking-wide">{t('Entities')}</span>
             <div className="flex flex-wrap gap-1.5">
               {transcript.entities.map((e) => (
                 <span
@@ -309,6 +318,7 @@ function IntelCard({ transcript }: { transcript: NonNullable<CallDetail['transcr
 }
 
 function QaCard({ callId }: { callId: string }) {
+  const { t } = useI18n();
   const scores = useCallQaScores(callId);
   const scoreNow = useScoreCallNow(callId);
   const hasScores = scores.data && scores.data.length > 0;
@@ -317,7 +327,7 @@ function QaCard({ callId }: { callId: string }) {
     <Card>
       <CardHeader className="flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2">
-          <ClipboardCheck size={16} className="text-vq-cyan" /> QA scores
+          <ClipboardCheck size={16} className="text-vq-cyan" /> {t('QA scores')}
         </CardTitle>
         <Button
           size="sm"
@@ -325,7 +335,7 @@ function QaCard({ callId }: { callId: string }) {
           disabled={scoreNow.isPending}
           onClick={() => scoreNow.mutate()}
         >
-          {scoreNow.isPending ? 'Scoring…' : hasScores ? 'Re-score' : 'Score now'}
+          {scoreNow.isPending ? t('Scoring…') : hasScores ? t('Re-score') : t('Score now')}
         </Button>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
@@ -334,7 +344,9 @@ function QaCard({ callId }: { callId: string }) {
         )}
         {!hasScores ? (
           <p className="text-sm text-vq-text-lo">
-            Not scored yet. Run a rubric with “Score now”, or configure sampling in QA scoring.
+            {t(
+              'Not scored yet. Run a rubric with “Score now”, or configure sampling in QA scoring.',
+            )}
           </p>
         ) : (
           scores.data?.map((s) => (
@@ -392,19 +404,20 @@ function TagRow({ label, tags }: { label: string; tags: string[] }) {
 }
 
 function CostCard({ cost }: { cost: CostBreakdown | null }) {
+  const { t } = useI18n();
   const rows: [string, number][] = cost
     ? [
         ['STT', cost.stt],
         ['LLM', cost.llm],
         ['TTS', cost.tts],
-        ['Telephony', cost.telephony],
+        [t('Telephony'), cost.telephony],
       ]
     : [];
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span>Cost</span>
+          <span>{t('Cost')}</span>
           <span className="font-mono text-base text-vq-text-hi">
             {formatUsd(cost?.billable ?? 0)}
           </span>
