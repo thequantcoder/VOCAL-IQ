@@ -12,9 +12,11 @@ import {
   useEraseContactMemory,
   useUpdateAgent,
 } from '../../../../../lib/api';
+import { useI18n } from '../../../../../lib/i18n/provider';
 
 /** Agent Memory (Day 34): per-agent enable toggle + view/clear a contact's memory. */
 export default function AgentMemoryPage() {
+  const { t } = useI18n();
   const params = useParams<{ id: string }>();
   const agentId = params?.id ?? '';
   const agent = useAgent(agentId);
@@ -26,16 +28,16 @@ export default function AgentMemoryPage() {
         href={`/dashboard/agents/${agentId}/builder`}
         className="flex w-fit items-center gap-1 text-sm text-vq-text-lo hover:text-vq-text-hi"
       >
-        <ArrowLeft size={16} /> Builder
+        <ArrowLeft size={16} /> {t('Builder')}
       </Link>
 
       <h1 className="flex items-center gap-2 font-display font-semibold text-xl text-vq-text-hi">
-        <Brain size={20} /> Memory
+        <Brain size={20} /> {t('Memory')}
       </h1>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Cross-call memory</CardTitle>
+          <CardTitle className="text-base">{t('Cross-call memory')}</CardTitle>
         </CardHeader>
         <CardContent>
           {agent.isLoading ? (
@@ -49,10 +51,10 @@ export default function AgentMemoryPage() {
                 onChange={(e) => update.mutate({ memoryEnabled: e.target.checked })}
               />
               <span className="text-sm text-vq-text-lo">
-                <span className="text-vq-text-hi">Remember returning callers.</span> When on, the
-                agent distils durable facts (preferences, budget, objections, outcome) after each
-                call and uses them next time. Off by default; contact memory is always erasable
-                below.
+                <span className="text-vq-text-hi">{t('Remember returning callers.')}</span>{' '}
+                {t(
+                  'When on, the agent distils durable facts (preferences, budget, objections, outcome) after each call and uses them next time. Off by default; contact memory is always erasable below.',
+                )}
               </span>
             </label>
           )}
@@ -66,6 +68,7 @@ export default function AgentMemoryPage() {
 
 /** Look up + view/clear a specific contact's memory (across agents). */
 function ContactMemory() {
+  const { t } = useI18n();
   const [input, setInput] = useState('');
   const [contactId, setContactId] = useState('');
   const memory = useContactMemory(contactId);
@@ -74,7 +77,7 @@ function ContactMemory() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Contact memory</CardTitle>
+        <CardTitle className="text-base">{t('Contact memory')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <form
@@ -85,18 +88,18 @@ function ContactMemory() {
           }}
         >
           <Input
-            placeholder="Contact ID"
+            placeholder={t('Contact ID')}
             value={input}
             onChange={(e) => setInput(e.target.value)}
           />
           <Button size="sm" variant="secondary" type="submit">
-            <Search size={15} /> Look up
+            <Search size={15} /> {t('Look up')}
           </Button>
         </form>
 
         {contactId && memory.isLoading && <LoadingCard rows={2} />}
         {contactId && memory.data && memory.data.length === 0 && (
-          <p className="text-sm text-vq-text-lo">No memory stored for this contact.</p>
+          <p className="text-sm text-vq-text-lo">{t('No memory stored for this contact.')}</p>
         )}
         {memory.data && memory.data.length > 0 && (
           <div className="flex flex-col gap-3">
@@ -121,7 +124,7 @@ function ContactMemory() {
               disabled={erase.isPending}
               onClick={() => erase.mutate(contactId)}
             >
-              <Trash2 size={15} /> Erase all memory for this contact (GDPR)
+              <Trash2 size={15} /> {t('Erase all memory for this contact (GDPR)')}
             </Button>
           </div>
         )}
