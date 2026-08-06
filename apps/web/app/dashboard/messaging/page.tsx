@@ -14,9 +14,11 @@ import {
   useMessages,
   useSendMessage,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 /** Multi-channel messaging (Day 44): WhatsApp/SMS templates, ad-hoc send, and a message log. */
 export default function MessagingPage() {
+  const { t } = useI18n();
   const templates = useMessageTemplates();
   const [creating, setCreating] = useState(false);
 
@@ -25,15 +27,16 @@ export default function MessagingPage() {
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-            <MessageSquare size={20} /> Messaging
+            <MessageSquare size={20} /> {t('Messaging')}
           </h1>
           <p className="text-sm text-vq-text-lo">
-            SMS, WhatsApp, Telegram, Messenger, Instagram &amp; RCS templates + follow-ups. Live
-            send activates once each channel's keys are set.
+            {t(
+              "SMS, WhatsApp, Telegram, Messenger, Instagram & RCS templates + follow-ups. Live send activates once each channel's keys are set.",
+            )}
           </p>
         </div>
         <Button size="sm" onClick={() => setCreating((v) => !v)}>
-          <Plus size={16} /> New template
+          <Plus size={16} /> {t('New template')}
         </Button>
       </div>
 
@@ -41,7 +44,7 @@ export default function MessagingPage() {
       <SendPanel templates={templates.data ?? []} />
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-medium text-sm text-vq-text-hi">Templates</h2>
+        <h2 className="font-medium text-sm text-vq-text-hi">{t('Templates')}</h2>
         {templates.isLoading ? (
           <LoadingCard rows={2} />
         ) : templates.isError ? (
@@ -51,11 +54,11 @@ export default function MessagingPage() {
           />
         ) : !templates.data || templates.data.length === 0 ? (
           <EmptyState
-            title="No templates yet"
-            hint="Create a WhatsApp/SMS template with {{variables}}."
+            title={t('No templates yet')}
+            hint={t('Create a WhatsApp/SMS template with {{variables}}.')}
           />
         ) : (
-          templates.data.map((t) => <TemplateRow key={t.id} template={t} />)
+          templates.data.map((tpl) => <TemplateRow key={tpl.id} template={tpl} />)
         )}
       </section>
 
@@ -95,6 +98,7 @@ function TemplateRow({ template }: { template: MessageTemplate }) {
 }
 
 function SendPanel({ templates }: { templates: MessageTemplate[] }) {
+  const { t } = useI18n();
   const send = useSendMessage();
   const [channel, setChannel] = useState<MessageChannel>('SMS');
   const [to, setTo] = useState('');
@@ -109,12 +113,12 @@ function SendPanel({ templates }: { templates: MessageTemplate[] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Send a message</CardTitle>
+        <CardTitle className="text-base">{t('Send a message')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <div className="flex gap-2">
           <select
-            aria-label="Channel"
+            aria-label={t('Channel')}
             value={channel}
             onChange={(e) => setChannel(e.target.value as MessageChannel)}
             className="rounded-vq border border-vq-border bg-transparent px-2 py-2 text-sm text-vq-text-hi"
@@ -132,21 +136,22 @@ function SendPanel({ templates }: { templates: MessageTemplate[] }) {
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={2}
-          placeholder="Message text…"
+          placeholder={t('Message text…')}
           className="rounded-vq border border-vq-border bg-vq-bg-base px-3 py-2 text-sm text-vq-text-hi"
         />
         {send.data && (
           <p className="text-vq-text-lo text-xs">
             {send.data.status === 'SENT'
-              ? `Sent · ${formatUsd(send.data.costUsd)}`
-              : `Queued — ${send.data.error ?? 'no provider configured'}`}
+              ? t('Sent · {cost}', { cost: formatUsd(send.data.costUsd) })
+              : t('Queued — {reason}', { reason: send.data.error ?? t('no provider configured') })}
           </p>
         )}
         {send.isError && <p className="text-vq-danger text-xs">{(send.error as Error).message}</p>}
         {templates.length > 0 && (
           <p className="text-vq-text-lo text-xs">
-            {templates.length} template(s) available — send templated follow-ups via the
-            API/campaigns.
+            {t('{n} template(s) available — send templated follow-ups via the API/campaigns.', {
+              n: templates.length,
+            })}
           </p>
         )}
         <div>
@@ -155,7 +160,7 @@ function SendPanel({ templates }: { templates: MessageTemplate[] }) {
             disabled={!to.trim() || !body.trim() || send.isPending}
             onClick={submit}
           >
-            <Send size={14} /> {send.isPending ? 'Sending…' : 'Send'}
+            <Send size={14} /> {send.isPending ? t('Sending…') : t('Send')}
           </Button>
         </div>
       </CardContent>
@@ -164,11 +169,12 @@ function SendPanel({ templates }: { templates: MessageTemplate[] }) {
 }
 
 function MessageLog() {
+  const { t } = useI18n();
   const messages = useMessages();
   if (messages.isLoading || !messages.data || messages.data.length === 0) return null;
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="font-medium text-sm text-vq-text-hi">Recent messages</h2>
+      <h2 className="font-medium text-sm text-vq-text-hi">{t('Recent messages')}</h2>
       <Card>
         <CardContent className="flex flex-col divide-y divide-vq-border py-0">
           {messages.data.map((m) => (
@@ -196,6 +202,7 @@ function MessageLog() {
 }
 
 function CreateTemplate({ onDone }: { onDone: () => void }) {
+  const { t } = useI18n();
   const create = useCreateMessageTemplate();
   const [channel, setChannel] = useState<MessageChannel>('SMS');
   const [name, setName] = useState('');
@@ -213,12 +220,12 @@ function CreateTemplate({ onDone }: { onDone: () => void }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">New template</CardTitle>
+        <CardTitle className="text-base">{t('New template')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <div className="flex gap-2">
           <select
-            aria-label="Channel"
+            aria-label={t('Channel')}
             value={channel}
             onChange={(e) => setChannel(e.target.value as MessageChannel)}
             className="rounded-vq border border-vq-border bg-transparent px-2 py-2 text-sm text-vq-text-hi"
@@ -250,18 +257,18 @@ function CreateTemplate({ onDone }: { onDone: () => void }) {
           className="rounded-vq border border-vq-border bg-vq-bg-base px-3 py-2 text-sm text-vq-text-hi"
         />
         <p className="text-vq-text-lo text-xs">
-          Use <code>{'{{variable}}'}</code> placeholders. WhatsApp templates need Meta approval
-          before live use.
+          {t('Use')} <code>{'{{variable}}'}</code>{' '}
+          {t('placeholders. WhatsApp templates need Meta approval before live use.')}
         </p>
         {create.isError && (
           <p className="text-vq-danger text-xs">{(create.error as Error).message}</p>
         )}
         <div className="flex gap-2">
           <Button size="sm" disabled={!valid || create.isPending} onClick={submit}>
-            {create.isPending ? 'Creating…' : 'Create template'}
+            {create.isPending ? t('Creating…') : t('Create template')}
           </Button>
           <Button size="sm" variant="ghost" onClick={onDone}>
-            Cancel
+            {t('Cancel')}
           </Button>
         </div>
       </CardContent>
