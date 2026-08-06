@@ -5464,3 +5464,18 @@ Batch 8 — the reseller + white-label + platform-owner surfaces: reseller Sub-t
 - **`catalogs.ts`**: ~110 new Hindi keys (6 section headers). Duplicate-key scan clean. `GO` intentionally omitted (falls back to English badge).
 
 **Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: **49 of ~76 dashboard pages** now Hindi. ~27 remain.
+
+---
+
+## Dashboard localization — page-level, increment 16: Developer platform (4 pages)
+
+Batch 9 — the developer surfaces: Developers (API keys + webhooks), Integrations (Slack + CRM/helpdesk connectors), Apps & integrations marketplace, and the interactive API reference. All via `useI18n().t()` (English-as-key) + Hindi; ~120 new keys. No `t`-shadow renames. Pre-push `hi`-block dup-scan skipped 9 already-existing keys (`Developers`/`Integrations` nav + `Revoke`/`Creating…`/`Cancel`/`Call completed`/`Call failed`/`Save`/`Connecting…`). `biome check --write` normalized the catalog; 1 over-width `EmptyState` hand-wrapped.
+
+- **developers**: header (fragmented OpenAPI-spec + SDK sentence around an `<a>`/`<code>`), Interactive-API-reference link, ApiKeysSection (`API keys`, `New key`, empty-state, KeyRow interpolated `{scopes} · {rate}/min · {n} calls`, `Revoke`), CreateKey (`New API key`, copy-once note, `Done`, name placeholder, `Create key`; scope chips = DATA), WebhooksSection (`Add webhook`, signing-secret note; event chips + URL example = DATA). `Webhooks` label falls back (technical).
+- **integrations**: SlackNotifications (`connected`, per-event copy, the 3 event labels wrapped at render, `Send test`/`Test sent ✓`/`Delivery failed`), IntegrationsPage header, ConnectorCard (status chips `connected`/`available`/`coming soon`, `Contacts`/`Tickets`, `Test`/`auth OK`/`auth failed`/`Disconnect`/`Connect`), ConnectForm (CONNECT_FIELDS tokenLabel/settings-label/placeholder wrapped at render — URL placeholders fall back, `Connect {name}`, ticket-on-negative toggle). Connector names = DATA.
+- **apps**: header, BrowseApps (`Free`, interpolated `{s} scopes · {i} installs`, `Install`), ConsentDialog (`Install “{name}”`, scope-consent copy, `One-time fee: {fee}…`, `Approve & install`; scope rows = DATA), MyInstalls (`App`/`no scopes`/`Uninstall`), RegisterApp (`Publish an app`, the form fields, `Publish & submit`), MyApps (interpolated `{id} · {n} installs`, `Submit for review`/`Revise`; status chip = DATA).
+- **developers/api**: header (fragmented base-URL sentence + manage-keys link), API-key card, OperationCard (`Query parameters`, `Request body (JSON)`, `curl`/`Copied`/`Copy`, `Try it`, `Paste a key to enable`, `Request failed (network / CORS)`; method/scope/summary/params = DATA).
+
+- **`catalogs.ts`**: ~120 new Hindi keys (4 section headers). Duplicate-key scan clean. Bare technical `Webhooks`/`Webhook URL` intentionally fall back to English.
+
+**Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: **53 of ~76 dashboard pages** now Hindi. ~23 remain.

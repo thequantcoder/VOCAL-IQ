@@ -15,6 +15,7 @@ import {
   useSubmitApp,
   useUninstallApp,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 const STATUS_COLOR: Record<string, string> = {
   draft: 'text-vq-text-lo border-vq-border',
@@ -30,15 +31,17 @@ const STATUS_COLOR: Record<string, string> = {
  * to build on. Approved apps are public; your drafts + installs stay private.
  */
 export default function AppsPage() {
+  const { t } = useI18n();
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <Blocks size={20} /> Apps &amp; integrations
+          <Blocks size={20} /> {t('Apps & integrations')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          Install third-party apps (each gets only the scopes you approve) or publish your own for
-          revenue share.
+          {t(
+            'Install third-party apps (each gets only the scopes you approve) or publish your own for revenue share.',
+          )}
         </p>
       </div>
 
@@ -51,13 +54,14 @@ export default function AppsPage() {
 }
 
 function BrowseApps() {
+  const { t } = useI18n();
   const browse = useAppBrowse();
   const [consenting, setConsenting] = useState<DeveloperApp | null>(null);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Browse apps</CardTitle>
+        <CardTitle className="text-base">{t('Browse apps')}</CardTitle>
       </CardHeader>
       <CardContent>
         {browse.isLoading ? (
@@ -65,7 +69,7 @@ function BrowseApps() {
         ) : browse.isError ? (
           <ErrorState message={(browse.error as Error).message} onRetry={() => browse.refetch()} />
         ) : !browse.data || browse.data.length === 0 ? (
-          <EmptyState title="No apps yet" hint="Be the first to publish one." />
+          <EmptyState title={t('No apps yet')} hint={t('Be the first to publish one.')} />
         ) : (
           <div className="flex flex-col gap-2">
             {browse.data.map((a) => (
@@ -73,12 +77,15 @@ function BrowseApps() {
                 <div className="flex min-w-0 flex-col gap-1">
                   <span className="text-vq-text-hi">{a.name}</span>
                   <span className="truncate text-vq-text-lo text-xs">
-                    {a.priceCents === 0 ? 'Free' : formatAmount(a.priceCents, 'USD')} ·{' '}
-                    {a.requestedScopes.length} scopes · {a.installCount} installs
+                    {a.priceCents === 0 ? t('Free') : formatAmount(a.priceCents, 'USD')} ·{' '}
+                    {t('{s} scopes · {i} installs', {
+                      s: a.requestedScopes.length,
+                      i: a.installCount,
+                    })}
                   </span>
                 </div>
                 <Button size="sm" onClick={() => setConsenting(a)}>
-                  Install
+                  {t('Install')}
                 </Button>
               </div>
             ))}
@@ -92,6 +99,7 @@ function BrowseApps() {
 
 /** The scope-consent screen — the tenant explicitly approves which scopes the app receives. */
 function ConsentDialog({ app, onClose }: { app: DeveloperApp; onClose: () => void }) {
+  const { t } = useI18n();
   const install = useInstallApp();
   const [granted, setGranted] = useState<string[]>(app.requestedScopes);
   const [minted, setMinted] = useState<string | null>(null);
@@ -110,26 +118,27 @@ function ConsentDialog({ app, onClose }: { app: DeveloperApp; onClose: () => voi
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-base">Install “{app.name}”</CardTitle>
+          <CardTitle className="text-base">{t('Install “{name}”', { name: app.name })}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           {minted ? (
             <div className="flex flex-col gap-2">
               <p className="text-sm text-vq-text-hi">
-                Installed. Give this key to the app — shown once:
+                {t('Installed. Give this key to the app — shown once:')}
               </p>
               <code className="break-all rounded-vq border border-vq-border bg-vq-surface-2 p-2 text-vq-success text-xs">
                 {minted}
               </code>
               <Button size="sm" className="self-end" onClick={onClose}>
-                Done
+                {t('Done')}
               </Button>
             </div>
           ) : (
             <>
               <p className="text-sm text-vq-text-lo">
-                This app is requesting the scopes below. Uncheck any you don’t want to grant — a
-                scoped key is minted for exactly what you approve.
+                {t(
+                  'This app is requesting the scopes below. Uncheck any you don’t want to grant — a scoped key is minted for exactly what you approve.',
+                )}
               </p>
               <div className="flex flex-col gap-1">
                 {app.requestedScopes.map((scope) => (
@@ -150,7 +159,9 @@ function ConsentDialog({ app, onClose }: { app: DeveloperApp; onClose: () => voi
               </div>
               {app.priceCents > 0 && (
                 <p className="text-vq-text-lo text-xs">
-                  One-time fee: {formatAmount(app.priceCents, 'USD')} (charged to your wallet).
+                  {t('One-time fee: {fee} (charged to your wallet).', {
+                    fee: formatAmount(app.priceCents, 'USD'),
+                  })}
                 </p>
               )}
               {install.isError && (
@@ -158,14 +169,14 @@ function ConsentDialog({ app, onClose }: { app: DeveloperApp; onClose: () => voi
               )}
               <div className="flex justify-end gap-2">
                 <Button size="sm" variant="ghost" onClick={onClose}>
-                  Cancel
+                  {t('Cancel')}
                 </Button>
                 <Button
                   size="sm"
                   disabled={granted.length === 0 || install.isPending}
                   onClick={confirm}
                 >
-                  {install.isPending ? 'Installing…' : 'Approve & install'}
+                  {install.isPending ? t('Installing…') : t('Approve & install')}
                 </Button>
               </div>
             </>
@@ -177,6 +188,7 @@ function ConsentDialog({ app, onClose }: { app: DeveloperApp; onClose: () => voi
 }
 
 function MyInstalls() {
+  const { t } = useI18n();
   const installs = useMyInstalls();
   const uninstall = useUninstallApp();
   const active = (installs.data ?? []).filter((i) => i.status === 'active');
@@ -184,15 +196,15 @@ function MyInstalls() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Installed apps</CardTitle>
+        <CardTitle className="text-base">{t('Installed apps')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-2 text-sm">
         {active.map((i) => (
           <div key={i.id} className="flex items-center justify-between gap-3">
             <span className="flex min-w-0 flex-col">
-              <span className="text-vq-text-hi">{i.app?.name ?? 'App'}</span>
+              <span className="text-vq-text-hi">{i.app?.name ?? t('App')}</span>
               <span className="truncate text-vq-text-lo text-xs">
-                {i.grantedScopes.join(', ') || 'no scopes'}
+                {i.grantedScopes.join(', ') || t('no scopes')}
               </span>
             </span>
             <Button
@@ -201,7 +213,7 @@ function MyInstalls() {
               disabled={uninstall.isPending}
               onClick={() => uninstall.mutate(i.appId)}
             >
-              Uninstall
+              {t('Uninstall')}
             </Button>
           </div>
         ))}
@@ -211,6 +223,7 @@ function MyInstalls() {
 }
 
 function RegisterApp() {
+  const { t } = useI18n();
   const register = useRegisterApp();
   const submit = useSubmitApp();
   const [open, setOpen] = useState(false);
@@ -250,20 +263,20 @@ function RegisterApp() {
   if (!open) {
     return (
       <Button size="sm" className="self-start" onClick={() => setOpen(true)}>
-        Publish an app
+        {t('Publish an app')}
       </Button>
     );
   }
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Publish an app</CardTitle>
+        <CardTitle className="text-base">{t('Publish an app')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {secret ? (
           <div className="flex flex-col gap-2">
             <p className="text-sm text-vq-text-hi">
-              App registered + submitted for review. Your client secret (shown once):
+              {t('App registered + submitted for review. Your client secret (shown once):')}
             </p>
             <code className="break-all rounded-vq border border-vq-border bg-vq-surface-2 p-2 text-vq-success text-xs">
               {secret}
@@ -276,24 +289,28 @@ function RegisterApp() {
                 setOpen(false);
               }}
             >
-              Done
+              {t('Done')}
             </Button>
           </div>
         ) : (
           <>
-            <Input placeholder="App name" value={name} onChange={(e) => setName(e.target.value)} />
             <Input
-              placeholder="Description"
+              placeholder={t('App name')}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <Input
+              placeholder={t('Description')}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
             <Input
-              placeholder="Webhook URL (https://…, optional)"
+              placeholder={t('Webhook URL (https://…, optional)')}
               value={webhookUrl}
               onChange={(e) => setWebhookUrl(e.target.value)}
             />
             <div className="flex flex-col gap-1">
-              <span className="text-vq-text-lo text-xs">Requested scopes</span>
+              <span className="text-vq-text-lo text-xs">{t('Requested scopes')}</span>
               {API_SCOPES.map((scope) => (
                 <label
                   key={scope}
@@ -311,7 +328,7 @@ function RegisterApp() {
               ))}
             </div>
             <div className="flex flex-col gap-1">
-              <span className="text-vq-text-lo text-xs">Subscribed events</span>
+              <span className="text-vq-text-lo text-xs">{t('Subscribed events')}</span>
               {WEBHOOK_EVENTS.map((ev) => (
                 <label
                   key={ev}
@@ -329,7 +346,7 @@ function RegisterApp() {
               ))}
             </div>
             <label htmlFor="app-price" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-              Install fee ($) — you keep 70%
+              {t('Install fee ($) — you keep 70%')}
               <Input
                 id="app-price"
                 type="number"
@@ -349,10 +366,10 @@ function RegisterApp() {
                 disabled={name.length < 3 || scopes.length === 0 || register.isPending}
                 onClick={create}
               >
-                {register.isPending ? 'Publishing…' : 'Publish & submit'}
+                {register.isPending ? t('Publishing…') : t('Publish & submit')}
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
-                Cancel
+                {t('Cancel')}
               </Button>
             </div>
           </>
@@ -363,13 +380,14 @@ function RegisterApp() {
 }
 
 function MyApps() {
+  const { t } = useI18n();
   const mine = useMyApps();
   const submit = useSubmitApp();
   if (!mine.data || mine.data.length === 0) return null;
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">My apps</CardTitle>
+        <CardTitle className="text-base">{t('My apps')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-2 text-sm">
         {mine.data.map((a) => (
@@ -384,7 +402,7 @@ function MyApps() {
                 </span>
               </span>
               <span className="truncate text-vq-text-lo text-xs">
-                {a.clientId} · {a.installCount} installs
+                {t('{id} · {n} installs', { id: a.clientId, n: a.installCount })}
               </span>
             </span>
             {a.status === 'draft' && (
@@ -394,7 +412,7 @@ function MyApps() {
                 disabled={submit.isPending}
                 onClick={() => submit.mutate({ id: a.id, status: 'pending' })}
               >
-                Submit for review
+                {t('Submit for review')}
               </Button>
             )}
             {a.status === 'rejected' && (
@@ -404,7 +422,7 @@ function MyApps() {
                 disabled={submit.isPending}
                 onClick={() => submit.mutate({ id: a.id, status: 'draft' })}
               >
-                Revise
+                {t('Revise')}
               </Button>
             )}
           </div>

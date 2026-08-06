@@ -5,6 +5,7 @@ import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@vocali
 import { Check, Copy, KeyRound, Play, Terminal } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
+import { useI18n } from '../../../../lib/i18n/provider';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
@@ -20,6 +21,7 @@ const METHOD_COLOR: Record<string, string> = {
  * response. The key lives only in component state (never persisted or shipped in HTML).
  */
 export default function ApiReferencePage() {
+  const { t } = useI18n();
   const [apiKey, setApiKey] = useState('');
   const groups = apiReferenceGroups();
 
@@ -27,13 +29,13 @@ export default function ApiReferencePage() {
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <Terminal size={20} /> API reference
+          <Terminal size={20} /> {t('API reference')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          Every public endpoint with copy-ready curl and a live “Try it”. Base URL{' '}
+          {t('Every public endpoint with copy-ready curl and a live “Try it”. Base URL')}{' '}
           <code className="rounded bg-vq-bg-elev px-1 text-vq-text-hi text-xs">{API_URL}</code>.{' '}
           <Link href="/dashboard/developers" className="text-vq-violet underline">
-            Manage API keys →
+            {t('Manage API keys →')}
           </Link>
         </p>
       </div>
@@ -44,19 +46,20 @@ export default function ApiReferencePage() {
             htmlFor="api-key"
             className="flex items-center gap-2 font-medium text-sm text-vq-text-hi"
           >
-            <KeyRound size={15} /> Your API key
+            <KeyRound size={15} /> {t('Your API key')}
           </label>
           <Input
             id="api-key"
             type="password"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
-            placeholder="vq_live_…  (paste to fill curl + enable Try it)"
+            placeholder={t('vq_live_…  (paste to fill curl + enable Try it)')}
             autoComplete="off"
           />
           <p className="text-vq-text-lo text-xs">
-            Used only in your browser to sign these requests — it is never stored or sent anywhere
-            but the API.
+            {t(
+              'Used only in your browser to sign these requests — it is never stored or sent anywhere but the API.',
+            )}
           </p>
         </CardContent>
       </Card>
@@ -74,6 +77,7 @@ export default function ApiReferencePage() {
 }
 
 function OperationCard({ op, apiKey }: { op: ApiOperation; apiKey: string }) {
+  const { t } = useI18n();
   const [body, setBody] = useState(op.bodyExample ? JSON.stringify(op.bodyExample, null, 2) : '');
   const [copied, setCopied] = useState(false);
   const [resp, setResp] = useState<{ status: number; text: string } | null>(null);
@@ -125,7 +129,7 @@ function OperationCard({ op, apiKey }: { op: ApiOperation; apiKey: string }) {
       }
       setResp({ status: res.status, text: pretty });
     } catch (e) {
-      setErr((e as Error).message || 'Request failed (network / CORS)');
+      setErr((e as Error).message || t('Request failed (network / CORS)'));
     } finally {
       setRunning(false);
     }
@@ -151,7 +155,7 @@ function OperationCard({ op, apiKey }: { op: ApiOperation; apiKey: string }) {
 
         {op.params && op.params.length > 0 && (
           <div className="flex flex-col gap-1">
-            <span className="font-medium text-vq-text-hi text-xs">Query parameters</span>
+            <span className="font-medium text-vq-text-hi text-xs">{t('Query parameters')}</span>
             <ul className="flex flex-col gap-0.5">
               {op.params.map((p) => (
                 <li key={p.name} className="flex flex-wrap items-baseline gap-2 text-xs">
@@ -168,7 +172,7 @@ function OperationCard({ op, apiKey }: { op: ApiOperation; apiKey: string }) {
 
         {op.method === 'post' && (
           <label className="flex flex-col gap-1">
-            <span className="font-medium text-vq-text-hi text-xs">Request body (JSON)</span>
+            <span className="font-medium text-vq-text-hi text-xs">{t('Request body (JSON)')}</span>
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
@@ -187,7 +191,7 @@ function OperationCard({ op, apiKey }: { op: ApiOperation; apiKey: string }) {
               onClick={copy}
               className="flex items-center gap-1 text-vq-text-lo text-xs hover:text-vq-text-hi"
             >
-              {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? 'Copied' : 'Copy'}
+              {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? t('Copied') : t('Copy')}
             </button>
           </div>
           <pre className="overflow-x-auto rounded-vq border border-vq-border bg-vq-bg-elev p-2.5 font-mono text-[0.7rem] text-vq-text-hi">
@@ -197,9 +201,11 @@ function OperationCard({ op, apiKey }: { op: ApiOperation; apiKey: string }) {
 
         <div className="flex items-center gap-3">
           <Button size="sm" onClick={tryIt} loading={running} disabled={!apiKey.trim()}>
-            <Play size={14} /> Try it
+            <Play size={14} /> {t('Try it')}
           </Button>
-          {!apiKey.trim() && <span className="text-vq-text-lo text-xs">Paste a key to enable</span>}
+          {!apiKey.trim() && (
+            <span className="text-vq-text-lo text-xs">{t('Paste a key to enable')}</span>
+          )}
           {err && <span className="text-vq-danger text-xs">{err}</span>}
         </div>
 
