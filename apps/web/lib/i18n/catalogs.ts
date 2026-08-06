@@ -1702,6 +1702,27 @@ export const catalogs: Record<string, MessageCatalog> = {
       'आपके Page के साथ Messenger चैट खोलता है; ऑडियो कॉल बटन कॉल शुरू करता है।',
     'Print on posters, flyers, or ads — scanning opens Messenger.':
       'पोस्टर, फ़्लायर, या विज्ञापनों पर प्रिंट करें — स्कैन करने से Messenger खुलता है।',
+    // WhatsApp + Messenger live-call (in-call) pages.
+    'Unknown caller': 'अज्ञात कॉलर',
+    'Take over': 'नियंत्रण लें',
+    'Answering agent': 'उत्तर देने वाला एजेंट',
+    'Connecting an agent…': 'एक एजेंट कनेक्ट हो रहा है…',
+    'Why they’re calling': 'वे क्यों कॉल कर रहे हैं',
+    'No context passed on this call.': 'इस कॉल पर कोई संदर्भ पास नहीं किया गया।',
+    'Live captions': 'लाइव कैप्शन',
+    'Listening… captions stream here as the conversation continues.':
+      'सुन रहा है… बातचीत जारी रहने पर कैप्शन यहाँ स्ट्रीम होते हैं।',
+    'Captions will appear here once the caller connects.': 'कॉलर के कनेक्ट होते ही कैप्शन यहाँ दिखेंगे।',
+    Timeline: 'टाइमलाइन',
+    'Waiting to connect': 'कनेक्ट होने की प्रतीक्षा',
+    'Agent speaking': 'एजेंट बोल रहा है',
+    'Caller speaking': 'कॉलर बोल रहा है',
+    Connected: 'कनेक्टेड',
+    'Live WhatsApp call with {caller}': '{caller} के साथ लाइव WhatsApp कॉल',
+    'Live Messenger call with {caller}': '{caller} के साथ लाइव Messenger कॉल',
+    Reference: 'संदर्भ',
+    inbound: 'इनबाउंड',
+    outbound: 'आउटबाउंड',
   },
   ar: {
     'nav.agents': 'الوكلاء',

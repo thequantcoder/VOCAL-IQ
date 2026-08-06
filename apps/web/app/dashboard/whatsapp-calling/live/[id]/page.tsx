@@ -8,6 +8,7 @@ import { useParams } from 'next/navigation';
 import { ErrorState, LoadingCard } from '../../../../../components/states';
 import { ChannelBadge, StatusBadge, formatDuration } from '../../../../../components/ui-bits';
 import { type WhatsappCallContext, useWhatsappLiveCall } from '../../../../../lib/api';
+import { useI18n } from '../../../../../lib/i18n/provider';
 
 /**
  * WhatsApp live-call view (WAC-04, DESIGN-SYSTEM §5c). The signature cyan waveform is the hero — it
@@ -18,6 +19,7 @@ import { type WhatsappCallContext, useWhatsappLiveCall } from '../../../../../li
  * live status until the call ends. Live audio-reactive captions arrive with the live media bridge.
  */
 export default function WhatsAppLiveCallPage() {
+  const { t } = useI18n();
   const params = useParams<{ id: string }>();
   const waCallId = params?.id ?? '';
   const { data, isLoading, isError, error, refetch } = useWhatsappLiveCall(waCallId);
@@ -27,7 +29,7 @@ export default function WhatsAppLiveCallPage() {
   const agentState = useSimulatedAgent(isLive);
   const speaker = activeSpeaker(agentState);
 
-  const caller = data?.fromNumber ?? data?.waUserId ?? 'Unknown caller';
+  const caller = data?.fromNumber ?? data?.waUserId ?? t('Unknown caller');
   const contextItems = data ? contextRows(data.context) : [];
 
   return (
@@ -36,7 +38,7 @@ export default function WhatsAppLiveCallPage() {
         href="/dashboard/whatsapp-calling"
         className="flex items-center gap-1 text-sm text-vq-text-lo hover:text-vq-text-hi"
       >
-        <ArrowLeft size={16} /> WhatsApp Calling
+        <ArrowLeft size={16} /> {t('WhatsApp Calling')}
       </Link>
 
       {isLoading ? (
@@ -44,7 +46,7 @@ export default function WhatsAppLiveCallPage() {
       ) : isError ? (
         <ErrorState message={(error as Error).message} onRetry={() => refetch()} />
       ) : !data ? (
-        <ErrorState message="Call not found." />
+        <ErrorState message={t('Call not found.')} />
       ) : (
         <>
           <header className="flex flex-wrap items-center justify-between gap-3">
@@ -55,7 +57,7 @@ export default function WhatsAppLiveCallPage() {
               <div className="flex flex-col">
                 <span className="font-display font-semibold text-lg text-vq-text-hi">{caller}</span>
                 <span className="text-vq-text-lo text-xs">
-                  {data.direction === 'USER_INITIATED' ? 'inbound' : 'outbound'} ·{' '}
+                  {data.direction === 'USER_INITIATED' ? t('inbound') : t('outbound')} ·{' '}
                   {formatDuration(data.durationSec)}
                 </span>
               </div>
@@ -63,7 +65,7 @@ export default function WhatsAppLiveCallPage() {
               <ChannelBadge channel="WHATSAPP" />
             </div>
             <Link href="/dashboard/desk" className={buttonClasses('secondary', 'sm')}>
-              <Headphones size={15} /> Take over
+              <Headphones size={15} /> {t('Take over')}
             </Link>
           </header>
 
@@ -74,7 +76,7 @@ export default function WhatsAppLiveCallPage() {
                 <LiveWaveform
                   state={agentState}
                   bars={56}
-                  label={`Live WhatsApp call with ${caller}`}
+                  label={t('Live WhatsApp call with {caller}', { caller })}
                 />
               </div>
               <TalkIndicator live={isLive} speaker={speaker} />
@@ -89,12 +91,12 @@ export default function WhatsAppLiveCallPage() {
                   <>
                     <AgentAvatar seed={data.agent.id} name={data.agent.name} size={36} />
                     <div className="flex flex-col">
-                      <span className="text-vq-text-lo text-xs">Answering agent</span>
+                      <span className="text-vq-text-lo text-xs">{t('Answering agent')}</span>
                       <span className="font-medium text-sm text-vq-text-hi">{data.agent.name}</span>
                     </div>
                   </>
                 ) : (
-                  <span className="text-sm text-vq-text-lo">Connecting an agent…</span>
+                  <span className="text-sm text-vq-text-lo">{t('Connecting an agent…')}</span>
                 )}
               </CardContent>
             </Card>
@@ -103,19 +105,19 @@ export default function WhatsAppLiveCallPage() {
             <Card>
               <CardContent className="flex flex-col gap-2 py-4">
                 <span className="flex items-center gap-1.5 text-vq-text-lo text-xs">
-                  <Sparkles size={13} /> Why they’re calling
+                  <Sparkles size={13} /> {t('Why they’re calling')}
                 </span>
                 {contextItems.length > 0 ? (
                   <dl className="flex flex-col gap-1 text-sm">
                     {contextItems.map((row) => (
                       <div key={row.label} className="flex justify-between gap-3">
-                        <dt className="text-vq-text-lo">{row.label}</dt>
+                        <dt className="text-vq-text-lo">{t(row.label)}</dt>
                         <dd className="truncate font-medium text-vq-text-hi">{row.value}</dd>
                       </div>
                     ))}
                   </dl>
                 ) : (
-                  <p className="text-sm text-vq-text-lo">No context passed on this call.</p>
+                  <p className="text-sm text-vq-text-lo">{t('No context passed on this call.')}</p>
                 )}
               </CardContent>
             </Card>
@@ -124,14 +126,14 @@ export default function WhatsAppLiveCallPage() {
           {/* Live captions — stream in once the media bridge is connected (WAC-03 live). */}
           <Card>
             <CardContent className="py-4">
-              <span className="text-vq-text-lo text-xs">Live captions</span>
+              <span className="text-vq-text-lo text-xs">{t('Live captions')}</span>
               <div
                 className="mt-2 flex min-h-16 items-center justify-center rounded-vq-card border border-vq-border border-dashed bg-vq-bg-base p-4 text-center text-sm text-vq-text-lo"
                 aria-live="polite"
               >
                 {isLive
-                  ? 'Listening… captions stream here as the conversation continues.'
-                  : 'Captions will appear here once the caller connects.'}
+                  ? t('Listening… captions stream here as the conversation continues.')
+                  : t('Captions will appear here once the caller connects.')}
               </div>
             </CardContent>
           </Card>
@@ -140,7 +142,7 @@ export default function WhatsAppLiveCallPage() {
           {data.events.length > 0 ? (
             <Card>
               <CardContent className="py-4">
-                <span className="text-vq-text-lo text-xs">Timeline</span>
+                <span className="text-vq-text-lo text-xs">{t('Timeline')}</span>
                 <ol className="mt-2 flex flex-col gap-1.5">
                   {data.events.map((e, i) => (
                     <li
@@ -171,13 +173,14 @@ function TalkIndicator({
   live: boolean;
   speaker: 'agent' | 'caller' | null;
 }) {
+  const { t } = useI18n();
   const label = !live
-    ? 'Waiting to connect'
+    ? t('Waiting to connect')
     : speaker === 'agent'
-      ? 'Agent speaking'
+      ? t('Agent speaking')
       : speaker === 'caller'
-        ? 'Caller speaking'
-        : 'Connected';
+        ? t('Caller speaking')
+        : t('Connected');
   return (
     <span
       className={cn(

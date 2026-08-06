@@ -5595,3 +5595,15 @@ Batch 17 — the Messenger Calling page's sub-components: the consented-outbound
 - **`catalogs.ts`**: ~16 new Hindi keys (1 section header). Duplicate-key scan clean.
 
 **Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: **the entire WhatsApp + Messenger calling cluster is now fully Hindi** (both landing + settings + all 5 sub-components). Remaining l10n = the 2 calling live/[id] in-call pages + the React-Flow builders (agents/[id]/builder, workflow-canvas).
+
+---
+
+## Dashboard localization — page-level, increment 25: WhatsApp + Messenger live-call pages (2 files)
+
+Batch 18 — the two in-call live views (`whatsapp-calling/live/[id]`, `messenger-calling/live/[id]`), near-identical siblings. All via `useI18n().t()` (English-as-key) + Hindi; ~19 new keys. No `t`-shadow renames; `contextRows()`'s `t(row.label)` is safe (row.label is a typed `string`, not an index signature). biome clean first pass.
+
+- Both pages: back-link (`WhatsApp/Messenger Calling` nav keys reused) + `Call not found.`, header (`Unknown caller`/`User {id}`, interpolated `inbound`/`outbound` now wrapped, `Take over`), the hero LiveWaveform label (interpolated `Live WhatsApp/Messenger call with {caller}`), TalkIndicator (`Waiting to connect`/`Agent speaking`/`Caller speaking`/`Connected`), Answering-agent card (`Answering agent`/`Connecting an agent…`), the "why they're calling" context callout (`Why they’re calling`, contextRows `Intent`/`Campaign`/`Reference` labels wrapped at render, `No context passed on this call.`), Live-captions card (`Live captions` + the 2 listening/waiting states), and the `Timeline` card. call status/direction enum, event names, timestamps, custom-context keys = DATA.
+
+- **`catalogs.ts`**: ~19 new Hindi keys (1 section header; incl. `inbound`/`outbound`/`Reference`/`Timeline`/`Connected` shared). Duplicate-key scan clean.
+
+**Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: **the WhatsApp + Messenger calling cluster is now 100% Hindi** — landing + settings + all 5 sub-components + both live/[id] in-call pages. The ONLY un-localized dashboard surfaces left are the two React-Flow canvases: **agents/[id]/builder** and **components/workflow-builder/workflow-canvas** (node-graph editors — a distinct, heavier follow-up).
