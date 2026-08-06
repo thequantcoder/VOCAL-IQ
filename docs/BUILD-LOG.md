@@ -5509,3 +5509,16 @@ Batch 11 — the agent create + detail sub-pages: New agent, Agent › Memory, A
 - **`catalogs.ts`**: ~70 new Hindi keys (4 section headers). Duplicate-key scan clean.
 
 **Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: **61 of ~76 dashboard pages** now Hindi. ~15 remain.
+
+---
+
+## Dashboard localization — page-level, increment 19: Co-Pilot + Messaging (2 pages)
+
+Batch 12 — the Live Co-Pilot (standalone rep tool) and multi-channel Messaging. All via `useI18n().t()` (English-as-key) + Hindi; ~50 new keys. `t`-shadow renames: copilot `transcript.map((t))` → `turn`, messaging `templates.map((t))` → `tpl`. Pre-push `hi`-block dup-scan skipped 15 already-existing keys (`Live Co-Pilot`/`Resume`/`Live call`/`Caller`/`You`/`Battlecards`/`Saved`/`Contact`/`Phone`/`Saving…`/`Saved ✓`/`Messaging`/`Templates`/`Cancel`/`Creating…`). biome clean on first pass. Verified `translate()`'s `/\{(\w+)\}/g` interpolation preserves the literal `{{variables}}` when no vars are passed (matches inner `{variables}`, replaces with itself) — so the messaging template hint renders correctly in both languages.
+
+- **copilot**: header + on-screen-only notice, StartSession form (`Title`/`Contact name`/`Company`, `Start call`, `Manage battlecards →`), Recent-sessions list (`Untitled call`, `CRM saved`, `Resume`/`View`), SessionWorkspace (`← All sessions`, `Live transcript` + `Caller`/`You` turn labels, the caller/rep inputs, `Get suggestions`/`End call & draft CRM`, Battlecards + `Suggestions`), CrmPanel (`CRM draft`, the 5 LabeledInputs + `Summary`/`Next steps`, `Confirm to CRM`). session/suggestion/battlecard content = DATA.
+- **messaging**: header, `New template`, `Templates` empty-state (`{{variables}}` literal preserved), SendPanel (`Send a message`, `Channel`, `Message text…`, interpolated `Sent · {cost}`/`Queued — {reason}`/`{n} template(s) available…`, `Send`), MessageLog (`Recent messages`), CreateTemplate (`Use {{variable}} placeholders…`, `Create template`). Channel enum options + template/message rows = DATA.
+
+- **`catalogs.ts`**: ~50 new Hindi keys (2 section headers). Duplicate-key scan clean.
+
+**Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: **63 of ~76 dashboard pages** now Hindi. ~13 remain.

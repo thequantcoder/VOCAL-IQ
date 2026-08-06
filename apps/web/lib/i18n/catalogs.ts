@@ -1396,6 +1396,67 @@ export const catalogs: Record<string, MessageCatalog> = {
       'लागू करने से निर्देश एजेंट के सिस्टम प्रॉम्प्ट में जुड़ जाता है। लाइव होने से पहले फिर से परीक्षण + फिर से प्रकाशित करें।',
     Applied: 'लागू किया गया',
     Apply: 'लागू करें',
+    // Live Co-Pilot page.
+    'An AI wingman on your own sales calls — live battlecards, objection handling, and next-best action, then auto-drafted CRM notes. Works on any call; no AI agent needed.':
+      'आपके अपने सेल्स कॉल पर एक AI विंगमैन — लाइव बैटलकार्ड, आपत्ति-निवारण, और अगली-सर्वश्रेष्ठ कार्रवाई, फिर स्वतः-ड्राफ़्ट किए गए CRM नोट्स। किसी भी कॉल पर काम करता है; कोई AI एजेंट आवश्यक नहीं।',
+    'Everything the co-pilot suggests is shown only on your screen — it is never spoken or read to the caller.':
+      'को-पायलट जो कुछ सुझाता है वह केवल आपकी स्क्रीन पर दिखता है — यह कभी कॉलर को बोला या पढ़ा नहीं जाता।',
+    'Start a session': 'एक सेशन शुरू करें',
+    'Title (e.g. Globex cold call)': 'शीर्षक (जैसे Globex कोल्ड कॉल)',
+    'Contact name': 'संपर्क नाम',
+    Company: 'कंपनी',
+    'Starting…': 'शुरू हो रहा है…',
+    'Start call': 'कॉल शुरू करें',
+    'Manage battlecards →': 'बैटलकार्ड प्रबंधित करें →',
+    'Recent sessions': 'हाल के सेशन',
+    'No sessions yet': 'अभी तक कोई सेशन नहीं',
+    'Start a call to see your co-pilot in action.':
+      'अपने को-पायलट को काम करते देखने के लिए एक कॉल शुरू करें।',
+    'Untitled call': 'शीर्षकहीन कॉल',
+    'CRM saved': 'CRM सहेजा गया',
+    View: 'देखें',
+    '← All sessions': '← सभी सेशन',
+    'Live transcript': 'लाइव ट्रांसक्रिप्ट',
+    'Enter what the caller (and you) said to get live suggestions.':
+      'लाइव सुझाव पाने के लिए दर्ज करें कि कॉलर (और आपने) क्या कहा।',
+    'What the caller just said': 'कॉलर ने अभी क्या कहा',
+    'What you said (optional)': 'आपने क्या कहा (वैकल्पिक)',
+    'Thinking…': 'सोच रहा है…',
+    'Get suggestions': 'सुझाव पाएँ',
+    'Ending…': 'समाप्त हो रहा है…',
+    'End call & draft CRM': 'कॉल समाप्त करें और CRM ड्राफ़्ट करें',
+    Suggestions: 'सुझाव',
+    'Suggestions appear here as the call goes.': 'कॉल के दौरान सुझाव यहाँ दिखते हैं।',
+    'CRM draft': 'CRM ड्राफ़्ट',
+    'AI-drafted from the call — review, edit, and confirm. Nothing is saved to your CRM until you confirm.':
+      'कॉल से AI-ड्राफ़्ट — समीक्षा करें, संपादित करें, और पुष्टि करें। जब तक आप पुष्टि नहीं करते तब तक आपके CRM में कुछ नहीं सहेजा जाता।',
+    Email: 'ईमेल',
+    Summary: 'सारांश',
+    'Next steps': 'अगले चरण',
+    Disposition: 'डिस्पोज़िशन',
+    'Confirm to CRM': 'CRM में पुष्टि करें',
+    // Messaging page.
+    "SMS, WhatsApp, Telegram, Messenger, Instagram & RCS templates + follow-ups. Live send activates once each channel's keys are set.":
+      'SMS, WhatsApp, Telegram, Messenger, Instagram और RCS टेम्पलेट + फ़ॉलो-अप। हर चैनल की कीज़ सेट होते ही लाइव भेजना सक्रिय हो जाता है।',
+    'New template': 'नया टेम्पलेट',
+    'No templates yet': 'अभी तक कोई टेम्पलेट नहीं',
+    'Create a WhatsApp/SMS template with {{variables}}.':
+      '{{variables}} के साथ एक WhatsApp/SMS टेम्पलेट बनाएँ।',
+    'Send a message': 'एक संदेश भेजें',
+    Channel: 'चैनल',
+    'Message text…': 'संदेश पाठ…',
+    'Sent · {cost}': 'भेजा गया · {cost}',
+    'Queued — {reason}': 'क्यूड — {reason}',
+    'no provider configured': 'कोई प्रोवाइडर कॉन्फ़िगर नहीं',
+    '{n} template(s) available — send templated follow-ups via the API/campaigns.':
+      '{n} टेम्पलेट उपलब्ध — API/कैंपेन के माध्यम से टेम्पलेटेड फ़ॉलो-अप भेजें।',
+    'Sending…': 'भेज रहा है…',
+    Send: 'भेजें',
+    'Recent messages': 'हाल के संदेश',
+    Use: 'उपयोग करें',
+    'placeholders. WhatsApp templates need Meta approval before live use.':
+      'प्लेसहोल्डर। WhatsApp टेम्पलेट को लाइव उपयोग से पहले Meta अनुमोदन चाहिए।',
+    'Create template': 'टेम्पलेट बनाएँ',
   },
   ar: {
     'nav.agents': 'الوكلاء',
