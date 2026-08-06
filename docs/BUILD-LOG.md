@@ -5479,3 +5479,18 @@ Batch 9 — the developer surfaces: Developers (API keys + webhooks), Integratio
 - **`catalogs.ts`**: ~120 new Hindi keys (4 section headers). Duplicate-key scan clean. Bare technical `Webhooks`/`Webhook URL` intentionally fall back to English.
 
 **Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: **53 of ~76 dashboard pages** now Hindi. ~23 remain.
+
+---
+
+## Dashboard localization — page-level, increment 17: Monetization & experimentation (4 pages)
+
+Batch 10 — four self-contained pages: Outcome-based billing, Voice emotion, Experiments (A/B), and the agent-template Marketplace. All via `useI18n().t()` (English-as-key) + Hindi; ~90 new keys. `t`-shadow rename in outcomes: `TYPES.map((t))` → `ty`. Pre-push `hi`-block dup-scan skipped 18 already-existing keys (`Payment`/`active`/`Voice emotion`/`No agents yet`/`Agent`/`Policy`/`Save policy`/`Experiments`/`Run`/`Calls`/`Marketplace`/`Description`/`Submit for review`/`Cancel`/`Saving…`/`Save`/`Creating…`/`Publishing…`). `biome check --write` normalized the catalog; 1 over-width `EmptyState` hand-wrapped.
+
+- **outcomes**: header, `Outcome pricing` (the 3 TYPES label+hint wrapped at render), PriceRow (`active`, `Price ($)`, `Reseller markup (%)`), `Billed outcomes` + empty-state, OutcomeRow (interpolated `ref {id}`/`reseller {amt}`, `Dispute`; status/type chips = DATA).
+- **voice-emotion**: header, agent picker, PolicyEditor (`Enable emotion-aware voice…`, `Expressiveness`, the 4 threshold Sliders + hints, `Reset to default`, `Saved`), Preview (`How the voice adapts`, TONE_COPY labels + SAMPLE_MOODS names wrapped at render, `warmth`/`energy`/`pace`). Expressiveness enum options = DATA.
+- **experiments**: header, `New experiment`, empty-state, ExperimentRow (interpolated `{metric} · {n} variants · {status}`, `Stop`/`Run`, results table headers, `(control)`, interpolated `significant (p={p})`/`n.s. (p={p})`), CreateExperiment (`Success metric` + Conversion/Booking options, `Variants`, `Add variant`, `Create experiment`). CSAT + variant id/label = DATA.
+- **marketplace**: header (interpolated `earned · {n} sales`), `Browse listings` (interpolated `{n} sold`, `Buy & clone`; `stars()` rating string = DATA), PublishListing (`Publish a template`, agent-select, `Listing title`, `Price ($) — you keep 70%`, `Publish (draft)`), MyListings, MyPurchases (interpolated `Cloned agent {id}`). Listing status chips = DATA.
+
+- **`catalogs.ts`**: ~90 new Hindi keys (4 section headers). Duplicate-key scan clean.
+
+**Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: **57 of ~76 dashboard pages** now Hindi. ~19 remain.

@@ -16,6 +16,7 @@ import {
   usePurchaseListing,
   useSubmitListing,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 const SELECT_CLS =
   'rounded-vq border border-vq-border bg-transparent px-2 py-2 text-sm text-vq-text-hi';
@@ -35,6 +36,7 @@ const stars = (sum: number, count: number) =>
  * drafts, purchases and payouts stay private.
  */
 export default function MarketplacePage() {
+  const { t } = useI18n();
   const browse = useMarketplaceBrowse();
   const purchase = usePurchaseListing();
   const payouts = usePayouts();
@@ -44,11 +46,12 @@ export default function MarketplacePage() {
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-            <Store size={20} /> Marketplace
+            <Store size={20} /> {t('Marketplace')}
           </h1>
           <p className="text-sm text-vq-text-lo">
-            Buy proven agent templates (cloned into your workspace) or publish your own for revenue
-            share.
+            {t(
+              'Buy proven agent templates (cloned into your workspace) or publish your own for revenue share.',
+            )}
           </p>
         </div>
         {payouts.data && payouts.data.sales > 0 && (
@@ -56,7 +59,7 @@ export default function MarketplacePage() {
             <div className="font-semibold text-vq-success text-sm">
               {formatAmount(payouts.data.earnedCents, 'USD')}
             </div>
-            earned · {payouts.data.sales} sales
+            {t('earned · {n} sales', { n: payouts.data.sales })}
           </div>
         )}
       </div>
@@ -65,7 +68,7 @@ export default function MarketplacePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Browse listings</CardTitle>
+          <CardTitle className="text-base">{t('Browse listings')}</CardTitle>
         </CardHeader>
         <CardContent>
           {browse.isLoading ? (
@@ -76,7 +79,10 @@ export default function MarketplacePage() {
               onRetry={() => browse.refetch()}
             />
           ) : !browse.data || browse.data.length === 0 ? (
-            <EmptyState title="No listings yet" hint="Be the first to publish a template." />
+            <EmptyState
+              title={t('No listings yet')}
+              hint={t('Be the first to publish a template.')}
+            />
           ) : (
             <div className="flex flex-col gap-2">
               {browse.data.map((l) => (
@@ -85,7 +91,7 @@ export default function MarketplacePage() {
                     <span className="text-vq-text-hi">{l.title}</span>
                     <span className="truncate text-vq-text-lo text-xs">
                       {formatAmount(l.priceCents, 'USD')} · {stars(l.ratingSum, l.ratingCount)} ·{' '}
-                      {l.purchaseCount} sold
+                      {t('{n} sold', { n: l.purchaseCount })}
                     </span>
                   </div>
                   <Button
@@ -93,7 +99,7 @@ export default function MarketplacePage() {
                     disabled={purchase.isPending}
                     onClick={() => purchase.mutate(l.id)}
                   >
-                    Buy &amp; clone
+                    {t('Buy & clone')}
                   </Button>
                 </div>
               ))}
@@ -112,6 +118,7 @@ export default function MarketplacePage() {
 }
 
 function PublishListing() {
+  const { t } = useI18n();
   const agents = useAgents();
   const publish = usePublishListing();
   const [open, setOpen] = useState(false);
@@ -137,18 +144,18 @@ function PublishListing() {
   if (!open) {
     return (
       <Button size="sm" className="self-start" onClick={() => setOpen(true)}>
-        Publish a template
+        {t('Publish a template')}
       </Button>
     );
   }
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Publish a template</CardTitle>
+        <CardTitle className="text-base">{t('Publish a template')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <select className={SELECT_CLS} value={agentId} onChange={(e) => setAgentId(e.target.value)}>
-          <option value="">Select an agent to publish…</option>
+          <option value="">{t('Select an agent to publish…')}</option>
           {(agents.data ?? []).map((a) => (
             <option key={a.id} value={a.id}>
               {a.name}
@@ -156,17 +163,17 @@ function PublishListing() {
           ))}
         </select>
         <Input
-          placeholder="Listing title"
+          placeholder={t('Listing title')}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
         <Input
-          placeholder="Description"
+          placeholder={t('Description')}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
         <label htmlFor="mkt-price" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-          Price ($) — you keep 70%
+          {t('Price ($) — you keep 70%')}
           <Input
             id="mkt-price"
             type="number"
@@ -186,10 +193,10 @@ function PublishListing() {
             disabled={!agentId || title.length < 3 || publish.isPending}
             onClick={submit}
           >
-            {publish.isPending ? 'Publishing…' : 'Publish (draft)'}
+            {publish.isPending ? t('Publishing…') : t('Publish (draft)')}
           </Button>
           <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
-            Cancel
+            {t('Cancel')}
           </Button>
         </div>
       </CardContent>
@@ -198,13 +205,14 @@ function PublishListing() {
 }
 
 function MyListings() {
+  const { t } = useI18n();
   const mine = useMyListings();
   const submit = useSubmitListing();
   if (!mine.data || mine.data.length === 0) return null;
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">My listings</CardTitle>
+        <CardTitle className="text-base">{t('My listings')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-2 text-sm">
         {mine.data.map((l: MarketplaceListing) => (
@@ -218,7 +226,7 @@ function MyListings() {
               </span>
             </span>
             <div className="flex items-center gap-2 text-vq-text-lo text-xs">
-              {formatAmount(l.priceCents, 'USD')} · {l.purchaseCount} sold
+              {formatAmount(l.priceCents, 'USD')} · {t('{n} sold', { n: l.purchaseCount })}
               {l.status === 'draft' && (
                 <Button
                   size="sm"
@@ -226,7 +234,7 @@ function MyListings() {
                   disabled={submit.isPending}
                   onClick={() => submit.mutate(l.id)}
                 >
-                  Submit for review
+                  {t('Submit for review')}
                 </Button>
               )}
             </div>
@@ -238,17 +246,18 @@ function MyListings() {
 }
 
 function MyPurchases() {
+  const { t } = useI18n();
   const purchases = useMyPurchases();
   if (!purchases.data || purchases.data.length === 0) return null;
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">My purchases</CardTitle>
+        <CardTitle className="text-base">{t('My purchases')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-1 text-sm">
         {purchases.data.map((p) => (
           <div key={p.id} className="flex justify-between text-vq-text-lo text-xs">
-            <span>Cloned agent {p.clonedAgentId?.slice(0, 8) ?? '—'}</span>
+            <span>{t('Cloned agent {id}', { id: p.clonedAgentId?.slice(0, 8) ?? '—' })}</span>
             <span className="text-vq-text-hi">{formatAmount(p.pricePaidCents, 'USD')}</span>
           </div>
         ))}

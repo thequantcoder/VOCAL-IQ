@@ -14,6 +14,7 @@ import {
   useOutcomes,
   useSetOutcomePrice,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 const TYPES: { type: OutcomeType; label: string; hint: string }[] = [
   {
@@ -36,6 +37,7 @@ const STATUS_COLOR: Record<string, string> = {
  * is charged once, verified, and refundable on dispute.
  */
 export default function OutcomesPage() {
+  const { t } = useI18n();
   const prices = useOutcomePrices();
   const outcomes = useOutcomes();
   const dispute = useDisputeOutcome();
@@ -44,27 +46,28 @@ export default function OutcomesPage() {
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <Target size={20} /> Outcome-based billing
+          <Target size={20} /> {t('Outcome-based billing')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          Sell on value: charge per qualified lead, booking, or payment. Each outcome is verified
-          and billed at most once, refundable on dispute.
+          {t(
+            'Sell on value: charge per qualified lead, booking, or payment. Each outcome is verified and billed at most once, refundable on dispute.',
+          )}
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Outcome pricing</CardTitle>
+          <CardTitle className="text-base">{t('Outcome pricing')}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {prices.isLoading ? (
             <LoadingCard rows={3} />
           ) : (
-            TYPES.map((t) => (
+            TYPES.map((ty) => (
               <PriceRow
-                key={t.type}
-                meta={t}
-                current={prices.data?.find((p) => p.type === t.type)}
+                key={ty.type}
+                meta={ty}
+                current={prices.data?.find((p) => p.type === ty.type)}
               />
             ))
           )}
@@ -73,7 +76,7 @@ export default function OutcomesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Billed outcomes</CardTitle>
+          <CardTitle className="text-base">{t('Billed outcomes')}</CardTitle>
         </CardHeader>
         <CardContent>
           {outcomes.isLoading ? (
@@ -85,8 +88,8 @@ export default function OutcomesPage() {
             />
           ) : !outcomes.data || outcomes.data.length === 0 ? (
             <EmptyState
-              title="No billed outcomes yet"
-              hint="Record outcomes via the API or your flows."
+              title={t('No billed outcomes yet')}
+              hint={t('Record outcomes via the API or your flows.')}
             />
           ) : (
             <div className="flex flex-col gap-2">
@@ -113,6 +116,7 @@ function PriceRow({
   meta: { type: OutcomeType; label: string; hint: string };
   current?: OutcomePrice;
 }) {
+  const { t } = useI18n();
   const save = useSetOutcomePrice();
   const [price, setPrice] = useState('');
   const [markup, setMarkup] = useState('0');
@@ -130,12 +134,12 @@ function PriceRow({
     <div className="flex flex-col gap-2 border-vq-border border-b pb-3 last:border-0">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm text-vq-text-hi">{meta.label}</p>
-          <p className="text-vq-text-lo text-xs">{meta.hint}</p>
+          <p className="text-sm text-vq-text-hi">{t(meta.label)}</p>
+          <p className="text-vq-text-lo text-xs">{t(meta.hint)}</p>
         </div>
         <label className="flex items-center gap-2 text-vq-text-lo text-xs">
           <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
-          active
+          {t('active')}
         </label>
       </div>
       <div className="flex flex-wrap items-end gap-2">
@@ -143,7 +147,7 @@ function PriceRow({
           htmlFor={`${meta.type}-price`}
           className="flex flex-col gap-1 text-vq-text-lo text-xs"
         >
-          Price ($)
+          {t('Price ($)')}
           <Input
             id={`${meta.type}-price`}
             type="number"
@@ -158,7 +162,7 @@ function PriceRow({
           htmlFor={`${meta.type}-markup`}
           className="flex flex-col gap-1 text-vq-text-lo text-xs"
         >
-          Reseller markup (%)
+          {t('Reseller markup (%)')}
           <Input
             id={`${meta.type}-markup`}
             type="number"
@@ -180,7 +184,7 @@ function PriceRow({
             })
           }
         >
-          {save.isPending ? 'Saving…' : 'Save'}
+          {save.isPending ? t('Saving…') : t('Save')}
         </Button>
       </div>
     </div>
@@ -192,6 +196,7 @@ function OutcomeRow({
   onDispute,
   disputing,
 }: { o: BillableOutcome; onDispute: () => void; disputing: boolean }) {
+  const { t } = useI18n();
   return (
     <div className="flex items-center justify-between gap-3 text-sm">
       <div className="flex min-w-0 flex-col gap-1">
@@ -207,13 +212,15 @@ function OutcomeRow({
           </span>
         </span>
         <span className="truncate text-vq-text-lo text-xs">
-          ref {o.refId.slice(0, 8)}
-          {o.resellerMarginCents > 0 && ` · reseller ${formatAmount(o.resellerMarginCents, 'USD')}`}
+          {t('ref {id}', { id: o.refId.slice(0, 8) })}
+          {o.resellerMarginCents > 0
+            ? ` · ${t('reseller {amt}', { amt: formatAmount(o.resellerMarginCents, 'USD') })}`
+            : ''}
         </span>
       </div>
       {o.status === 'billed' && (
         <Button size="sm" variant="ghost" disabled={disputing} onClick={onDispute}>
-          Dispute
+          {t('Dispute')}
         </Button>
       )}
     </div>

@@ -11,9 +11,11 @@ import {
   useExperiments,
   useSetExperimentStatus,
 } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 /** A/B testing (Day 30): split traffic across variants + compare with significance. */
 export default function ExperimentsPage() {
+  const { t } = useI18n();
   const experiments = useExperiments();
   const [creating, setCreating] = useState(false);
 
@@ -22,14 +24,14 @@ export default function ExperimentsPage() {
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="flex items-center gap-2 font-display font-semibold text-xl text-vq-text-hi">
-            <FlaskConical size={20} /> Experiments
+            <FlaskConical size={20} /> {t('Experiments')}
           </h1>
           <p className="text-sm text-vq-text-lo">
-            A/B test scripts, voices, and openers — compare variants with significance.
+            {t('A/B test scripts, voices, and openers — compare variants with significance.')}
           </p>
         </div>
         <Button size="sm" onClick={() => setCreating((v) => !v)}>
-          <Plus size={16} /> New experiment
+          <Plus size={16} /> {t('New experiment')}
         </Button>
       </div>
 
@@ -43,7 +45,7 @@ export default function ExperimentsPage() {
           onRetry={() => experiments.refetch()}
         />
       ) : !experiments.data || experiments.data.length === 0 ? (
-        <EmptyState title="No experiments yet" hint="Create one to start A/B testing." />
+        <EmptyState title={t('No experiments yet')} hint={t('Create one to start A/B testing.')} />
       ) : (
         <div className="flex flex-col gap-3">
           {experiments.data.map((e) => (
@@ -56,6 +58,7 @@ export default function ExperimentsPage() {
 }
 
 function ExperimentRow({ experiment }: { experiment: ExperimentListItem }) {
+  const { t } = useI18n();
   const results = useExperimentResults(experiment.id);
   const setStatus = useSetExperimentStatus();
   const running = experiment.status === 'RUNNING';
@@ -67,7 +70,11 @@ function ExperimentRow({ experiment }: { experiment: ExperimentListItem }) {
           <div>
             <p className="font-medium text-vq-text-hi">{experiment.name}</p>
             <p className="text-xs text-vq-text-lo">
-              {experiment.metric} · {experiment.variantCount} variants · {experiment.status}
+              {t('{metric} · {n} variants · {status}', {
+                metric: experiment.metric,
+                n: experiment.variantCount,
+                status: experiment.status,
+              })}
             </p>
           </div>
           {running ? (
@@ -76,7 +83,7 @@ function ExperimentRow({ experiment }: { experiment: ExperimentListItem }) {
               variant="ghost"
               onClick={() => setStatus.mutate({ id: experiment.id, status: 'STOPPED' })}
             >
-              <Square size={14} /> Stop
+              <Square size={14} /> {t('Stop')}
             </Button>
           ) : (
             experiment.status === 'DRAFT' && (
@@ -84,7 +91,7 @@ function ExperimentRow({ experiment }: { experiment: ExperimentListItem }) {
                 size="sm"
                 onClick={() => setStatus.mutate({ id: experiment.id, status: 'RUNNING' })}
               >
-                <Play size={14} /> Run
+                <Play size={14} /> {t('Run')}
               </Button>
             )
           )}
@@ -92,21 +99,22 @@ function ExperimentRow({ experiment }: { experiment: ExperimentListItem }) {
 
         {results.data && results.data.totalCalls > 0 && (
           <table className="w-full text-sm">
-            <caption className="sr-only">Experiment results</caption>
+            <caption className="sr-only">{t('Experiment results')}</caption>
             <thead>
               <tr className="border-vq-border border-b text-left text-vq-text-lo text-xs">
-                <th className="py-2 font-medium">Variant</th>
-                <th className="py-2 font-medium">Calls</th>
-                <th className="py-2 font-medium">Rate</th>
-                <th className="py-2 font-medium">Lift</th>
-                <th className="py-2 font-medium">Significance</th>
+                <th className="py-2 font-medium">{t('Variant')}</th>
+                <th className="py-2 font-medium">{t('Calls')}</th>
+                <th className="py-2 font-medium">{t('Rate')}</th>
+                <th className="py-2 font-medium">{t('Lift')}</th>
+                <th className="py-2 font-medium">{t('Significance')}</th>
               </tr>
             </thead>
             <tbody>
               {results.data.rows.map((r) => (
                 <tr key={r.variant} className="border-vq-border/40 border-b last:border-0">
                   <td className="py-2 text-vq-text-hi">
-                    {r.label} {r.isControl && <span className="text-vq-text-lo">(control)</span>}
+                    {r.label}{' '}
+                    {r.isControl && <span className="text-vq-text-lo">{t('(control)')}</span>}
                   </td>
                   <td className="py-2 text-vq-text-lo">{r.total}</td>
                   <td className="py-2 text-vq-text-hi">{(r.rate * 100).toFixed(1)}%</td>
@@ -117,9 +125,13 @@ function ExperimentRow({ experiment }: { experiment: ExperimentListItem }) {
                     {r.isControl ? (
                       <span className="text-vq-text-lo">—</span>
                     ) : r.significant ? (
-                      <span className="text-vq-success">significant (p={r.pValue.toFixed(3)})</span>
+                      <span className="text-vq-success">
+                        {t('significant (p={p})', { p: r.pValue.toFixed(3) })}
+                      </span>
                     ) : (
-                      <span className="text-vq-text-lo">n.s. (p={r.pValue.toFixed(3)})</span>
+                      <span className="text-vq-text-lo">
+                        {t('n.s. (p={p})', { p: r.pValue.toFixed(3) })}
+                      </span>
                     )}
                   </td>
                 </tr>
@@ -133,6 +145,7 @@ function ExperimentRow({ experiment }: { experiment: ExperimentListItem }) {
 }
 
 function CreateExperiment({ onDone }: { onDone: () => void }) {
+  const { t } = useI18n();
   const create = useCreateExperiment();
   const [name, setName] = useState('');
   const [metric, setMetric] = useState('conversion');
@@ -151,30 +164,30 @@ function CreateExperiment({ onDone }: { onDone: () => void }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">New experiment</CardTitle>
+        <CardTitle className="text-base">{t('New experiment')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <Input
-          placeholder="Experiment name"
+          placeholder={t('Experiment name')}
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
         <label htmlFor="metric" className="flex flex-col gap-1 text-xs text-vq-text-lo">
-          Success metric
+          {t('Success metric')}
           <select
             id="metric"
             className="rounded-vq border border-vq-border bg-transparent px-2 py-2 text-sm text-vq-text-hi"
             value={metric}
             onChange={(e) => setMetric(e.target.value)}
           >
-            <option value="conversion">Conversion</option>
-            <option value="booking">Booking</option>
+            <option value="conversion">{t('Conversion')}</option>
+            <option value="booking">{t('Booking')}</option>
             <option value="csat">CSAT</option>
           </select>
         </label>
 
         <div className="flex flex-col gap-2">
-          <p className="text-xs text-vq-text-lo uppercase tracking-wide">Variants</p>
+          <p className="text-xs text-vq-text-lo uppercase tracking-wide">{t('Variants')}</p>
           {variants.map((v, i) => (
             <div key={v.id} className="flex items-center gap-2">
               <Input
@@ -223,7 +236,7 @@ function CreateExperiment({ onDone }: { onDone: () => void }) {
                 ])
               }
             >
-              <Plus size={14} /> Add variant
+              <Plus size={14} /> {t('Add variant')}
             </Button>
           )}
         </div>
@@ -233,10 +246,10 @@ function CreateExperiment({ onDone }: { onDone: () => void }) {
         )}
         <div className="flex gap-2">
           <Button size="sm" disabled={!canSubmit || create.isPending} onClick={submit}>
-            {create.isPending ? 'Creating…' : 'Create experiment'}
+            {create.isPending ? t('Creating…') : t('Create experiment')}
           </Button>
           <Button size="sm" variant="ghost" onClick={onDone}>
-            Cancel
+            {t('Cancel')}
           </Button>
         </div>
       </CardContent>

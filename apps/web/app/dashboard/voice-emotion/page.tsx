@@ -14,6 +14,7 @@ import { Smile } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { EmptyState, ErrorState, LoadingCard } from '../../../components/states';
 import { useAgents, useEmotionPolicy, useSaveEmotionPolicy } from '../../../lib/api';
+import { useI18n } from '../../../lib/i18n/provider';
 
 const EXPRESSIVENESS: Expressiveness[] = ['subtle', 'balanced', 'expressive'];
 const SELECT_CLS =
@@ -50,6 +51,7 @@ const SAMPLE_MOODS: { name: string; signal: SentimentSignal }[] = [
  * before going live. Guardrails guarantee an upset caller is never sped up or given a "cheerful" voice.
  */
 export default function VoiceEmotionPage() {
+  const { t } = useI18n();
   const agents = useAgents();
   const [agentId, setAgentId] = useState('');
 
@@ -63,11 +65,12 @@ export default function VoiceEmotionPage() {
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <Smile size={20} /> Voice emotion
+          <Smile size={20} /> {t('Voice emotion')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          Let an agent's voice respond to how the caller feels — empathetic when they're upset, calm
-          to de-escalate, brighter for good news — all within a policy you control.
+          {t(
+            "Let an agent's voice respond to how the caller feels — empathetic when they're upset, calm to de-escalate, brighter for good news — all within a policy you control.",
+          )}
         </p>
       </div>
 
@@ -77,14 +80,14 @@ export default function VoiceEmotionPage() {
         <ErrorState message={(agents.error as Error).message} onRetry={() => agents.refetch()} />
       ) : !agents.data || agents.data.length === 0 ? (
         <EmptyState
-          title="No agents yet"
-          hint="Create an agent first, then tune its voice emotion."
+          title={t('No agents yet')}
+          hint={t('Create an agent first, then tune its voice emotion.')}
         />
       ) : (
         <>
           <div className="flex items-center gap-2">
             <label htmlFor="agent" className="text-sm text-vq-text-lo">
-              Agent
+              {t('Agent')}
             </label>
             <select
               id="agent"
@@ -107,6 +110,7 @@ export default function VoiceEmotionPage() {
 }
 
 function PolicyEditor({ agentId }: { agentId: string }) {
+  const { t } = useI18n();
   const query = useEmotionPolicy(agentId);
   const save = useSaveEmotionPolicy(agentId);
   const [policy, setPolicy] = useState<EmotionPolicy | null>(null);
@@ -126,7 +130,7 @@ function PolicyEditor({ agentId }: { agentId: string }) {
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Policy</CardTitle>
+          <CardTitle className="text-base">{t('Policy')}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <label className="flex items-center gap-2 text-sm text-vq-text-hi">
@@ -135,13 +139,13 @@ function PolicyEditor({ agentId }: { agentId: string }) {
               checked={policy.enabled}
               onChange={(e) => set('enabled', e.target.checked)}
             />
-            Enable emotion-aware voice for this agent
+            {t('Enable emotion-aware voice for this agent')}
           </label>
 
           <div className="flex items-center gap-3">
-            <span className="w-40 text-sm text-vq-text-lo">Expressiveness</span>
+            <span className="w-40 text-sm text-vq-text-lo">{t('Expressiveness')}</span>
             <select
-              aria-label="Expressiveness"
+              aria-label={t('Expressiveness')}
               className={SELECT_CLS}
               value={policy.expressiveness}
               disabled={!policy.enabled}
@@ -156,7 +160,7 @@ function PolicyEditor({ agentId }: { agentId: string }) {
           </div>
 
           <Slider
-            label="Max expressiveness (style cap)"
+            label={t('Max expressiveness (style cap)')}
             value={policy.maxStyle}
             min={0}
             max={1}
@@ -165,8 +169,8 @@ function PolicyEditor({ agentId }: { agentId: string }) {
             onChange={(v) => set('maxStyle', v)}
           />
           <Slider
-            label="Anger sensitivity"
-            hint="Lower ⇒ de-escalate sooner"
+            label={t('Anger sensitivity')}
+            hint={t('Lower ⇒ de-escalate sooner')}
             value={policy.angerThreshold}
             min={0}
             max={1}
@@ -175,8 +179,8 @@ function PolicyEditor({ agentId }: { agentId: string }) {
             onChange={(v) => set('angerThreshold', v)}
           />
           <Slider
-            label="Negative sensitivity"
-            hint="Higher (toward 0) ⇒ empathetic sooner"
+            label={t('Negative sensitivity')}
+            hint={t('Higher (toward 0) ⇒ empathetic sooner')}
             value={policy.negativeThreshold}
             min={-1}
             max={0}
@@ -185,8 +189,8 @@ function PolicyEditor({ agentId }: { agentId: string }) {
             onChange={(v) => set('negativeThreshold', v)}
           />
           <Slider
-            label="Positive sensitivity"
-            hint="Lower ⇒ upbeat sooner"
+            label={t('Positive sensitivity')}
+            hint={t('Lower ⇒ upbeat sooner')}
             value={policy.positiveThreshold}
             min={0}
             max={1}
@@ -205,7 +209,7 @@ function PolicyEditor({ agentId }: { agentId: string }) {
               disabled={save.isPending}
               onClick={() => save.mutate(policy)}
             >
-              {save.isPending ? 'Saving…' : 'Save policy'}
+              {save.isPending ? t('Saving…') : t('Save policy')}
             </Button>
             <Button
               size="sm"
@@ -213,10 +217,10 @@ function PolicyEditor({ agentId }: { agentId: string }) {
               disabled={save.isPending}
               onClick={() => setPolicy({ ...DEFAULT_EMOTION_POLICY })}
             >
-              Reset to default
+              {t('Reset to default')}
             </Button>
             {save.isSuccess && !save.isPending && (
-              <span className="text-vq-success text-xs">Saved</span>
+              <span className="text-vq-success text-xs">{t('Saved')}</span>
             )}
           </div>
         </CardContent>
@@ -229,15 +233,16 @@ function PolicyEditor({ agentId }: { agentId: string }) {
 
 /** Live, client-side preview using the SAME pure mapping the voice loop runs. */
 function Preview({ policy }: { policy: EmotionPolicy }) {
+  const { t } = useI18n();
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">How the voice adapts</CardTitle>
+        <CardTitle className="text-base">{t('How the voice adapts')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {!policy.enabled && (
           <p className="text-vq-text-lo text-xs">
-            Disabled — the agent uses a neutral voice for every caller.
+            {t('Disabled — the agent uses a neutral voice for every caller.')}
           </p>
         )}
         {SAMPLE_MOODS.map((m) => {
@@ -246,14 +251,14 @@ function Preview({ policy }: { policy: EmotionPolicy }) {
           const copy = TONE_COPY[tone];
           return (
             <div key={m.name} className="flex items-center justify-between gap-3 text-sm">
-              <span className="w-32 shrink-0 text-vq-text-lo">{m.name}</span>
+              <span className="w-32 shrink-0 text-vq-text-lo">{t(m.name)}</span>
               <span className={`rounded-vq-pill border px-2 py-0.5 text-xs ${copy.color}`}>
-                {copy.label}
+                {t(copy.label)}
               </span>
               <div className="flex flex-1 flex-wrap justify-end gap-x-4 gap-y-1 text-vq-text-lo text-xs">
-                <Metric label="warmth" value={s.stability} />
-                <Metric label="energy" value={s.style} />
-                <Metric label="pace" value={s.speed} unit="×" />
+                <Metric label={t('warmth')} value={s.stability} />
+                <Metric label={t('energy')} value={s.style} />
+                <Metric label={t('pace')} value={s.speed} unit="×" />
               </div>
             </div>
           );
