@@ -13,6 +13,7 @@ import {
   useLearningSettings,
   useSetLearningSettings,
 } from '../../../../../lib/api';
+import { useI18n } from '../../../../../lib/i18n/provider';
 
 /**
  * Learn from top reps (Day 89): opt in (consent), analyze the agent's best consent-eligible calls, and
@@ -20,6 +21,7 @@ import {
  * this only stages the change into the agent's system prompt.
  */
 export default function AgentLearningPage() {
+  const { t } = useI18n();
   const params = useParams<{ id: string }>();
   const agentId = params?.id ?? '';
   const settings = useLearningSettings();
@@ -36,24 +38,24 @@ export default function AgentLearningPage() {
         href={`/dashboard/agents/${agentId}/builder`}
         className="flex w-fit items-center gap-1 text-sm text-vq-text-lo hover:text-vq-text-hi"
       >
-        <ArrowLeft size={16} /> Builder
+        <ArrowLeft size={16} /> {t('Builder')}
       </Link>
 
       <div className="flex flex-col gap-1">
         <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-          <GraduationCap size={20} /> Learn from top reps
+          <GraduationCap size={20} /> {t('Learn from top reps')}
         </h1>
         <p className="text-sm text-vq-text-lo">
-          Distil the winning patterns from this agent's best calls and turn them into reviewed
-          persona improvements. Only consent-eligible calls (AI disclosed, no opt-out, recorded) are
-          ever used.
+          {t(
+            "Distil the winning patterns from this agent's best calls and turn them into reviewed persona improvements. Only consent-eligible calls (AI disclosed, no opt-out, recorded) are ever used.",
+          )}
         </p>
       </div>
 
       {/* Consent opt-in */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Consent</CardTitle>
+          <CardTitle className="text-base">{t('Consent')}</CardTitle>
         </CardHeader>
         <CardContent>
           {settings.isLoading ? (
@@ -69,10 +71,11 @@ export default function AgentLearningPage() {
               />
               <span className="text-sm text-vq-text-lo">
                 <span className="text-vq-text-hi">
-                  Use our call recordings to improve this agent.
+                  {t('Use our call recordings to improve this agent.')}
                 </span>{' '}
-                Off by default. When on, we analyze only the best calls that disclosed AI and were
-                not opted out — never another workspace's data.
+                {t(
+                  "Off by default. When on, we analyze only the best calls that disclosed AI and were not opted out — never another workspace's data.",
+                )}
               </span>
             </label>
           )}
@@ -82,18 +85,20 @@ export default function AgentLearningPage() {
       {/* Analyze */}
       <Card>
         <CardHeader className="flex-row items-center justify-between">
-          <CardTitle className="text-base">Analysis</CardTitle>
+          <CardTitle className="text-base">{t('Analysis')}</CardTitle>
           <Button
             size="sm"
             disabled={!enabled || analyze.isPending}
             onClick={() => analyze.mutate()}
           >
-            <Sparkles size={15} /> {analyze.isPending ? 'Analyzing…' : 'Analyze top calls'}
+            <Sparkles size={15} /> {analyze.isPending ? t('Analyzing…') : t('Analyze top calls')}
           </Button>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           {!enabled && (
-            <p className="text-sm text-vq-text-lo">Turn on consent above to analyze recordings.</p>
+            <p className="text-sm text-vq-text-lo">
+              {t('Turn on consent above to analyze recordings.')}
+            </p>
           )}
           {analyze.isError && (
             <p className="text-sm text-vq-danger">{(analyze.error as Error).message}</p>
@@ -105,7 +110,7 @@ export default function AgentLearningPage() {
           ) : (
             enabled && (
               <p className="text-sm text-vq-text-lo">
-                No analysis yet. Run one to see winning patterns + suggestions.
+                {t('No analysis yet. Run one to see winning patterns + suggestions.')}
               </p>
             )
           )}
@@ -116,15 +121,18 @@ export default function AgentLearningPage() {
 }
 
 function RunView({ agentId, run }: { agentId: string; run: LearningRun }) {
+  const { t } = useI18n();
   const apply = useApplySuggestion(agentId);
 
   if (run.status === 'empty') {
     return (
       <p className="text-sm text-vq-text-lo">
         {run.callsUsed > 0
-          ? `Analyzed ${run.callsUsed} call${run.callsUsed === 1 ? '' : 's'} but found no new patterns to suggest.`
-          : 'No consent-eligible calls to learn from yet'}
-        {run.callsExcluded > 0 ? ` (${run.callsExcluded} excluded by consent).` : '.'}
+          ? t('Analyzed {n} calls but found no new patterns to suggest.', { n: run.callsUsed })
+          : t('No consent-eligible calls to learn from yet')}
+        {run.callsExcluded > 0
+          ? ` ${t('({n} excluded by consent).', { n: run.callsExcluded })}`
+          : '.'}
       </p>
     );
   }
@@ -132,14 +140,16 @@ function RunView({ agentId, run }: { agentId: string; run: LearningRun }) {
   return (
     <div className="flex flex-col gap-4">
       <p className="text-vq-text-lo text-xs">
-        {run.callsUsed} top call{run.callsUsed === 1 ? '' : 's'} analyzed
-        {run.callsExcluded > 0 ? ` · ${run.callsExcluded} excluded by consent` : ''}
+        {t('{n} top calls analyzed', { n: run.callsUsed })}
+        {run.callsExcluded > 0
+          ? ` · ${t('{n} excluded by consent', { n: run.callsExcluded })}`
+          : ''}
         {run.model ? ` · ${run.model}` : ''}
       </p>
 
       {run.patterns.length > 0 && (
         <div className="flex flex-col gap-2">
-          <h3 className="font-medium text-sm text-vq-text-hi">Winning patterns</h3>
+          <h3 className="font-medium text-sm text-vq-text-hi">{t('Winning patterns')}</h3>
           {run.patterns.map((p) => (
             <div key={`${p.kind}:${p.insight}`} className="rounded-vq border border-vq-border p-3">
               <span className="rounded-vq-pill border border-vq-border px-2 py-0.5 text-vq-text-lo text-xs">
@@ -154,10 +164,11 @@ function RunView({ agentId, run }: { agentId: string; run: LearningRun }) {
 
       {run.suggestions.length > 0 && (
         <div className="flex flex-col gap-2">
-          <h3 className="font-medium text-sm text-vq-text-hi">Suggested improvements</h3>
+          <h3 className="font-medium text-sm text-vq-text-hi">{t('Suggested improvements')}</h3>
           <p className="text-vq-text-lo text-xs">
-            Applying appends the instruction to the agent's system prompt. Re-test + re-publish
-            before it goes live.
+            {t(
+              "Applying appends the instruction to the agent's system prompt. Re-test + re-publish before it goes live.",
+            )}
           </p>
           {run.suggestions.map((s) => (
             <div
@@ -170,7 +181,7 @@ function RunView({ agentId, run }: { agentId: string; run: LearningRun }) {
               </div>
               {s.applied ? (
                 <span className="flex shrink-0 items-center gap-1 text-vq-success text-xs">
-                  <Check size={14} /> Applied
+                  <Check size={14} /> {t('Applied')}
                 </span>
               ) : (
                 <Button
@@ -179,7 +190,7 @@ function RunView({ agentId, run }: { agentId: string; run: LearningRun }) {
                   disabled={apply.isPending}
                   onClick={() => apply.mutate({ runId: run.id, suggestionId: s.id })}
                 >
-                  Apply
+                  {t('Apply')}
                 </Button>
               )}
             </div>

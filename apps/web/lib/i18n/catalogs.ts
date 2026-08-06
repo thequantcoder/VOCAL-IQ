@@ -1312,6 +1312,90 @@ export const catalogs: Record<string, MessageCatalog> = {
     'My listings': 'मेरी लिस्टिंग',
     'My purchases': 'मेरी खरीदारी',
     'Cloned agent {id}': 'क्लोन किया गया एजेंट {id}',
+    // New agent page.
+    'Give it a name, a voice persona, and a language.': 'इसे एक नाम, एक वॉइस पर्सोना, और एक भाषा दें।',
+    'System prompt': 'सिस्टम प्रॉम्प्ट',
+    'How the agent should behave.': 'एजेंट को कैसा व्यवहार करना चाहिए।',
+    Type: 'प्रकार',
+    Mixed: 'मिश्रित',
+    'Turn timeout (ms)': 'टर्न टाइमआउट (ms)',
+    Languages: 'भाषाएँ',
+    'First (Primary) drives the voice — an Indian language runs on Sarvam.':
+      'पहली (प्राथमिक) आवाज़ चलाती है — एक भारतीय भाषा Sarvam पर चलती है।',
+    Voice: 'आवाज़',
+    'The Sarvam Bulbul speaker for this Indian-language agent.':
+      'इस भारतीय-भाषा एजेंट के लिए Sarvam Bulbul स्पीकर।',
+    'Create agent': 'एजेंट बनाएँ',
+    // Agent › Memory page.
+    Builder: 'बिल्डर',
+    'Cross-call memory': 'क्रॉस-कॉल मेमोरी',
+    'Remember returning callers.': 'लौटने वाले कॉलर याद रखें।',
+    'When on, the agent distils durable facts (preferences, budget, objections, outcome) after each call and uses them next time. Off by default; contact memory is always erasable below.':
+      'चालू होने पर, एजेंट हर कॉल के बाद टिकाऊ तथ्य (प्राथमिकताएँ, बजट, आपत्तियाँ, परिणाम) निकालता है और अगली बार उनका उपयोग करता है। डिफ़ॉल्ट रूप से बंद; संपर्क मेमोरी हमेशा नीचे मिटाई जा सकती है।',
+    'Contact memory': 'संपर्क मेमोरी',
+    'Look up': 'खोजें',
+    'No memory stored for this contact.': 'इस संपर्क के लिए कोई मेमोरी संग्रहीत नहीं।',
+    'Erase all memory for this contact (GDPR)': 'इस संपर्क की सारी मेमोरी मिटाएँ (GDPR)',
+    // Agent › Cost & reliability settings page.
+    'Cost & reliability': 'लागत और विश्वसनीयता',
+    'Turn timeout': 'टर्न टाइमआउट',
+    'How long to wait for the caller to keep speaking before the agent responds.':
+      'एजेंट के जवाब देने से पहले कॉलर के बोलते रहने की कितनी देर प्रतीक्षा करें।',
+    'Turn timeout in milliseconds': 'मिलीसेकंड में टर्न टाइमआउट',
+    'Auto hang-up': 'स्वतः हैंग-अप',
+    "End runaway calls so they can't burn credits. A hard duration cap and a dead-air cutoff, applied by the live call loop.":
+      'भागते हुए कॉल समाप्त करें ताकि वे क्रेडिट न जलाएँ। एक कठोर अवधि सीमा और एक डेड-एयर कटऑफ़, लाइव कॉल लूप द्वारा लागू।',
+    'Max call duration (seconds)': 'अधिकतम कॉल अवधि (सेकंड)',
+    'Dead-air cutoff (seconds, 0 = off)': 'डेड-एयर कटऑफ़ (सेकंड, 0 = बंद)',
+    'End the call if voicemail / an answering machine is detected':
+      'यदि वॉइसमेल / आंसरिंग मशीन पाई जाए तो कॉल समाप्त करें',
+    'Banned words': 'प्रतिबंधित शब्द',
+    'Terms the agent must never say. Screened before each spoken turn.':
+      'शब्द जो एजेंट को कभी नहीं कहने चाहिए। हर बोले गए टर्न से पहले जाँचे जाते हैं।',
+    'Prohibited terms (comma-separated)': 'निषिद्ध शब्द (अल्पविराम-पृथक)',
+    'When a banned term is detected': 'जब कोई प्रतिबंधित शब्द पाया जाए',
+    Flag: 'फ़्लैग',
+    'Speak, but log it for QA': 'बोलें, लेकिन QA के लिए लॉग करें',
+    Redact: 'रिडैक्ट',
+    'Mask the term in speech': 'भाषण में शब्द को मास्क करें',
+    Block: 'ब्लॉक',
+    'Suppress the whole turn': 'पूरे टर्न को दबाएँ',
+    Transcription: 'ट्रांसक्रिप्शन',
+    'Key terms (custom vocabulary, comma-separated)': 'मुख्य शब्द (कस्टम शब्दावली, अल्पविराम-पृथक)',
+    'Boosts recognition of brand / drug / SKU names the STT would otherwise mishear.':
+      'ब्रांड / दवा / SKU नामों की पहचान बढ़ाता है जिन्हें STT अन्यथा गलत सुनता।',
+    'No-verbatim mode.': 'नो-वर्बैटिम मोड।',
+    'Store a clean copy with fillers and false starts removed. The raw transcript is always kept.':
+      'फ़िलर और झूठी शुरुआत हटाकर एक साफ़ कॉपी संग्रहीत करें। कच्चा ट्रांसक्रिप्ट हमेशा रखा जाता है।',
+    'Save guards': 'गार्ड सहेजें',
+    // Agent › Learn from top reps page.
+    'Learn from top reps': 'शीर्ष प्रतिनिधियों से सीखें',
+    "Distil the winning patterns from this agent's best calls and turn them into reviewed persona improvements. Only consent-eligible calls (AI disclosed, no opt-out, recorded) are ever used.":
+      'इस एजेंट के सर्वश्रेष्ठ कॉल से जीतने वाले पैटर्न निकालें और उन्हें समीक्षित पर्सोना सुधारों में बदलें। केवल सहमति-योग्य कॉल (AI प्रकट, कोई ऑप्ट-आउट नहीं, रिकॉर्ड किए गए) ही उपयोग होते हैं।',
+    Consent: 'सहमति',
+    'Use our call recordings to improve this agent.':
+      'इस एजेंट को बेहतर बनाने के लिए हमारी कॉल रिकॉर्डिंग का उपयोग करें।',
+    "Off by default. When on, we analyze only the best calls that disclosed AI and were not opted out — never another workspace's data.":
+      'डिफ़ॉल्ट रूप से बंद। चालू होने पर, हम केवल उन सर्वश्रेष्ठ कॉल का विश्लेषण करते हैं जिन्होंने AI प्रकट किया और ऑप्ट-आउट नहीं किया — कभी किसी अन्य वर्कस्पेस का डेटा नहीं।',
+    Analysis: 'विश्लेषण',
+    'Analyzing…': 'विश्लेषण हो रहा है…',
+    'Analyze top calls': 'शीर्ष कॉल का विश्लेषण करें',
+    'Turn on consent above to analyze recordings.':
+      'रिकॉर्डिंग का विश्लेषण करने के लिए ऊपर सहमति चालू करें।',
+    'No analysis yet. Run one to see winning patterns + suggestions.':
+      'अभी तक कोई विश्लेषण नहीं। जीतने वाले पैटर्न + सुझाव देखने के लिए एक चलाएँ।',
+    'Analyzed {n} calls but found no new patterns to suggest.':
+      '{n} कॉल का विश्लेषण किया लेकिन सुझाने के लिए कोई नया पैटर्न नहीं मिला।',
+    'No consent-eligible calls to learn from yet': 'सीखने के लिए अभी तक कोई सहमति-योग्य कॉल नहीं',
+    '({n} excluded by consent).': '(सहमति द्वारा {n} बाहर रखे गए)।',
+    '{n} top calls analyzed': '{n} शीर्ष कॉल विश्लेषित',
+    '{n} excluded by consent': 'सहमति द्वारा {n} बाहर रखे गए',
+    'Winning patterns': 'जीतने वाले पैटर्न',
+    'Suggested improvements': 'सुझाए गए सुधार',
+    "Applying appends the instruction to the agent's system prompt. Re-test + re-publish before it goes live.":
+      'लागू करने से निर्देश एजेंट के सिस्टम प्रॉम्प्ट में जुड़ जाता है। लाइव होने से पहले फिर से परीक्षण + फिर से प्रकाशित करें।',
+    Applied: 'लागू किया गया',
+    Apply: 'लागू करें',
   },
   ar: {
     'nav.agents': 'الوكلاء',

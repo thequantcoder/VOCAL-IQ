@@ -7,6 +7,7 @@ import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { LoadingCard } from '../../../../../components/states';
 import { type AgentDetail, useAgent, useUpdateAgent } from '../../../../../lib/api';
+import { useI18n } from '../../../../../lib/i18n/provider';
 
 const BANNED_ACTIONS = [
   { value: 'flag', label: 'Flag', hint: 'Speak, but log it for QA' },
@@ -23,6 +24,7 @@ const inputCls =
  * keep the agent on-message.
  */
 export default function AgentSettingsPage() {
+  const { t } = useI18n();
   const params = useParams<{ id: string }>();
   const agentId = params?.id ?? '';
   const agent = useAgent(agentId);
@@ -33,10 +35,10 @@ export default function AgentSettingsPage() {
         href={`/dashboard/agents/${agentId}/builder`}
         className="flex w-fit items-center gap-1 text-sm text-vq-text-lo hover:text-vq-text-hi"
       >
-        <ArrowLeft size={16} /> Builder
+        <ArrowLeft size={16} /> {t('Builder')}
       </Link>
       <h1 className="flex items-center gap-2 font-display font-semibold text-vq-text-hi text-xl">
-        <Gauge size={20} /> Cost &amp; reliability
+        <Gauge size={20} /> {t('Cost & reliability')}
       </h1>
 
       {agent.isLoading || !agent.data ? (
@@ -49,6 +51,7 @@ export default function AgentSettingsPage() {
 }
 
 function GuardsForm({ agentId, agent }: { agentId: string; agent: AgentDetail }) {
+  const { t } = useI18n();
   const update = useUpdateAgent(agentId);
   const [turnTimeoutMs, setTurnTimeoutMs] = useState(agent.turnTimeoutMs);
   const [maxCallDurationSec, setMaxDur] = useState(agent.maxCallDurationSec);
@@ -99,12 +102,12 @@ function GuardsForm({ agentId, agent }: { agentId: string; agent: AgentDetail })
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Timer size={16} /> Turn timeout
+            <Timer size={16} /> {t('Turn timeout')}
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
           <p className="text-sm text-vq-text-lo">
-            How long to wait for the caller to keep speaking before the agent responds.
+            {t('How long to wait for the caller to keep speaking before the agent responds.')}
           </p>
           <div className="flex items-center gap-3">
             <input
@@ -115,7 +118,7 @@ function GuardsForm({ agentId, agent }: { agentId: string; agent: AgentDetail })
               value={turnTimeoutMs}
               onChange={(e) => setTurnTimeoutMs(Number(e.target.value))}
               className="flex-1 accent-vq-violet"
-              aria-label="Turn timeout in milliseconds"
+              aria-label={t('Turn timeout in milliseconds')}
             />
             <span className="w-16 text-right font-mono text-sm text-vq-text-hi">
               {(turnTimeoutMs / 1000).toFixed(1)}s
@@ -128,17 +131,18 @@ function GuardsForm({ agentId, agent }: { agentId: string; agent: AgentDetail })
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <ShieldAlert size={16} /> Auto hang-up
+            <ShieldAlert size={16} /> {t('Auto hang-up')}
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <p className="text-sm text-vq-text-lo">
-            End runaway calls so they can't burn credits. A hard duration cap and a dead-air cutoff,
-            applied by the live call loop.
+            {t(
+              "End runaway calls so they can't burn credits. A hard duration cap and a dead-air cutoff, applied by the live call loop.",
+            )}
           </p>
           <div className="grid grid-cols-2 gap-4">
             <label htmlFor="max-dur" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-              Max call duration (seconds)
+              {t('Max call duration (seconds)')}
               <input
                 id="max-dur"
                 type="number"
@@ -150,7 +154,7 @@ function GuardsForm({ agentId, agent }: { agentId: string; agent: AgentDetail })
               />
             </label>
             <label htmlFor="max-silence" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-              Dead-air cutoff (seconds, 0 = off)
+              {t('Dead-air cutoff (seconds, 0 = off)')}
               <input
                 id="max-silence"
                 type="number"
@@ -168,7 +172,7 @@ function GuardsForm({ agentId, agent }: { agentId: string; agent: AgentDetail })
               checked={endOnVoicemail}
               onChange={(e) => setEndOnVoicemail(e.target.checked)}
             />
-            End the call if voicemail / an answering machine is detected
+            {t('End the call if voicemail / an answering machine is detected')}
           </label>
         </CardContent>
       </Card>
@@ -177,15 +181,15 @@ function GuardsForm({ agentId, agent }: { agentId: string; agent: AgentDetail })
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Ban size={16} /> Banned words
+            <Ban size={16} /> {t('Banned words')}
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <p className="text-sm text-vq-text-lo">
-            Terms the agent must never say. Screened before each spoken turn.
+            {t('Terms the agent must never say. Screened before each spoken turn.')}
           </p>
           <label htmlFor="banned" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-            Prohibited terms (comma-separated)
+            {t('Prohibited terms (comma-separated)')}
             <textarea
               id="banned"
               value={bannedWords}
@@ -195,14 +199,14 @@ function GuardsForm({ agentId, agent }: { agentId: string; agent: AgentDetail })
             />
           </label>
           <div className="flex flex-col gap-1">
-            <span className="text-vq-text-lo text-xs">When a banned term is detected</span>
+            <span className="text-vq-text-lo text-xs">{t('When a banned term is detected')}</span>
             <div className="flex gap-2">
               {BANNED_ACTIONS.map((a) => (
                 <button
                   key={a.value}
                   type="button"
                   onClick={() => setAction(a.value)}
-                  title={a.hint}
+                  title={t(a.hint)}
                   className={cn(
                     'flex-1 rounded-vq border px-3 py-2 text-sm',
                     bannedWordsAction === a.value
@@ -210,8 +214,8 @@ function GuardsForm({ agentId, agent }: { agentId: string; agent: AgentDetail })
                       : 'border-vq-border text-vq-text-lo hover:text-vq-text-hi',
                   )}
                 >
-                  {a.label}
-                  <span className="mt-0.5 block text-[11px] text-vq-text-lo">{a.hint}</span>
+                  {t(a.label)}
+                  <span className="mt-0.5 block text-[11px] text-vq-text-lo">{t(a.hint)}</span>
                 </button>
               ))}
             </div>
@@ -223,12 +227,12 @@ function GuardsForm({ agentId, agent }: { agentId: string; agent: AgentDetail })
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <FileText size={16} /> Transcription
+            <FileText size={16} /> {t('Transcription')}
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <label htmlFor="key-terms" className="flex flex-col gap-1 text-vq-text-lo text-xs">
-            Key terms (custom vocabulary, comma-separated)
+            {t('Key terms (custom vocabulary, comma-separated)')}
             <textarea
               id="key-terms"
               value={keyTerms}
@@ -237,7 +241,7 @@ function GuardsForm({ agentId, agent }: { agentId: string; agent: AgentDetail })
               className={cn(inputCls, 'min-h-[3.5rem]')}
             />
             <span className="text-[11px] text-vq-text-lo">
-              Boosts recognition of brand / drug / SKU names the STT would otherwise mishear.
+              {t('Boosts recognition of brand / drug / SKU names the STT would otherwise mishear.')}
             </span>
           </label>
           <label className="flex items-start gap-2 text-sm text-vq-text-lo">
@@ -248,8 +252,10 @@ function GuardsForm({ agentId, agent }: { agentId: string; agent: AgentDetail })
               onChange={(e) => setNoVerbatim(e.target.checked)}
             />
             <span>
-              <span className="text-vq-text-hi">No-verbatim mode.</span> Store a clean copy with
-              fillers and false starts removed. The raw transcript is always kept.
+              <span className="text-vq-text-hi">{t('No-verbatim mode.')}</span>{' '}
+              {t(
+                'Store a clean copy with fillers and false starts removed. The raw transcript is always kept.',
+              )}
             </span>
           </label>
         </CardContent>
@@ -257,9 +263,11 @@ function GuardsForm({ agentId, agent }: { agentId: string; agent: AgentDetail })
 
       <div className="flex items-center gap-3">
         <Button disabled={update.isPending} onClick={save}>
-          {update.isPending ? 'Saving…' : 'Save guards'}
+          {update.isPending ? t('Saving…') : t('Save guards')}
         </Button>
-        {saved && !update.isPending && <span className="text-sm text-vq-success">Saved ✓</span>}
+        {saved && !update.isPending && (
+          <span className="text-sm text-vq-success">{t('Saved ✓')}</span>
+        )}
         {update.isError && (
           <span className="text-sm text-vq-danger">{(update.error as Error).message}</span>
         )}

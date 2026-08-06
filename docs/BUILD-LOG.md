@@ -5494,3 +5494,18 @@ Batch 10 — four self-contained pages: Outcome-based billing, Voice emotion, Ex
 - **`catalogs.ts`**: ~90 new Hindi keys (4 section headers). Duplicate-key scan clean.
 
 **Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: **57 of ~76 dashboard pages** now Hindi. ~19 remain.
+
+---
+
+## Dashboard localization — page-level, increment 18: Agent detail cluster (4 pages)
+
+Batch 11 — the agent create + detail sub-pages: New agent, Agent › Memory, Agent › Cost & reliability (guards), and Agent › Learn from top reps. All via `useI18n().t()` (English-as-key) + Hindi; ~70 new keys. No `t`-shadow renames. Pre-push `hi`-block dup-scan skipped 9 already-existing keys (`New agent`/`Name`/`Inbound`/`Outbound`/`Cancel`/`Memory`/`Contact ID`/`Saved ✓`/`Creating…`). `biome check --write` normalized the catalog; 2 over-width JSX lines (a `Field` + the `Saved ✓` span) hand-wrapped.
+
+- **agents/new**: header, the `Field` form (`Name`/`System prompt` + hint/`Type` + Inbound/Outbound/Mixed/`Turn timeout (ms)`/`Languages` + Sarvam hint/`Voice` + Bulbul hint), `Create agent`. Default system-prompt value + `Front Desk` example = DATA.
+- **agents/[id]/memory**: `Builder` back-link, `Memory` title, `Cross-call memory` toggle (split copy), ContactMemory (`Contact ID`, `Look up`, empty-state, `Erase all memory for this contact (GDPR)`; fact chips = DATA).
+- **agents/[id]/settings**: `Cost & reliability`, Turn-timeout card, Auto-hang-up card (the 2 numeric fields + voicemail toggle), Banned-words card (`Prohibited terms…`, the 3 BANNED_ACTIONS label+hint wrapped at render), Transcription card (`Key terms…`, `No-verbatim mode.`), `Save guards`/`Saved ✓`. Example placeholders = DATA.
+- **agents/[id]/learning**: header + consent copy, Consent toggle, Analysis card (`Analyzing…`/`Analyze top calls`, gated hints), RunView (interpolated empty/summary lines — `Analyzed {n} calls…`, `{n} top calls analyzed`, `({n} excluded by consent).`, `{n} excluded by consent`), `Winning patterns`/`Suggested improvements`, `Applied`/`Apply`. pattern.kind/insight/example + suggestion title/text + run.model = DATA.
+
+- **`catalogs.ts`**: ~70 new Hindi keys (4 section headers). Duplicate-key scan clean.
+
+**Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: **61 of ~76 dashboard pages** now Hindi. ~15 remain.
