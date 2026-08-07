@@ -8,9 +8,11 @@ import { useMemo } from 'react';
 import { FlowCanvas } from '../../../../../components/builder/flow-canvas';
 import { ErrorState, LoadingCard } from '../../../../../components/states';
 import { useFlow } from '../../../../../lib/api';
+import { useI18n } from '../../../../../lib/i18n/provider';
 
 /** Agent flow builder (Day 17): loads the draft graph and mounts the React Flow canvas. */
 export default function BuilderPage() {
+  const { t } = useI18n();
   const params = useParams<{ id: string }>();
   const agentId = params?.id ?? '';
   const { data, isLoading, isError, error, refetch } = useFlow(agentId);
@@ -27,7 +29,7 @@ export default function BuilderPage() {
         href="/dashboard/agents"
         className="flex w-fit items-center gap-1 text-sm text-vq-text-lo hover:text-vq-text-hi"
       >
-        <ArrowLeft size={16} /> Agents
+        <ArrowLeft size={16} /> {t('Agents')}
       </Link>
 
       {isLoading ? (
@@ -37,7 +39,7 @@ export default function BuilderPage() {
       ) : graph ? (
         <FlowCanvas agentId={agentId} graph={graph} />
       ) : (
-        <ErrorState message="This flow could not be loaded." onRetry={() => refetch()} />
+        <ErrorState message={t('This flow could not be loaded.')} onRetry={() => refetch()} />
       )}
     </div>
   );

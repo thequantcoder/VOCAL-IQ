@@ -23,6 +23,7 @@ import '@xyflow/react/dist/style.css';
 import { AlertTriangle, Check, FlaskConical, History, Loader2, Plus } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePublishFlow, useSaveFlow } from '../../lib/api';
+import { useI18n } from '../../lib/i18n/provider';
 import { NODE_META, type VQNodeData, nodeTypes } from './flow-nodes';
 import { NodeConfigForm } from './node-config-form';
 import { SimulatorPanel } from './simulator-panel';
@@ -78,6 +79,7 @@ function toGraph(nodes: Node[], edges: Edge[]): FlowGraph {
 }
 
 export function FlowCanvas({ agentId, graph }: { agentId: string; graph: FlowGraph }) {
+  const { t } = useI18n();
   const initial = useMemo(() => toRF(graph), [graph]);
   const [nodes, setNodes, onNodesChange] = useNodesState(initial.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initial.edges);
@@ -178,10 +180,10 @@ export function FlowCanvas({ agentId, graph }: { agentId: string; graph: FlowGra
     <div className="flex h-[calc(100vh-8rem)] w-full flex-col gap-3">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="mr-1 text-vq-text-lo text-xs">Add:</span>
-        {PALETTE.map((t) => (
-          <Button key={t} variant="secondary" size="sm" onClick={() => addNode(t)}>
-            <Plus size={14} /> {NODE_META[t]?.label ?? t}
+        <span className="mr-1 text-vq-text-lo text-xs">{t('Add:')}</span>
+        {PALETTE.map((nt) => (
+          <Button key={nt} variant="secondary" size="sm" onClick={() => addNode(nt)}>
+            <Plus size={14} /> {t(NODE_META[nt]?.label ?? nt)}
           </Button>
         ))}
         <div className="ml-auto flex items-center gap-3 text-xs">
@@ -190,14 +192,14 @@ export function FlowCanvas({ agentId, graph }: { agentId: string; graph: FlowGra
             size="sm"
             onClick={() => setRightPanel((p) => (p === 'test' ? null : 'test'))}
           >
-            <FlaskConical size={14} /> Test
+            <FlaskConical size={14} /> {t('Test')}
           </Button>
           <Button
             variant={rightPanel === 'versions' ? 'primary' : 'secondary'}
             size="sm"
             onClick={() => setRightPanel((p) => (p === 'versions' ? null : 'versions'))}
           >
-            <History size={14} /> Versions
+            <History size={14} /> {t('Versions')}
           </Button>
           <SaveBadge state={saveState} />
           <ValidityBadge errors={validation.errors} />
@@ -208,11 +210,15 @@ export function FlowCanvas({ agentId, graph }: { agentId: string; graph: FlowGra
             onClick={() => publish.mutate()}
             title={
               validation.errors.length > 0
-                ? 'Fix the issues before publishing'
-                : 'Publish this flow'
+                ? t('Fix the issues before publishing')
+                : t('Publish this flow')
             }
           >
-            {publish.isPending ? 'Publishing…' : publish.isSuccess ? 'Published ✓' : 'Publish'}
+            {publish.isPending
+              ? t('Publishing…')
+              : publish.isSuccess
+                ? t('Published ✓')
+                : t('Publish')}
           </Button>
         </div>
         {publish.isError ? (
@@ -244,7 +250,7 @@ export function FlowCanvas({ agentId, graph }: { agentId: string; graph: FlowGra
         {rightPanel ? (
           <aside className="absolute top-3 right-3 flex max-h-[calc(100%-1.5rem)] w-72 flex-col gap-3 overflow-y-auto rounded-vq-card border border-vq-border bg-vq-bg-elevated p-4 shadow-sm">
             <p className="font-medium text-[11px] text-vq-text-lo uppercase tracking-wide">
-              {rightPanel === 'test' ? 'Simulate' : 'Versions'}
+              {rightPanel === 'test' ? t('Simulate') : t('Versions')}
             </p>
             {rightPanel === 'test' ? (
               <SimulatorPanel graph={currentGraph} onActiveNode={setSimNode} />
@@ -255,16 +261,18 @@ export function FlowCanvas({ agentId, graph }: { agentId: string; graph: FlowGra
         ) : selected ? (
           <aside className="absolute top-3 right-3 flex max-h-[calc(100%-1.5rem)] w-72 flex-col gap-3 overflow-y-auto rounded-vq-card border border-vq-border bg-vq-bg-elevated p-4 shadow-sm">
             <p className="font-medium text-[11px] text-vq-text-lo uppercase tracking-wide">
-              {NODE_META[(selected.data as VQNodeData).nodeType]?.label ??
-                (selected.data as VQNodeData).nodeType}
+              {t(
+                NODE_META[(selected.data as VQNodeData).nodeType]?.label ??
+                  (selected.data as VQNodeData).nodeType,
+              )}
             </p>
             <label htmlFor="node-label" className="flex flex-col gap-1">
-              <span className="text-sm text-vq-text-hi">Label</span>
+              <span className="text-sm text-vq-text-hi">{t('Label')}</span>
               <Input
                 id="node-label"
                 value={(selected.data as VQNodeData).label ?? ''}
                 onChange={(e) => updateLabel(e.target.value)}
-                placeholder="Node label"
+                placeholder={t('Node label')}
               />
             </label>
             <div className="border-vq-border border-t pt-3">
@@ -282,27 +290,29 @@ export function FlowCanvas({ agentId, graph }: { agentId: string; graph: FlowGra
 }
 
 function SaveBadge({ state }: { state: SaveState }) {
+  const { t } = useI18n();
   if (state === 'saving')
     return (
       <span className="flex items-center gap-1 text-vq-text-lo">
-        <Loader2 size={14} className="animate-spin motion-reduce:animate-none" /> Saving…
+        <Loader2 size={14} className="animate-spin motion-reduce:animate-none" /> {t('Saving…')}
       </span>
     );
   if (state === 'saved')
     return (
       <span className="flex items-center gap-1 text-vq-success">
-        <Check size={14} /> Saved
+        <Check size={14} /> {t('Saved')}
       </span>
     );
-  if (state === 'error') return <span className="text-vq-danger">Save failed</span>;
-  return <span className="text-vq-text-lo">Autosaves</span>;
+  if (state === 'error') return <span className="text-vq-danger">{t('Save failed')}</span>;
+  return <span className="text-vq-text-lo">{t('Autosaves')}</span>;
 }
 
 function ValidityBadge({ errors }: { errors: FlowGraphError[] }) {
+  const { t } = useI18n();
   if (errors.length === 0)
     return (
       <span className="flex items-center gap-1 text-vq-success">
-        <Check size={14} /> Valid
+        <Check size={14} /> {t('Valid')}
       </span>
     );
   return (
@@ -310,7 +320,7 @@ function ValidityBadge({ errors }: { errors: FlowGraphError[] }) {
       className={cn('flex items-center gap-1 text-vq-warn')}
       title={errors.map((e) => e.message).join('\n')}
     >
-      <AlertTriangle size={14} /> {errors.length} issue{errors.length === 1 ? '' : 's'}
+      <AlertTriangle size={14} /> {t('{n} issues', { n: errors.length })}
     </span>
   );
 }
