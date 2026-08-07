@@ -5670,3 +5670,9 @@ Two small no-keys items (task #53).
 - **`README.md`** — a Test section (runs standalone, not CI).
 
 **Checks.** Verified green in a throwaway scratch (`npm i -D jest ts-jest @types/jest typescript` + `npx jest`): **5/5 pass** — the jest run uses the inline tsconfig, so it needs neither Expo installed nor the app tsconfig. Not wired into monorepo CI by design (workspace exclusion is intentional). Provider-router change is comment-only (typecheck/lint unaffected). Task #53 done.
+
+---
+
+## Features doc — regenerate stale `.docx` from current `.md` — 2026-08-07 — ✅ DONE
+
+Closed the last no-keys leftover: `docs/PROJECT-FEATURES-EXPLAINED.docx` had gone stale (last built Jul 24; the `.md` source-of-truth was current to Jul 30). The regen was previously blocked because `python-docx`/`lxml` weren't available in the sandbox — both are now present, so ran `python3 scripts/gen-features-docx.py` to rebuild the styled Word doc from the Markdown (55,005 → 58,203 bytes; 66 paragraphs / 17 tables, valid). Content is a faithful render of the existing `.md` (no new feature text) — this just re-syncs the two per the features-doc convention (the `.md` stays the single source of truth). Docs-only change.
