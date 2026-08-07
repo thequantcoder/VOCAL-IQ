@@ -3,15 +3,18 @@
 import { Button } from '@vocaliq/ui';
 import { RotateCcw } from 'lucide-react';
 import { useFlowVersions, useRestoreVersion } from '../../lib/api';
+import { useI18n } from '../../lib/i18n/provider';
 
 /** Version history + one-click rollback (Day 23). Restoring copies a version into the draft. */
 export function VersionsPanel({ agentId }: { agentId: string }) {
+  const { t } = useI18n();
   const versions = useFlowVersions(agentId);
   const restore = useRestoreVersion(agentId);
 
-  if (versions.isLoading) return <p className="text-vq-text-lo text-xs">Loading versions…</p>;
+  if (versions.isLoading)
+    return <p className="text-vq-text-lo text-xs">{t('Loading versions…')}</p>;
   const items = versions.data ?? [];
-  if (items.length === 0) return <p className="text-vq-text-lo text-xs">No versions yet.</p>;
+  if (items.length === 0) return <p className="text-vq-text-lo text-xs">{t('No versions yet.')}</p>;
 
   return (
     <div className="flex flex-col gap-2">
@@ -24,9 +27,9 @@ export function VersionsPanel({ agentId }: { agentId: string }) {
             <span className="text-vq-text-hi">
               v{v.version}{' '}
               {v.isDraft ? (
-                <span className="text-vq-text-lo">draft</span>
+                <span className="text-vq-text-lo">{t('draft')}</span>
               ) : (
-                <span className="text-vq-success">published</span>
+                <span className="text-vq-success">{t('published')}</span>
               )}
             </span>
             {!v.isDraft ? (
@@ -36,7 +39,7 @@ export function VersionsPanel({ agentId }: { agentId: string }) {
                 disabled={restore.isPending}
                 onClick={() => restore.mutate(v.version)}
               >
-                <RotateCcw size={12} /> Restore
+                <RotateCcw size={12} /> {t('Restore')}
               </Button>
             ) : null}
           </li>
@@ -44,7 +47,9 @@ export function VersionsPanel({ agentId }: { agentId: string }) {
       </ul>
       {restore.isSuccess ? (
         <p className="text-vq-success text-xs">
-          Restored v{restore.data?.restoredFrom} into the draft — reopen the builder to load it.
+          {t('Restored v{n} into the draft — reopen the builder to load it.', {
+            n: restore.data?.restoredFrom ?? '',
+          })}
         </p>
       ) : null}
       {restore.isError ? (

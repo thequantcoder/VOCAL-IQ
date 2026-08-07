@@ -2,6 +2,7 @@
 
 import { cn } from '@vocaliq/ui';
 import { Handle, type NodeProps, Position } from '@xyflow/react';
+import { useI18n } from '../../lib/i18n/provider';
 
 /**
  * Typed node renderer for the builder (DESIGN-SYSTEM §5b). Each FlowNodeType gets its own
@@ -35,6 +36,7 @@ export const NODE_META: Record<string, { label: string; accent: string }> = {
 };
 
 export function VQNode({ data, selected }: NodeProps) {
+  const { t } = useI18n();
   const d = data as VQNodeData;
   const meta = NODE_META[d.nodeType] ?? {
     label: d.nodeType,
@@ -58,10 +60,10 @@ export function VQNode({ data, selected }: NodeProps) {
       <div className="flex items-center gap-2">
         <span className={cn('inline-block h-2 w-2 rounded-full bg-current')} aria-hidden />
         <span className="font-medium text-[11px] text-vq-text-lo uppercase tracking-wide">
-          {meta.label}
+          {t(meta.label)}
         </span>
       </div>
-      <div className="mt-0.5 text-sm text-vq-text-hi">{d.label || meta.label}</div>
+      <div className="mt-0.5 text-sm text-vq-text-hi">{d.label || t(meta.label)}</div>
       {!isEnd && <Handle type="source" position={Position.Right} className="!bg-vq-violet" />}
     </div>
   );

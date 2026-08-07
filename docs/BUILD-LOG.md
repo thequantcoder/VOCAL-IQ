@@ -5607,3 +5607,19 @@ Batch 18 — the two in-call live views (`whatsapp-calling/live/[id]`, `messenge
 - **`catalogs.ts`**: ~19 new Hindi keys (1 section header; incl. `inbound`/`outbound`/`Reference`/`Timeline`/`Connected` shared). Duplicate-key scan clean.
 
 **Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: **the WhatsApp + Messenger calling cluster is now 100% Hindi** — landing + settings + all 5 sub-components + both live/[id] in-call pages. The ONLY un-localized dashboard surfaces left are the two React-Flow canvases: **agents/[id]/builder** and **components/workflow-builder/workflow-canvas** (node-graph editors — a distinct, heavier follow-up).
+
+---
+
+## Dashboard localization — page-level, increment 26: Agent flow builder (React Flow) — canvas + panels
+
+Batch 19 (task #54, part 1) — the agent flow builder's React-Flow surfaces: the builder page shell + `flow-canvas` (toolbar/config drawer) + `flow-nodes` (node renderer + NODE_META labels) + `versions-panel` + `simulator-panel`. All via `useI18n().t()` (English-as-key) + Hindi; ~40 new keys. `t`-shadow renames (React-Flow callbacks are `t`-param-heavy): `PALETTE.map((t))`→`nt`, `decisionBranches.map((t))`→`br`, `transcript.map((t))`→`turn`. Every `t(NODE_META[key]?.label ?? key)` uses the `?? key` guard (the `noUncheckedIndexedAccess` gotcha — audited: all guarded). Pre-push `hi`-block dup-scan skipped 10 already-existing keys (`Start`/`Payment`/`Test`/`Publishing…`/`Publish`/`Saving…`/`Saved`/`Restart`/`{n} turns`/`Agents`). biome hand-wrapped 3 over-width JSX lines.
+
+- **flow-nodes**: the 14 NODE_META type labels (`Say`/`Listen`/`Decision`/`Tool`/`Knowledge`/`Transfer`/`Collect`/`Sub-flow`/`Squad`/`Callback`/`Form`/`End` + reused `Start`/`Payment`) wrapped at render in `VQNode` (both the type chip + the default node label).
+- **flow-canvas**: `Add:` palette (node labels reused), `Test`/`Versions` toggles, SaveBadge (`Saving…`/`Saved`/`Save failed`/`Autosaves`), ValidityBadge (`Valid`/interpolated `{n} issues`), publish button + its title, `Simulate`/`Versions` drawer header, node-config drawer (`Label`/`Node label`, node-type header). Validation error messages = DATA.
+- **versions-panel**: `Loading versions…`/`No versions yet.`, `draft`/`published` chips, `Restore`, interpolated `Restored v{n}…`.
+- **simulator-panel**: `Fix these before you can simulate:`, `Reached an End node.`, `Choose a branch:` (branch `intent`/`otherwise` fallbacks wrapped; expression/kind = DATA), `Advance`/`Restart`, ScriptedRun (`Scripted caller` + the multi-line `\n` placeholder, `Auto-run`, interpolated `outcome:`/`{n} turns`/`est. cost:`). The mono sim-transcript describe() log output (`[Say] node-123`, `— call ended —`) left English — internal debug formatting.
+- **builder page shell**: `Agents` back-link (nav) + `This flow could not be loaded.`
+
+- **`catalogs.ts`**: ~40 new Hindi keys (5 section headers; incl. the `\n`-containing scripted-caller placeholder, key + value both using the `\n` escape so they match at runtime). Duplicate-key scan clean.
+
+**Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: the agent flow builder is now Hindi except its 770-line `node-config-form` (per-node config panels — next batch). Then the workflow-builder cluster.

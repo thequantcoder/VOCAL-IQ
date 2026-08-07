@@ -12,6 +12,7 @@ import {
 import { Button } from '@vocaliq/ui';
 import { FastForward, Play, RotateCcw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useI18n } from '../../lib/i18n/provider';
 import { NODE_META } from './flow-nodes';
 
 /**
@@ -26,6 +27,7 @@ export function SimulatorPanel({
   graph: FlowGraph;
   onActiveNode: (id: string | null) => void;
 }) {
+  const { t } = useI18n();
   const compiled = useMemo(() => compileFlow(graph), [graph]);
   const [runner, setRunner] = useState<FlowRunner | null>(null);
   const [log, setLog] = useState<string[]>([]);
@@ -68,7 +70,7 @@ export function SimulatorPanel({
   if (!compiled.ok || !compiled.flow) {
     return (
       <div className="flex flex-col gap-2">
-        <p className="text-sm text-vq-text-hi">Fix these before you can simulate:</p>
+        <p className="text-sm text-vq-text-hi">{t('Fix these before you can simulate:')}</p>
         <ul className="flex flex-col gap-1 text-vq-danger text-xs">
           {compiled.errors.slice(0, 6).map((e) => (
             <li key={`${e.code}-${e.nodeId ?? ''}`}>• {e.message}</li>
@@ -92,34 +94,34 @@ export function SimulatorPanel({
       </div>
 
       {done ? (
-        <p className="text-sm text-vq-success">Reached an End node. </p>
+        <p className="text-sm text-vq-success">{t('Reached an End node.')}</p>
       ) : decisionBranches.length > 0 ? (
         <div className="flex flex-col gap-1.5">
-          <span className="text-vq-text-lo text-xs">Choose a branch:</span>
-          {decisionBranches.map((t) => (
+          <span className="text-vq-text-lo text-xs">{t('Choose a branch:')}</span>
+          {decisionBranches.map((br) => (
             <Button
-              key={`${t.kind}-${t.expression ?? t.target}`}
+              key={`${br.kind}-${br.expression ?? br.target}`}
               variant="secondary"
               size="sm"
-              onClick={() => step(t.kind === 'intent' ? t.expression : '__else__')}
+              onClick={() => step(br.kind === 'intent' ? br.expression : '__else__')}
             >
-              {t.kind === 'intent'
-                ? (t.expression ?? 'intent')
-                : t.kind === 'else'
-                  ? 'otherwise'
-                  : t.kind}{' '}
+              {br.kind === 'intent'
+                ? (br.expression ?? t('intent'))
+                : br.kind === 'else'
+                  ? t('otherwise')
+                  : br.kind}{' '}
               →
             </Button>
           ))}
         </div>
       ) : (
         <Button variant="primary" size="sm" onClick={() => step()} disabled={!runner}>
-          <Play size={14} /> Advance
+          <Play size={14} /> {t('Advance')}
         </Button>
       )}
 
       <Button variant="ghost" size="sm" onClick={reset}>
-        <RotateCcw size={14} /> Restart
+        <RotateCcw size={14} /> {t('Restart')}
       </Button>
 
       <ScriptedRun flow={compiled.flow} onActiveNode={onActiveNode} />
@@ -139,6 +141,7 @@ function ScriptedRun({
   flow: CompiledFlow;
   onActiveNode: (id: string | null) => void;
 }) {
+  const { t } = useI18n();
   const [script, setScript] = useState('I want to book an appointment | booking');
   const [result, setResult] = useState<SimResult | null>(null);
 
@@ -160,38 +163,41 @@ function ScriptedRun({
 
   return (
     <div className="flex flex-col gap-2 border-vq-border border-t pt-3">
-      <span className="text-vq-text-lo text-xs uppercase tracking-wide">Scripted caller</span>
+      <span className="text-vq-text-lo text-xs uppercase tracking-wide">
+        {t('Scripted caller')}
+      </span>
       <textarea
         value={script}
         onChange={(e) => setScript(e.target.value)}
         rows={3}
-        placeholder={'one caller line per row\nadd " | intent" to route decisions'}
+        placeholder={t('one caller line per row\nadd " | intent" to route decisions')}
         className="rounded-vq border border-vq-border bg-vq-bg-base px-2 py-1.5 font-mono text-vq-text-hi text-xs"
       />
       <Button variant="secondary" size="sm" onClick={run}>
-        <FastForward size={14} /> Auto-run
+        <FastForward size={14} /> {t('Auto-run')}
       </Button>
 
       {result && (
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between text-xs">
             <span className="text-vq-text-lo">
-              outcome: <span className="text-vq-text-hi">{result.outcome}</span> ·{' '}
-              {result.transcript.length} turns
+              {t('outcome:')} <span className="text-vq-text-hi">{result.outcome}</span> ·{' '}
+              {t('{n} turns', { n: result.transcript.length })}
             </span>
             <span className="text-vq-text-lo">
-              est. cost: <span className="text-vq-text-hi">${result.estCostUsd.toFixed(4)}</span>
+              {t('est. cost:')}{' '}
+              <span className="text-vq-text-hi">${result.estCostUsd.toFixed(4)}</span>
             </span>
           </div>
           <div className="max-h-40 overflow-y-auto rounded-vq border border-vq-border bg-vq-bg-base p-2 text-xs">
-            {result.transcript.map((t, i) => (
+            {result.transcript.map((turn, i) => (
               <div
                 // biome-ignore lint/suspicious/noArrayIndexKey: append-only transcript
                 key={i}
-                className={t.role === 'agent' ? 'text-vq-violet' : 'text-vq-cyan'}
+                className={turn.role === 'agent' ? 'text-vq-violet' : 'text-vq-cyan'}
               >
-                <span className="uppercase">{t.role}:</span>{' '}
-                <span className="text-vq-text-hi">{t.text}</span>
+                <span className="uppercase">{turn.role}:</span>{' '}
+                <span className="text-vq-text-hi">{turn.text}</span>
               </div>
             ))}
           </div>
