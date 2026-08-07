@@ -19,6 +19,18 @@ npm install        # its own lockfile — NOT the monorepo's
 npm run ios        # or: npm run android / npm start
 ```
 
+## Test
+Because the app is outside the pnpm workspace, its tests run on their own (not via turbo/CI):
+```bash
+cd apps/mobile
+npm install        # installs jest + ts-jest (devDeps)
+npm test
+```
+The harness (`jest.config.js`) uses **ts-jest in a Node env** — pure logic like the
+`buildHeaders` tenant-scoping contract (`lib/headers.test.ts`) is tested with **no Expo /
+React-Native native mocks**. Keep header/auth/tenant logic in dependency-free modules (like
+`lib/headers.ts`) so it stays unit-testable this way.
+
 ## Scope (this scaffold)
 - ✅ API client with secure token storage + core calls (login, agents, live calls).
 - ✅ Home screen (agents + live-call count).

@@ -5651,3 +5651,22 @@ Batch 21 (task #54, part 3 — **final** React-Flow surface) — the automation 
 - **`catalogs.ts`**: ~24 new Hindi keys (1 section header). Duplicate-key scan clean.
 
 **Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: **task #54 complete — every React-Flow builder (agent flow + automation workflow) is now fully Hindi.** With this, all identified dashboard localization surfaces are localized.
+
+---
+
+## No-keys cleanups — provider-router stale comment + apps/mobile test harness — 2026-08-07 — ✅ DONE
+
+Two small no-keys items (task #53).
+
+**1. Stale provider-router comment (`packages/provider-router/src/index.ts`).** The header comment above the TTS/STT/Telephony contracts still claimed "the adapters are stubs that throw a typed 'not implemented' ProviderError" — a Day-07 statement that went stale once the real adapters landed. Verified against the tree: `adapters/{elevenlabs,deepgram,twilio,livekit,...}.ts` are all implemented (ElevenLabs is "Verified live", takes the resolved key in its constructor, and throws a typed `ProviderError` on transport/API failure), and `grep "not implemented"` matches only the comment itself. Reworded to state the adapters are implemented against each provider's real API and that only the *live sandbox smoke* stays gated on the provider keys being set. Comment-only change.
+
+**2. apps/mobile pure test harness.** The standalone Expo app (deliberately outside the pnpm workspace via `!apps/mobile`, so turbo/CI never touch it) had no tests. Rather than stand up the heavy `jest-expo` native preset, extracted the request-header assembly out of `lib/api.ts` `apiFetch` into a **dependency-free** `lib/headers.ts` `buildHeaders(token, tenant, extra?)` (same self-hosted JWT + `x-tenant-id` contract as web — self-audit B/C), and added a **ts-jest (Node env) harness** that needs zero Expo/RN mocks:
+- **`lib/headers.ts`** — pure `buildHeaders`; JSON content-type default → auth + tenant when known → caller headers win last.
+- **`lib/api.ts`** — `apiFetch` now calls `buildHeaders(token, tenant, init?.headers …)`; behavior unchanged.
+- **`lib/headers.test.ts`** — 5 pure tests pinning the tenant-scoping invariant (unauth omits auth/tenant; Bearer set when JWT present; `x-tenant-id` set; caller-override last-wins).
+- **`jest.config.js`** — `ts-jest` transform with an *inline* CommonJS tsconfig (decoupled from the app's Expo tsconfig), `testEnvironment: node`, `testMatch **/*.test.ts`.
+- **`tsconfig.json`** (new) — standard Expo `extends: expo/tsconfig.base` + `strict`.
+- **`package.json`** — `test: jest` script + `jest`/`ts-jest`/`@types/jest`/`@types/node` devDeps.
+- **`README.md`** — a Test section (runs standalone, not CI).
+
+**Checks.** Verified green in a throwaway scratch (`npm i -D jest ts-jest @types/jest typescript` + `npx jest`): **5/5 pass** — the jest run uses the inline tsconfig, so it needs neither Expo installed nor the app tsconfig. Not wired into monorepo CI by design (workspace exclusion is intentional). Provider-router change is comment-only (typecheck/lint unaffected). Task #53 done.
