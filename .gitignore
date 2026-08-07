@@ -64,3 +64,6 @@ VocalIQ-Build-Kit.zip
 
 # iCloud sync conflict copies (repo lives in an iCloud-synced folder)
 * [0-9].*
+
+# i18n translator hand-off — regenerable outputs (run scripts/i18n/export.mjs)
+docs/i18n/out/
