@@ -5676,3 +5676,24 @@ Two small no-keys items (task #53).
 ## Features doc — regenerate stale `.docx` from current `.md` — 2026-08-07 — ✅ DONE
 
 Closed the last no-keys leftover: `docs/PROJECT-FEATURES-EXPLAINED.docx` had gone stale (last built Jul 24; the `.md` source-of-truth was current to Jul 30). The regen was previously blocked because `python-docx`/`lxml` weren't available in the sandbox — both are now present, so ran `python3 scripts/gen-features-docx.py` to rebuild the styled Word doc from the Markdown (55,005 → 58,203 bytes; 66 paragraphs / 17 tables, valid). Content is a faithful render of the existing `.md` (no new feature text) — this just re-syncs the two per the features-doc convention (the `.md` stays the single source of truth). Docs-only change.
+
+---
+
+## i18n — regional translation hand-off kit (`scripts/i18n/` + `docs/i18n/`) — 2026-08-07 — ✅ DONE
+
+Prep so that regional (9 non-Hindi India langs) professional translation becomes **paste-and-ship** the moment translators/an LSP are engaged — pure no-keys tooling, no product-code changes. The catalog (`apps/web/lib/i18n/catalogs.ts`) stays the single source of truth; the kit reads from it.
+
+**Approach.** The per-locale objects are plain JS object literals (English-as-key). Rather than a fragile regex, the tooling slices out a locale block and lets **JS eval its own object literal** (`lib.mjs#extractBlock`) — handles every quote style, escape, `{placeholder}` and multi-line value exactly as the app sees it (trusted first-party source; `biome-ignore noGlobalEval`).
+
+**Scripts (`scripts/i18n/`, Node-only — no pnpm/toolchain, which wedges on iCloud):**
+- `lib.mjs` — shared: block extractor, `{var}` placeholder parse, raw duplicate-key scan (eval silently keeps the last dup → would drop a translation, so dups are caught textually), CSV read/write, catalog-style TS emit.
+- `export.mjs` — extracts the **1561** source strings → `docs/i18n/source-strings.json` (canonical) + `docs/i18n/out/master.csv` + 9 per-language `translate-<lang>.csv` sheets (target column empty, **pre-filled where a translation already exists** — the 65 nav keys). Flags the **113** strings carrying `{placeholders}`.
+- `validate.mjs` — per locale: placeholder **parity** (translated value must keep the same `{vars}` as its English key), coverage %, duplicate keys, orphans. Non-zero exit on parity/dup errors → CI-wireable later.
+- `import.mjs` — filled sheet → `docs/i18n/out/<lang>-block.ts`, a paste-ready catalog block (mirrors the file's quote convention); validates parity per row, drops empties (they fall back to English). Nothing auto-written to `catalogs.ts` (human + biome stay in the loop).
+- `glossary.mjs` — regenerates `docs/i18n/glossary.csv`: 51 recurring product terms (Hindi ref pulled live from the catalog) + 35 do-not-translate terms (brand/acronyms/code ids).
+
+**Committed artifacts:** `docs/i18n/README.md` (full process + translator brief + rules), `docs/i18n/glossary.csv`, `docs/i18n/source-strings.json` (8080-line snapshot). `docs/i18n/out/**` gitignored (regenerable — run `export.mjs`).
+
+**Volume surfaced:** 1561 source strings × 9 langs, ~1496 to-go each (~13.5k total); English-as-key fallback means partial catalogs ship safely (one language / one page at a time). `es`/`ar` also partial; `ar` is RTL (layout QA beyond copy).
+
+**Checks.** Full pipeline smoke-tested (export → validate → import round-trip on the pre-filled nav keys, clean). biome clean on all 5 scripts (0 errors). What still needs **humans, not keys**: the actual native translation + linguistic QA.
