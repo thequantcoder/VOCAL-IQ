@@ -5636,3 +5636,18 @@ Batch 20 (task #54, part 2) — the 770-line `node-config-form.tsx`: the per-typ
 - **`catalogs.ts`**: ~86 new Hindi keys (1 section header). Two straight-apostrophe keys ("I'll take…", "…caller's timezone…") stored double-quoted to match source. Duplicate-key scan clean.
 
 **Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: the **agent flow builder is now 100% Hindi** (shell + canvas + panels + all node-config forms). Remaining l10n = the workflow-builder cluster (workflow-canvas / -nodes / -node-config / -runs-panel).
+
+---
+
+## Dashboard localization — page-level, increment 28: Workflow (automation) builder cluster
+
+Batch 21 (task #54, part 3 — **final** React-Flow surface) — the automation workflow builder's four React-Flow files: `workflow-nodes` (custom node renderer + WORKFLOW_NODE_META labels), `workflow-canvas` (palette toolbar / activate-pause / test-run / save+validity badges / selected-node drawer), `workflow-node-config` (per-type config editor for TRIGGER/CONDITION/ACTION/DELAY/END), and `workflow-runs-panel` (run history + per-step logs). All via `useI18n().t()` (English-as-key) + Hindi; ~24 new keys. `t`-shadow renames (React-Flow callbacks + trigger-var lookups all named `t`): `PALETTE.map((t))`→`nt`, `WORKFLOW_ACTION_TYPES.map((t))`→`at`, and inside the `testEvent` useMemo `const t = nodes.find(...)`→`trig`. Both badge helpers (`SaveBadge`/`ValidityBadge`) and the `WorkflowNode` renderer each get their own `const { t } = useI18n()`. Every `t(WORKFLOW_NODE_META[key]?.label ?? key)` uses the `?? key` guard (`noUncheckedIndexedAccess`; index-sig audit: all guarded). Interpolated keys reused from batch 19: `{n} steps · {time}` (runs panel), `{n} issues` (validity badge). Pre-push `hi`-block dup-scan skipped 16 already-existing keys (`Action`/`End`/`Pause`/`Label`/`Node label`/`Saving…`/`Saved`/`Save failed`/`Autosaves`/`Valid`/`{n} issues`/`Event`/`Operator`/`Message`/`Task title`/`Add:`). Two `Filter: …` keys carry an internal colon (single-quoted). `Webhook URL (https://…)` left English (pure-technical). biome clean, 0 hand-wraps needed.
+
+**Files.**
+- **`workflow-nodes.tsx`**: `import { useI18n }` + hook in `WorkflowNode`; wrapped `{t(meta.label)}` (badge + fallback title).
+- **`workflow-canvas.tsx`**: hook already present; wrapped palette `Add:` + node buttons, `Test run`/`Pause`/`Activate`/`Activating…` + their `title`s, selected-drawer node label + `Label`/`Node label`; `SaveBadge`/`ValidityBadge` localized.
+- **`workflow-node-config.tsx`**: all `Labeled` labels + the two helper paragraphs (`Green handle = true branch …`, `This node has no configuration.`) wrapped; enum option values + example placeholders left English.
+- **`workflow-runs-panel.tsx`**: `Run history`, empty-state, `{n} steps · {time}`, `Retry`, `Loading…`, `No steps recorded.` wrapped; RUN_COLOR/STEP_COLOR are className maps (not `t()`), so no index-sig bug.
+- **`catalogs.ts`**: ~24 new Hindi keys (1 section header). Duplicate-key scan clean.
+
+**Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: **task #54 complete — every React-Flow builder (agent flow + automation workflow) is now fully Hindi.** With this, all identified dashboard localization surfaces are localized.

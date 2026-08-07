@@ -1866,6 +1866,31 @@ export const catalogs: Record<string, MessageCatalog> = {
     'No active forms yet — build one under Forms, then pick it here.':
       'अभी तक कोई सक्रिय फ़ॉर्म नहीं — Forms के अंतर्गत एक बनाएँ, फिर उसे यहाँ चुनें।',
     'Configuration for this node arrives soon.': 'इस नोड के लिए कॉन्फ़िगरेशन जल्द आ रहा है।',
+    // Workflow builder — node labels + canvas + runs panel + node config.
+    Trigger: 'ट्रिगर',
+    Condition: 'शर्त',
+    Delay: 'विलंब',
+    'Test run': 'टेस्ट रन',
+    'Fire a test run with the trigger event': 'ट्रिगर इवेंट के साथ एक टेस्ट रन फ़ायर करें',
+    'Fix validation issues to activate': 'सक्रिय करने के लिए सत्यापन समस्याएँ ठीक करें',
+    'Activate this workflow': 'यह वर्कफ़्लो सक्रिय करें',
+    'Activating…': 'सक्रिय हो रहा है…',
+    Activate: 'सक्रिय करें',
+    'Run history': 'रन इतिहास',
+    'No runs yet. Activate the workflow, then “Test run” to fire one.':
+      'अभी तक कोई रन नहीं। वर्कफ़्लो सक्रिय करें, फिर एक फ़ायर करने के लिए “Test run” करें।',
+    '{n} steps · {time}': '{n} चरण · {time}',
+    Retry: 'पुनः प्रयास करें',
+    'Loading…': 'लोड हो रहा है…',
+    'No steps recorded.': 'कोई चरण दर्ज नहीं।',
+    'Filter: disposition (optional)': 'फ़िल्टर: डिस्पोज़िशन (वैकल्पिक)',
+    'Filter: lead status (optional)': 'फ़िल्टर: लीड स्थिति (वैकल्पिक)',
+    'Field (e.g. disposition, leadStatus)': 'फ़ील्ड (जैसे disposition, leadStatus)',
+    Value: 'मान',
+    'Delay (seconds, 1–86400)': 'विलंब (सेकंड, 1–86400)',
+    'Green handle = true branch · red handle = false branch.':
+      'हरा हैंडल = true शाखा · लाल हैंडल = false शाखा।',
+    'This node has no configuration.': 'इस नोड में कोई कॉन्फ़िगरेशन नहीं है।',
   },
   ar: {
     'nav.agents': 'الوكلاء',

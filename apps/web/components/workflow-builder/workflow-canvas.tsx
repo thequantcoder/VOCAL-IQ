@@ -23,6 +23,7 @@ import {
   useSetWorkflowStatus,
   useTriggerWorkflow,
 } from '../../lib/api';
+import { useI18n } from '../../lib/i18n/provider';
 import { WorkflowNodeConfig } from './workflow-node-config';
 import { WORKFLOW_NODE_META, type WorkflowNodeData, workflowNodeTypes } from './workflow-nodes';
 import { WorkflowRunsPanel } from './workflow-runs-panel';
@@ -80,6 +81,7 @@ export function WorkflowCanvas({
   workflow: WorkflowSummary;
   graph: WorkflowGraph;
 }) {
+  const { t } = useI18n();
   const initial = useMemo(() => toRF(graph), [graph]);
   const [nodes, setNodes, onNodesChange] = useNodesState(initial.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initial.edges);
@@ -177,8 +179,8 @@ export function WorkflowCanvas({
   // Build a test event that satisfies the trigger's filters, so "Test run" actually matches (a filtered
   // trigger would reject a bare event).
   const testEvent = useMemo(() => {
-    const t = nodes.find((n) => (n.data as WorkflowNodeData).nodeType === 'TRIGGER');
-    const cfg = (t?.data as WorkflowNodeData | undefined)?.config ?? {};
+    const trig = nodes.find((n) => (n.data as WorkflowNodeData).nodeType === 'TRIGGER');
+    const cfg = (trig?.data as WorkflowNodeData | undefined)?.config ?? {};
     const filters = (cfg.filters ?? {}) as Record<string, unknown>;
     return {
       event: (cfg.event as string) ?? workflow.triggerEvent ?? 'call_ended',
@@ -190,10 +192,10 @@ export function WorkflowCanvas({
   return (
     <div className="flex h-[calc(100vh-10rem)] w-full flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="mr-1 text-vq-text-lo text-xs">Add:</span>
-        {PALETTE.map((t) => (
-          <Button key={t} variant="secondary" size="sm" onClick={() => addNode(t)}>
-            <Plus size={14} /> {WORKFLOW_NODE_META[t]?.label ?? t}
+        <span className="mr-1 text-vq-text-lo text-xs">{t('Add:')}</span>
+        {PALETTE.map((nt) => (
+          <Button key={nt} variant="secondary" size="sm" onClick={() => addNode(nt)}>
+            <Plus size={14} /> {t(WORKFLOW_NODE_META[nt]?.label ?? nt)}
           </Button>
         ))}
         <div className="ml-auto flex items-center gap-3 text-xs">
@@ -206,9 +208,9 @@ export function WorkflowCanvas({
                 size="sm"
                 disabled={trigger.isPending}
                 onClick={() => trigger.mutate(testEvent)}
-                title="Fire a test run with the trigger event"
+                title={t('Fire a test run with the trigger event')}
               >
-                <Play size={14} /> Test run
+                <Play size={14} /> {t('Test run')}
               </Button>
               <Button
                 variant="ghost"
@@ -216,7 +218,7 @@ export function WorkflowCanvas({
                 disabled={setStatus.isPending}
                 onClick={() => setStatus.mutate('paused')}
               >
-                Pause
+                {t('Pause')}
               </Button>
             </>
           ) : (
@@ -226,10 +228,12 @@ export function WorkflowCanvas({
               disabled={errors.length > 0 || saveState === 'saving' || setStatus.isPending}
               onClick={() => setStatus.mutate('active')}
               title={
-                errors.length > 0 ? 'Fix validation issues to activate' : 'Activate this workflow'
+                errors.length > 0
+                  ? t('Fix validation issues to activate')
+                  : t('Activate this workflow')
               }
             >
-              {setStatus.isPending ? 'Activating…' : 'Activate'}
+              {setStatus.isPending ? t('Activating…') : t('Activate')}
             </Button>
           )}
         </div>
@@ -261,15 +265,18 @@ export function WorkflowCanvas({
         {selected ? (
           <aside className="absolute top-3 right-3 flex max-h-[calc(100%-1.5rem)] w-72 flex-col gap-3 overflow-y-auto rounded-vq-card border border-vq-border bg-vq-bg-elevated p-4 shadow-sm">
             <p className="font-medium text-[11px] text-vq-text-lo uppercase tracking-wide">
-              {WORKFLOW_NODE_META[(selected.data as WorkflowNodeData).nodeType]?.label}
+              {t(
+                WORKFLOW_NODE_META[(selected.data as WorkflowNodeData).nodeType]?.label ??
+                  (selected.data as WorkflowNodeData).nodeType,
+              )}
             </p>
             <label htmlFor="wf-node-label" className="flex flex-col gap-1">
-              <span className="text-sm text-vq-text-hi">Label</span>
+              <span className="text-sm text-vq-text-hi">{t('Label')}</span>
               <Input
                 id="wf-node-label"
                 value={(selected.data as WorkflowNodeData).label ?? ''}
                 onChange={(e) => updateLabel(e.target.value)}
-                placeholder="Node label"
+                placeholder={t('Node label')}
               />
             </label>
             <div className="border-vq-border border-t pt-3">
@@ -291,32 +298,34 @@ export function WorkflowCanvas({
 }
 
 function SaveBadge({ state }: { state: SaveState }) {
+  const { t } = useI18n();
   if (state === 'saving')
     return (
       <span className="flex items-center gap-1 text-vq-text-lo">
-        <Loader2 size={14} className="animate-spin motion-reduce:animate-none" /> Saving…
+        <Loader2 size={14} className="animate-spin motion-reduce:animate-none" /> {t('Saving…')}
       </span>
     );
   if (state === 'saved')
     return (
       <span className="flex items-center gap-1 text-vq-success">
-        <Check size={14} /> Saved
+        <Check size={14} /> {t('Saved')}
       </span>
     );
-  if (state === 'error') return <span className="text-vq-danger">Save failed</span>;
-  return <span className="text-vq-text-lo">Autosaves</span>;
+  if (state === 'error') return <span className="text-vq-danger">{t('Save failed')}</span>;
+  return <span className="text-vq-text-lo">{t('Autosaves')}</span>;
 }
 
 function ValidityBadge({ count }: { count: number }) {
+  const { t } = useI18n();
   if (count === 0)
     return (
       <span className="flex items-center gap-1 text-vq-success">
-        <Check size={14} /> Valid
+        <Check size={14} /> {t('Valid')}
       </span>
     );
   return (
     <span className="flex items-center gap-1 text-vq-warn">
-      <AlertTriangle size={14} /> {count} issue{count === 1 ? '' : 's'}
+      <AlertTriangle size={14} /> {t('{n} issues', { n: count })}
     </span>
   );
 }

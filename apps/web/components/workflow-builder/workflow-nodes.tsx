@@ -2,6 +2,7 @@
 
 import { cn } from '@vocaliq/ui';
 import { Handle, type NodeProps, Position } from '@xyflow/react';
+import { useI18n } from '../../lib/i18n/provider';
 
 /** The single custom node — differentiated by `nodeType`. */
 export interface WorkflowNodeData extends Record<string, unknown> {
@@ -20,6 +21,7 @@ export const WORKFLOW_NODE_META: Record<string, { label: string; accent: string 
 };
 
 export function WorkflowNode({ data, selected }: NodeProps) {
+  const { t } = useI18n();
   const d = data as WorkflowNodeData;
   const meta = WORKFLOW_NODE_META[d.nodeType] ?? {
     label: d.nodeType,
@@ -42,10 +44,10 @@ export function WorkflowNode({ data, selected }: NodeProps) {
       <div className="flex items-center gap-2">
         <span className="inline-block h-2 w-2 rounded-full bg-current" aria-hidden />
         <span className="font-medium text-[11px] text-vq-text-lo uppercase tracking-wide">
-          {meta.label}
+          {t(meta.label)}
         </span>
       </div>
-      <div className="mt-0.5 text-sm text-vq-text-hi">{d.label || meta.label}</div>
+      <div className="mt-0.5 text-sm text-vq-text-hi">{d.label || t(meta.label)}</div>
       {/* A condition has two labelled source handles (true / false); every other non-end node has one. */}
       {isCondition ? (
         <>

@@ -3,6 +3,7 @@
 import { AUTOMATION_EVENTS, CONDITION_OPS, WORKFLOW_ACTION_TYPES } from '@vocaliq/shared';
 import { Input } from '@vocaliq/ui';
 import type { ReactNode } from 'react';
+import { useI18n } from '../../lib/i18n/provider';
 
 type Config = Record<string, unknown>;
 
@@ -34,6 +35,7 @@ export function WorkflowNodeConfig({
   config: Config;
   onChange: (config: Config) => void;
 }) {
+  const { t } = useI18n();
   const set = (patch: Config) => onChange({ ...config, ...patch });
 
   if (nodeType === 'TRIGGER') {
@@ -41,7 +43,7 @@ export function WorkflowNodeConfig({
     const setFilter = (patch: Config) => set({ filters: { ...filters, ...patch } });
     return (
       <div className="flex flex-col gap-3">
-        <Labeled label="Event">
+        <Labeled label={t('Event')}>
           <select
             className={field}
             value={str(config.event) || 'call_ended'}
@@ -54,14 +56,14 @@ export function WorkflowNodeConfig({
             ))}
           </select>
         </Labeled>
-        <Labeled label="Filter: disposition (optional)">
+        <Labeled label={t('Filter: disposition (optional)')}>
           <Input
             value={str(filters.disposition)}
             onChange={(e) => setFilter({ disposition: e.target.value || undefined })}
             placeholder="e.g. BOOKED"
           />
         </Labeled>
-        <Labeled label="Filter: lead status (optional)">
+        <Labeled label={t('Filter: lead status (optional)')}>
           <Input
             value={str(filters.leadStatus)}
             onChange={(e) => setFilter({ leadStatus: e.target.value || undefined })}
@@ -75,14 +77,14 @@ export function WorkflowNodeConfig({
   if (nodeType === 'CONDITION') {
     return (
       <div className="flex flex-col gap-3">
-        <Labeled label="Field (e.g. disposition, leadStatus)">
+        <Labeled label={t('Field (e.g. disposition, leadStatus)')}>
           <Input
             value={str(config.field)}
             onChange={(e) => set({ field: e.target.value })}
             placeholder="disposition"
           />
         </Labeled>
-        <Labeled label="Operator">
+        <Labeled label={t('Operator')}>
           <select
             className={field}
             value={str(config.op) || 'eq'}
@@ -95,7 +97,7 @@ export function WorkflowNodeConfig({
             ))}
           </select>
         </Labeled>
-        <Labeled label="Value">
+        <Labeled label={t('Value')}>
           <Input
             value={str(config.value)}
             onChange={(e) => set({ value: e.target.value })}
@@ -103,7 +105,7 @@ export function WorkflowNodeConfig({
           />
         </Labeled>
         <p className="text-vq-text-lo text-xs">
-          Green handle = true branch · red handle = false branch.
+          {t('Green handle = true branch · red handle = false branch.')}
         </p>
       </div>
     );
@@ -115,21 +117,21 @@ export function WorkflowNodeConfig({
     const type = str(action.type) || 'notify';
     return (
       <div className="flex flex-col gap-3">
-        <Labeled label="Action">
+        <Labeled label={t('Action')}>
           <select
             className={field}
             value={type}
             onChange={(e) => setAction({ type: e.target.value })}
           >
-            {WORKFLOW_ACTION_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {t}
+            {WORKFLOW_ACTION_TYPES.map((at) => (
+              <option key={at} value={at}>
+                {at}
               </option>
             ))}
           </select>
         </Labeled>
         {type === 'webhook' && (
-          <Labeled label="Webhook URL (https://…)">
+          <Labeled label={t('Webhook URL (https://…)')}>
             <Input
               value={str(action.url)}
               onChange={(e) => setAction({ url: e.target.value, includeContext: true })}
@@ -138,7 +140,7 @@ export function WorkflowNodeConfig({
           </Labeled>
         )}
         {type === 'notify' && (
-          <Labeled label="Message">
+          <Labeled label={t('Message')}>
             <Input
               value={str(action.message)}
               onChange={(e) => setAction({ message: e.target.value })}
@@ -147,7 +149,7 @@ export function WorkflowNodeConfig({
           </Labeled>
         )}
         {type === 'task' && (
-          <Labeled label="Task title">
+          <Labeled label={t('Task title')}>
             <Input
               value={str(action.title)}
               onChange={(e) => setAction({ title: e.target.value })}
@@ -161,7 +163,7 @@ export function WorkflowNodeConfig({
 
   if (nodeType === 'DELAY') {
     return (
-      <Labeled label="Delay (seconds, 1–86400)">
+      <Labeled label={t('Delay (seconds, 1–86400)')}>
         <Input
           type="number"
           min={1}
@@ -173,5 +175,5 @@ export function WorkflowNodeConfig({
     );
   }
 
-  return <p className="text-vq-text-lo text-xs">This node has no configuration.</p>;
+  return <p className="text-vq-text-lo text-xs">{t('This node has no configuration.')}</p>;
 }
