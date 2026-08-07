@@ -5623,3 +5623,16 @@ Batch 19 (task #54, part 1) — the agent flow builder's React-Flow surfaces: th
 - **`catalogs.ts`**: ~40 new Hindi keys (5 section headers; incl. the `\n`-containing scripted-caller placeholder, key + value both using the `\n` escape so they match at runtime). Duplicate-key scan clean.
 
 **Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: the agent flow builder is now Hindi except its 770-line `node-config-form` (per-node config panels — next batch). Then the workflow-builder cluster.
+
+---
+
+## Dashboard localization — page-level, increment 27: Agent flow builder — node-config-form (per-node panels)
+
+Batch 20 (task #54, part 2) — the 770-line `node-config-form.tsx`: the per-type config editor for all 12 core node types (START/SAY/LISTEN/DECISION/END/TOOL/COLLECT_CONFIRM/TRANSFER/SUBFLOW/KNOWLEDGE/PAYMENT/CALLBACK/FORM). All via `useI18n().t()` (English-as-key) + Hindi; ~86 new keys. `t`-shadow renames: `VARIABLE_TYPES.map((t))`→`vt`, param-types `.map((t))`→`pt`. `Labeled` labels wrapped at each call site (`label={t('…')}`); no `t(MAP[key])` index-signature access (audited: none). Pre-push `hi`-block dup-scan skipped 9 already-existing keys (`Mode`/`Kind`/`Description`/`Destination`/`Knowledge base`/`Email`/`Remove field`/`Remove`/`Add field`). biome hand-wrapped 4 over-width lines.
+
+- **All node types**: every `<Labeled>` field label (~25), section headers (`Capture variables`/`Branches`/`Parameters`/`Fields to confirm`/`Pronunciations…`), checkbox labels (auto-detect-language/hang-up/sign-payload/summarise-context/confirm-before-charge/show-attribution/confirm-before-save), descriptive `<option>` text (Scripted/LLM-generated/Function/Webhook/Human/Warm/Cold/Fixed/…), aria-labels (Variable/Branch/Parameter name+type+remove, Term, Say as), add-row buttons, and the descriptive placeholders + help paragraphs (sub-flow isolation, PCI card-capture, callback auto-dial, no-active-forms, "config arrives soon"). 
+- **Left English (DATA / technical)**: enum `<option value>`s and the short technical option values shown as-is (`intent`/`sentiment`/`value`/`else`, `GET`/`POST`/…, `string`/`number`/…), pure example placeholders (`var_name`, `get_weather`, `USD`, `1999 = $19.99`, `callback_time`, `queue / agentId / +1555…`, `{{variable}}` templates, KB/form/agent option names).
+
+- **`catalogs.ts`**: ~86 new Hindi keys (1 section header). Two straight-apostrophe keys ("I'll take…", "…caller's timezone…") stored double-quoted to match source. Duplicate-key scan clean.
+
+**Checks.** biome clean (0 errors). Web typecheck/build in CI. Progress: the **agent flow builder is now 100% Hindi** (shell + canvas + panels + all node-config forms). Remaining l10n = the workflow-builder cluster (workflow-canvas / -nodes / -node-config / -runs-panel).

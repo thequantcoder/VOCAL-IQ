@@ -4,6 +4,7 @@ import { VARIABLE_TYPES } from '@vocaliq/shared';
 import { Button, cn } from '@vocaliq/ui';
 import { Plus, X } from 'lucide-react';
 import { useForms, useKbs } from '../../lib/api';
+import { useI18n } from '../../lib/i18n/provider';
 
 /**
  * Per-type config editor for the core nodes (Day 18). Edits a node's opaque `config`
@@ -25,21 +26,22 @@ export function NodeConfigForm({
   config: Config;
   onChange: (config: Config) => void;
 }) {
+  const { t } = useI18n();
   const set = (patch: Config) => onChange({ ...config, ...patch });
 
   if (nodeType === 'START') {
     return (
       <div className="flex flex-col gap-3">
-        <Labeled label="Opening line">
+        <Labeled label={t('Opening line')}>
           <textarea
             rows={2}
             className={field}
             value={str(config.openingLine)}
             onChange={(e) => set({ openingLine: e.target.value })}
-            placeholder="Hi, thanks for calling…"
+            placeholder={t('Hi, thanks for calling…')}
           />
         </Labeled>
-        <Labeled label="Language">
+        <Labeled label={t('Language')}>
           <input
             className={field}
             value={str(config.language) || 'en'}
@@ -52,7 +54,7 @@ export function NodeConfigForm({
             checked={config.autoDetectLanguage === true}
             onChange={(e) => set({ autoDetectLanguage: e.target.checked })}
           />
-          Auto-detect the caller’s language
+          {t('Auto-detect the caller’s language')}
         </label>
         <PronunciationEditor config={config} set={set} />
       </div>
@@ -63,30 +65,30 @@ export function NodeConfigForm({
     const mode = str(config.mode) || 'scripted';
     return (
       <div className="flex flex-col gap-3">
-        <Labeled label="Mode">
+        <Labeled label={t('Mode')}>
           <select className={field} value={mode} onChange={(e) => set({ mode: e.target.value })}>
-            <option value="scripted">Scripted</option>
-            <option value="generated">LLM-generated</option>
+            <option value="scripted">{t('Scripted')}</option>
+            <option value="generated">{t('LLM-generated')}</option>
           </select>
         </Labeled>
         {mode === 'scripted' ? (
-          <Labeled label="Text">
+          <Labeled label={t('Text')}>
             <textarea
               rows={3}
               className={field}
               value={str(config.text)}
               onChange={(e) => set({ text: e.target.value })}
-              placeholder="What the agent says…"
+              placeholder={t('What the agent says…')}
             />
           </Labeled>
         ) : (
-          <Labeled label="Prompt">
+          <Labeled label={t('Prompt')}>
             <textarea
               rows={3}
               className={field}
               value={str(config.prompt)}
               onChange={(e) => set({ prompt: e.target.value })}
-              placeholder="Instruct the LLM (you can use {{variables}})"
+              placeholder={t('Instruct the LLM (you can use {{variables}})')}
             />
           </Labeled>
         )}
@@ -100,7 +102,7 @@ export function NodeConfigForm({
       set({ captures: captures.map((c, idx) => (idx === i ? { ...c, ...patch } : c)) });
     return (
       <div className="flex flex-col gap-3">
-        <span className="text-vq-text-lo text-xs">Capture variables</span>
+        <span className="text-vq-text-lo text-xs">{t('Capture variables')}</span>
         {captures.map((c, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: rows are positional, no stable id
           <div key={i} className="flex items-center gap-1.5">
@@ -109,24 +111,24 @@ export function NodeConfigForm({
               value={c.name ?? ''}
               onChange={(e) => update(i, { name: e.target.value })}
               placeholder="var_name"
-              aria-label="Variable name"
+              aria-label={t('Variable name')}
             />
             <select
               className={cn(field, 'w-24')}
               value={c.type ?? 'text'}
               onChange={(e) => update(i, { type: e.target.value })}
-              aria-label="Variable type"
+              aria-label={t('Variable type')}
             >
-              {VARIABLE_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
+              {VARIABLE_TYPES.map((vt) => (
+                <option key={vt} value={vt}>
+                  {vt}
                 </option>
               ))}
             </select>
             <Button
               variant="ghost"
               size="sm"
-              aria-label="Remove variable"
+              aria-label={t('Remove variable')}
               onClick={() => set({ captures: captures.filter((_, idx) => idx !== i) })}
             >
               <X size={14} />
@@ -140,7 +142,7 @@ export function NodeConfigForm({
             set({ captures: [...captures, { name: '', type: 'text', required: false }] })
           }
         >
-          <Plus size={14} /> Add variable
+          <Plus size={14} /> {t('Add variable')}
         </Button>
       </div>
     );
@@ -157,7 +159,7 @@ export function NodeConfigForm({
       set({ branches: branches.map((b, idx) => (idx === i ? { ...b, ...patch } : b)) });
     return (
       <div className="flex flex-col gap-3">
-        <span className="text-vq-text-lo text-xs">Branches</span>
+        <span className="text-vq-text-lo text-xs">{t('Branches')}</span>
         {branches.map((b, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: rows are positional, no stable id
           <div key={i} className="flex flex-col gap-1.5 rounded-vq border border-vq-border p-2">
@@ -166,14 +168,14 @@ export function NodeConfigForm({
                 className={cn(field, 'flex-1')}
                 value={b.label ?? ''}
                 onChange={(e) => update(i, { label: e.target.value })}
-                placeholder="Branch label"
-                aria-label="Branch label"
+                placeholder={t('Branch label')}
+                aria-label={t('Branch label')}
               />
               <select
                 className={cn(field, 'w-28')}
                 value={b.kind ?? 'intent'}
                 onChange={(e) => update(i, { kind: e.target.value })}
-                aria-label="Branch kind"
+                aria-label={t('Branch kind')}
               >
                 <option value="intent">intent</option>
                 <option value="sentiment">sentiment</option>
@@ -183,7 +185,7 @@ export function NodeConfigForm({
               <Button
                 variant="ghost"
                 size="sm"
-                aria-label="Remove branch"
+                aria-label={t('Remove branch')}
                 onClick={() => set({ branches: branches.filter((_, idx) => idx !== i) })}
               >
                 <X size={14} />
@@ -194,8 +196,8 @@ export function NodeConfigForm({
                 className={field}
                 value={b.match ?? ''}
                 onChange={(e) => update(i, { match: e.target.value })}
-                placeholder="Match (intent name / expression)"
-                aria-label="Branch match"
+                placeholder={t('Match (intent name / expression)')}
+                aria-label={t('Branch match')}
               />
             ) : null}
           </div>
@@ -212,7 +214,7 @@ export function NodeConfigForm({
             })
           }
         >
-          <Plus size={14} /> Add branch
+          <Plus size={14} /> {t('Add branch')}
         </Button>
       </div>
     );
@@ -221,12 +223,12 @@ export function NodeConfigForm({
   if (nodeType === 'END') {
     return (
       <div className="flex flex-col gap-3">
-        <Labeled label="Outcome tag">
+        <Labeled label={t('Outcome tag')}>
           <input
             className={field}
             value={str(config.outcome)}
             onChange={(e) => set({ outcome: e.target.value })}
-            placeholder="e.g. booked, not_interested"
+            placeholder={t('e.g. booked, not_interested')}
           />
         </Labeled>
         <label className="flex items-center gap-2 text-sm text-vq-text-hi">
@@ -235,7 +237,7 @@ export function NodeConfigForm({
             checked={config.hangup !== false}
             onChange={(e) => set({ hangup: e.target.checked })}
           />
-          Hang up on end
+          {t('Hang up on end')}
         </label>
       </div>
     );
@@ -248,14 +250,14 @@ export function NodeConfigForm({
       set({ params: params.map((p, idx) => (idx === i ? { ...p, ...patch } : p)) });
     return (
       <div className="flex flex-col gap-3">
-        <Labeled label="Kind">
+        <Labeled label={t('Kind')}>
           <select className={field} value={kind} onChange={(e) => set({ kind: e.target.value })}>
-            <option value="function">Function (LLM-callable)</option>
-            <option value="webhook">Webhook (fire-and-forget)</option>
+            <option value="function">{t('Function (LLM-callable)')}</option>
+            <option value="webhook">{t('Webhook (fire-and-forget)')}</option>
           </select>
         </Labeled>
         {kind === 'function' ? (
-          <Labeled label="Function name">
+          <Labeled label={t('Function name')}>
             <input
               className={field}
               value={str(config.name)}
@@ -264,18 +266,18 @@ export function NodeConfigForm({
             />
           </Labeled>
         ) : null}
-        <Labeled label="Description">
+        <Labeled label={t('Description')}>
           <textarea
             rows={2}
             className={field}
             value={str(config.description)}
             onChange={(e) => set({ description: e.target.value })}
-            placeholder="What this does / when the agent should call it"
+            placeholder={t('What this does / when the agent should call it')}
           />
         </Labeled>
         <div className="flex gap-2">
           <div className="flex-1">
-            <Labeled label="Endpoint (https)">
+            <Labeled label={t('Endpoint (https)')}>
               <input
                 className={field}
                 value={str(config.endpoint)}
@@ -284,7 +286,7 @@ export function NodeConfigForm({
               />
             </Labeled>
           </div>
-          <Labeled label="Method">
+          <Labeled label={t('Method')}>
             <select
               className={cn(field, 'w-24')}
               value={str(config.method) || 'POST'}
@@ -301,7 +303,7 @@ export function NodeConfigForm({
 
         {kind === 'function' ? (
           <div className="flex flex-col gap-2">
-            <span className="text-vq-text-lo text-xs">Parameters</span>
+            <span className="text-vq-text-lo text-xs">{t('Parameters')}</span>
             {params.map((p, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: rows are positional, no stable id
               <div key={i} className="flex items-center gap-1.5">
@@ -310,24 +312,24 @@ export function NodeConfigForm({
                   value={p.name ?? ''}
                   onChange={(e) => updateParam(i, { name: e.target.value })}
                   placeholder="param"
-                  aria-label="Parameter name"
+                  aria-label={t('Parameter name')}
                 />
                 <select
                   className={cn(field, 'w-24')}
                   value={p.type ?? 'string'}
                   onChange={(e) => updateParam(i, { type: e.target.value })}
-                  aria-label="Parameter type"
+                  aria-label={t('Parameter type')}
                 >
-                  {['string', 'number', 'integer', 'boolean', 'object', 'array'].map((t) => (
-                    <option key={t} value={t}>
-                      {t}
+                  {['string', 'number', 'integer', 'boolean', 'object', 'array'].map((pt) => (
+                    <option key={pt} value={pt}>
+                      {pt}
                     </option>
                   ))}
                 </select>
                 <Button
                   variant="ghost"
                   size="sm"
-                  aria-label="Remove parameter"
+                  aria-label={t('Remove parameter')}
                   onClick={() => set({ params: params.filter((_, idx) => idx !== i) })}
                 >
                   <X size={14} />
@@ -341,7 +343,7 @@ export function NodeConfigForm({
                 set({ params: [...params, { name: '', type: 'string', required: false }] })
               }
             >
-              <Plus size={14} /> Add parameter
+              <Plus size={14} /> {t('Add parameter')}
             </Button>
           </div>
         ) : (
@@ -351,7 +353,7 @@ export function NodeConfigForm({
               checked={config.signPayload === true}
               onChange={(e) => set({ signPayload: e.target.checked })}
             />
-            Sign payload (HMAC)
+            {t('Sign payload (HMAC)')}
           </label>
         )}
       </div>
@@ -362,7 +364,7 @@ export function NodeConfigForm({
     const fields = arr(config.fields) as string[];
     return (
       <div className="flex flex-col gap-3">
-        <span className="text-vq-text-lo text-xs">Fields to confirm</span>
+        <span className="text-vq-text-lo text-xs">{t('Fields to confirm')}</span>
         {fields.map((f, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: rows are positional, no stable id
           <div key={i} className="flex items-center gap-1.5">
@@ -373,12 +375,12 @@ export function NodeConfigForm({
                 set({ fields: fields.map((x, idx) => (idx === i ? e.target.value : x)) })
               }
               placeholder="captured_variable"
-              aria-label="Field to confirm"
+              aria-label={t('Field to confirm')}
             />
             <Button
               variant="ghost"
               size="sm"
-              aria-label="Remove field"
+              aria-label={t('Remove field')}
               onClick={() => set({ fields: fields.filter((_, idx) => idx !== i) })}
             >
               <X size={14} />
@@ -386,17 +388,17 @@ export function NodeConfigForm({
           </div>
         ))}
         <Button variant="secondary" size="sm" onClick={() => set({ fields: [...fields, ''] })}>
-          <Plus size={14} /> Add field
+          <Plus size={14} /> {t('Add field')}
         </Button>
-        <Labeled label="Confirmation prompt (optional)">
+        <Labeled label={t('Confirmation prompt (optional)')}>
           <input
             className={field}
             value={str(config.confirmPrompt)}
             onChange={(e) => set({ confirmPrompt: e.target.value })}
-            placeholder="Let me confirm what I have."
+            placeholder={t('Let me confirm what I have.')}
           />
         </Labeled>
-        <Labeled label="Max correction retries">
+        <Labeled label={t('Max correction retries')}>
           <input
             type="number"
             min={0}
@@ -413,18 +415,18 @@ export function NodeConfigForm({
   if (nodeType === 'TRANSFER') {
     return (
       <div className="flex flex-col gap-3">
-        <Labeled label="Transfer to">
+        <Labeled label={t('Transfer to')}>
           <select
             className={field}
             value={str(config.target) || 'human'}
             onChange={(e) => set({ target: e.target.value })}
           >
-            <option value="human">Human (Agent Desk)</option>
-            <option value="agent">Another agent</option>
-            <option value="number">Phone number</option>
+            <option value="human">{t('Human (Agent Desk)')}</option>
+            <option value="agent">{t('Another agent')}</option>
+            <option value="number">{t('Phone number')}</option>
           </select>
         </Labeled>
-        <Labeled label="Destination">
+        <Labeled label={t('Destination')}>
           <input
             className={field}
             value={str(config.destination)}
@@ -432,14 +434,14 @@ export function NodeConfigForm({
             placeholder="queue / agentId / +1555…"
           />
         </Labeled>
-        <Labeled label="Mode">
+        <Labeled label={t('Mode')}>
           <select
             className={field}
             value={str(config.mode) || 'warm'}
             onChange={(e) => set({ mode: e.target.value })}
           >
-            <option value="warm">Warm (announce with context)</option>
-            <option value="cold">Cold (transfer immediately)</option>
+            <option value="warm">{t('Warm (announce with context)')}</option>
+            <option value="cold">{t('Cold (transfer immediately)')}</option>
           </select>
         </Labeled>
         <label className="flex items-center gap-2 text-sm text-vq-text-hi">
@@ -448,7 +450,7 @@ export function NodeConfigForm({
             checked={config.summarizeContext !== false}
             onChange={(e) => set({ summarizeContext: e.target.checked })}
           />
-          Summarise call context to the target
+          {t('Summarise call context to the target')}
         </label>
       </div>
     );
@@ -457,25 +459,26 @@ export function NodeConfigForm({
   if (nodeType === 'SUBFLOW') {
     return (
       <div className="flex flex-col gap-3">
-        <Labeled label="Flow ID">
+        <Labeled label={t('Flow ID')}>
           <input
             className={field}
             value={str(config.flowId)}
             onChange={(e) => set({ flowId: e.target.value })}
-            placeholder="Reusable flow to invoke (uuid)"
+            placeholder={t('Reusable flow to invoke (uuid)')}
           />
         </Labeled>
-        <Labeled label="Return label (optional)">
+        <Labeled label={t('Return label (optional)')}>
           <input
             className={field}
             value={str(config.returnLabel)}
             onChange={(e) => set({ returnLabel: e.target.value })}
-            placeholder="Where to continue after it returns"
+            placeholder={t('Where to continue after it returns')}
           />
         </Labeled>
         <p className="text-vq-text-lo text-xs">
-          Sub-flows run within your workspace only — a flow from another tenant can never be
-          invoked.
+          {t(
+            'Sub-flows run within your workspace only — a flow from another tenant can never be invoked.',
+          )}
         </p>
       </div>
     );
@@ -489,18 +492,18 @@ export function NodeConfigForm({
     const amountSource = str(config.amountSource) || 'fixed';
     return (
       <div className="flex flex-col gap-3">
-        <Labeled label="Amount source">
+        <Labeled label={t('Amount source')}>
           <select
             className={field}
             value={amountSource}
             onChange={(e) => set({ amountSource: e.target.value })}
           >
-            <option value="fixed">Fixed amount</option>
-            <option value="variable">From a captured variable</option>
+            <option value="fixed">{t('Fixed amount')}</option>
+            <option value="variable">{t('From a captured variable')}</option>
           </select>
         </Labeled>
         {amountSource === 'fixed' ? (
-          <Labeled label="Amount (minor units, e.g. cents)">
+          <Labeled label={t('Amount (minor units, e.g. cents)')}>
             <input
               type="number"
               min={1}
@@ -511,16 +514,16 @@ export function NodeConfigForm({
             />
           </Labeled>
         ) : (
-          <Labeled label="Amount variable">
+          <Labeled label={t('Amount variable')}>
             <input
               className={field}
               value={str(config.amountVariable)}
               onChange={(e) => set({ amountVariable: e.target.value })}
-              placeholder="captured variable holding the amount"
+              placeholder={t('captured variable holding the amount')}
             />
           </Labeled>
         )}
-        <Labeled label="Currency">
+        <Labeled label={t('Currency')}>
           <input
             className={field}
             value={str(config.currency) || 'USD'}
@@ -529,12 +532,12 @@ export function NodeConfigForm({
             maxLength={3}
           />
         </Labeled>
-        <Labeled label="Description">
+        <Labeled label={t('Description')}>
           <input
             className={field}
             value={str(config.description)}
             onChange={(e) => set({ description: e.target.value })}
-            placeholder="What the payment is for"
+            placeholder={t('What the payment is for')}
           />
         </Labeled>
         <label className="flex items-center gap-2 text-sm text-vq-text-lo">
@@ -543,21 +546,21 @@ export function NodeConfigForm({
             checked={config.confirmBeforeCharge !== false}
             onChange={(e) => set({ confirmBeforeCharge: e.target.checked })}
           />
-          Read back the amount and confirm before charging
+          {t('Read back the amount and confirm before charging')}
         </label>
-        <Labeled label="Receipt">
+        <Labeled label={t('Receipt')}>
           <select
             className={field}
             value={str(config.receiptChannel) || 'none'}
             onChange={(e) => set({ receiptChannel: e.target.value })}
           >
-            <option value="none">No receipt</option>
-            <option value="email">Email</option>
+            <option value="none">{t('No receipt')}</option>
+            <option value="email">{t('Email')}</option>
             <option value="sms">SMS</option>
           </select>
         </Labeled>
         {str(config.receiptChannel) && str(config.receiptChannel) !== 'none' && (
-          <Labeled label="Receipt to">
+          <Labeled label={t('Receipt to')}>
             <input
               className={field}
               value={str(config.receiptTo)}
@@ -567,8 +570,9 @@ export function NodeConfigForm({
           </Labeled>
         )}
         <p className="text-vq-text-lo text-xs">
-          Card details are captured by a PCI-compliant provider — they never touch VocalIQ, the
-          transcript, or the recording.
+          {t(
+            'Card details are captured by a PCI-compliant provider — they never touch VocalIQ, the transcript, or the recording.',
+          )}
         </p>
       </div>
     );
@@ -577,16 +581,16 @@ export function NodeConfigForm({
   if (nodeType === 'CALLBACK') {
     return (
       <div className="flex flex-col gap-3">
-        <Labeled label="Offer prompt">
+        <Labeled label={t('Offer prompt')}>
           <textarea
             className={field}
             rows={2}
             value={str(config.offerPrompt)}
             onChange={(e) => set({ offerPrompt: e.target.value })}
-            placeholder="Would you like us to call you back at a better time?"
+            placeholder={t('Would you like us to call you back at a better time?')}
           />
         </Labeled>
-        <Labeled label="Capture variable (the preferred time)">
+        <Labeled label={t('Capture variable (the preferred time)')}>
           <input
             className={field}
             value={str(config.captureVariable) || 'callback_time'}
@@ -594,7 +598,7 @@ export function NodeConfigForm({
             placeholder="callback_time"
           />
         </Labeled>
-        <Labeled label="Default lead time (minutes, if no time is given)">
+        <Labeled label={t('Default lead time (minutes, if no time is given)')}>
           <input
             type="number"
             min={0}
@@ -604,8 +608,9 @@ export function NodeConfigForm({
           />
         </Labeled>
         <p className="text-vq-text-lo text-xs">
-          The system auto-dials at the requested time, in the caller's timezone and only within
-          legal calling hours.
+          {t(
+            "The system auto-dials at the requested time, in the caller's timezone and only within legal calling hours.",
+          )}
         </p>
       </div>
     );
@@ -615,20 +620,23 @@ export function NodeConfigForm({
     return <FormNodeForm config={config} set={set} />;
   }
 
-  return <p className="text-vq-text-lo text-xs">Configuration for this node arrives soon.</p>;
+  return (
+    <p className="text-vq-text-lo text-xs">{t('Configuration for this node arrives soon.')}</p>
+  );
 }
 
 function KnowledgeForm({ config, set }: { config: Config; set: (patch: Config) => void }) {
+  const { t } = useI18n();
   const kbs = useKbs();
   return (
     <div className="flex flex-col gap-3">
-      <Labeled label="Knowledge base">
+      <Labeled label={t('Knowledge base')}>
         <select
           className={field}
           value={str(config.kbId)}
           onChange={(e) => set({ kbId: e.target.value })}
         >
-          <option value="">Select a knowledge base…</option>
+          <option value="">{t('Select a knowledge base…')}</option>
           {kbs.data?.map((kb) => (
             <option key={kb.id} value={kb.id}>
               {kb.name}
@@ -636,7 +644,7 @@ function KnowledgeForm({ config, set }: { config: Config; set: (patch: Config) =
           ))}
         </select>
       </Labeled>
-      <Labeled label="Top-K chunks">
+      <Labeled label={t('Top-K chunks')}>
         <input
           type="number"
           min={1}
@@ -652,7 +660,7 @@ function KnowledgeForm({ config, set }: { config: Config; set: (patch: Config) =
           checked={config.attribution === true}
           onChange={(e) => set({ attribution: e.target.checked })}
         />
-        Show source attribution
+        {t('Show source attribution')}
       </label>
     </div>
   );
@@ -663,17 +671,18 @@ function KnowledgeForm({ config, set }: { config: Config; set: (patch: Config) =
  * runtime asks each field, captures the answer, and saves a submission when the conversation ends.
  */
 function FormNodeForm({ config, set }: { config: Config; set: (patch: Config) => void }) {
+  const { t } = useI18n();
   const forms = useForms();
   const active = (forms.data ?? []).filter((f) => f.active);
   return (
     <div className="flex flex-col gap-3">
-      <Labeled label="Form to run">
+      <Labeled label={t('Form to run')}>
         <select
           className={field}
           value={str(config.formId)}
           onChange={(e) => set({ formId: e.target.value })}
         >
-          <option value="">Select a form…</option>
+          <option value="">{t('Select a form…')}</option>
           {active.map((f) => (
             <option key={f.id} value={f.id}>
               {f.name}
@@ -683,15 +692,15 @@ function FormNodeForm({ config, set }: { config: Config; set: (patch: Config) =>
       </Labeled>
       {forms.data && active.length === 0 ? (
         <p className="text-vq-text-lo text-xs">
-          No active forms yet — build one under Forms, then pick it here.
+          {t('No active forms yet — build one under Forms, then pick it here.')}
         </p>
       ) : null}
-      <Labeled label="Intro line (optional)">
+      <Labeled label={t('Intro line (optional)')}>
         <input
           className={field}
           value={str(config.introPrompt)}
           onChange={(e) => set({ introPrompt: e.target.value })}
-          placeholder="I'll take a few quick details."
+          placeholder={t("I'll take a few quick details.")}
         />
       </Labeled>
       <label className="flex items-center gap-2 text-sm text-vq-text-hi">
@@ -700,19 +709,20 @@ function FormNodeForm({ config, set }: { config: Config; set: (patch: Config) =>
           checked={config.confirmBeforeSave === true}
           onChange={(e) => set({ confirmBeforeSave: e.target.checked })}
         />
-        Read the answers back to confirm before saving
+        {t('Read the answers back to confirm before saving')}
       </label>
     </div>
   );
 }
 
 function PronunciationEditor({ config, set }: { config: Config; set: (patch: Config) => void }) {
+  const { t } = useI18n();
   const items = arr(config.pronunciations) as { term?: string; say?: string }[];
   const update = (i: number, patch: Config) =>
     set({ pronunciations: items.map((p, idx) => (idx === i ? { ...p, ...patch } : p)) });
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-vq-text-lo text-xs">Pronunciations (names, brands, jargon)</span>
+      <span className="text-vq-text-lo text-xs">{t('Pronunciations (names, brands, jargon)')}</span>
       {items.map((p, i) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: positional rows, no stable id
         <div key={i} className="flex items-center gap-1.5">
@@ -721,7 +731,7 @@ function PronunciationEditor({ config, set }: { config: Config; set: (patch: Con
             value={p.term ?? ''}
             onChange={(e) => update(i, { term: e.target.value })}
             placeholder="VocalIQ"
-            aria-label="Term"
+            aria-label={t('Term')}
           />
           <span className="text-vq-text-lo text-xs">→</span>
           <input
@@ -729,12 +739,12 @@ function PronunciationEditor({ config, set }: { config: Config; set: (patch: Con
             value={p.say ?? ''}
             onChange={(e) => update(i, { say: e.target.value })}
             placeholder="Vocal I Q"
-            aria-label="Say as"
+            aria-label={t('Say as')}
           />
           <Button
             variant="ghost"
             size="sm"
-            aria-label="Remove"
+            aria-label={t('Remove')}
             onClick={() => set({ pronunciations: items.filter((_, idx) => idx !== i) })}
           >
             <X size={14} />
@@ -746,7 +756,7 @@ function PronunciationEditor({ config, set }: { config: Config; set: (patch: Con
         size="sm"
         onClick={() => set({ pronunciations: [...items, { term: '', say: '' }] })}
       >
-        <Plus size={14} /> Add pronunciation
+        <Plus size={14} /> {t('Add pronunciation')}
       </Button>
     </div>
   );
