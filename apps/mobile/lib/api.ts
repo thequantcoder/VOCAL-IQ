@@ -1,5 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
+import { buildHeaders } from './headers';
 
 /**
  * Mobile API client (Day 65). Uses the SAME self-hosted JWT + `x-tenant-id` contract as the web
@@ -25,12 +26,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   const tenant = await SecureStore.getItemAsync(TENANT_KEY);
   const res = await fetch(`${BASE}${path}`, {
     ...init,
-    headers: {
-      'content-type': 'application/json',
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
-      ...(tenant ? { 'x-tenant-id': tenant } : {}),
-      ...(init?.headers ?? {}),
-    },
+    headers: buildHeaders(token, tenant, init?.headers as Record<string, string> | undefined),
   });
   if (!res.ok) throw new Error(`API ${res.status}`);
   return (await res.json()) as T;

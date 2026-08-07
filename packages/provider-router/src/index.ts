@@ -125,9 +125,11 @@ export interface ResolvedKey {
 // ── TTS / STT / Telephony / media contracts ───────────────────────────────────
 //
 // Day 07 ships the typed contracts, price tables, router selection/fallback, and
-// the Python mirror. The concrete adapter BODIES (ElevenLabs/Deepgram/Twilio/
-// LiveKit) + live sandbox smokes land once the provider keys are set — until then
-// the adapters are stubs that throw a typed "not implemented" ProviderError.
+// the Python mirror. The concrete adapters (ElevenLabs/Deepgram/Twilio/LiveKit,
+// later Sarvam/Telnyx/Plivo) are implemented against each provider's real API:
+// each takes the resolved key in its constructor and throws a typed ProviderError
+// on transport/API failure. Only the live sandbox smoke stays gated on the
+// provider keys actually being set.
 
 export interface TTSOptions {
   model?: string;
