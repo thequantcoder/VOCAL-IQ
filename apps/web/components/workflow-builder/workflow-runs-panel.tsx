@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRetryWorkflowRun, useWorkflowRuns, useWorkflowSteps } from '../../lib/api';
+import { useI18n } from '../../lib/i18n/provider';
 
 const RUN_COLOR: Record<string, string> = {
   running: 'text-vq-cyan',
@@ -19,6 +20,7 @@ const STEP_COLOR: Record<string, string> = {
 
 /** Run history + per-step logs for a workflow (observability — self-audit F). */
 export function WorkflowRunsPanel({ workflowId }: { workflowId: string }) {
+  const { t } = useI18n();
   const runs = useWorkflowRuns(workflowId);
   const retry = useRetryWorkflowRun(workflowId);
   const [openRun, setOpenRun] = useState<string | null>(null);
@@ -27,11 +29,11 @@ export function WorkflowRunsPanel({ workflowId }: { workflowId: string }) {
   return (
     <div className="max-h-56 overflow-y-auto rounded-vq-card border border-vq-border bg-vq-bg-elevated p-3">
       <p className="mb-2 font-medium text-[11px] text-vq-text-lo uppercase tracking-wide">
-        Run history
+        {t('Run history')}
       </p>
       {!runs.data || runs.data.length === 0 ? (
         <p className="text-vq-text-lo text-xs">
-          No runs yet. Activate the workflow, then “Test run” to fire one.
+          {t('No runs yet. Activate the workflow, then “Test run” to fire one.')}
         </p>
       ) : (
         <div className="flex flex-col gap-1">
@@ -48,7 +50,10 @@ export function WorkflowRunsPanel({ workflowId }: { workflowId: string }) {
                     {run.error ? ` — ${run.error}` : ''}
                   </span>
                   <span className="text-vq-text-lo">
-                    {run.stepCount} steps · {new Date(run.startedAt).toLocaleTimeString()}
+                    {t('{n} steps · {time}', {
+                      n: run.stepCount,
+                      time: new Date(run.startedAt).toLocaleTimeString(),
+                    })}
                   </span>
                 </button>
                 {run.status === 'failed' && (
@@ -58,16 +63,16 @@ export function WorkflowRunsPanel({ workflowId }: { workflowId: string }) {
                     onClick={() => retry.mutate(run.id)}
                     className="shrink-0 rounded-vq px-1.5 py-1 text-vq-cyan text-xs hover:bg-vq-bg-base disabled:opacity-50"
                   >
-                    Retry
+                    {t('Retry')}
                   </button>
                 )}
               </div>
               {openRun === run.id && (
                 <div className="ml-3 flex flex-col gap-0.5 border-vq-border border-l py-1 pl-2">
                   {steps.isLoading ? (
-                    <span className="text-vq-text-lo text-xs">Loading…</span>
+                    <span className="text-vq-text-lo text-xs">{t('Loading…')}</span>
                   ) : !steps.data || steps.data.length === 0 ? (
-                    <span className="text-vq-text-lo text-xs">No steps recorded.</span>
+                    <span className="text-vq-text-lo text-xs">{t('No steps recorded.')}</span>
                   ) : (
                     steps.data.map((s) => (
                       <span key={s.id} className="text-xs">
