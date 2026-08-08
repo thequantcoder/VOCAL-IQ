@@ -19,9 +19,14 @@ const enc = buildEncryptor({} as NodeJS.ProcessEnv); // deterministic dev master
 const C1 = '00000000-0000-0000-0000-000000000003';
 const R1 = '00000000-0000-0000-0000-000000000002';
 
-const ownerC1: Actor = { userId: 'u-c1', tenantId: C1, role: Role.OWNER };
-const ownerR1: Actor = { userId: 'u-r1', tenantId: R1, role: Role.OWNER };
-const superAdmin: Actor = { userId: 'u-sa', tenantId: C1, role: Role.SUPER_ADMIN };
+// actorUserId is a UUID column — use valid UUIDs (the audit row stores them).
+const ownerC1: Actor = { userId: '00000000-0000-0000-0000-0000000000a1', tenantId: C1, role: Role.OWNER };
+const ownerR1: Actor = { userId: '00000000-0000-0000-0000-0000000000a2', tenantId: R1, role: Role.OWNER };
+const superAdmin: Actor = {
+  userId: '00000000-0000-0000-0000-0000000000a3',
+  tenantId: C1,
+  role: Role.SUPER_ADMIN,
+};
 
 const vault = new MessagingKeyVault(db, enc, {} as NodeJS.ProcessEnv);
 
