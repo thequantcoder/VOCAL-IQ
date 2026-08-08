@@ -11,6 +11,7 @@ import {
   extractTemplateVars,
   messageCostUsd,
   renderMessageTemplate,
+  shouldAdvanceStatus,
 } from '@vocaliq/shared';
 import type { PrismaService } from '../db/prisma.service';
 import type { ResolvedMessagingCreds } from './messaging-key-vault';
@@ -228,6 +229,18 @@ export class MessagingService {
     input: { channel: MessageChannel; from: string; body: string; providerMessageId?: string },
   ): Promise<{ intent: InboundIntent }> {
     const intent = classifyInbound(input.body);
+    // Idempotency (GME-02b): providers replay inbound webhooks. If we've already recorded this exact
+    // inbound message (same provider id), don't re-insert it or re-apply its opt-out/opt-in effect.
+    if (input.providerMessageId) {
+      const pmid = input.providerMessageId; // narrow before the closure (exactOptionalPropertyTypes)
+      const seen = await this.db.withTenant(tenantId, (tx) =>
+        tx.message.findFirst({
+          where: { channel: input.channel, direction: 'INBOUND', providerMessageId: pmid },
+          select: { id: true },
+        }),
+      );
+      if (seen) return { intent };
+    }
     await this.db.withTenant(tenantId, (tx) =>
       tx.message.create({
         data: {
@@ -247,16 +260,26 @@ export class MessagingService {
     return { intent };
   }
 
-  /** Update an outbound message's delivery status by provider message id (status callback). */
+  /**
+   * Update an outbound message's delivery status by provider id (status callback). DLR callbacks
+   * arrive out of order + get replayed, so we only ADVANCE the status (GME-02b): a stale/replayed
+   * older status is a no-op and a terminal state is never overwritten (DELIVERED is never regressed
+   * to a late SENT, nor flipped to FAILED). Idempotent by construction.
+   */
   async updateStatus(
     tenantId: string,
     providerMessageId: string,
     status: MessageStatus,
     error?: string,
   ): Promise<void> {
+    const msg = await this.db.withTenant(tenantId, (tx) =>
+      tx.message.findFirst({ where: { providerMessageId }, select: { id: true, status: true } }),
+    );
+    if (!msg) return; // unknown provider id (or another tenant's message) — ignore
+    if (!shouldAdvanceStatus(msg.status as MessageStatus, status)) return; // stale/replayed/regressive
     await this.db.withTenant(tenantId, (tx) =>
-      tx.message.updateMany({
-        where: { providerMessageId },
+      tx.message.update({
+        where: { id: msg.id },
         data: { status, ...(error ? { error } : {}) },
       }),
     );

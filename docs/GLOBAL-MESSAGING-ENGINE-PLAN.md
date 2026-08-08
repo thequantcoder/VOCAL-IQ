@@ -338,4 +338,4 @@ end-to-end (call → consent → follow-up) on a dedicated test tenant. **Tests:
 ## 6. Execution
 We go **one GME day at a time**, each shipped as its own PR via the `/tmp` workflow (CI-green → squash-merge →
 reconcile), with `BUILD-LOG.md` + this file updated and the A–K self-audit written out. Regional UI strings use the
-`scripts/i18n` hand-off kit. **Progress: GME-00 ✅ (#249) · GME-01 ✅ (#250) · GME-02a ✅. Next: `GME-02b` (async BullMQ send pipeline + retries + idempotency + rate-limit).**
+`scripts/i18n` hand-off kit. **Progress: GME-00 ✅ (#249) · GME-01 ✅ (#250) · GME-02a ✅ (#251) · GME-02b ✅ (webhook idempotency + status-advance guard). Next: `GME-02c` (durable async BullMQ send pipeline + retries/backoff + rate-limit).**

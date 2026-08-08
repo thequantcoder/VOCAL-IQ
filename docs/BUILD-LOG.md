@@ -5751,3 +5751,16 @@ Split GME-02 into **02a (BYOK-aware send — this)** + **02b (async BullMQ pipel
 - **Tests** — `provider-factory.test.ts` (pure: each provider maps to the right id/channel; unknown → null; `defaultProviderForChannel`); `messaging.service.test.ts` adapted to a fake resolver + fake factory (SMS resolves, other channels gated).
 
 **DoD:** a send now uses BYOK creds when the tenant has them (else platform row, else env); a channel with no creds for the tenant stays QUEUED (gated); the used provider is recorded on the Message. Sends are still synchronous — async + retries + idempotency + rate-limit land in **GME-02b**. **Checks:** biome clean on all 6 files; factory + service tests. Next: **GME-02b** (async BullMQ send pipeline).
+
+---
+
+## GME-02b — webhook-replay idempotency + delivery-status advance guard — 2026-08-08 — ✅ DONE — 🧠 OPUS
+
+Providers **replay** delivery-receipt (DLR) + inbound webhooks and deliver them **out of order**. Without a guard that means duplicate inbound rows (+ double opt-out processing) and status regressions (a late `SENT` overwriting `DELIVERED`). GME-02b makes both idempotent — DB-only, no Redis (the API stays Redis-free by design; the durable async queue is **GME-02c**).
+
+**Changes.**
+- **`packages/shared/src/messaging.ts`** — pure `messageStatusRank(status)` + `shouldAdvanceStatus(current, next)`. Lifecycle `QUEUED(0) → SENT(1) → DELIVERED(2) → READ(3)`, with `FAILED(2)` tied to DELIVERED so neither overwrites the other; `RECEIVED` is inbound-only. A status is only ever ADVANCED → replays/late callbacks are no-ops.
+- **`messaging.service.ts`** — `updateStatus()` now reads the current status and applies the new one only when `shouldAdvanceStatus` is true (never regress a terminal/delivered state; idempotent on replay). `recordInbound()` dedupes on `(tenant, channel, providerMessageId)` — a replayed inbound is a no-op (no duplicate row, no re-applied opt-out/opt-in).
+- **Tests** — shared: forward-advance, no-regression/terminal-overwrite, monotonic ranks. api: a replayed older DLR doesn't regress `DELIVERED`; a replayed inbound is recorded once.
+
+**DoD:** DLR replays/out-of-order callbacks + inbound replays are idempotent. **Checks:** biome clean; shared + service tests (CI rebuilds `@vocaliq/shared` for the new exports). Note the `exactOptionalPropertyTypes` "narrow before the closure" fix on the inbound dedupe lookup. Next: **GME-02c** (durable async BullMQ send pipeline + retries/backoff + per-tenant/provider rate-limit) — needs the send-execution pieces reachable from `apps/workers`.
