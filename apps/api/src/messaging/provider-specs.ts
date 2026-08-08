@@ -97,6 +97,38 @@ export const MESSAGING_PROVIDER_SPECS: Record<string, MessagingProviderSpec> = {
     // Reuses the same Telnyx API key the telephony side uses.
     env: { apiKey: 'TELNYX_API_KEY', from: 'TELNYX_FROM' },
   },
+  sinch: {
+    id: 'sinch',
+    label: 'Sinch SMS',
+    channel: 'SMS',
+    fields: [
+      { key: 'servicePlanId', label: 'Service plan id', secret: false },
+      { key: 'token', label: 'API token', secret: true },
+      { key: 'from', label: 'From number', secret: false },
+    ],
+    env: { servicePlanId: 'SINCH_SERVICE_PLAN_ID', token: 'SINCH_TOKEN', from: 'SINCH_FROM' },
+  },
+  messagebird: {
+    id: 'messagebird',
+    label: 'MessageBird (Bird) SMS',
+    channel: 'SMS',
+    fields: [
+      { key: 'accessKey', label: 'Access key', secret: true },
+      { key: 'from', label: 'Originator (sender id/number)', secret: false },
+    ],
+    env: { accessKey: 'MESSAGEBIRD_ACCESS_KEY', from: 'MESSAGEBIRD_FROM' },
+  },
+  infobip: {
+    id: 'infobip',
+    label: 'Infobip SMS',
+    channel: 'SMS',
+    fields: [
+      { key: 'baseUrl', label: 'Base URL (xxxxx.api.infobip.com)', secret: false },
+      { key: 'apiKey', label: 'API key', secret: true },
+      { key: 'from', label: 'Sender id/number', secret: false },
+    ],
+    env: { baseUrl: 'INFOBIP_BASE_URL', apiKey: 'INFOBIP_API_KEY', from: 'INFOBIP_FROM' },
+  },
   'whatsapp-cloud': {
     id: 'whatsapp-cloud',
     label: 'WhatsApp Cloud API',
@@ -160,6 +192,9 @@ const PROVIDER_ENUM: Record<string, Provider> = {
   vonage: Provider.VONAGE,
   plivo: Provider.PLIVO,
   telnyx: Provider.TELNYX,
+  sinch: Provider.SINCH,
+  messagebird: Provider.MESSAGEBIRD,
+  infobip: Provider.INFOBIP,
   'whatsapp-cloud': Provider.WHATSAPP,
   telegram: Provider.TELEGRAM,
   messenger: Provider.MESSENGER,

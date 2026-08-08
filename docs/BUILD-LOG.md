@@ -5864,3 +5864,15 @@ Three global SMS carriers, built to their documented APIs (docs read, not guesse
 **Result:** a non-India SMS now routes **telnyx → plivo → vonage → twilio** (cheapest global first + failover); +91 still routes msg91 → gupshup → … (India cheapest first). Each metered by the winning provider.
 
 **Tests:** `adapters/global-sms.test.ts` (all three — payload/auth shape, success parse, Vonage error status) with a fake HTTP transport; `routing.test.ts` — global least-cost order (telnyx first); `provider-factory.test.ts` — all three map. biome clean; enum sync verified. **Keys to live-verify:** `VONAGE_API_KEY/SECRET/FROM`; Plivo/Telnyx = existing carrier creds + `*_FROM` (or per-tenant BYOK). Next: **GME-08** (global SMS wave 2 — Sinch + MessageBird + Infobip).
+
+---
+
+## GME-08 — global SMS wave 2: Sinch + MessageBird + Infobip — 2026-08-08 — ⚡ SONNET — ✅ DONE
+
+Three more global carriers (Sinch + MessageBird/Bird + Infobip), same adapter+wiring recipe. Sinch + Infobip also do **RCS** (flagged for GME-12). Built to their documented APIs.
+
+- **`adapters/sinch.ts`** — XMS batches (`POST /xms/v1/{servicePlanId}/batches`, Bearer, JSON `{from, to:[…], body}`; `id`). **`messagebird.ts`** — REST (`POST /messages`, `AccessKey`, form `originator/recipients/body`; `id`). **`infobip.ts`** — advanced text (`POST {base}/sms/2/text/advanced`, `App {key}`, JSON `messages[{from, destinations:[{to}], text}]`; `messages[0].messageId`).
+- Wiring: factory cases · provider-specs (fields+env `SINCH_*`/`MESSAGEBIRD_*`/`INFOBIP_*`) · `messagingProviderEnum` (`Provider.SINCH`/`MESSAGEBIRD`/`INFOBIP`) · `PROVIDER_ROUTES` global (sinch/infobip 0.0045, messagebird 0.005) · enums + migration `20260808180000` + `CAPABILITY_PROVIDERS[messaging]` · `.env.example`.
+- **9 SMS carriers now**: twilio, msg91, gupshup, vonage, plivo, telnyx, sinch, messagebird, infobip — all least-cost-routed + failover + DLT + metered.
+
+**Tests:** `adapters/global-sms-wave2.test.ts` (all three payload/auth/parse) + `provider-factory.test.ts` (all three map). biome clean; enum sync verified. Next: **GME-09** (AWS SNS + Bandwidth + ClickSend).
