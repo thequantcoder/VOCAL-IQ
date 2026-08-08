@@ -235,7 +235,8 @@ sender-ID handling, registry + pricing entries, gated (`QUEUED` until keys). Rea
 **Build:** three adapters (send + DLR + inbound + verify); **Plivo/Telnyx reuse existing telephony credentials**;
 registry + pricing; gated. **DoD/Tests:** as GME-05 per provider.
 
-### GME-08 — Global SMS wave 2: Sinch + MessageBird/Bird + Infobip · ⚡ SONNET · keys: `SINCH_*`, `MESSAGEBIRD_*`, `INFOBIP_*`
+### GME-08 — Global SMS wave 2: Sinch + MessageBird/Bird + Infobip · ⚡ SONNET · keys: `SINCH_*`, `MESSAGEBIRD_*`, `INFOBIP_*` · ✅ DONE (2026-08-08)
+> `adapters/{sinch,messagebird,infobip}.ts` + wiring. 9 SMS carriers now. Sinch/Infobip also do RCS (GME-12).
 **Build:** three adapters (send + DLR + inbound + verify); note Sinch/MessageBird/Infobip also do RCS (flagged for GME-12).
 **DoD/Tests:** as GME-05.
 
@@ -354,4 +355,4 @@ end-to-end (call → consent → follow-up) on a dedicated test tenant. **Tests:
 ## 6. Execution
 We go **one GME day at a time**, each shipped as its own PR via the `/tmp` workflow (CI-green → squash-merge →
 reconcile), with `BUILD-LOG.md` + this file updated and the A–K self-audit written out. Regional UI strings use the
-`scripts/i18n` hand-off kit. **Progress: Phase A ✅ (#249–#255) · GME-05 India SMS (#256) · GME-06 India DLT (#257) · GME-07 ✅ global SMS (Vonage/Plivo/Telnyx). Next: `GME-08` (global SMS wave 2 — Sinch + MessageBird + Infobip). Deferred: durable async queue + retries.**
+`scripts/i18n` hand-off kit. **Progress: Phase A ✅ (#249–#255) · GME-05 India SMS (#256) · GME-06 DLT (#257) · GME-07 global SMS (#258) · GME-08 ✅ global SMS wave 2 (Sinch/MessageBird/Infobip). 9 SMS carriers live. Next: `GME-09` (AWS SNS + Bandwidth + ClickSend). Deferred: durable async queue + retries.**

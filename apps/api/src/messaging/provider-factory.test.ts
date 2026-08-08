@@ -26,6 +26,20 @@ describe('createMessagingProvider', () => {
       channel: 'SMS',
     });
     expect(
+      createMessagingProvider('sinch', { servicePlanId: 'sp', token: 't', from: 'f' }),
+    ).toMatchObject({ id: 'sinch', channel: 'SMS' });
+    expect(createMessagingProvider('messagebird', { accessKey: 'k', from: 'f' })).toMatchObject({
+      id: 'messagebird',
+      channel: 'SMS',
+    });
+    expect(
+      createMessagingProvider('infobip', {
+        baseUrl: 'https://x.api.infobip.com',
+        apiKey: 'k',
+        from: 'f',
+      }),
+    ).toMatchObject({ id: 'infobip', channel: 'SMS' });
+    expect(
       createMessagingProvider('whatsapp-cloud', { phoneNumberId: 'p', accessToken: 't' }),
     ).toMatchObject({ id: 'whatsapp-cloud', channel: 'WHATSAPP' });
     expect(createMessagingProvider('telegram', { botToken: 't' })).toMatchObject({

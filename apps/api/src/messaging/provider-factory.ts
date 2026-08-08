@@ -1,6 +1,9 @@
 import { GupshupSmsSender } from './adapters/gupshup';
+import { InfobipSmsSender } from './adapters/infobip';
+import { MessageBirdSmsSender } from './adapters/messagebird';
 import { Msg91SmsSender } from './adapters/msg91';
 import { PlivoSmsSender } from './adapters/plivo';
+import { SinchSmsSender } from './adapters/sinch';
 import { TelnyxSmsSender } from './adapters/telnyx';
 import { VonageSmsSender } from './adapters/vonage';
 import {
@@ -50,6 +53,22 @@ export const createMessagingProvider: ProviderFactory = (providerId, creds, http
       return new PlivoSmsSender(creds.authId ?? '', creds.authToken ?? '', creds.from ?? '', http);
     case 'telnyx':
       return new TelnyxSmsSender(creds.apiKey ?? '', creds.from ?? '', http);
+    case 'sinch':
+      return new SinchSmsSender(
+        creds.servicePlanId ?? '',
+        creds.token ?? '',
+        creds.from ?? '',
+        http,
+      );
+    case 'messagebird':
+      return new MessageBirdSmsSender(creds.accessKey ?? '', creds.from ?? '', http);
+    case 'infobip':
+      return new InfobipSmsSender(
+        creds.baseUrl ?? '',
+        creds.apiKey ?? '',
+        creds.from ?? '',
+        http,
+      );
     case 'whatsapp-cloud':
       return new WhatsAppSender(creds.phoneNumberId ?? '', creds.accessToken ?? '', http);
     case 'telegram':
