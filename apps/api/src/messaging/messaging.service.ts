@@ -18,7 +18,7 @@ import type { PrismaService } from '../db/prisma.service';
 import { RateLimiter } from '../widget/rate-limiter';
 import type { ResolvedMessagingCreds } from './messaging-key-vault';
 import { type ProviderFactory, createMessagingProvider } from './provider-factory';
-import { defaultProviderForChannel } from './provider-specs';
+import { type MessageRouter, SmartRouter } from './routing';
 import { type HttpClient, fetchHttp } from './senders';
 
 /** Per-tenant safety cap on outbound sends per minute — a RUNAWAY/abuse guard (a send loop or a
@@ -83,14 +83,21 @@ export class MessagingService {
   private readonly http: HttpClient;
   private readonly factory: ProviderFactory;
   private readonly rateLimiter: RateLimiter;
+  private readonly router: MessageRouter;
   constructor(
     private readonly db: PrismaService,
     private readonly credsResolver: MessagingCredsResolver,
-    opts?: { http?: HttpClient; providerFactory?: ProviderFactory; rateLimiter?: RateLimiter },
+    opts?: {
+      http?: HttpClient;
+      providerFactory?: ProviderFactory;
+      rateLimiter?: RateLimiter;
+      router?: MessageRouter;
+    },
   ) {
     this.http = opts?.http ?? fetchHttp;
     this.factory = opts?.providerFactory ?? createMessagingProvider;
     this.rateLimiter = opts?.rateLimiter ?? new RateLimiter(DEFAULT_SEND_RATE_PER_MIN, 60_000);
+    this.router = opts?.router ?? new SmartRouter();
   }
 
   // ── Template CRUD ─────────────────────────────────────────────────────────────
@@ -176,36 +183,39 @@ export class MessagingService {
     if (!body.trim()) throw new ValidationError('Message body is required');
 
     const costUsd = messageCostUsd(input.channel, body);
-    // GME-02a: pick the provider for this channel (GME-03 will route per country/cost/health),
-    // resolve its credentials BYOK-first (tenant vault → platform row → env), and dispatch with those
-    // creds so a tenant's own keys actually drive the send.
-    const providerId = defaultProviderForChannel(input.channel);
-    const resolved = providerId ? await this.credsResolver.resolve(tenantId, providerId) : null;
-
-    // Dispatch (or queue if no provider is configured for this tenant — gated).
+    // GME-03: the smart router returns an ordered provider chain (cheapest healthy first). Try each
+    // provider with its BYOK-resolved creds (tenant vault → platform row → env); fall over to the
+    // next on a hard failure, recording each outcome so unhealthy providers get ejected from routing.
+    const chain = this.router.selectChain(input.channel);
     let status: MessageStatus = 'QUEUED';
     let providerMessageId: string | undefined;
     let usedProviderId: string | undefined;
     let error: string | undefined;
-    if (resolved) {
+    let attempted = false;
+    for (const pid of chain) {
+      const resolved = await this.credsResolver.resolve(tenantId, pid);
+      if (!resolved) continue; // no creds for this provider (for this tenant) — try the next
       const adapter = this.factory(resolved.providerId, resolved.creds, this.http);
-      if (adapter) {
-        const result = await adapter.send({
-          to: input.to,
-          body,
-          ...(templateName ? { templateName } : {}),
-          ...(language ? { language } : {}),
-        });
-        status = result.status;
+      if (!adapter) continue;
+      attempted = true;
+      const result = await adapter.send({
+        to: input.to,
+        body,
+        ...(templateName ? { templateName } : {}),
+        ...(language ? { language } : {}),
+      });
+      this.router.record(pid, result.status === 'SENT');
+      usedProviderId = pid;
+      if (result.status === 'SENT') {
+        status = 'SENT';
         providerMessageId = result.providerMessageId;
-        usedProviderId = resolved.providerId;
-        error = result.error;
-      } else {
-        error = `Provider ${resolved.providerId} is not implemented`;
+        error = undefined;
+        break;
       }
-    } else {
-      error = 'No messaging provider configured for this channel';
+      status = 'FAILED';
+      error = result.error; // hard failure — fall over to the next provider in the chain
     }
+    if (!attempted) error = 'No messaging provider configured for this channel';
 
     const row = await this.db.withTenant(tenantId, (tx) =>
       tx.message.create({

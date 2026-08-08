@@ -177,7 +177,10 @@ without breaking the existing WhatsApp/Twilio/Telegram/Meta/RCS behaviour.
 **DoD:** sends enqueue + process async; duplicate DLR webhook is a no-op; transient failure retries then fails cleanly.
 **Tests:** enqueue→process; idempotent DLR; retry/backoff; rate-limit rejection.
 
-### GME-03 — Smart router (least-cost, per-country, health, failover) · 🧠 OPUS · keys: none
+### GME-03 — Smart router (least-cost, per-country, health, failover) · 🧠 OPUS · keys: none · ✅ DONE (2026-08-08)
+> Pure engine in `messaging/routing.ts` (`orderProviders` least-cost/country/health + `ProviderHealth`
+> ejection + `SmartRouter`); `send()` drives a provider **fallback chain**. Persisted per-tenant
+> `RoutingRule` model deferred to GME-18 (config UI) — the engine takes an optional preferred order now.
 **Goal:** Pick the best provider per message and fall over on failure.
 **Build:**
 - `RoutingRule` model (tenant, channel, country/prefix, orderedProviderIds, strategy=`least_cost|priority|failover`).
@@ -338,4 +341,4 @@ end-to-end (call → consent → follow-up) on a dedicated test tenant. **Tests:
 ## 6. Execution
 We go **one GME day at a time**, each shipped as its own PR via the `/tmp` workflow (CI-green → squash-merge →
 reconcile), with `BUILD-LOG.md` + this file updated and the A–K self-audit written out. Regional UI strings use the
-`scripts/i18n` hand-off kit. **Progress: GME-00 ✅ (#249) · GME-01 ✅ (#250) · GME-02a ✅ (#251) · GME-02b ✅ (#252) · GME-02c ✅ (per-tenant send rate-limit; durable async queue + retries DEFERRED — needs send-exec reachable from apps/workers). Next: `GME-03` (smart router: least-cost / per-country / health / failover).**
+`scripts/i18n` hand-off kit. **Progress: GME-00 ✅ (#249) · GME-01 ✅ (#250) · GME-02a ✅ (#251) · GME-02b ✅ (#252) · GME-02c ✅ (#253) · GME-03 ✅ (smart router + fallback chain). Next: `GME-04` (unified UsageRecord metering + reseller markup). Deferred: durable async queue + retries (needs send-exec reachable from apps/workers).**

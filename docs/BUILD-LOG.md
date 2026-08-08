@@ -5776,3 +5776,20 @@ The reliability slice of GME-02 that ships cleanly today without new infra: a **
 - **Tests** — `messaging.service.test.ts`: inject a 2/window limiter → the 3rd send in the window is rejected with a rate-limit error.
 
 **DoD:** a tenant can't blast/loop the send path unbounded; the guard is in-memory (single-node) + injectable, mirroring the platform's other rate limiters. **Checks:** biome clean; rate-limit test added. Deferred (documented): durable off-process queue + retries. Next: **GME-03** (smart router — least-cost / per-country / health / failover), or the deferred async pipeline.
+
+---
+
+## GME-03 — smart router (least-cost / per-country / health / failover) + provider fallback chain — 2026-08-08 — ✅ DONE — 🧠 OPUS
+
+The routing brain that makes multi-provider "smart" — built now (pure + tested) so it's ready the moment GME-05+ adds real providers. With one provider per channel today the chain has one entry; the engine + fallover already work for many.
+
+**Changes.**
+- **`routing.ts`** (new) — pure engine + health + router seam:
+  - `providerRoutes(channel)` — candidate providers for a channel (from the specs + a separate `PROVIDER_ROUTES` coverage/price table, kept out of the credential specs).
+  - `orderProviders(candidates, ctx)` — filter by **country coverage** (`global` always matches) + drop **unhealthy**, then order **cheapest-first** (`least_cost` default) or by a `preferred` list (`priority`). Exact-optional-safe ctx (`| undefined` fields).
+  - `ProviderHealth` — in-memory failure-burst **ejection** (N consecutive failures → ejected for a cooldown; any success clears), mirroring the Day-38 key-pool idea; injected clock for tests.
+  - `MessageRouter` interface + `SmartRouter` (selectChain + record) — a seam so tests inject a fake chain.
+- **`messaging.service.ts`** — `send()` now drives a **fallback chain**: `router.selectChain(channel)` → for each provider id, resolve BYOK creds → factory → `adapter.send()`; on a hard failure record health + fall over to the next provider; on success record + stop. Persists the actually-used provider. Router injectable via `opts.router` (default `SmartRouter`).
+- **Tests** — `routing.test.ts` (pure: least-cost order, country filter, health eject/recover, chain) + `messaging.service.test.ts` (a 2-provider chain where the first fails → the send succeeds via the second).
+
+**DoD:** the send path load-balances (cheapest healthy first) + fails over across providers, ejecting flaky ones — ready for the GME-05+ provider fleet. **Checks:** biome clean; pure routing tests + service fallover test. No migration (persisted per-tenant routing rules land with the config UI in GME-18). Next: **GME-04** (unified `UsageRecord` metering + reseller markup) — then the provider adapters (GME-05+).

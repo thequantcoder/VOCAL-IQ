@@ -1,0 +1,76 @@
+import { describe, expect, it } from 'vitest';
+import {
+  ProviderHealth,
+  type ProviderRoute,
+  SmartRouter,
+  orderProviders,
+  providerRoutes,
+} from './routing';
+
+/** GME-03: the pure smart-routing engine — least-cost ordering, country coverage, health ejection. */
+
+const route = (
+  id: string,
+  price: number,
+  countries: 'global' | string[] = 'global',
+): ProviderRoute => ({ id, channel: 'SMS', countries, routingPriceUsd: price });
+
+describe('orderProviders', () => {
+  it('orders cheapest-first by default (least_cost)', () => {
+    const cands = [route('a', 0.01), route('b', 0.003), route('c', 0.007)];
+    expect(orderProviders(cands, {})).toEqual(['b', 'c', 'a']);
+  });
+
+  it('filters by country coverage (global always matches)', () => {
+    const cands = [route('glob', 0.01), route('india', 0.001, ['IN']), route('us', 0.002, ['US'])];
+    expect(orderProviders(cands, { country: 'IN' })).toEqual(['india', 'glob']);
+    expect(orderProviders(cands, { country: 'US' })).toEqual(['us', 'glob']);
+  });
+
+  it('drops unhealthy providers', () => {
+    const cands = [route('a', 0.001), route('b', 0.002)];
+    expect(orderProviders(cands, { unhealthy: new Set(['a']) })).toEqual(['b']);
+  });
+
+  it('honours a preferred order under the priority strategy', () => {
+    const cands = [route('a', 0.01), route('b', 0.001)];
+    expect(orderProviders(cands, { strategy: 'priority', preferred: ['a', 'b'] })).toEqual([
+      'a',
+      'b',
+    ]);
+  });
+});
+
+describe('ProviderHealth', () => {
+  it('ejects after the failure threshold, then recovers past the cooldown', () => {
+    let t = 1000;
+    const h = new ProviderHealth(3, 500, () => t);
+    h.record('x', false);
+    h.record('x', false);
+    expect(h.isEjected('x')).toBe(false);
+    h.record('x', false); // 3rd consecutive failure → ejected
+    expect(h.isEjected('x')).toBe(true);
+    expect(h.ejectedSet().has('x')).toBe(true);
+    t += 600; // past cooldown
+    expect(h.isEjected('x')).toBe(false);
+  });
+
+  it('a success clears the failure streak', () => {
+    const h = new ProviderHealth(2, 100, () => 0);
+    h.record('y', false);
+    h.record('y', true); // reset
+    h.record('y', false);
+    expect(h.isEjected('y')).toBe(false);
+  });
+});
+
+describe('SmartRouter + providerRoutes', () => {
+  it('returns the configured providers for a channel', () => {
+    expect(providerRoutes('SMS').map((r) => r.id)).toContain('twilio');
+    expect(providerRoutes('WHATSAPP').map((r) => r.id)).toContain('whatsapp-cloud');
+  });
+
+  it('selectChain returns a chain for the channel', () => {
+    expect(new SmartRouter().selectChain('SMS')).toContain('twilio');
+  });
+});
