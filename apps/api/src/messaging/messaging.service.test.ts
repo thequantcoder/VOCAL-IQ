@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { PrismaService } from '../db/prisma.service';
+import { RateLimiter } from '../widget/rate-limiter';
 import { type MessagingCredsResolver, MessagingService } from './messaging.service';
 import type { ProviderFactory } from './provider-factory';
 import type { MessageSender, SendResult } from './senders';
@@ -180,6 +181,20 @@ describe('MessagingService idempotent webhooks (GME-02b)', () => {
     });
     const inbound = (await svc.listMessages(C1, 200)).filter((m) => m.body === 'inbound-dedupe');
     expect(inbound).toHaveLength(1);
+  });
+});
+
+describe('MessagingService rate limiting (GME-02c)', () => {
+  it('rejects sends beyond the per-tenant window', async () => {
+    const limited = new MessagingService(db, fakeResolver, {
+      providerFactory: fakeFactory,
+      rateLimiter: new RateLimiter(2, 60_000), // 2 per window for the test
+    });
+    await limited.send(C1, { channel: 'SMS', to: '+15551234000', body: 'one' });
+    await limited.send(C1, { channel: 'SMS', to: '+15551234000', body: 'two' });
+    await expect(
+      limited.send(C1, { channel: 'SMS', to: '+15551234000', body: 'three' }),
+    ).rejects.toThrow(/rate limit/i);
   });
 });
 

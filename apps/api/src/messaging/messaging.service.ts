@@ -5,6 +5,7 @@ import {
   type MessageStatus,
   type MessageTemplateInput,
   NotFoundError,
+  RateLimitError,
   ValidationError,
   blendedNextStep,
   classifyInbound,
@@ -14,10 +15,16 @@ import {
   shouldAdvanceStatus,
 } from '@vocaliq/shared';
 import type { PrismaService } from '../db/prisma.service';
+import { RateLimiter } from '../widget/rate-limiter';
 import type { ResolvedMessagingCreds } from './messaging-key-vault';
 import { type ProviderFactory, createMessagingProvider } from './provider-factory';
 import { defaultProviderForChannel } from './provider-specs';
 import { type HttpClient, fetchHttp } from './senders';
+
+/** Per-tenant safety cap on outbound sends per minute — a RUNAWAY/abuse guard (a send loop or a
+ *  compromised key), deliberately generous so legitimate bulk never hits it; plan-driven business
+ *  quotas layer on top in GME-04. */
+const DEFAULT_SEND_RATE_PER_MIN = 1000;
 
 /**
  * The credential resolver the send path depends on (GME-02a) — BYOK-first (`MessagingKeyVault`).
@@ -75,13 +82,15 @@ export interface SendInput {
 export class MessagingService {
   private readonly http: HttpClient;
   private readonly factory: ProviderFactory;
+  private readonly rateLimiter: RateLimiter;
   constructor(
     private readonly db: PrismaService,
     private readonly credsResolver: MessagingCredsResolver,
-    opts?: { http?: HttpClient; providerFactory?: ProviderFactory },
+    opts?: { http?: HttpClient; providerFactory?: ProviderFactory; rateLimiter?: RateLimiter },
   ) {
     this.http = opts?.http ?? fetchHttp;
     this.factory = opts?.providerFactory ?? createMessagingProvider;
+    this.rateLimiter = opts?.rateLimiter ?? new RateLimiter(DEFAULT_SEND_RATE_PER_MIN, 60_000);
   }
 
   // ── Template CRUD ─────────────────────────────────────────────────────────────
@@ -133,6 +142,10 @@ export class MessagingService {
    * missing, dispatches via the channel adapter (if configured), meters cost, and persists.
    */
   async send(tenantId: string, input: SendInput): Promise<MessageRow> {
+    // Per-tenant abuse/runaway guard (GME-02c) — cheap in-memory check first, before any DB work.
+    if (!this.rateLimiter.hit(tenantId)) {
+      throw new RateLimitError('Messaging send rate limit reached; slow down');
+    }
     if (await this.isOptedOut(tenantId, input.channel, input.to)) {
       throw new ValidationError('Recipient has opted out of this channel');
     }
