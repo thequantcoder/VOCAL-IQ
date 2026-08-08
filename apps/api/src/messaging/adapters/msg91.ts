@@ -29,9 +29,10 @@ export class Msg91SmsSender implements MessageSender {
     const url = 'https://control.msg91.com/api/v5/flow/';
     // MSG91 wants the country code without a leading '+'.
     const mobiles = msg.to.replace(/^\+/, '');
+    // The DLT engine (GME-06) resolves the flow/sender per message for +91; fall back to the creds.
     const payload = {
-      flow_id: this.flowId,
-      sender: this.sender,
+      flow_id: msg.dltTemplateId ?? this.flowId,
+      sender: msg.dltSender ?? this.sender,
       recipients: [{ mobiles, body: msg.body }],
     };
     try {

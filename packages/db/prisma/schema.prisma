@@ -218,6 +218,7 @@ model Tenant {
   agents               Agent[]
   providerCredentials  ProviderCredential[]
   messagingCredentials MessagingCredential[]
+  dltTemplates         DltTemplate[]
   voices               Voice[]
   knowledgeBases      KnowledgeBase[]
   contacts            Contact[]
@@ -669,6 +670,26 @@ model MessagingCredential {
 
   @@index([tenantId])
   @@index([providerId])
+}
+
+// India DLT (TRAI) registration for lawful SMS (GME-06). Each row is a DLT-approved template: its
+// entity/header/template ids + the approved body pattern (with {#var#} placeholders). A send to an
+// India (+91) number must match one of these or it is blocked. RLS tenant-scoped.
+model DltTemplate {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @db.Uuid
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entityId      String // DLT principal-entity id (PE id)
+  senderId      String // registered header / sender id (e.g. VOCLIQ)
+  dltTemplateId String // DLT-approved content template id
+  category      String   @default("transactional") // transactional | service | promotional
+  body          String // approved template body, with {#var#} placeholders
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, active])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

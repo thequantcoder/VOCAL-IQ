@@ -14,6 +14,10 @@ export interface OutboundMessage {
   /** WhatsApp template send (approved template) — falls back to free-form text otherwise. */
   templateName?: string;
   language?: string;
+  /** India DLT ids (GME-06), resolved per send for +91 SMS; carriers stamp them on the request. */
+  dltTemplateId?: string;
+  dltSender?: string;
+  dltEntityId?: string;
 }
 
 export interface SendResult {

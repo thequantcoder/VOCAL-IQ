@@ -214,7 +214,10 @@ sender-ID handling, registry + pricing entries, gated (`QUEUED` until keys). Rea
 **DoD:** both adapters send (mocked in CI, live-gated), DLR maps to `MessageStatus`, inbound STOP/START works.
 **Tests:** send payload shape; DLR mapping; signature verify; opt-out classify.
 
-### GME-06 — India DLT compliance engine · 🧠 OPUS · keys: DLT entity/template IDs (per tenant)
+### GME-06 — India DLT compliance engine · 🧠 OPUS · keys: DLT entity/template IDs (per tenant) · ✅ DONE (2026-08-08)
+> `DltTemplate` model + `dlt.service.ts` (`dltTemplateMatches` anchored `{#var#}` regex + `DltService`
+> register/resolve) + `/messaging/dlt` routes. `send()` blocks a +91 SMS with no matching registered
+> template and stamps `dltTemplateId/sender/entity` onto the carrier request (msg91/gupshup adapters).
 **Goal:** Make Indian SMS lawful: DLT principal-entity + header (sender-ID) + template registration + per-message binding.
 **Build:**
 - `DltRegistration` model (tenant, entityId, headers[], templates[{dltTemplateId, body, category}]).
@@ -348,4 +351,4 @@ end-to-end (call → consent → follow-up) on a dedicated test tenant. **Tests:
 ## 6. Execution
 We go **one GME day at a time**, each shipped as its own PR via the `/tmp` workflow (CI-green → squash-merge →
 reconcile), with `BUILD-LOG.md` + this file updated and the A–K self-audit written out. Regional UI strings use the
-`scripts/i18n` hand-off kit. **Progress: Phase A ✅ (GME-00→04, #249–#255). GME-05 ✅ (India SMS: MSG91 + Gupshup — first real multi-provider adapters). Next: `GME-06` (India DLT compliance engine). Deferred: durable async queue + retries.**
+`scripts/i18n` hand-off kit. **Progress: Phase A ✅ (GME-00→04, #249–#255) · GME-05 ✅ India SMS (#256) · GME-06 ✅ India DLT engine. Next: `GME-07` (global SMS wave 1 — Vonage + Plivo + Telnyx). Deferred: durable async queue + retries.**

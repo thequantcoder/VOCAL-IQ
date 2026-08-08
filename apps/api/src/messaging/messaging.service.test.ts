@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { PrismaService } from '../db/prisma.service';
 import { RateLimiter } from '../widget/rate-limiter';
+import type { DltResolver } from './dlt.service';
 import { type MessagingCredsResolver, MessagingService } from './messaging.service';
 import type { ProviderFactory } from './provider-factory';
 import type { MessageRouter } from './routing';
@@ -235,6 +236,39 @@ describe('MessagingService provider fallback (GME-03)', () => {
 
     const msg = await svc2.send(C1, { channel: 'SMS', to: '+15558889999', body: 'failover' });
     expect(msg.status).toBe('SENT'); // second provider succeeded after the first failed
+  });
+});
+
+describe('MessagingService India DLT enforcement (GME-06)', () => {
+  const dltOk: DltResolver = {
+    resolveForBody: async () => ({ dltTemplateId: 'T', senderId: 'S', entityId: 'E' }),
+  };
+  const dltNone: DltResolver = { resolveForBody: async () => null };
+
+  it('blocks a +91 SMS with no matching DLT template', async () => {
+    const s = new MessagingService(db, fakeResolver, {
+      providerFactory: fakeFactory,
+      dlt: dltNone,
+    });
+    await expect(s.send(C1, { channel: 'SMS', to: '+919812345678', body: 'x' })).rejects.toThrow(
+      /DLT/i,
+    );
+  });
+
+  it('allows a +91 SMS that matches a registered DLT template', async () => {
+    const s = new MessagingService(db, fakeResolver, { providerFactory: fakeFactory, dlt: dltOk });
+    // fakeResolver only resolves creds for 'twilio' (global) — the chain falls to it and sends.
+    const msg = await s.send(C1, { channel: 'SMS', to: '+919812345678', body: 'ok' });
+    expect(msg.status).toBe('SENT');
+  });
+
+  it('does not require DLT for a non-India SMS', async () => {
+    const s = new MessagingService(db, fakeResolver, {
+      providerFactory: fakeFactory,
+      dlt: dltNone,
+    });
+    const msg = await s.send(C1, { channel: 'SMS', to: '+14155550100', body: 'ok' });
+    expect(msg.status).toBe('SENT');
   });
 });
 

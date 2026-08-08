@@ -5831,3 +5831,19 @@ The first **real multi-provider** drop — two India SMS carriers that the whole
 **Result:** an India (+91) SMS now routes **msg91 → gupshup → twilio** (cheapest-first with failover); a non-India SMS stays on the global carriers. Each metered into `UsageRecord` (GME-04), keyed by the winning provider.
 
 **Tests:** `adapters/msg91.test.ts` + `gupshup.test.ts` (payload shape, success/error parsing, non-2xx) with a fake HTTP transport; `routing.test.ts` — India routing (msg91 first for IN; India carriers filtered for unknown country) + `countryFromPhone`; `provider-factory.test.ts` — both new providers map correctly. biome clean; enum sync verified. **Keys to live-verify:** `MSG91_AUTHKEY`/`MSG91_SENDER`/`MSG91_FLOW_ID`, `GUPSHUP_USERID`/`GUPSHUP_PASSWORD`/`GUPSHUP_SENDER` (or per-tenant BYOK). Next: **GME-06** (India DLT compliance engine — the enforcement + template-binding these adapters carry today).
+
+---
+
+## GME-06 — India DLT compliance engine (lawful SMS to +91) — 2026-08-08 — ✅ DONE — 🧠 OPUS
+
+India SMS is legally required (TRAI DLT) to go out under a **registered entity/header with a DLT-approved content template**. GME-06 makes it lawful: a +91 SMS whose body doesn't match a registered template is **blocked**; a match stamps the resolved template/sender/entity ids onto the carrier request.
+
+**Changes.**
+- **Prisma** — `DltTemplate` model (tenant, entityId, senderId, dltTemplateId, category, body pattern, active) + `Tenant.dltTemplates` back-relation; migration `20260808160000_gme06_dlt_templates` (table + FK + indexes + tenant-isolation RLS).
+- **`dlt.service.ts`** (new) — the compliance engine: pure **`dltTemplateMatches(templateBody, message)`** (a `{#var#}` template → an *anchored* regex — fixed text must match exactly, variables stand in for any value) + `DltService` (register / list / delete, RLS-scoped via `withTenant`) implementing a **`DltResolver`** seam whose `resolveForBody(tenant, body)` returns the first matching template's `{dltTemplateId, senderId, entityId}` (else null).
+- **`dlt.routes.ts`** (new) — `/messaging/dlt` CRUD, gated to config-manager roles.
+- **`senders.ts`** — `OutboundMessage` gains `dltTemplateId?` / `dltSender?` / `dltEntityId?`. **`adapters/msg91.ts`** uses `msg.dltTemplateId ?? flowId` + `msg.dltSender ?? sender`; **`adapters/gupshup.ts`** uses `mask` + adds `principalEntityId` + `dltTemplateId` params when present.
+- **`messaging.service.ts`** — takes an optional `dlt` resolver; `send()` now, for a **`SMS` to `+91`** (via `countryFromPhone`), resolves a DLT template and **throws a clear `ValidationError` if none matches**, else stamps the ids onto the adapter call. Non-India / non-SMS skip DLT; without a resolver injected (tests) DLT is skipped.
+- **Wiring** — `composition.ts` builds `DltService` + passes it to `MessagingService`; `main.ts` mounts `/messaging/dlt`.
+
+**DoD:** a non-DLT India SMS is blocked with an actionable reason; a registered-template match sends with the DLT ids stamped; non-India SMS is unaffected. **Checks:** biome clean (only the shared `req.ctx!` warnings); tests — pure `dltTemplateMatches` (match / anchored / non-match), `DltService` register+resolve (real Postgres, RLS), and `messaging.service` India-DLT enforcement (blocked without template, allowed + sent with, skipped for non-India). Migration is additive (new table). Next: **GME-07** (global SMS wave 1 — Vonage + Plivo + Telnyx; Plivo/Telnyx reuse existing carrier creds).
