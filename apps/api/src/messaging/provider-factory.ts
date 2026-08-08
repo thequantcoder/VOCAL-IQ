@@ -1,3 +1,5 @@
+import { GupshupSmsSender } from './adapters/gupshup';
+import { Msg91SmsSender } from './adapters/msg91';
 import {
   type HttpClient,
   type MessageSender,
@@ -28,6 +30,15 @@ export const createMessagingProvider: ProviderFactory = (providerId, creds, http
         creds.accountSid ?? '',
         creds.authToken ?? '',
         creds.from ?? '',
+        http,
+      );
+    case 'msg91':
+      return new Msg91SmsSender(creds.authKey ?? '', creds.sender ?? '', creds.flowId ?? '', http);
+    case 'gupshup':
+      return new GupshupSmsSender(
+        creds.userId ?? '',
+        creds.password ?? '',
+        creds.sender ?? '',
         http,
       );
     case 'whatsapp-cloud':

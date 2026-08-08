@@ -25,12 +25,25 @@ export type RoutingStrategy = 'least_cost' | 'priority';
 const PROVIDER_ROUTES: Record<string, { countries: 'global' | string[]; routingPriceUsd: number }> =
   {
     twilio: { countries: 'global', routingPriceUsd: 0.0079 },
+    // India SMS (GME-05) — cheaper than Twilio for +91, so they win least-cost for India numbers.
+    msg91: { countries: ['IN'], routingPriceUsd: 0.0018 },
+    gupshup: { countries: ['IN'], routingPriceUsd: 0.002 },
     'whatsapp-cloud': { countries: 'global', routingPriceUsd: 0.005 },
     telegram: { countries: 'global', routingPriceUsd: 0 },
     messenger: { countries: 'global', routingPriceUsd: 0 },
     instagram: { countries: 'global', routingPriceUsd: 0 },
     'rcs-gateway': { countries: 'global', routingPriceUsd: 0.007 },
   };
+
+/**
+ * Minimal E.164 → ISO country detection for routing (GME-05) — today India (+91), which is what the
+ * India carriers (MSG91/Gupshup) cover; expand as more regional providers land. Unknown → undefined
+ * → only global providers are considered.
+ */
+export function countryFromPhone(to: string): string | undefined {
+  if (to.startsWith('+91')) return 'IN';
+  return undefined;
+}
 
 /** The candidate providers for a channel (from the specs + their routing metadata). */
 export function providerRoutes(channel: MessageChannel): ProviderRoute[] {
@@ -48,8 +61,11 @@ export function providerRoutes(channel: MessageChannel): ProviderRoute[] {
 }
 
 function coversCountry(route: ProviderRoute, country?: string): boolean {
-  if (!country || route.countries === 'global') return true;
-  return route.countries.includes(country.toUpperCase());
+  // A global provider always matches. A country-restricted provider (e.g. India-only MSG91) matches
+  // ONLY when the destination country is known AND covered — so an unknown-country send never routes
+  // to a restricted carrier (it falls to the global providers).
+  if (route.countries === 'global') return true;
+  return country ? route.countries.includes(country.toUpperCase()) : false;
 }
 
 /**

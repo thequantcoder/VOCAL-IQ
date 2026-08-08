@@ -5809,3 +5809,25 @@ Messaging now flows through the platform's **unified billing pipeline** (golden 
 - **Tests** — a successful SMS send emits a `messaging` UsageRecord (provider TWILIO, byok false, cost>0, units≥1); a gated WHATSAPP send emits none.
 
 **DoD:** every real messaging send is attributed to the tenant in `UsageRecord`, BYOK vs managed distinguished, feeding wallet/quota/reseller-margin via the existing pipeline. **Checks:** biome clean; metering + gated tests; enum sync (shared↔Prisma) + additive migration; CI regenerates the client for the new enum values. Next: **GME-05** (India SMS providers wave 1 — MSG91 + Gupshup) — the first real multi-provider adapters the router (GME-03) + vault (GME-01) + metering (GME-04) now support.
+
+---
+
+## GME-05 — India SMS wave 1: MSG91 + Gupshup (first real multi-provider adapters) — 2026-08-08 — ⚡ SONNET (built as OPUS) — ✅ DONE
+
+The first **real multi-provider** drop — two India SMS carriers that the whole Phase-A foundation (registry/vault/router/metering) now light up. Built to each provider's documented API (CLAUDE.md §15 — docs read, not guessed), gated on the tenant's creds.
+
+**Adapters (`messaging/adapters/`, new dir for the growing fleet):**
+- **`msg91.ts`** — `Msg91SmsSender` via the **v5 Flow API** (`POST /api/v5/flow/`, `authkey` header). India SMS is DLT-mandated, so it sends through a DLT flow: `flow_id` (template) + `sender` (approved header) from creds, body as the flow's `body` variable. Parses `type: 'success'` → request id.
+- **`gupshup.ts`** — `GupshupSmsSender` via **GatewayAPI/rest** (plain `userid`/`password` auth, `format=json`, `mask`=DLT sender). Parses `response.status === 'success'` → message id.
+- (Full DLT template-matching enforcement + DLR/inbound webhooks land in GME-06; these adapters do the send + carry the DLT sender/template from creds.)
+
+**Wiring (the foundation pays off — mostly config):**
+- **`provider-factory.ts`** — `msg91` + `gupshup` cases (build from resolved creds).
+- **`provider-specs.ts`** — msg91 (authKey/sender/flowId) + gupshup (userId/password/sender) credential specs + env fallback (`MSG91_*` / `GUPSHUP_*`) + `messagingProviderEnum` (→ `Provider.MSG91`/`GUPSHUP`).
+- **`routing.ts`** — `PROVIDER_ROUTES`: msg91 `['IN'] @ 0.0018`, gupshup `['IN'] @ 0.002` (both cheaper than Twilio's 0.0079, so they win least-cost for +91). **`countryFromPhone(+91→IN)`** + a tightened `coversCountry` (a country-restricted carrier matches ONLY when the destination country is known & covered — so unknown-country sends never route to an India-only carrier). `send()` now passes the detected country to the router.
+- **Enums** — `Provider.MSG91` / `GUPSHUP` (shared + Prisma + migration `20260808150000`, `ADD VALUE`); added to `CAPABILITY_PROVIDERS[messaging]`.
+- **`.env.example`** — a Messaging-providers section with the `MSG91_*` / `GUPSHUP_*` platform-fallback keys.
+
+**Result:** an India (+91) SMS now routes **msg91 → gupshup → twilio** (cheapest-first with failover); a non-India SMS stays on the global carriers. Each metered into `UsageRecord` (GME-04), keyed by the winning provider.
+
+**Tests:** `adapters/msg91.test.ts` + `gupshup.test.ts` (payload shape, success/error parsing, non-2xx) with a fake HTTP transport; `routing.test.ts` — India routing (msg91 first for IN; India carriers filtered for unknown country) + `countryFromPhone`; `provider-factory.test.ts` — both new providers map correctly. biome clean; enum sync verified. **Keys to live-verify:** `MSG91_AUTHKEY`/`MSG91_SENDER`/`MSG91_FLOW_ID`, `GUPSHUP_USERID`/`GUPSHUP_PASSWORD`/`GUPSHUP_SENDER` (or per-tenant BYOK). Next: **GME-06** (India DLT compliance engine — the enforcement + template-binding these adapters carry today).

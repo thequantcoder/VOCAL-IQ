@@ -3,6 +3,7 @@ import {
   ProviderHealth,
   type ProviderRoute,
   SmartRouter,
+  countryFromPhone,
   orderProviders,
   providerRoutes,
 } from './routing';
@@ -72,5 +73,26 @@ describe('SmartRouter + providerRoutes', () => {
 
   it('selectChain returns a chain for the channel', () => {
     expect(new SmartRouter().selectChain('SMS')).toContain('twilio');
+  });
+});
+
+describe('India SMS routing (GME-05)', () => {
+  it('countryFromPhone detects India (+91)', () => {
+    expect(countryFromPhone('+919812345678')).toBe('IN');
+    expect(countryFromPhone('+14155550100')).toBeUndefined();
+  });
+
+  it('routes an India (+91) SMS to the cheapest India carrier first, global as failover', () => {
+    const chain = new SmartRouter().selectChain('SMS', 'IN');
+    expect(chain[0]).toBe('msg91'); // cheapest India carrier
+    expect(chain).toContain('gupshup');
+    expect(chain).toContain('twilio'); // global still in the chain for failover
+  });
+
+  it('routes a non-India SMS to global providers only (India carriers filtered out)', () => {
+    const chain = new SmartRouter().selectChain('SMS'); // unknown country
+    expect(chain).not.toContain('msg91');
+    expect(chain).not.toContain('gupshup');
+    expect(chain).toContain('twilio');
   });
 });

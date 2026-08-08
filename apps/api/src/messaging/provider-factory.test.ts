@@ -10,6 +10,12 @@ describe('createMessagingProvider', () => {
       createMessagingProvider('twilio', { accountSid: 'AC', authToken: 't', from: '+1' }),
     ).toMatchObject({ id: 'twilio', channel: 'SMS' });
     expect(
+      createMessagingProvider('msg91', { authKey: 'k', sender: 's', flowId: 'f' }),
+    ).toMatchObject({ id: 'msg91', channel: 'SMS' });
+    expect(
+      createMessagingProvider('gupshup', { userId: 'u', password: 'p', sender: 's' }),
+    ).toMatchObject({ id: 'gupshup', channel: 'SMS' });
+    expect(
       createMessagingProvider('whatsapp-cloud', { phoneNumberId: 'p', accessToken: 't' }),
     ).toMatchObject({ id: 'whatsapp-cloud', channel: 'WHATSAPP' });
     expect(createMessagingProvider('telegram', { botToken: 't' })).toMatchObject({
