@@ -21,6 +21,18 @@ export const CAPABILITY_PROVIDERS: Record<Capability, Provider[]> = {
   [Capability.STT]: [Provider.DEEPGRAM, Provider.ASSEMBLYAI],
   [Capability.TELEPHONY]: [Provider.TWILIO, Provider.TELNYX, Provider.LIVEKIT],
   [Capability.EMBEDDING]: [Provider.OPENAI, Provider.GEMINI],
+  // Messaging carriers (GME-04). The messaging engine has its own SmartRouter (messaging/routing.ts);
+  // this list keeps the capability→providers map exhaustive + validates any messaging routing config.
+  [Capability.MESSAGING]: [
+    Provider.TWILIO,
+    Provider.TELNYX,
+    Provider.PLIVO,
+    Provider.WHATSAPP,
+    Provider.MESSENGER,
+    Provider.TELEGRAM,
+    Provider.INSTAGRAM,
+    Provider.RCS,
+  ],
 };
 
 /** Is `provider` valid for `capability`? */
@@ -44,6 +56,7 @@ export const routingDefaultsSchema = z.object({
   stt: capabilityRouteSchema.optional(),
   telephony: capabilityRouteSchema.optional(),
   embedding: capabilityRouteSchema.optional(),
+  messaging: capabilityRouteSchema.optional(),
 });
 export type RoutingDefaults = z.infer<typeof routingDefaultsSchema>;
 

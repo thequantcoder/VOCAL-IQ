@@ -64,6 +64,10 @@ enum Provider {
   MESSENGER
   LIVEKIT
   SARVAM
+  // Messaging-only providers (GME-04) — for cost attribution / analytics.
+  TELEGRAM
+  INSTAGRAM
+  RCS
 }
 
 enum Capability {
@@ -72,6 +76,7 @@ enum Capability {
   stt
   telephony
   embedding
+  messaging
 }
 
 enum AgentType {

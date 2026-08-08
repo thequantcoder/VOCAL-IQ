@@ -1,4 +1,5 @@
 import {
+  Capability,
   type ChannelMix,
   type InboundIntent,
   type MessageChannel,
@@ -13,11 +14,13 @@ import {
   messageCostUsd,
   renderMessageTemplate,
   shouldAdvanceStatus,
+  smsSegments,
 } from '@vocaliq/shared';
 import type { PrismaService } from '../db/prisma.service';
 import { RateLimiter } from '../widget/rate-limiter';
 import type { ResolvedMessagingCreds } from './messaging-key-vault';
 import { type ProviderFactory, createMessagingProvider } from './provider-factory';
+import { messagingProviderEnum } from './provider-specs';
 import { type MessageRouter, SmartRouter } from './routing';
 import { type HttpClient, fetchHttp } from './senders';
 
@@ -190,6 +193,7 @@ export class MessagingService {
     let status: MessageStatus = 'QUEUED';
     let providerMessageId: string | undefined;
     let usedProviderId: string | undefined;
+    let usedByok = false;
     let error: string | undefined;
     let attempted = false;
     for (const pid of chain) {
@@ -209,6 +213,7 @@ export class MessagingService {
       if (result.status === 'SENT') {
         status = 'SENT';
         providerMessageId = result.providerMessageId;
+        usedByok = resolved.mode === 'byok';
         error = undefined;
         break;
       }
@@ -217,8 +222,14 @@ export class MessagingService {
     }
     if (!attempted) error = 'No messaging provider configured for this channel';
 
-    const row = await this.db.withTenant(tenantId, (tx) =>
-      tx.message.create({
+    // GME-04: meter a real send into the unified cost pipeline (UsageRecord) — mirrors the voice
+    // meterTerminated pattern; wallet debit + reseller margin roll up from these records (BYOK is
+    // recorded but excluded from billable). Only when the message actually SENT via a mapped provider.
+    const billingProvider =
+      status === 'SENT' && usedProviderId ? messagingProviderEnum(usedProviderId) : undefined;
+
+    const row = await this.db.withTenant(tenantId, async (tx) => {
+      const msg = await tx.message.create({
         data: {
           tenantId,
           channel: input.channel,
@@ -236,8 +247,24 @@ export class MessagingService {
           ...(error ? { error } : {}),
         },
         select: SELECT_MESSAGE,
-      }),
-    );
+      });
+      if (billingProvider) {
+        // SMS bills per segment; the rest per message.
+        const units = input.channel === 'SMS' ? smsSegments(body) : 1;
+        await tx.usageRecord.create({
+          data: {
+            tenantId,
+            provider: billingProvider,
+            capability: Capability.MESSAGING,
+            units,
+            costUsd,
+            byok: usedByok,
+            ...(input.callId ? { callId: input.callId } : {}),
+          },
+        });
+      }
+      return msg;
+    });
     return toMessageRow(row);
   }
 

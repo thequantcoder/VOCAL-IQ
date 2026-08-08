@@ -1,4 +1,4 @@
-import type { MessageChannel } from '@vocaliq/shared';
+import { type MessageChannel, Provider } from '@vocaliq/shared';
 
 /**
  * Messaging-provider credential specs (GME-01). Messaging providers need a SET of fields (e.g. Twilio
@@ -94,6 +94,20 @@ export function messagingProviderSpec(providerId: string): MessagingProviderSpec
  */
 export function defaultProviderForChannel(channel: MessageChannel): string | undefined {
   return Object.values(MESSAGING_PROVIDER_SPECS).find((s) => s.channel === channel)?.id;
+}
+
+/** The billing `Provider` enum for a registry provider id (GME-04) — for UsageRecord attribution. */
+const PROVIDER_ENUM: Record<string, Provider> = {
+  twilio: Provider.TWILIO,
+  'whatsapp-cloud': Provider.WHATSAPP,
+  telegram: Provider.TELEGRAM,
+  messenger: Provider.MESSENGER,
+  instagram: Provider.INSTAGRAM,
+  'rcs-gateway': Provider.RCS,
+};
+
+export function messagingProviderEnum(providerId: string): Provider | undefined {
+  return PROVIDER_ENUM[providerId];
 }
 
 /** The public (secret-free) provider catalogue for the config UI (GME-18). */

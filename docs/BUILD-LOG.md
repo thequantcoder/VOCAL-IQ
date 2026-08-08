@@ -5793,3 +5793,19 @@ The routing brain that makes multi-provider "smart" — built now (pure + tested
 - **Tests** — `routing.test.ts` (pure: least-cost order, country filter, health eject/recover, chain) + `messaging.service.test.ts` (a 2-provider chain where the first fails → the send succeeds via the second).
 
 **DoD:** the send path load-balances (cheapest healthy first) + fails over across providers, ejecting flaky ones — ready for the GME-05+ provider fleet. **Checks:** biome clean; pure routing tests + service fallover test. No migration (persisted per-tenant routing rules land with the config UI in GME-18). Next: **GME-04** (unified `UsageRecord` metering + reseller markup) — then the provider adapters (GME-05+).
+
+---
+
+## GME-04 — unified cost metering → UsageRecord + reseller markup — 2026-08-08 — ✅ DONE — 🧠 OPUS
+
+Messaging now flows through the platform's **unified billing pipeline** (golden rule #4 — no unmetered path). A sent message emits a `UsageRecord` exactly like a voice call, so **wallet debit + plan quota + reseller margin** roll up from the same records — no messaging-specific billing code.
+
+**Approach (mirrors voice):** the audit confirmed voice calls just *create a UsageRecord* (the WhatsApp/Messenger `meterTerminated` pattern); wallet/margin are computed by the existing rollup. So GME-04 = emit a messaging `UsageRecord` on send-success — nothing more.
+
+**Changes.**
+- **Enums (synced shared + Prisma + migration `20260808140000_gme04_messaging_usage`):** `Capability.messaging`; `Provider.TELEGRAM` / `INSTAGRAM` / `RCS` (the messaging-only carriers not already in the enum) — clean `ALTER TYPE … ADD VALUE IF NOT EXISTS` appends, matching the Sarvam precedent.
+- **`provider-specs.ts`** — `messagingProviderEnum(providerId)` maps a registry provider id → the billing `Provider` enum (twilio→TWILIO, whatsapp-cloud→WHATSAPP, telegram→TELEGRAM, …).
+- **`messaging.service.ts`** — on a real send (`SENT` via a mapped provider), the same `withTenant` transaction that persists the Message now also creates a `UsageRecord(provider, capability=messaging, units, costUsd, byok)`. `units` = SMS segments (else 1); `byok` = whether the winning provider's creds were the tenant's own (BYOK is recorded but excluded from *billable* by the cost service). Gated/QUEUED sends are not metered.
+- **Tests** — a successful SMS send emits a `messaging` UsageRecord (provider TWILIO, byok false, cost>0, units≥1); a gated WHATSAPP send emits none.
+
+**DoD:** every real messaging send is attributed to the tenant in `UsageRecord`, BYOK vs managed distinguished, feeding wallet/quota/reseller-margin via the existing pipeline. **Checks:** biome clean; metering + gated tests; enum sync (shared↔Prisma) + additive migration; CI regenerates the client for the new enum values. Next: **GME-05** (India SMS providers wave 1 — MSG91 + Gupshup) — the first real multi-provider adapters the router (GME-03) + vault (GME-01) + metering (GME-04) now support.
