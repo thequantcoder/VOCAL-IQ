@@ -30,6 +30,36 @@ export const TEXT_MESSAGE_CHANNELS = [
   'RCS',
 ] as const;
 
+// ── Delivery-status lifecycle (idempotent webhook updates, GME-02b) ─────────────
+
+/**
+ * Rank of a delivery status along its lifecycle. Providers deliver DLR callbacks out of order and
+ * RETRY them, so a status is only ever ADVANCED — a replayed or late older callback is a no-op.
+ * `QUEUED → SENT → DELIVERED → READ`; `FAILED` is a terminal branch off QUEUED/SENT (rank tied with
+ * DELIVERED so neither overwrites the other). `RECEIVED` is inbound-only, outside the DLR lifecycle.
+ */
+export function messageStatusRank(status: MessageStatus): number {
+  switch (status) {
+    case 'QUEUED':
+      return 0;
+    case 'SENT':
+      return 1;
+    case 'FAILED':
+      return 2;
+    case 'DELIVERED':
+      return 2;
+    case 'READ':
+      return 3;
+    case 'RECEIVED':
+      return 0;
+  }
+}
+
+/** True iff `next` is a strictly-forward transition from `current` (idempotent-safe DLR apply). */
+export function shouldAdvanceStatus(current: MessageStatus, next: MessageStatus): boolean {
+  return messageStatusRank(next) > messageStatusRank(current);
+}
+
 // ── Templates ─────────────────────────────────────────────────────────────────
 
 export const messageTemplateInputSchema = z.object({

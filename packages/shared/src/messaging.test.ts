@@ -5,8 +5,10 @@ import {
   classifyInbound,
   extractTemplateVars,
   messageCostUsd,
+  messageStatusRank,
   messageTemplateInputSchema,
   renderMessageTemplate,
+  shouldAdvanceStatus,
   smsSegments,
 } from './messaging.js';
 
@@ -98,5 +100,28 @@ describe('blendedNextStep', () => {
   });
   it('does not text when no template is configured', () => {
     expect(blendedNextStep('NO_ANSWER', { ...mix, templateId: null }).sendText).toBe(false);
+  });
+});
+
+describe('delivery-status lifecycle (GME-02b)', () => {
+  it('advances forward along the lifecycle', () => {
+    expect(shouldAdvanceStatus('QUEUED', 'SENT')).toBe(true);
+    expect(shouldAdvanceStatus('SENT', 'DELIVERED')).toBe(true);
+    expect(shouldAdvanceStatus('DELIVERED', 'READ')).toBe(true);
+    expect(shouldAdvanceStatus('SENT', 'FAILED')).toBe(true);
+  });
+
+  it('never regresses or overwrites a terminal status (idempotent replays are no-ops)', () => {
+    expect(shouldAdvanceStatus('DELIVERED', 'SENT')).toBe(false); // late/out-of-order DLR
+    expect(shouldAdvanceStatus('READ', 'DELIVERED')).toBe(false);
+    expect(shouldAdvanceStatus('DELIVERED', 'FAILED')).toBe(false); // delivered ≠ failed
+    expect(shouldAdvanceStatus('FAILED', 'DELIVERED')).toBe(false);
+    expect(shouldAdvanceStatus('DELIVERED', 'DELIVERED')).toBe(false); // replay
+  });
+
+  it('ranks the lifecycle monotonically', () => {
+    expect(messageStatusRank('QUEUED')).toBeLessThan(messageStatusRank('SENT'));
+    expect(messageStatusRank('SENT')).toBeLessThan(messageStatusRank('DELIVERED'));
+    expect(messageStatusRank('DELIVERED')).toBeLessThan(messageStatusRank('READ'));
   });
 });

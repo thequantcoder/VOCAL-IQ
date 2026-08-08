@@ -155,6 +155,34 @@ describe('MessagingService.updateStatus', () => {
   });
 });
 
+describe('MessagingService idempotent webhooks (GME-02b)', () => {
+  it('never regresses a delivered status to a late/replayed SENT', async () => {
+    const msg = await svc.send(C1, { channel: 'SMS', to: '+15553334444', body: 'track' });
+    const pid = `SM_${sent.length}`;
+    await svc.updateStatus(C1, pid, 'DELIVERED');
+    await svc.updateStatus(C1, pid, 'SENT'); // out-of-order/replayed → must be a no-op
+    const list = await svc.listMessages(C1, 200);
+    expect(list.find((m) => m.id === msg.id)?.status).toBe('DELIVERED');
+  });
+
+  it('dedupes a replayed inbound message (same provider id → recorded once)', async () => {
+    await svc.recordInbound(C1, {
+      channel: 'SMS',
+      from: '+15556667777',
+      body: 'inbound-dedupe',
+      providerMessageId: 'IN_1',
+    });
+    await svc.recordInbound(C1, {
+      channel: 'SMS',
+      from: '+15556667777',
+      body: 'inbound-dedupe',
+      providerMessageId: 'IN_1',
+    });
+    const inbound = (await svc.listMessages(C1, 200)).filter((m) => m.body === 'inbound-dedupe');
+    expect(inbound).toHaveLength(1);
+  });
+});
+
 describe('Day 93 channels — per-channel opt-out + gated dispatch', () => {
   it('opt-out is per channel: opting out of TELEGRAM does not block SMS', async () => {
     const to = 'tg-9001';
