@@ -206,10 +206,11 @@ model Tenant {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  memberships         Membership[]
-  agents              Agent[]
-  providerCredentials ProviderCredential[]
-  voices              Voice[]
+  memberships          Membership[]
+  agents               Agent[]
+  providerCredentials  ProviderCredential[]
+  messagingCredentials MessagingCredential[]
+  voices               Voice[]
   knowledgeBases      KnowledgeBase[]
   contacts            Contact[]
   leads               Lead[]
@@ -640,6 +641,26 @@ model MessagingOptOut {
 
   @@unique([tenantId, channel, phone])
   @@index([tenantId])
+}
+
+// Per-tenant BYOK vault for messaging providers (GME-01). Multi-field credential SET stored as ONE
+// envelope-encrypted JSON blob (never plaintext), keyed by the registry provider id (a string — not
+// the Provider enum; ~15 providers). tenantId null = a platform-managed default. Uniqueness is a
+// NULLS-NOT-DISTINCT index created in the migration (a null tenantId can't be a Prisma compound
+// unique), so there's exactly one row per (tenant-or-platform, provider). RLS-scoped like ProviderCredential.
+model MessagingCredential {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String?  @db.Uuid // null = platform-managed default (SUPER_ADMIN only)
+  tenant         Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  providerId     String // registry provider id: twilio, msg91, vonage, …
+  encryptedCreds Bytes // envelope-encrypted JSON credential set — ciphertext only
+  meta           Json     @default("{}") // masked hints only: { fields: { field: last4 } } — NEVER secrets
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([providerId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

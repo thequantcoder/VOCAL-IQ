@@ -151,7 +151,7 @@ without breaking the existing WhatsApp/Twilio/Telegram/Meta/RCS behaviour.
 **DoD:** all existing messaging tests green; registry returns the same adapters; new provider = 1 file + 1 registry line.
 **Tests:** registry resolution unit tests; existing `senders.test.ts` still passes (adapted).
 
-### GME-01 — BYOK per-tenant key vault for messaging providers · 🧠 OPUS · keys: KMS optional (local `VAULT_MASTER_KEY` works)
+### GME-01 — BYOK per-tenant key vault for messaging providers · 🧠 OPUS · keys: KMS optional (local `VAULT_MASTER_KEY` works) · ✅ DONE (2026-08-08)
 **Goal:** Per-tenant provider credentials, envelope-encrypted, with managed fallback.
 **Build:**
 - Reuse `ProviderCredential` + `apps/api/src/crypto/envelope.ts`; add messaging provider kinds.
@@ -333,4 +333,4 @@ end-to-end (call → consent → follow-up) on a dedicated test tenant. **Tests:
 ## 6. Execution
 We go **one GME day at a time**, each shipped as its own PR via the `/tmp` workflow (CI-green → squash-merge →
 reconcile), with `BUILD-LOG.md` + this file updated and the A–K self-audit written out. Regional UI strings use the
-`scripts/i18n` hand-off kit. **Progress: GME-00 ✅ done (#TBD). Next: `GME-01` (BYOK per-tenant key vault).**
+`scripts/i18n` hand-off kit. **Progress: GME-00 ✅ (#249) · GME-01 ✅. Next: `GME-02` (async send pipeline + retries + idempotency).**

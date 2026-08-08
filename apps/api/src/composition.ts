@@ -69,6 +69,7 @@ import { MarketplaceService } from './marketplace/marketplace.service';
 import { McpService } from './mcp/mcp.service';
 import { httpMcpTransport } from './mcp/transport';
 import { MemoryService } from './memory/memory.service';
+import { MessagingKeyVault } from './messaging/messaging-key-vault';
 import { MessagingService } from './messaging/messaging.service';
 import { buildRegistry } from './messaging/registry';
 import { MessengerCallCostService } from './messenger-calling/messenger-call-cost.service';
@@ -365,6 +366,9 @@ export function createServices() {
     formExtraction.extractForCall(tid, callId),
   );
   const vault = new VaultService(db, encryptor);
+  // Per-tenant BYOK vault for messaging providers (GME-01) — same envelope encryptor, multi-field
+  // credential sets. Resolution (BYOK → platform row → env) is used by the send path in GME-02.
+  const messagingKeyVault = new MessagingKeyVault(db, encryptor, process.env);
   const routingDefaults = new RoutingDefaultsService(db);
   const featureFlags = new FeatureFlagsService(db, entitlements);
   const quota = new QuotaService(db, entitlements);
@@ -548,6 +552,7 @@ export function createServices() {
     memory,
     mcp,
     messaging,
+    messagingKeyVault,
     whatsappCalling,
     whatsappCallSettings,
     whatsappCallRead,
