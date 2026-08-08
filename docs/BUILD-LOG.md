@@ -5847,3 +5847,20 @@ India SMS is legally required (TRAI DLT) to go out under a **registered entity/h
 - **Wiring** — `composition.ts` builds `DltService` + passes it to `MessagingService`; `main.ts` mounts `/messaging/dlt`.
 
 **DoD:** a non-DLT India SMS is blocked with an actionable reason; a registered-template match sends with the DLT ids stamped; non-India SMS is unaffected. **Checks:** biome clean (only the shared `req.ctx!` warnings); tests — pure `dltTemplateMatches` (match / anchored / non-match), `DltService` register+resolve (real Postgres, RLS), and `messaging.service` India-DLT enforcement (blocked without template, allowed + sent with, skipped for non-India). Migration is additive (new table). Next: **GME-07** (global SMS wave 1 — Vonage + Plivo + Telnyx; Plivo/Telnyx reuse existing carrier creds).
+
+---
+
+## GME-07 — global SMS wave 1: Vonage + Plivo + Telnyx — 2026-08-08 — ⚡ SONNET (built as OPUS) — ✅ DONE
+
+Three global SMS carriers, built to their documented APIs (docs read, not guessed). **Plivo + Telnyx reuse the existing telephony carrier credentials** (same `PLIVO_*` / `TELNYX_API_KEY` env), so they light up with no new keys where the carrier is already configured.
+
+**Adapters (`messaging/adapters/`):**
+- **`vonage.ts`** — Vonage/Nexmo `POST /sms/json` (form-encoded, api_key/secret); parses `messages[0].status === '0'` → message-id.
+- **`plivo.ts`** — Plivo `POST /v1/Account/{authId}/Message/` (basic auth, JSON src/dst/text); parses `message_uuid[0]`.
+- **`telnyx.ts`** — Telnyx `POST /v2/messages` (Bearer, JSON from/to/text); parses `data.id`.
+
+**Wiring (config, as GME-05):** factory cases (vonage/plivo/telnyx) · provider-specs (cred fields + env, Plivo/Telnyx env = the carrier creds) · `messagingProviderEnum` (→ `Provider.VONAGE`/`PLIVO`/`TELNYX`) · `PROVIDER_ROUTES` global with prices **telnyx 0.004 < plivo 0.005 < vonage 0.0065 < twilio 0.0079** · enums `Provider.VONAGE` (Plivo/Telnyx already present; migration `20260808170000`) + `CAPABILITY_PROVIDERS[messaging]` · `.env.example` `VONAGE_*`/`PLIVO_FROM`/`TELNYX_FROM`.
+
+**Result:** a non-India SMS now routes **telnyx → plivo → vonage → twilio** (cheapest global first + failover); +91 still routes msg91 → gupshup → … (India cheapest first). Each metered by the winning provider.
+
+**Tests:** `adapters/global-sms.test.ts` (all three — payload/auth shape, success parse, Vonage error status) with a fake HTTP transport; `routing.test.ts` — global least-cost order (telnyx first); `provider-factory.test.ts` — all three map. biome clean; enum sync verified. **Keys to live-verify:** `VONAGE_API_KEY/SECRET/FROM`; Plivo/Telnyx = existing carrier creds + `*_FROM` (or per-tenant BYOK). Next: **GME-08** (global SMS wave 2 — Sinch + MessageBird + Infobip).

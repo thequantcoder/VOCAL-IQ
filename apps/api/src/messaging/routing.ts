@@ -28,6 +28,10 @@ const PROVIDER_ROUTES: Record<string, { countries: 'global' | string[]; routingP
     // India SMS (GME-05) — cheaper than Twilio for +91, so they win least-cost for India numbers.
     msg91: { countries: ['IN'], routingPriceUsd: 0.0018 },
     gupshup: { countries: ['IN'], routingPriceUsd: 0.002 },
+    // Global SMS (GME-07) — cheaper than Twilio, so they win least-cost for non-India numbers.
+    telnyx: { countries: 'global', routingPriceUsd: 0.004 },
+    plivo: { countries: 'global', routingPriceUsd: 0.005 },
+    vonage: { countries: 'global', routingPriceUsd: 0.0065 },
     'whatsapp-cloud': { countries: 'global', routingPriceUsd: 0.005 },
     telegram: { countries: 'global', routingPriceUsd: 0 },
     messenger: { countries: 'global', routingPriceUsd: 0 },

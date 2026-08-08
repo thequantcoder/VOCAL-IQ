@@ -63,6 +63,40 @@ export const MESSAGING_PROVIDER_SPECS: Record<string, MessagingProviderSpec> = {
     ],
     env: { userId: 'GUPSHUP_USERID', password: 'GUPSHUP_PASSWORD', sender: 'GUPSHUP_SENDER' },
   },
+  vonage: {
+    id: 'vonage',
+    label: 'Vonage (Nexmo) SMS',
+    channel: 'SMS',
+    fields: [
+      { key: 'apiKey', label: 'API key', secret: false },
+      { key: 'apiSecret', label: 'API secret', secret: true },
+      { key: 'from', label: 'Sender id / number', secret: false },
+    ],
+    env: { apiKey: 'VONAGE_API_KEY', apiSecret: 'VONAGE_API_SECRET', from: 'VONAGE_FROM' },
+  },
+  plivo: {
+    id: 'plivo',
+    label: 'Plivo SMS',
+    channel: 'SMS',
+    fields: [
+      { key: 'authId', label: 'Auth id', secret: false },
+      { key: 'authToken', label: 'Auth token', secret: true },
+      { key: 'from', label: 'From number', secret: false },
+    ],
+    // Reuses the same Plivo carrier credentials the telephony side uses.
+    env: { authId: 'PLIVO_AUTH_ID', authToken: 'PLIVO_AUTH_TOKEN', from: 'PLIVO_FROM' },
+  },
+  telnyx: {
+    id: 'telnyx',
+    label: 'Telnyx SMS',
+    channel: 'SMS',
+    fields: [
+      { key: 'apiKey', label: 'API key', secret: true },
+      { key: 'from', label: 'From number', secret: false },
+    ],
+    // Reuses the same Telnyx API key the telephony side uses.
+    env: { apiKey: 'TELNYX_API_KEY', from: 'TELNYX_FROM' },
+  },
   'whatsapp-cloud': {
     id: 'whatsapp-cloud',
     label: 'WhatsApp Cloud API',
@@ -123,6 +157,9 @@ const PROVIDER_ENUM: Record<string, Provider> = {
   twilio: Provider.TWILIO,
   msg91: Provider.MSG91,
   gupshup: Provider.GUPSHUP,
+  vonage: Provider.VONAGE,
+  plivo: Provider.PLIVO,
+  telnyx: Provider.TELNYX,
   'whatsapp-cloud': Provider.WHATSAPP,
   telegram: Provider.TELEGRAM,
   messenger: Provider.MESSENGER,

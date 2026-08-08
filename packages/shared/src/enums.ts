@@ -82,6 +82,8 @@ export const Provider = {
   // India SMS carriers (GME-05).
   MSG91: 'MSG91',
   GUPSHUP: 'GUPSHUP',
+  // Global SMS carrier (GME-07) — Plivo/Telnyx already above (also telephony carriers).
+  VONAGE: 'VONAGE',
 } as const;
 export type Provider = (typeof Provider)[keyof typeof Provider];
 
