@@ -162,6 +162,11 @@ without breaking the existing WhatsApp/Twilio/Telegram/Meta/RCS behaviour.
 **Tests:** resolve BYOK vs managed; encryption round-trip; tenant isolation (tenant A can't read B's creds).
 
 ### GME-02 — Async send pipeline (BullMQ) + idempotency + retries · 🧠 OPUS · keys: none (Redis)
+> **Split into 02a + 02b for reviewable PRs.** **GME-02a ✅ DONE (2026-08-08)** — BYOK-aware send:
+> wired `MessagingKeyVault.resolve()` into `MessagingService.send()` via a `createMessagingProvider`
+> factory (`defaultProviderForChannel` → resolve BYOK→platform→env → factory → adapter.send), so a
+> tenant's stored keys drive the send; used provider persisted on the Message. **GME-02b** = the async
+> BullMQ worker + retries/backoff + webhook-replay idempotency + rate limiting (below).
 **Goal:** Move sends off the request path; add retries, backoff, rate limiting, webhook-replay idempotency.
 **Build:**
 - `apps/workers/src/message-sender.ts` BullMQ worker: dequeue → route (GME-03 stub ok) → resolve key → adapter.send
@@ -333,4 +338,4 @@ end-to-end (call → consent → follow-up) on a dedicated test tenant. **Tests:
 ## 6. Execution
 We go **one GME day at a time**, each shipped as its own PR via the `/tmp` workflow (CI-green → squash-merge →
 reconcile), with `BUILD-LOG.md` + this file updated and the A–K self-audit written out. Regional UI strings use the
-`scripts/i18n` hand-off kit. **Progress: GME-00 ✅ (#249) · GME-01 ✅. Next: `GME-02` (async send pipeline + retries + idempotency).**
+`scripts/i18n` hand-off kit. **Progress: GME-00 ✅ (#249) · GME-01 ✅ (#250) · GME-02a ✅. Next: `GME-02b` (async BullMQ send pipeline + retries + idempotency + rate-limit).**

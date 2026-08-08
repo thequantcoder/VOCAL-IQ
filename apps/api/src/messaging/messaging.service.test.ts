@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { PrismaService } from '../db/prisma.service';
-import { MessagingService } from './messaging.service';
-import { MessagingRegistry } from './registry';
+import { type MessagingCredsResolver, MessagingService } from './messaging.service';
+import type { ProviderFactory } from './provider-factory';
 import type { MessageSender, SendResult } from './senders';
 
 /**
@@ -19,16 +19,26 @@ const R1 = '00000000-0000-0000-0000-000000000002';
 // A fake SMS sender that always succeeds — lets us test the dispatch path without Twilio.
 const sent: { to: string; body: string }[] = [];
 const fakeSms: MessageSender = {
-  id: 'fake-sms',
+  id: 'twilio',
   channel: 'SMS',
   send: vi.fn(async (m): Promise<SendResult> => {
     sent.push({ to: m.to, body: m.body });
     return { status: 'SENT', providerMessageId: `SM_${sent.length}` };
   }),
 };
-// WHATSAPP intentionally unconfigured (gated). The registry preserves single-provider behaviour.
-const registry = MessagingRegistry.fromSenders({ SMS: fakeSms });
-const svc = new MessagingService(db, registry);
+// SMS (provider 'twilio') resolves to a fake provider; every other channel is gated (no creds → QUEUED).
+const fakeResolver: MessagingCredsResolver = {
+  resolve: async (_tenantId, providerId) =>
+    providerId === 'twilio'
+      ? {
+          providerId: 'twilio',
+          creds: { accountSid: 'AC', authToken: 'x', from: '+1' },
+          mode: 'managed',
+        }
+      : null,
+};
+const fakeFactory: ProviderFactory = () => fakeSms;
+const svc = new MessagingService(db, fakeResolver, { providerFactory: fakeFactory });
 
 const templateIds: string[] = [];
 
