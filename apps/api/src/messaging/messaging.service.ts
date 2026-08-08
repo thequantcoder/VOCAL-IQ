@@ -13,6 +13,7 @@ import {
   renderMessageTemplate,
 } from '@vocaliq/shared';
 import type { PrismaService } from '../db/prisma.service';
+import type { MessagingRegistry } from './registry';
 import type { MessageSender } from './senders';
 
 /**
@@ -23,6 +24,7 @@ import type { MessageSender } from './senders';
  * configured, a send is recorded as QUEUED but not dispatched, so the app runs without keys.
  */
 
+/** @deprecated The flat channel→sender map. Superseded by {@link MessagingRegistry} (GME-00). */
 export type Senders = Partial<Record<MessageChannel, MessageSender>>;
 
 export interface MessageTemplateRow {
@@ -64,7 +66,7 @@ export interface SendInput {
 export class MessagingService {
   constructor(
     private readonly db: PrismaService,
-    private readonly senders: Senders,
+    private readonly registry: MessagingRegistry,
   ) {}
 
   // ── Template CRUD ─────────────────────────────────────────────────────────────
@@ -146,14 +148,17 @@ export class MessagingService {
     if (!body.trim()) throw new ValidationError('Message body is required');
 
     const costUsd = messageCostUsd(input.channel, body);
-    const sender = this.senders[input.channel];
+    // The smart router (GME-03) will pick per country/cost/health; today `default()` is the single
+    // configured provider for the channel — behaviour-preserving.
+    const provider = this.registry.default(input.channel);
 
     // Dispatch (or queue if no provider is configured — gated).
     let status: MessageStatus = 'QUEUED';
     let providerMessageId: string | undefined;
+    let providerId: string | undefined;
     let error: string | undefined;
-    if (sender) {
-      const result = await sender.send({
+    if (provider) {
+      const result = await provider.send({
         to: input.to,
         body,
         ...(templateName ? { templateName } : {}),
@@ -161,6 +166,7 @@ export class MessagingService {
       });
       status = result.status;
       providerMessageId = result.providerMessageId;
+      providerId = provider.id;
       error = result.error;
     } else {
       error = 'No messaging provider configured for this channel';
@@ -181,6 +187,7 @@ export class MessagingService {
           ...(input.callId ? { callId: input.callId } : {}),
           ...(input.campaignId ? { campaignId: input.campaignId } : {}),
           ...(providerMessageId ? { providerMessageId } : {}),
+          ...(providerId ? { providerId } : {}),
           ...(error ? { error } : {}),
         },
         select: SELECT_MESSAGE,
