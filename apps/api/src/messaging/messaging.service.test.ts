@@ -48,6 +48,9 @@ afterAll(async () => {
   await db.admin.message.deleteMany({ where: { tenantId: { in: [C1, R1] } } });
   await db.admin.messagingOptOut.deleteMany({ where: { tenantId: { in: [C1, R1] } } });
   await db.admin.messageTemplate.deleteMany({ where: { id: { in: templateIds } } });
+  await db.admin.usageRecord.deleteMany({
+    where: { tenantId: { in: [C1, R1] }, capability: 'messaging' },
+  });
 });
 
 let smsTemplateId: string;
@@ -182,6 +185,32 @@ describe('MessagingService idempotent webhooks (GME-02b)', () => {
     });
     const inbound = (await svc.listMessages(C1, 200)).filter((m) => m.body === 'inbound-dedupe');
     expect(inbound).toHaveLength(1);
+  });
+});
+
+describe('MessagingService cost metering (GME-04)', () => {
+  it('emits a messaging UsageRecord on a successful send (mirrors voice)', async () => {
+    const msg = await svc.send(C1, { channel: 'SMS', to: '+15551119999', body: 'metered hello' });
+    expect(msg.status).toBe('SENT');
+    const rec = await db.admin.usageRecord.findFirst({
+      where: { tenantId: C1, capability: 'messaging', provider: 'TWILIO' },
+      orderBy: { ts: 'desc' },
+    });
+    expect(rec).not.toBeNull();
+    expect(rec?.byok).toBe(false); // fake resolver returns managed mode
+    expect(rec?.costUsd).toBeGreaterThan(0);
+    expect(rec?.units).toBeGreaterThanOrEqual(1); // ≥1 SMS segment
+  });
+
+  it('does not meter a gated (QUEUED) send', async () => {
+    const before = await db.admin.usageRecord.count({
+      where: { tenantId: C1, capability: 'messaging' },
+    });
+    await svc.send(C1, { channel: 'WHATSAPP', to: '+15551119999', body: 'not sent' }); // gated → QUEUED
+    const after = await db.admin.usageRecord.count({
+      where: { tenantId: C1, capability: 'messaging' },
+    });
+    expect(after).toBe(before);
   });
 });
 

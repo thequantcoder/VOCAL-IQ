@@ -191,7 +191,10 @@ without breaking the existing WhatsApp/Twilio/Telegram/Meta/RCS behaviour.
 **DoD:** India numbers route to an India provider by default; a failing provider is skipped; least-cost picks cheapest healthy.
 **Tests:** routing by country; failover on error; health ejection; least-cost selection (pure).
 
-### GME-04 — Unified cost metering → UsageRecord + reseller markup · 🧠 OPUS · keys: none
+### GME-04 — Unified cost metering → UsageRecord + reseller markup · 🧠 OPUS · keys: none · ✅ DONE (2026-08-08)
+> Send-success emits a `UsageRecord(capability=messaging, provider, units, costUsd, byok)` in the same
+> tx as the Message (mirrors voice `meterTerminated`); wallet/quota/reseller-margin roll up from it.
+> Added `Capability.messaging` + `Provider.{TELEGRAM,INSTAGRAM,RCS}` (synced shared+Prisma+migration).
 **Goal:** Every message hits the billing pipeline (wallet debit, plan quota, reseller margin) — golden rule #4.
 **Build:**
 - On send success, emit `UsageRecord(kind='sms'|'rcs'|'whatsapp', tenantId, units=segments|1, costUsd, byok)`
@@ -341,4 +344,4 @@ end-to-end (call → consent → follow-up) on a dedicated test tenant. **Tests:
 ## 6. Execution
 We go **one GME day at a time**, each shipped as its own PR via the `/tmp` workflow (CI-green → squash-merge →
 reconcile), with `BUILD-LOG.md` + this file updated and the A–K self-audit written out. Regional UI strings use the
-`scripts/i18n` hand-off kit. **Progress: GME-00 ✅ (#249) · GME-01 ✅ (#250) · GME-02a ✅ (#251) · GME-02b ✅ (#252) · GME-02c ✅ (#253) · GME-03 ✅ (smart router + fallback chain). Next: `GME-04` (unified UsageRecord metering + reseller markup). Deferred: durable async queue + retries (needs send-exec reachable from apps/workers).**
+`scripts/i18n` hand-off kit. **Progress: GME-00 ✅ (#249) · GME-01 ✅ (#250) · GME-02a ✅ (#251) · GME-02b ✅ (#252) · GME-02c ✅ (#253) · GME-03 ✅ (#254) · GME-04 ✅ (UsageRecord metering + enum sync). Next: `GME-05` (India SMS wave 1 — MSG91 + Gupshup, first real multi-provider adapters). Deferred: durable async queue + retries.**

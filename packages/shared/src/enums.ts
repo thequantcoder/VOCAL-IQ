@@ -50,6 +50,7 @@ export const Capability = {
   STT: 'stt',
   TELEPHONY: 'telephony',
   EMBEDDING: 'embedding',
+  MESSAGING: 'messaging',
 } as const;
 export type Capability = (typeof Capability)[keyof typeof Capability];
 
@@ -74,6 +75,10 @@ export const Provider = {
   // India-first: Sarvam AI covers STT (Saaras) + TTS (Bulbul) + LLM (sarvam-30b/105b,
   // OpenAI-compatible) + translation for Hindi + 22 Indian languages (India roadmap).
   SARVAM: 'SARVAM',
+  // Messaging-only providers (GME-04) — for cost attribution / analytics.
+  TELEGRAM: 'TELEGRAM',
+  INSTAGRAM: 'INSTAGRAM',
+  RCS: 'RCS',
 } as const;
 export type Provider = (typeof Provider)[keyof typeof Provider];
 
