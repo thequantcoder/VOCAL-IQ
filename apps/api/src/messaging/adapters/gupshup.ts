@@ -37,7 +37,10 @@ export class GupshupSmsSender implements MessageSender {
       auth_scheme: 'plain',
       userid: this.userId,
       password: this.password,
-      ...(this.sender ? { mask: this.sender } : {}),
+      ...(msg.dltSender || this.sender ? { mask: msg.dltSender ?? this.sender } : {}),
+      // India DLT (GME-06), when resolved per message.
+      ...(msg.dltEntityId ? { principalEntityId: msg.dltEntityId } : {}),
+      ...(msg.dltTemplateId ? { dltTemplateId: msg.dltTemplateId } : {}),
     });
     try {
       const res = await this.http(url, {

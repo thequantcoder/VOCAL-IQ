@@ -18,6 +18,7 @@ import {
 } from '@vocaliq/shared';
 import type { PrismaService } from '../db/prisma.service';
 import { RateLimiter } from '../widget/rate-limiter';
+import type { DltResolver } from './dlt.service';
 import type { ResolvedMessagingCreds } from './messaging-key-vault';
 import { type ProviderFactory, createMessagingProvider } from './provider-factory';
 import { messagingProviderEnum } from './provider-specs';
@@ -87,6 +88,7 @@ export class MessagingService {
   private readonly factory: ProviderFactory;
   private readonly rateLimiter: RateLimiter;
   private readonly router: MessageRouter;
+  private readonly dlt: DltResolver | undefined;
   constructor(
     private readonly db: PrismaService,
     private readonly credsResolver: MessagingCredsResolver,
@@ -95,12 +97,14 @@ export class MessagingService {
       providerFactory?: ProviderFactory;
       rateLimiter?: RateLimiter;
       router?: MessageRouter;
+      dlt?: DltResolver;
     },
   ) {
     this.http = opts?.http ?? fetchHttp;
     this.factory = opts?.providerFactory ?? createMessagingProvider;
     this.rateLimiter = opts?.rateLimiter ?? new RateLimiter(DEFAULT_SEND_RATE_PER_MIN, 60_000);
     this.router = opts?.router ?? new SmartRouter();
+    this.dlt = opts?.dlt;
   }
 
   // ── Template CRUD ─────────────────────────────────────────────────────────────
@@ -189,7 +193,25 @@ export class MessagingService {
     // GME-03: the smart router returns an ordered provider chain (cheapest healthy first). Try each
     // provider with its BYOK-resolved creds (tenant vault → platform row → env); fall over to the
     // next on a hard failure, recording each outcome so unhealthy providers get ejected from routing.
-    const chain = this.router.selectChain(input.channel, countryFromPhone(input.to));
+    // India DLT (GME-06): a +91 SMS must match a DLT-registered template, else it's blocked. When it
+    // matches, the resolved template/sender/entity ids are stamped onto the carrier request.
+    const country = countryFromPhone(input.to);
+    let dltTemplateId: string | undefined;
+    let dltSender: string | undefined;
+    let dltEntityId: string | undefined;
+    if (this.dlt && input.channel === 'SMS' && country === 'IN') {
+      const dlt = await this.dlt.resolveForBody(tenantId, body);
+      if (!dlt) {
+        throw new ValidationError(
+          'India SMS requires a matching registered DLT template (register it under Messaging → DLT)',
+        );
+      }
+      dltTemplateId = dlt.dltTemplateId;
+      dltSender = dlt.senderId;
+      dltEntityId = dlt.entityId;
+    }
+
+    const chain = this.router.selectChain(input.channel, country);
     let status: MessageStatus = 'QUEUED';
     let providerMessageId: string | undefined;
     let usedProviderId: string | undefined;
@@ -207,6 +229,9 @@ export class MessagingService {
         body,
         ...(templateName ? { templateName } : {}),
         ...(language ? { language } : {}),
+        ...(dltTemplateId ? { dltTemplateId } : {}),
+        ...(dltSender ? { dltSender } : {}),
+        ...(dltEntityId ? { dltEntityId } : {}),
       });
       this.router.record(pid, result.status === 'SENT');
       usedProviderId = pid;
