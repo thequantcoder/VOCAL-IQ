@@ -40,6 +40,9 @@ const CAPABILITY_BUCKET: Record<Capability, keyof Omit<CostBreakdown, 'total'>> 
   [Capability.EMBEDDING]: 'llm',
   [Capability.TTS]: 'tts',
   [Capability.TELEPHONY]: 'telephony',
+  // Messaging (GME-04) folds into the telephony bucket for the per-call breakdown (both are carrier
+  // costs); most messaging usage isn't call-linked, so it rarely appears in a call breakdown anyway.
+  [Capability.MESSAGING]: 'telephony',
 };
 
 /**
