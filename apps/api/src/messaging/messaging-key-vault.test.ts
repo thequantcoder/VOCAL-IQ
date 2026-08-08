@@ -20,8 +20,16 @@ const C1 = '00000000-0000-0000-0000-000000000003';
 const R1 = '00000000-0000-0000-0000-000000000002';
 
 // actorUserId is a UUID column — use valid UUIDs (the audit row stores them).
-const ownerC1: Actor = { userId: '00000000-0000-0000-0000-0000000000a1', tenantId: C1, role: Role.OWNER };
-const ownerR1: Actor = { userId: '00000000-0000-0000-0000-0000000000a2', tenantId: R1, role: Role.OWNER };
+const ownerC1: Actor = {
+  userId: '00000000-0000-0000-0000-0000000000a1',
+  tenantId: C1,
+  role: Role.OWNER,
+};
+const ownerR1: Actor = {
+  userId: '00000000-0000-0000-0000-0000000000a2',
+  tenantId: R1,
+  role: Role.OWNER,
+};
 const superAdmin: Actor = {
   userId: '00000000-0000-0000-0000-0000000000a3',
   tenantId: C1,
