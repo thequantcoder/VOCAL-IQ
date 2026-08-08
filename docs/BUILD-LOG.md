@@ -5715,3 +5715,22 @@ First day of the **Global Messaging Engine** (`docs/GLOBAL-MESSAGING-ENGINE-PLAN
 - **Tests** — new `registry.test.ts` (grouping/default/byId/gated build); `messaging.service.test.ts` adapted to the registry; `senders.test.ts` unchanged (still green).
 
 **DoD:** existing messaging behaviour intact (single provider per channel via `default()`); a new provider is now "one adapter file + one `buildSenders` line + it appears in the registry"; every send records its `providerId`. **Checks:** biome clean on all 6 touched files; registry unit tests added; existing senders/service tests preserved (CI runs them + `prisma generate` for the new column). Next: **GME-01** (BYOK per-tenant key vault).
+
+---
+
+## GME-01 — BYOK per-tenant key vault for messaging providers — 2026-08-08 — ✅ DONE — 🧠 OPUS
+
+Per-tenant BYOK for messaging providers, reusing the existing envelope encryption (`crypto/envelope.ts`) and mirroring the LLM/telephony `VaultService` — but for **multi-field** credential sets.
+
+**Why a new table, not `ProviderCredential`:** messaging creds are a SET (Twilio = accountSid+authToken+from; MSG91 = authkey+sender+DLT ids), not a single API key, and the ~15 providers are string registry ids (not the Postgres `Provider` enum). So a parallel `MessagingCredential` stores the whole set as ONE envelope-encrypted JSON blob.
+
+**Changes.**
+- **`provider-specs.ts`** (new) — `MessagingProviderSpec` (fields + platform env fallback + label) for the 6 existing providers; drives validation, env fallback, and the config UI (GME-18). `messagingProviderCatalogue()` = the secret-free catalogue.
+- **`messaging-key-vault.ts`** (new) — `MessagingKeyVault`: `setCredential` (validate required fields → encrypt `JSON.stringify(creds)` → store ciphertext + masked last-4 hints), `listCredentials` (masked — secrets never returned), `deleteCredential`, and **`resolve(tenantId, providerId)`** = **BYOK row → platform-managed row (tenantId null) → platform env fallback**, returning `{creds, mode:'byok'|'managed'}` (mode feeds GME-04 billing: BYOK = thin fee, managed = marked-up). Same Actor/RBAC (`KEY_MANAGERS`, platform-scope = SUPER_ADMIN-only) + audit pattern as `VaultService`; uses `db.admin` with explicit tenant filters.
+- **`messaging-credentials.routes.ts`** (new) — `/messaging/credentials` (GET catalogue, GET list masked, POST set, DELETE), gated to key-manager roles, write-only secrets. Mounted before `/messaging` (Express precedence).
+- **Prisma** — `MessagingCredential` model + `Tenant.messagingCredentials` back-relation; migration `20260808130000_gme01_messaging_credentials` (table + FK + indexes + a **NULLS-NOT-DISTINCT** unique index on `(tenantId, providerId)` so the single platform row is unique too + the same tenant-isolation **RLS** policy as `ProviderCredential`).
+- **Wiring** — `composition.ts` builds `MessagingKeyVault(db, encryptor, process.env)` and exposes it; `main.ts` mounts the routes.
+
+**Security (self-audit C):** plaintext sealed immediately; only ciphertext + last-4 hints persisted; secrets never in a log or response; per-tenant RLS + app-layer authorization; audited on every change.
+
+**DoD:** a tenant can store Twilio/telegram creds; `resolve()` prefers BYOK, then platform, then env; a tenant can't read/manage/resolve another tenant's creds. **Checks:** biome clean (0 errors); `messaging-key-vault.test.ts` (real Postgres) proves round-trip encryption, BYOK→platform→env precedence, masking, SUPER_ADMIN-only platform scope, and cross-tenant isolation. `resolve()` is not yet wired into the send path — that's **GME-02** (async pipeline consumes it per message). Next: **GME-02** (async send pipeline + retries + idempotency).

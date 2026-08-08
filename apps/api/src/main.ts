@@ -52,6 +52,7 @@ import { learningRoutes } from './learning/learning.routes';
 import { marketplaceRoutes } from './marketplace/marketplace.routes';
 import { mcpRoutes } from './mcp/mcp.routes';
 import { memoryRoutes } from './memory/memory.routes';
+import { messagingCredentialsRoutes } from './messaging/messaging-credentials.routes';
 import {
   messagingRoutes,
   metaMessagingWebhookHandler,
@@ -277,6 +278,8 @@ function bootstrap(): void {
     }),
   );
   app.use('/exports', analyticsExportRoutes(s.analyticsExport, s.tenants));
+  // More specific path first (Express matches in registration order).
+  app.use('/messaging/credentials', messagingCredentialsRoutes(s.messagingKeyVault, s.tenants));
   app.use('/messaging', messagingRoutes(s.messaging, s.tenants));
   app.use('/leads', leadsRoutes(s.leads, s.tenants));
   app.use('/memory', memoryRoutes(s.memory, s.tenants));
