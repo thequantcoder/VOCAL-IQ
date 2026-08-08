@@ -95,4 +95,10 @@ describe('India SMS routing (GME-05)', () => {
     expect(chain).not.toContain('gupshup');
     expect(chain).toContain('twilio');
   });
+
+  it('orders global SMS cheapest-first (GME-07: telnyx < plivo < vonage < twilio)', () => {
+    const chain = new SmartRouter().selectChain('SMS'); // global carriers only
+    expect(chain[0]).toBe('telnyx');
+    expect(chain.indexOf('plivo')).toBeLessThan(chain.indexOf('twilio'));
+  });
 });

@@ -228,7 +228,10 @@ sender-ID handling, registry + pricing entries, gated (`QUEUED` until keys). Rea
 **DoD:** a non-DLT India SMS is blocked with a clear reason; a registered template sends with the DLT id stamped.
 **Tests:** DLT validation (missing header/template/mismatch); template-body match; India vs non-India routing.
 
-### GME-07 — Global SMS wave 1: Vonage + Plivo + Telnyx · ⚡ SONNET · keys: `VONAGE_*`; Plivo/Telnyx reuse carrier creds
+### GME-07 — Global SMS wave 1: Vonage + Plivo + Telnyx · ⚡ SONNET · keys: `VONAGE_*`; Plivo/Telnyx reuse carrier creds · ✅ DONE (2026-08-08)
+> `adapters/{vonage,plivo,telnyx}.ts` (real APIs) + factory/specs/routing/enum wiring. Global least-cost
+> telnyx < plivo < vonage < twilio; non-India routes cheapest-global-first + failover. Plivo/Telnyx reuse
+> the telephony carrier env creds.
 **Build:** three adapters (send + DLR + inbound + verify); **Plivo/Telnyx reuse existing telephony credentials**;
 registry + pricing; gated. **DoD/Tests:** as GME-05 per provider.
 
@@ -351,4 +354,4 @@ end-to-end (call → consent → follow-up) on a dedicated test tenant. **Tests:
 ## 6. Execution
 We go **one GME day at a time**, each shipped as its own PR via the `/tmp` workflow (CI-green → squash-merge →
 reconcile), with `BUILD-LOG.md` + this file updated and the A–K self-audit written out. Regional UI strings use the
-`scripts/i18n` hand-off kit. **Progress: Phase A ✅ (GME-00→04, #249–#255) · GME-05 ✅ India SMS (#256) · GME-06 ✅ India DLT engine. Next: `GME-07` (global SMS wave 1 — Vonage + Plivo + Telnyx). Deferred: durable async queue + retries.**
+`scripts/i18n` hand-off kit. **Progress: Phase A ✅ (#249–#255) · GME-05 India SMS (#256) · GME-06 India DLT (#257) · GME-07 ✅ global SMS (Vonage/Plivo/Telnyx). Next: `GME-08` (global SMS wave 2 — Sinch + MessageBird + Infobip). Deferred: durable async queue + retries.**

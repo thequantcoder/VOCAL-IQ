@@ -1,5 +1,8 @@
 import { GupshupSmsSender } from './adapters/gupshup';
 import { Msg91SmsSender } from './adapters/msg91';
+import { PlivoSmsSender } from './adapters/plivo';
+import { TelnyxSmsSender } from './adapters/telnyx';
+import { VonageSmsSender } from './adapters/vonage';
 import {
   type HttpClient,
   type MessageSender,
@@ -41,6 +44,12 @@ export const createMessagingProvider: ProviderFactory = (providerId, creds, http
         creds.sender ?? '',
         http,
       );
+    case 'vonage':
+      return new VonageSmsSender(creds.apiKey ?? '', creds.apiSecret ?? '', creds.from ?? '', http);
+    case 'plivo':
+      return new PlivoSmsSender(creds.authId ?? '', creds.authToken ?? '', creds.from ?? '', http);
+    case 'telnyx':
+      return new TelnyxSmsSender(creds.apiKey ?? '', creds.from ?? '', http);
     case 'whatsapp-cloud':
       return new WhatsAppSender(creds.phoneNumberId ?? '', creds.accessToken ?? '', http);
     case 'telegram':

@@ -16,6 +16,16 @@ describe('createMessagingProvider', () => {
       createMessagingProvider('gupshup', { userId: 'u', password: 'p', sender: 's' }),
     ).toMatchObject({ id: 'gupshup', channel: 'SMS' });
     expect(
+      createMessagingProvider('vonage', { apiKey: 'k', apiSecret: 's', from: 'f' }),
+    ).toMatchObject({ id: 'vonage', channel: 'SMS' });
+    expect(
+      createMessagingProvider('plivo', { authId: 'a', authToken: 't', from: 'f' }),
+    ).toMatchObject({ id: 'plivo', channel: 'SMS' });
+    expect(createMessagingProvider('telnyx', { apiKey: 'k', from: 'f' })).toMatchObject({
+      id: 'telnyx',
+      channel: 'SMS',
+    });
+    expect(
       createMessagingProvider('whatsapp-cloud', { phoneNumberId: 'p', accessToken: 't' }),
     ).toMatchObject({ id: 'whatsapp-cloud', channel: 'WHATSAPP' });
     expect(createMessagingProvider('telegram', { botToken: 't' })).toMatchObject({
