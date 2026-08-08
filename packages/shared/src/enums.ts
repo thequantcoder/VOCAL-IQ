@@ -79,6 +79,9 @@ export const Provider = {
   TELEGRAM: 'TELEGRAM',
   INSTAGRAM: 'INSTAGRAM',
   RCS: 'RCS',
+  // India SMS carriers (GME-05).
+  MSG91: 'MSG91',
+  GUPSHUP: 'GUPSHUP',
 } as const;
 export type Provider = (typeof Provider)[keyof typeof Provider];
 

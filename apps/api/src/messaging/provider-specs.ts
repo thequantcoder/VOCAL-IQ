@@ -41,6 +41,28 @@ export const MESSAGING_PROVIDER_SPECS: Record<string, MessagingProviderSpec> = {
       from: 'TWILIO_MESSAGING_FROM',
     },
   },
+  msg91: {
+    id: 'msg91',
+    label: 'MSG91 SMS (India)',
+    channel: 'SMS',
+    fields: [
+      { key: 'authKey', label: 'Auth key', secret: true },
+      { key: 'sender', label: 'DLT sender header (6 chars)', secret: false },
+      { key: 'flowId', label: 'DLT flow / template id', secret: false },
+    ],
+    env: { authKey: 'MSG91_AUTHKEY', sender: 'MSG91_SENDER', flowId: 'MSG91_FLOW_ID' },
+  },
+  gupshup: {
+    id: 'gupshup',
+    label: 'Gupshup SMS (India)',
+    channel: 'SMS',
+    fields: [
+      { key: 'userId', label: 'User id', secret: false },
+      { key: 'password', label: 'Password', secret: true },
+      { key: 'sender', label: 'DLT sender header (mask)', secret: false },
+    ],
+    env: { userId: 'GUPSHUP_USERID', password: 'GUPSHUP_PASSWORD', sender: 'GUPSHUP_SENDER' },
+  },
   'whatsapp-cloud': {
     id: 'whatsapp-cloud',
     label: 'WhatsApp Cloud API',
@@ -99,6 +121,8 @@ export function defaultProviderForChannel(channel: MessageChannel): string | und
 /** The billing `Provider` enum for a registry provider id (GME-04) — for UsageRecord attribution. */
 const PROVIDER_ENUM: Record<string, Provider> = {
   twilio: Provider.TWILIO,
+  msg91: Provider.MSG91,
+  gupshup: Provider.GUPSHUP,
   'whatsapp-cloud': Provider.WHATSAPP,
   telegram: Provider.TELEGRAM,
   messenger: Provider.MESSENGER,

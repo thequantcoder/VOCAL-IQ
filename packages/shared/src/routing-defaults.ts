@@ -27,6 +27,8 @@ export const CAPABILITY_PROVIDERS: Record<Capability, Provider[]> = {
     Provider.TWILIO,
     Provider.TELNYX,
     Provider.PLIVO,
+    Provider.MSG91,
+    Provider.GUPSHUP,
     Provider.WHATSAPP,
     Provider.MESSENGER,
     Provider.TELEGRAM,

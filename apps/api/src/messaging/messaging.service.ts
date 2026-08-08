@@ -21,7 +21,7 @@ import { RateLimiter } from '../widget/rate-limiter';
 import type { ResolvedMessagingCreds } from './messaging-key-vault';
 import { type ProviderFactory, createMessagingProvider } from './provider-factory';
 import { messagingProviderEnum } from './provider-specs';
-import { type MessageRouter, SmartRouter } from './routing';
+import { type MessageRouter, SmartRouter, countryFromPhone } from './routing';
 import { type HttpClient, fetchHttp } from './senders';
 
 /** Per-tenant safety cap on outbound sends per minute — a RUNAWAY/abuse guard (a send loop or a
@@ -189,7 +189,7 @@ export class MessagingService {
     // GME-03: the smart router returns an ordered provider chain (cheapest healthy first). Try each
     // provider with its BYOK-resolved creds (tenant vault → platform row → env); fall over to the
     // next on a hard failure, recording each outcome so unhealthy providers get ejected from routing.
-    const chain = this.router.selectChain(input.channel);
+    const chain = this.router.selectChain(input.channel, countryFromPhone(input.to));
     let status: MessageStatus = 'QUEUED';
     let providerMessageId: string | undefined;
     let usedProviderId: string | undefined;

@@ -68,6 +68,9 @@ enum Provider {
   TELEGRAM
   INSTAGRAM
   RCS
+  // India SMS carriers (GME-05).
+  MSG91
+  GUPSHUP
 }
 
 enum Capability {

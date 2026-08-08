@@ -204,7 +204,11 @@ without breaking the existing WhatsApp/Twilio/Telegram/Meta/RCS behaviour.
 **DoD:** a managed SMS debits the wallet with markup; a BYOK SMS charges only the platform fee; reseller sees margin.
 **Tests:** managed vs BYOK metering; reseller margin math; quota decrement; tenant scoping.
 
-### GME-05 — India SMS providers wave 1: MSG91 + Gupshup · ⚡ SONNET · keys: `MSG91_AUTHKEY`, `GUPSHUP_API_KEY`
+### GME-05 — India SMS providers wave 1: MSG91 + Gupshup · ⚡ SONNET · keys: `MSG91_*`, `GUPSHUP_*` · ✅ DONE (2026-08-08)
+> `messaging/adapters/{msg91,gupshup}.ts` (real APIs — MSG91 v5 flow, Gupshup GatewayAPI/rest), wired
+> via factory + specs + routing (`['IN']`, cheapest-first) + `Provider.{MSG91,GUPSHUP}` + `countryFromPhone`.
+> India (+91) SMS now routes msg91→gupshup→twilio (least-cost + failover), each metered. DLR/inbound + DLT
+> enforcement = GME-06.
 **Build:** two `SmsProvider` adapters (send + DLR normalize + inbound + signature verify), DLT-field aware (GME-06),
 sender-ID handling, registry + pricing entries, gated (`QUEUED` until keys). Read each provider's official docs first.
 **DoD:** both adapters send (mocked in CI, live-gated), DLR maps to `MessageStatus`, inbound STOP/START works.
@@ -344,4 +348,4 @@ end-to-end (call → consent → follow-up) on a dedicated test tenant. **Tests:
 ## 6. Execution
 We go **one GME day at a time**, each shipped as its own PR via the `/tmp` workflow (CI-green → squash-merge →
 reconcile), with `BUILD-LOG.md` + this file updated and the A–K self-audit written out. Regional UI strings use the
-`scripts/i18n` hand-off kit. **Progress: GME-00 ✅ (#249) · GME-01 ✅ (#250) · GME-02a ✅ (#251) · GME-02b ✅ (#252) · GME-02c ✅ (#253) · GME-03 ✅ (#254) · GME-04 ✅ (UsageRecord metering + enum sync). Next: `GME-05` (India SMS wave 1 — MSG91 + Gupshup, first real multi-provider adapters). Deferred: durable async queue + retries.**
+`scripts/i18n` hand-off kit. **Progress: Phase A ✅ (GME-00→04, #249–#255). GME-05 ✅ (India SMS: MSG91 + Gupshup — first real multi-provider adapters). Next: `GME-06` (India DLT compliance engine). Deferred: durable async queue + retries.**
