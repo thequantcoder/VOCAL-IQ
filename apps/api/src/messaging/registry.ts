@@ -50,8 +50,13 @@ export class MessagingRegistry {
     return [...this.byIdMap.keys()];
   }
 
-  /** Build a registry from a partial channel→sender map (compat with `buildSenders`). */
-  static fromSenders(senders: Partial<Record<MessageChannel, MessageSender>>): MessagingRegistry {
+  /**
+   * Build a registry from a partial channel→sender map (compat with `buildSenders`). Values may be
+   * explicitly `undefined` (a gated/unconfigured channel) — those are filtered out.
+   */
+  static fromSenders(
+    senders: Partial<Record<MessageChannel, MessageSender | undefined>>,
+  ): MessagingRegistry {
     return new MessagingRegistry(
       Object.values(senders).filter((s): s is MessageSender => Boolean(s)),
     );
