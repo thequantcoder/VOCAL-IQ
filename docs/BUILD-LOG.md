@@ -5734,3 +5734,20 @@ Per-tenant BYOK for messaging providers, reusing the existing envelope encryptio
 **Security (self-audit C):** plaintext sealed immediately; only ciphertext + last-4 hints persisted; secrets never in a log or response; per-tenant RLS + app-layer authorization; audited on every change.
 
 **DoD:** a tenant can store Twilio/telegram creds; `resolve()` prefers BYOK, then platform, then env; a tenant can't read/manage/resolve another tenant's creds. **Checks:** biome clean (0 errors); `messaging-key-vault.test.ts` (real Postgres) proves round-trip encryption, BYOK→platform→env precedence, masking, SUPER_ADMIN-only platform scope, and cross-tenant isolation. `resolve()` is not yet wired into the send path — that's **GME-02** (async pipeline consumes it per message). Next: **GME-02** (async send pipeline + retries + idempotency).
+
+---
+
+## GME-02a — BYOK-aware send (wire the vault into the send path) — 2026-08-08 — ✅ DONE — 🧠 OPUS
+
+Split GME-02 into **02a (BYOK-aware send — this)** + **02b (async BullMQ pipeline)** for reviewable PRs. This makes GME-01's `resolve()` real: a tenant's stored provider keys now actually drive the send.
+
+**Why split:** the async worker needs the envelope encryptor + senders (both api-only), so 02b involves a placement decision (in-process worker vs relocating crypto to a package). Keeping the credential-wiring (02a) separate keeps each PR focused.
+
+**Changes.**
+- **`provider-factory.ts`** (new) — `createMessagingProvider(providerId, creds, http)`: the ONE place a provider id + resolved creds become a live adapter (twilio/whatsapp-cloud/telegram/messenger/instagram/rcs-gateway). Adding a provider = one `case` + its spec + its adapter class.
+- **`provider-specs.ts`** — `defaultProviderForChannel(channel)` (today the single spec per channel; GME-03's routing supersedes it).
+- **`messaging.service.ts`** — constructor now takes a **`MessagingCredsResolver`** (interface; `MessagingKeyVault` satisfies it structurally) + optional `{ http, providerFactory }`. `send()` now: `defaultProviderForChannel(channel)` → `resolver.resolve(tenant, providerId)` (BYOK → platform → env) → `factory(creds)` → `adapter.send()`, persisting the actually-used `providerId`. Dropped the GME-00 registry from the send path (kept `registry.ts`/tests for GME-03 routing). Removed the dead `Senders` alias.
+- **`composition.ts`** — build `encryptor` + `messagingKeyVault` before `messaging`; `new MessagingService(db, messagingKeyVault)`; removed the `buildRegistry` wiring.
+- **Tests** — `provider-factory.test.ts` (pure: each provider maps to the right id/channel; unknown → null; `defaultProviderForChannel`); `messaging.service.test.ts` adapted to a fake resolver + fake factory (SMS resolves, other channels gated).
+
+**DoD:** a send now uses BYOK creds when the tenant has them (else platform row, else env); a channel with no creds for the tenant stays QUEUED (gated); the used provider is recorded on the Message. Sends are still synchronous — async + retries + idempotency + rate-limit land in **GME-02b**. **Checks:** biome clean on all 6 files; factory + service tests. Next: **GME-02b** (async BullMQ send pipeline).

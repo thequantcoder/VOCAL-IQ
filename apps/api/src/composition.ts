@@ -71,7 +71,6 @@ import { httpMcpTransport } from './mcp/transport';
 import { MemoryService } from './memory/memory.service';
 import { MessagingKeyVault } from './messaging/messaging-key-vault';
 import { MessagingService } from './messaging/messaging.service';
-import { buildRegistry } from './messaging/registry';
 import { MessengerCallCostService } from './messenger-calling/messenger-call-cost.service';
 import { MessengerCallReadService } from './messenger-calling/messenger-call-read.service';
 import { MessengerInboundRouter } from './messenger-calling/messenger-call-routing.service';
@@ -268,9 +267,12 @@ export function createServices() {
   const leads = new LeadsService(db);
   const memory = new MemoryService(db);
   const mcp = new McpService(db, httpMcpTransport);
-  // Messaging providers are built only for channels whose credentials are set (gated), grouped in a
-  // registry so a channel can hold many providers (GME-00 → smart router in GME-03).
-  const messaging = new MessagingService(db, buildRegistry(process.env));
+  // Envelope encryptor + per-tenant BYOK messaging vault (GME-01). The messaging send path (GME-02a)
+  // resolves provider creds BYOK-first (tenant vault → platform row → env), so a tenant's own keys
+  // drive the send. Built here (before `messaging`, which depends on the vault).
+  const encryptor = buildEncryptor(process.env);
+  const messagingKeyVault = new MessagingKeyVault(db, encryptor, process.env);
+  const messaging = new MessagingService(db, messagingKeyVault);
   // WhatsApp Business Calling control plane (WAC-02). Managed-mode adapter from env (per-tenant BYOK
   // resolution lands with the key vault later); null → gated (webhook records events, no signaling).
   const waCallingAdapterFor: WaAdapterResolver = async () => {
@@ -347,7 +349,6 @@ export function createServices() {
   const experiments = new ExperimentsService(db);
   const squads = new SquadsService(db);
   const voices = new VoicesService(db, elevenLabsCloner(process.env.ELEVENLABS_API_KEY ?? ''));
-  const encryptor = buildEncryptor(process.env);
   const keyPool = new KeyPoolService(db, encryptor);
   const routerSvc = new RouterService(db, keyPool);
   // In-call FORM node, voice leg (PARITY-03): after a call reaches disposition, extract the form's
@@ -366,9 +367,6 @@ export function createServices() {
     formExtraction.extractForCall(tid, callId),
   );
   const vault = new VaultService(db, encryptor);
-  // Per-tenant BYOK vault for messaging providers (GME-01) — same envelope encryptor, multi-field
-  // credential sets. Resolution (BYOK → platform row → env) is used by the send path in GME-02.
-  const messagingKeyVault = new MessagingKeyVault(db, encryptor, process.env);
   const routingDefaults = new RoutingDefaultsService(db);
   const featureFlags = new FeatureFlagsService(db, entitlements);
   const quota = new QuotaService(db, entitlements);

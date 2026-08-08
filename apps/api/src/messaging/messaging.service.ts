@@ -13,19 +13,27 @@ import {
   renderMessageTemplate,
 } from '@vocaliq/shared';
 import type { PrismaService } from '../db/prisma.service';
-import type { MessagingRegistry } from './registry';
-import type { MessageSender } from './senders';
+import type { ResolvedMessagingCreds } from './messaging-key-vault';
+import { type ProviderFactory, createMessagingProvider } from './provider-factory';
+import { defaultProviderForChannel } from './provider-specs';
+import { type HttpClient, fetchHttp } from './senders';
+
+/**
+ * The credential resolver the send path depends on (GME-02a) — BYOK-first (`MessagingKeyVault`).
+ * An interface so tests can inject a fake without a DB round-trip.
+ */
+export interface MessagingCredsResolver {
+  resolve(tenantId: string, providerId: string): Promise<ResolvedMessagingCreds | null>;
+}
 
 /**
  * Messaging (Day 44): tenant-scoped WhatsApp/SMS template CRUD, outbound send (opt-out
  * checked → template rendered → dispatched via an injected channel adapter → cost metered →
  * persisted), and inbound/status webhook handling (opt-out/opt-in + delivery updates). All
- * reads/writes run under `withTenant` (RLS). Senders are injected + gated: with no provider
- * configured, a send is recorded as QUEUED but not dispatched, so the app runs without keys.
+ * reads/writes run under `withTenant` (RLS). Credentials are resolved per send (BYOK → platform →
+ * env, GME-02a) and gated: with no provider configured for the tenant, a send is recorded as QUEUED
+ * but not dispatched, so the app runs without keys.
  */
-
-/** @deprecated The flat channel→sender map. Superseded by {@link MessagingRegistry} (GME-00). */
-export type Senders = Partial<Record<MessageChannel, MessageSender>>;
 
 export interface MessageTemplateRow {
   id: string;
@@ -64,10 +72,16 @@ export interface SendInput {
 }
 
 export class MessagingService {
+  private readonly http: HttpClient;
+  private readonly factory: ProviderFactory;
   constructor(
     private readonly db: PrismaService,
-    private readonly registry: MessagingRegistry,
-  ) {}
+    private readonly credsResolver: MessagingCredsResolver,
+    opts?: { http?: HttpClient; providerFactory?: ProviderFactory },
+  ) {
+    this.http = opts?.http ?? fetchHttp;
+    this.factory = opts?.providerFactory ?? createMessagingProvider;
+  }
 
   // ── Template CRUD ─────────────────────────────────────────────────────────────
 
@@ -148,26 +162,33 @@ export class MessagingService {
     if (!body.trim()) throw new ValidationError('Message body is required');
 
     const costUsd = messageCostUsd(input.channel, body);
-    // The smart router (GME-03) will pick per country/cost/health; today `default()` is the single
-    // configured provider for the channel — behaviour-preserving.
-    const provider = this.registry.default(input.channel);
+    // GME-02a: pick the provider for this channel (GME-03 will route per country/cost/health),
+    // resolve its credentials BYOK-first (tenant vault → platform row → env), and dispatch with those
+    // creds so a tenant's own keys actually drive the send.
+    const providerId = defaultProviderForChannel(input.channel);
+    const resolved = providerId ? await this.credsResolver.resolve(tenantId, providerId) : null;
 
-    // Dispatch (or queue if no provider is configured — gated).
+    // Dispatch (or queue if no provider is configured for this tenant — gated).
     let status: MessageStatus = 'QUEUED';
     let providerMessageId: string | undefined;
-    let providerId: string | undefined;
+    let usedProviderId: string | undefined;
     let error: string | undefined;
-    if (provider) {
-      const result = await provider.send({
-        to: input.to,
-        body,
-        ...(templateName ? { templateName } : {}),
-        ...(language ? { language } : {}),
-      });
-      status = result.status;
-      providerMessageId = result.providerMessageId;
-      providerId = provider.id;
-      error = result.error;
+    if (resolved) {
+      const adapter = this.factory(resolved.providerId, resolved.creds, this.http);
+      if (adapter) {
+        const result = await adapter.send({
+          to: input.to,
+          body,
+          ...(templateName ? { templateName } : {}),
+          ...(language ? { language } : {}),
+        });
+        status = result.status;
+        providerMessageId = result.providerMessageId;
+        usedProviderId = resolved.providerId;
+        error = result.error;
+      } else {
+        error = `Provider ${resolved.providerId} is not implemented`;
+      }
     } else {
       error = 'No messaging provider configured for this channel';
     }
@@ -187,7 +208,7 @@ export class MessagingService {
           ...(input.callId ? { callId: input.callId } : {}),
           ...(input.campaignId ? { campaignId: input.campaignId } : {}),
           ...(providerMessageId ? { providerMessageId } : {}),
-          ...(providerId ? { providerId } : {}),
+          ...(usedProviderId ? { providerId: usedProviderId } : {}),
           ...(error ? { error } : {}),
         },
         select: SELECT_MESSAGE,

@@ -88,6 +88,14 @@ export function messagingProviderSpec(providerId: string): MessagingProviderSpec
   return MESSAGING_PROVIDER_SPECS[providerId];
 }
 
+/**
+ * The default provider id for a channel (GME-02a) — today the single spec matching the channel.
+ * The smart router (GME-03) supersedes this with per-tenant / per-country routing rules.
+ */
+export function defaultProviderForChannel(channel: MessageChannel): string | undefined {
+  return Object.values(MESSAGING_PROVIDER_SPECS).find((s) => s.channel === channel)?.id;
+}
+
 /** The public (secret-free) provider catalogue for the config UI (GME-18). */
 export function messagingProviderCatalogue(): Array<{
   id: string;
