@@ -3,6 +3,7 @@ import { PrismaService } from '../db/prisma.service';
 import { RateLimiter } from '../widget/rate-limiter';
 import { type MessagingCredsResolver, MessagingService } from './messaging.service';
 import type { ProviderFactory } from './provider-factory';
+import type { MessageRouter } from './routing';
 import type { MessageSender, SendResult } from './senders';
 
 /**
@@ -181,6 +182,30 @@ describe('MessagingService idempotent webhooks (GME-02b)', () => {
     });
     const inbound = (await svc.listMessages(C1, 200)).filter((m) => m.body === 'inbound-dedupe');
     expect(inbound).toHaveLength(1);
+  });
+});
+
+describe('MessagingService provider fallback (GME-03)', () => {
+  it('falls over to the next provider in the chain on a hard failure', async () => {
+    const failing: MessageSender = {
+      id: 'prov-fail',
+      channel: 'SMS',
+      send: async (): Promise<SendResult> => ({ status: 'FAILED', error: 'boom' }),
+    };
+    const good: MessageSender = {
+      id: 'prov-ok',
+      channel: 'SMS',
+      send: async (): Promise<SendResult> => ({ status: 'SENT', providerMessageId: 'OK_1' }),
+    };
+    const router: MessageRouter = { selectChain: () => ['prov-fail', 'prov-ok'], record: () => {} };
+    const resolver: MessagingCredsResolver = {
+      resolve: async (_t, providerId) => ({ providerId, creds: {}, mode: 'managed' }),
+    };
+    const factory: ProviderFactory = (pid) => (pid === 'prov-fail' ? failing : good);
+    const svc2 = new MessagingService(db, resolver, { router, providerFactory: factory });
+
+    const msg = await svc2.send(C1, { channel: 'SMS', to: '+15558889999', body: 'failover' });
+    expect(msg.status).toBe('SENT'); // second provider succeeded after the first failed
   });
 });
 
