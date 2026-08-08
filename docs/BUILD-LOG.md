@@ -5764,3 +5764,15 @@ Providers **replay** delivery-receipt (DLR) + inbound webhooks and deliver them 
 - **Tests** — shared: forward-advance, no-regression/terminal-overwrite, monotonic ranks. api: a replayed older DLR doesn't regress `DELIVERED`; a replayed inbound is recorded once.
 
 **DoD:** DLR replays/out-of-order callbacks + inbound replays are idempotent. **Checks:** biome clean; shared + service tests (CI rebuilds `@vocaliq/shared` for the new exports). Note the `exactOptionalPropertyTypes` "narrow before the closure" fix on the inbound dedupe lookup. Next: **GME-02c** (durable async BullMQ send pipeline + retries/backoff + per-tenant/provider rate-limit) — needs the send-execution pieces reachable from `apps/workers`.
+
+---
+
+## GME-02c — per-tenant send rate limiting (runaway/abuse guard) — 2026-08-08 — ✅ DONE — 🧠 OPUS
+
+The reliability slice of GME-02 that ships cleanly today without new infra: a **per-tenant outbound send rate limit**. (The DURABLE async BullMQ pipeline + transient-failure retry/backoff are deferred to a dedicated day — they need the send-execution pieces, i.e. the envelope encryptor + senders, reachable from `apps/workers`, which means relocating them into a shared node package OR a worker→api internal-execute endpoint. Doing that carefully is its own PR; this day lands the anti-abuse guard.)
+
+**Changes.**
+- **`messaging.service.ts`** — reuse the existing in-memory fixed-window `RateLimiter` (the same class `forms`/`api-keys`/`widget` already share). `send()` now does a cheap in-memory `rateLimiter.hit(tenantId)` FIRST (before any DB work) and throws `RateLimitError` when a tenant exceeds the window. Default cap **1000/min per tenant** — a deliberately generous RUNAWAY guard (a send loop or a compromised key), so legitimate bulk never hits it; plan-driven business quotas layer on in GME-04. The limiter is injectable via constructor `opts.rateLimiter` for tests.
+- **Tests** — `messaging.service.test.ts`: inject a 2/window limiter → the 3rd send in the window is rejected with a rate-limit error.
+
+**DoD:** a tenant can't blast/loop the send path unbounded; the guard is in-memory (single-node) + injectable, mirroring the platform's other rate limiters. **Checks:** biome clean; rate-limit test added. Deferred (documented): durable off-process queue + retries. Next: **GME-03** (smart router — least-cost / per-country / health / failover), or the deferred async pipeline.

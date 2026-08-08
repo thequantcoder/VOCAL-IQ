@@ -338,4 +338,4 @@ end-to-end (call → consent → follow-up) on a dedicated test tenant. **Tests:
 ## 6. Execution
 We go **one GME day at a time**, each shipped as its own PR via the `/tmp` workflow (CI-green → squash-merge →
 reconcile), with `BUILD-LOG.md` + this file updated and the A–K self-audit written out. Regional UI strings use the
-`scripts/i18n` hand-off kit. **Progress: GME-00 ✅ (#249) · GME-01 ✅ (#250) · GME-02a ✅ (#251) · GME-02b ✅ (webhook idempotency + status-advance guard). Next: `GME-02c` (durable async BullMQ send pipeline + retries/backoff + rate-limit).**
+`scripts/i18n` hand-off kit. **Progress: GME-00 ✅ (#249) · GME-01 ✅ (#250) · GME-02a ✅ (#251) · GME-02b ✅ (#252) · GME-02c ✅ (per-tenant send rate-limit; durable async queue + retries DEFERRED — needs send-exec reachable from apps/workers). Next: `GME-03` (smart router: least-cost / per-country / health / failover).**
