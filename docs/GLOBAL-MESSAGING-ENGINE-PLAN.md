@@ -137,7 +137,7 @@ or ⚡ SONNET (adapters/UI/tests). "Keys" = admin creds needed to *live-verify* 
 
 ---
 
-### GME-00 — Messaging provider abstraction + registry (foundation) · 🧠 OPUS · keys: none
+### GME-00 — Messaging provider abstraction + registry (foundation) · 🧠 OPUS · keys: none · ✅ DONE (2026-08-08)
 **Goal:** Replace the flat `buildSenders` map with a proper **provider registry + router seam** for messaging,
 without breaking the existing WhatsApp/Twilio/Telegram/Meta/RCS behaviour.
 **Build:**
@@ -333,4 +333,4 @@ end-to-end (call → consent → follow-up) on a dedicated test tenant. **Tests:
 ## 6. Execution
 We go **one GME day at a time**, each shipped as its own PR via the `/tmp` workflow (CI-green → squash-merge →
 reconcile), with `BUILD-LOG.md` + this file updated and the A–K self-audit written out. Regional UI strings use the
-`scripts/i18n` hand-off kit. **Next: start `GME-00`.**
+`scripts/i18n` hand-off kit. **Progress: GME-00 ✅ done (#TBD). Next: `GME-01` (BYOK per-tenant key vault).**

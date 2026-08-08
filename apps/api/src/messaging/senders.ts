@@ -23,6 +23,12 @@ export interface SendResult {
 }
 
 export interface MessageSender {
+  /**
+   * Stable provider id (e.g. `twilio`, `msg91`), unique across the registry. A channel — especially
+   * SMS — can have MANY providers; this is what the smart router (GME-03) selects between and what we
+   * persist on each Message (`providerId`) for delivery correlation + per-provider analytics.
+   */
+  readonly id: string;
   readonly channel: MessageChannel;
   send(msg: OutboundMessage): Promise<SendResult>;
 }
@@ -38,6 +44,7 @@ export const fetchHttp: HttpClient = (url, init) =>
 
 /** WhatsApp Cloud API (Meta Graph). Sends free-form text; templates via `templateName`. */
 export class WhatsAppSender implements MessageSender {
+  readonly id = 'whatsapp-cloud';
   readonly channel: MessageChannel = 'WHATSAPP';
   constructor(
     private readonly phoneNumberId: string,
@@ -83,6 +90,7 @@ export class WhatsAppSender implements MessageSender {
 
 /** Twilio SMS via the Messages REST API (form-encoded, basic auth). */
 export class TwilioSmsSender implements MessageSender {
+  readonly id = 'twilio';
   readonly channel: MessageChannel = 'SMS';
   constructor(
     private readonly accountSid: string,
@@ -117,6 +125,7 @@ export class TwilioSmsSender implements MessageSender {
 
 /** Telegram Bot API (Day 93). `sendMessage` with a chat id (the `to`) — free, JSON, bot-token auth. */
 export class TelegramSender implements MessageSender {
+  readonly id = 'telegram';
   readonly channel: MessageChannel = 'TELEGRAM';
   constructor(
     private readonly botToken: string,
@@ -148,11 +157,14 @@ export class TelegramSender implements MessageSender {
  * page/IG-scoped access token; only the channel label differs. `to` is the PSID / IG-scoped user id.
  */
 export class MetaMessagingSender implements MessageSender {
+  readonly id: string;
   constructor(
     readonly channel: MessageChannel,
     private readonly accessToken: string,
     private readonly http: HttpClient = fetchHttp,
-  ) {}
+  ) {
+    this.id = channel === 'INSTAGRAM' ? 'instagram' : 'messenger';
+  }
 
   async send(msg: OutboundMessage): Promise<SendResult> {
     const url = `https://graph.facebook.com/v20.0/me/messages?access_token=${this.accessToken}`;
@@ -185,6 +197,7 @@ export class MetaMessagingSender implements MessageSender {
  * and injected from env; the shape here is the common `{ to, text }` a gateway accepts.
  */
 export class RcsSender implements MessageSender {
+  readonly id = 'rcs-gateway';
   readonly channel: MessageChannel = 'RCS';
   constructor(
     private readonly apiUrl: string,

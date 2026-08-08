@@ -5697,3 +5697,21 @@ Prep so that regional (9 non-Hindi India langs) professional translation becomes
 **Volume surfaced:** 1561 source strings × 9 langs, ~1496 to-go each (~13.5k total); English-as-key fallback means partial catalogs ship safely (one language / one page at a time). `es`/`ar` also partial; `ar` is RTL (layout QA beyond copy).
 
 **Checks.** Full pipeline smoke-tested (export → validate → import round-trip on the pre-filled nav keys, clean). biome clean on all 5 scripts (0 errors). What still needs **humans, not keys**: the actual native translation + linguistic QA.
+
+---
+
+## GME-00 — messaging provider registry (foundation) — 2026-08-08 — ✅ DONE — 🧠 OPUS
+
+First day of the **Global Messaging Engine** (`docs/GLOBAL-MESSAGING-ENGINE-PLAN.md`). Replaced the flat `Senders` channel→sender map with a proper **provider registry** so a channel — especially SMS — can hold MANY providers, without changing any current behaviour.
+
+**Decision (documented):** the registry lives in **`apps/api/src/messaging/`** (not a new `packages/messaging-router`) — messaging is api-only (unlike provider-router, which voice also uses), so a new package would add lockfile/turbo churn for no cross-app gain. Interfaces stay colocated with the senders.
+
+**Changes.**
+- **`senders.ts`** — `MessageSender` gains a stable `readonly id` (`twilio`/`whatsapp-cloud`/`telegram`/`messenger`/`instagram`/`rcs-gateway`; Meta sender derives it from the channel). This is what the smart router (GME-03) will select between and what we persist per message.
+- **`registry.ts`** (new) — `MessagingRegistry` groups providers by channel (`forChannel`, `default`, `byId`, `channels`, `providerIds`) + `MessagingRegistry.fromSenders()` (compat) + `buildRegistry(env)` (gated build from the existing `buildSenders`). `default(channel)` = the first/only provider → **behaviour-preserving**.
+- **`messaging.service.ts`** — constructor now takes a `MessagingRegistry` (was `Senders`); `send()` resolves `registry.default(channel)` and persists **`provider.id`** as the new `Message.providerId`. `Senders` type kept as a `@deprecated` alias.
+- **`composition.ts`** — `buildRegistry(process.env)` instead of `buildSenders`.
+- **Prisma** — `Message.providerId String?` (migration `20260808120000_gme00_message_provider`, additive/nullable) records which registry provider sent each message (delivery correlation + per-provider analytics, GME-19).
+- **Tests** — new `registry.test.ts` (grouping/default/byId/gated build); `messaging.service.test.ts` adapted to the registry; `senders.test.ts` unchanged (still green).
+
+**DoD:** existing messaging behaviour intact (single provider per channel via `default()`); a new provider is now "one adapter file + one `buildSenders` line + it appears in the registry"; every send records its `providerId`. **Checks:** biome clean on all 6 touched files; registry unit tests added; existing senders/service tests preserved (CI runs them + `prisma generate` for the new column). Next: **GME-01** (BYOK per-tenant key vault).

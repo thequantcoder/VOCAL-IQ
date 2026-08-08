@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { PrismaService } from '../db/prisma.service';
-import { MessagingService, type Senders } from './messaging.service';
+import { MessagingService } from './messaging.service';
+import { MessagingRegistry } from './registry';
 import type { MessageSender, SendResult } from './senders';
 
 /**
@@ -18,14 +19,16 @@ const R1 = '00000000-0000-0000-0000-000000000002';
 // A fake SMS sender that always succeeds — lets us test the dispatch path without Twilio.
 const sent: { to: string; body: string }[] = [];
 const fakeSms: MessageSender = {
+  id: 'fake-sms',
   channel: 'SMS',
   send: vi.fn(async (m): Promise<SendResult> => {
     sent.push({ to: m.to, body: m.body });
     return { status: 'SENT', providerMessageId: `SM_${sent.length}` };
   }),
 };
-const senders: Senders = { SMS: fakeSms }; // WHATSAPP intentionally unconfigured (gated)
-const svc = new MessagingService(db, senders);
+// WHATSAPP intentionally unconfigured (gated). The registry preserves single-provider behaviour.
+const registry = MessagingRegistry.fromSenders({ SMS: fakeSms });
+const svc = new MessagingService(db, registry);
 
 const templateIds: string[] = [];
 

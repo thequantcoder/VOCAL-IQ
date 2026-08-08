@@ -70,7 +70,7 @@ import { McpService } from './mcp/mcp.service';
 import { httpMcpTransport } from './mcp/transport';
 import { MemoryService } from './memory/memory.service';
 import { MessagingService } from './messaging/messaging.service';
-import { buildSenders } from './messaging/senders';
+import { buildRegistry } from './messaging/registry';
 import { MessengerCallCostService } from './messenger-calling/messenger-call-cost.service';
 import { MessengerCallReadService } from './messenger-calling/messenger-call-read.service';
 import { MessengerInboundRouter } from './messenger-calling/messenger-call-routing.service';
@@ -267,8 +267,9 @@ export function createServices() {
   const leads = new LeadsService(db);
   const memory = new MemoryService(db);
   const mcp = new McpService(db, httpMcpTransport);
-  // Messaging senders are built only for channels whose credentials are set (gated).
-  const messaging = new MessagingService(db, buildSenders(process.env));
+  // Messaging providers are built only for channels whose credentials are set (gated), grouped in a
+  // registry so a channel can hold many providers (GME-00 → smart router in GME-03).
+  const messaging = new MessagingService(db, buildRegistry(process.env));
   // WhatsApp Business Calling control plane (WAC-02). Managed-mode adapter from env (per-tenant BYOK
   // resolution lands with the key vault later); null → gated (webhook records events, no signaling).
   const waCallingAdapterFor: WaAdapterResolver = async () => {

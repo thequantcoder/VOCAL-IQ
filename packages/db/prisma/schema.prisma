@@ -618,7 +618,8 @@ model Message {
   contactId         String?          @db.Uuid // soft link (app + RLS scoped; no FK)
   callId            String?          @db.Uuid
   campaignId        String?          @db.Uuid
-  providerMessageId String? // id from Twilio/Meta for status correlation
+  providerMessageId String? // id from the provider (Twilio/Meta/MSG91/…) for status correlation
+  providerId        String? // which registry provider sent it (GME-00) — e.g. twilio, msg91
   costUsd           Float            @default(0)
   error             String?
   createdAt         DateTime         @default(now())
