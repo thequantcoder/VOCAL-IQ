@@ -63,12 +63,7 @@ export const createMessagingProvider: ProviderFactory = (providerId, creds, http
     case 'messagebird':
       return new MessageBirdSmsSender(creds.accessKey ?? '', creds.from ?? '', http);
     case 'infobip':
-      return new InfobipSmsSender(
-        creds.baseUrl ?? '',
-        creds.apiKey ?? '',
-        creds.from ?? '',
-        http,
-      );
+      return new InfobipSmsSender(creds.baseUrl ?? '', creds.apiKey ?? '', creds.from ?? '', http);
     case 'whatsapp-cloud':
       return new WhatsAppSender(creds.phoneNumberId ?? '', creds.accessToken ?? '', http);
     case 'telegram':
