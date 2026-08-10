@@ -1,3 +1,4 @@
+import type { RcsProvider } from '@vocaliq/shared';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { PrismaService } from '../db/prisma.service';
 import { RateLimiter } from '../widget/rate-limiter';
@@ -269,6 +270,78 @@ describe('MessagingService India DLT enforcement (GME-06)', () => {
     });
     const msg = await s.send(C1, { channel: 'SMS', to: '+14155550100', body: 'ok' });
     expect(msg.status).toBe('SENT');
+  });
+});
+
+describe('MessagingService rich RCS cascade (GME-12)', () => {
+  const makeRcs = (capable: boolean, sendOk: boolean): RcsProvider => ({
+    id: 'google-rbm',
+    capabilityCheck: async () => capable,
+    sendRich: async () =>
+      sendOk ? { ok: true, providerMessageId: 'RBM_1' } : { ok: false, error: 'unreachable' },
+  });
+
+  it('delivers a rich card over RCS when the recipient is capable', async () => {
+    const s = new MessagingService(db, fakeResolver, {
+      providerFactory: fakeFactory,
+      rcsProvider: makeRcs(true, true),
+    });
+    const msg = await s.sendRich(C1, {
+      to: '+15550001111',
+      richMessage: { kind: 'card', card: { title: 'Hi', description: 'deal' } },
+    });
+    expect(msg.channel).toBe('RCS');
+    expect(msg.status).toBe('SENT');
+    const row = await db.admin.message.findFirst({
+      where: { tenantId: C1, toAddr: '+15550001111', channel: 'RCS' },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(JSON.stringify(row?.richPayload)).toContain('"kind":"card"');
+    expect(row?.providerMessageId).toBe('RBM_1');
+  });
+
+  it('falls back to SMS with the text variant when the recipient is not RCS-capable', async () => {
+    const s = new MessagingService(db, fakeResolver, {
+      providerFactory: fakeFactory,
+      rcsProvider: makeRcs(false, true),
+    });
+    const msg = await s.sendRich(C1, {
+      to: '+15550002222',
+      richMessage: { kind: 'card', card: { title: 'Weekend Sale', description: '20% off' } },
+    });
+    expect(msg.channel).toBe('SMS');
+    expect(msg.status).toBe('SENT');
+    expect(msg.body).toContain('Weekend Sale');
+    expect(msg.body).toContain('20% off');
+  });
+
+  it('falls back to SMS and records provenance when RCS delivery fails', async () => {
+    const s = new MessagingService(db, fakeResolver, {
+      providerFactory: fakeFactory,
+      rcsProvider: makeRcs(true, false),
+    });
+    const msg = await s.sendRich(C1, {
+      to: '+15550003333',
+      richMessage: { kind: 'text', text: 'hello' },
+    });
+    expect(msg.channel).toBe('SMS');
+    expect(msg.status).toBe('SENT');
+    const row = await db.admin.message.findFirst({
+      where: { tenantId: C1, toAddr: '+15550003333' },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(row?.fallbackFrom).toBe('RCS');
+    expect(row?.fallbackTo).toBe('SMS');
+  });
+
+  it('cascades straight to SMS when no RCS provider is configured', async () => {
+    const s = new MessagingService(db, fakeResolver, { providerFactory: fakeFactory });
+    const msg = await s.sendRich(C1, {
+      to: '+15550004444',
+      richMessage: { kind: 'text', text: 'plain' },
+    });
+    expect(msg.channel).toBe('SMS');
+    expect(msg.body).toBe('plain');
   });
 });
 

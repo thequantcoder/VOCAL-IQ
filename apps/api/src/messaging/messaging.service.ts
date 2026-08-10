@@ -6,13 +6,21 @@ import {
   type MessageStatus,
   type MessageTemplateInput,
   NotFoundError,
+  Provider,
   RateLimitError,
+  RcsCapabilityCache,
+  type RcsProvider,
+  type RichMessage,
   ValidationError,
   blendedNextStep,
+  cascadePolicySchema,
   classifyInbound,
   extractTemplateVars,
   messageCostUsd,
+  parseRichMessage,
+  planCascade,
   renderMessageTemplate,
+  richMessageToText,
   shouldAdvanceStatus,
   smsSegments,
 } from '@vocaliq/shared';
@@ -22,6 +30,7 @@ import type { DltResolver } from './dlt.service';
 import type { ResolvedMessagingCreds } from './messaging-key-vault';
 import { type ProviderFactory, createMessagingProvider } from './provider-factory';
 import { messagingProviderEnum } from './provider-specs';
+import { buildRbmProvider } from './rbm';
 import { type MessageRouter, SmartRouter, countryFromPhone } from './routing';
 import { type HttpClient, fetchHttp } from './senders';
 
@@ -81,6 +90,21 @@ export interface SendInput {
   contactId?: string;
   callId?: string;
   campaignId?: string;
+  // Rich RCS (GME-12b): when a rich send cascades to this channel, stamp its payload + provenance.
+  richPayload?: unknown;
+  fallbackFrom?: string;
+  fallbackTo?: string;
+}
+
+export interface SendRichInput {
+  to: string;
+  /** A RichMessage (validated with `parseRichMessage`); may be a raw object from the API. */
+  richMessage: unknown;
+  /** Cascade policy (prefer RCS + ordered fallback channels); defaults to RCS→SMS. */
+  policy?: unknown;
+  contactId?: string;
+  callId?: string;
+  campaignId?: string;
 }
 
 export class MessagingService {
@@ -89,6 +113,9 @@ export class MessagingService {
   private readonly rateLimiter: RateLimiter;
   private readonly router: MessageRouter;
   private readonly dlt: DltResolver | undefined;
+  // Rich RCS (GME-12): the RcsProvider (RBM, gated on GOOGLE_RBM_*) + a per-msisdn capability cache.
+  private readonly rcsProvider: RcsProvider | undefined;
+  private readonly rcsCapCache: RcsCapabilityCache;
   constructor(
     private readonly db: PrismaService,
     private readonly credsResolver: MessagingCredsResolver,
@@ -98,6 +125,8 @@ export class MessagingService {
       rateLimiter?: RateLimiter;
       router?: MessageRouter;
       dlt?: DltResolver;
+      rcsProvider?: RcsProvider;
+      rcsCapCache?: RcsCapabilityCache;
     },
   ) {
     this.http = opts?.http ?? fetchHttp;
@@ -105,6 +134,8 @@ export class MessagingService {
     this.rateLimiter = opts?.rateLimiter ?? new RateLimiter(DEFAULT_SEND_RATE_PER_MIN, 60_000);
     this.router = opts?.router ?? new SmartRouter();
     this.dlt = opts?.dlt;
+    this.rcsProvider = opts?.rcsProvider ?? buildRbmProvider(process.env);
+    this.rcsCapCache = opts?.rcsCapCache ?? new RcsCapabilityCache();
   }
 
   // ── Template CRUD ─────────────────────────────────────────────────────────────
@@ -270,6 +301,9 @@ export class MessagingService {
           ...(providerMessageId ? { providerMessageId } : {}),
           ...(usedProviderId ? { providerId: usedProviderId } : {}),
           ...(error ? { error } : {}),
+          ...(input.richPayload ? { richPayload: input.richPayload as object } : {}),
+          ...(input.fallbackFrom ? { fallbackFrom: input.fallbackFrom } : {}),
+          ...(input.fallbackTo ? { fallbackTo: input.fallbackTo } : {}),
         },
         select: SELECT_MESSAGE,
       });
@@ -288,6 +322,126 @@ export class MessagingService {
           },
         });
       }
+      return msg;
+    });
+    return toMessageRow(row);
+  }
+
+  // ── Rich RCS send with cascade (GME-12) ────────────────────────────────────────
+
+  /**
+   * Send a rich (RCS) message with graceful fallback (GME-11 cascade + GME-12 RBM provider). Checks
+   * whether the recipient is RCS-reachable (cached), plans the channel chain (RCS→WhatsApp/SMS per
+   * policy), and delivers over RCS when possible — otherwise (or when RCS fails) it falls back to the
+   * next channel with the plain-text projection of the rich message, recording the fallback provenance
+   * on the Message. The fallback leg reuses `send()` so opt-out/DLT/metering all still apply; the RCS
+   * leg is metered here (Provider.RCS). Gated: with no RCS provider configured, it always falls back.
+   */
+  async sendRich(tenantId: string, input: SendRichInput): Promise<MessageRow> {
+    if (!this.rateLimiter.hit(tenantId)) {
+      throw new RateLimitError('Messaging send rate limit reached; slow down');
+    }
+    const rich = parseRichMessage(input.richMessage);
+    const text = richMessageToText(rich);
+    const policy = cascadePolicySchema.parse(input.policy ?? {});
+
+    // RCS capability (cached per msisdn), gated on a configured RCS provider.
+    let capable = false;
+    if (this.rcsProvider) {
+      const cached = this.rcsCapCache.get(input.to);
+      capable = cached ?? (await this.rcsProvider.capabilityCheck(input.to));
+      if (cached === undefined) this.rcsCapCache.set(input.to, capable);
+    }
+
+    const chain = planCascade(capable, policy);
+    const relay = {
+      ...(input.contactId ? { contactId: input.contactId } : {}),
+      ...(input.callId ? { callId: input.callId } : {}),
+      ...(input.campaignId ? { campaignId: input.campaignId } : {}),
+    };
+
+    // RCS leads the chain only when the recipient is capable + the policy prefers it.
+    if (chain[0] === 'RCS' && this.rcsProvider) {
+      const result = await this.rcsProvider.sendRich(input.to, rich);
+      if (result.ok) {
+        return this.persistRcs(tenantId, {
+          to: input.to,
+          text,
+          rich,
+          providerId: this.rcsProvider.id,
+          providerMessageId: result.providerMessageId,
+          ...relay,
+        });
+      }
+      // RCS was attempted but failed → fall back to the text variant, recording provenance.
+      const fallbackChannel = chain.find((c) => c !== 'RCS') ?? 'SMS';
+      return this.send(tenantId, {
+        channel: fallbackChannel,
+        to: input.to,
+        body: text,
+        richPayload: rich,
+        fallbackFrom: 'RCS',
+        fallbackTo: fallbackChannel,
+        ...relay,
+      });
+    }
+
+    // Not RCS-capable (or preferRcs off / no provider) → the first fallback channel, no provenance.
+    const fallbackChannel = chain[0] ?? 'SMS';
+    return this.send(tenantId, {
+      channel: fallbackChannel,
+      to: input.to,
+      body: text,
+      richPayload: rich,
+      ...relay,
+    });
+  }
+
+  /** Persist + meter a rich message delivered over RCS (mirrors the SMS send's persist/meter block). */
+  private async persistRcs(
+    tenantId: string,
+    m: {
+      to: string;
+      text: string;
+      rich: RichMessage;
+      providerId: string;
+      providerMessageId?: string | undefined;
+      contactId?: string;
+      callId?: string;
+      campaignId?: string;
+    },
+  ): Promise<MessageRow> {
+    const costUsd = messageCostUsd('RCS', m.text);
+    const row = await this.db.withTenant(tenantId, async (tx) => {
+      const msg = await tx.message.create({
+        data: {
+          tenantId,
+          channel: 'RCS',
+          direction: 'OUTBOUND',
+          status: 'SENT',
+          toAddr: m.to,
+          body: m.text,
+          costUsd,
+          richPayload: m.rich as object,
+          providerId: m.providerId,
+          ...(m.providerMessageId ? { providerMessageId: m.providerMessageId } : {}),
+          ...(m.contactId ? { contactId: m.contactId } : {}),
+          ...(m.callId ? { callId: m.callId } : {}),
+          ...(m.campaignId ? { campaignId: m.campaignId } : {}),
+        },
+        select: SELECT_MESSAGE,
+      });
+      await tx.usageRecord.create({
+        data: {
+          tenantId,
+          provider: Provider.RCS,
+          capability: Capability.MESSAGING,
+          units: 1,
+          costUsd,
+          byok: false,
+          ...(m.callId ? { callId: m.callId } : {}),
+        },
+      });
       return msg;
     });
     return toMessageRow(row);
