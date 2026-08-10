@@ -1,0 +1,310 @@
+/*
+ * @vocaliq/ui — framework-agnostic component CSS (DESIGN-SYSTEM.md §0, §4, §5).
+ * Plain CSS only (no Tailwind directives) so any consumer can import it directly.
+ * Holds the signature Waveform motif + its motion. Token *values* live in the
+ * consuming app's theme layer; this file only references CSS variables.
+ */
+
+/* ── Signature Waveform (DESIGN-SYSTEM §0/§5c) ──────────────────────────────
+ * A living waveform — the product's hero motif. Default uses the brand violet;
+ * the `live` variant uses cyan ("cyan = live", §1). Bars breathe on an ambient
+ * loop; amplitude-reactive animation arrives with the live-call view (Day 14).
+ */
+.vq-waveform {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 100%;
+  width: 100%;
+}
+
+.vq-waveform__bar {
+  flex: 0 0 auto;
+  width: 4px;
+  min-height: 6px;
+  border-radius: var(--radius-vq-pill, 999px);
+  background: linear-gradient(180deg, var(--vq-violet, #7c5cff), var(--vq-violet-deep, #5b21b6));
+  transform-origin: center;
+  animation: vq-wave var(--vq-wave-dur, 1500ms) var(--ease-out-soft, ease-in-out) infinite;
+}
+
+.vq-waveform--live .vq-waveform__bar {
+  /* The one signature gradient (violet → cyan), reserved for live/speaking. */
+  background: linear-gradient(180deg, var(--vq-cyan, #22d3ee), var(--vq-violet, #7c5cff));
+}
+
+@keyframes vq-wave {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+/* Reduced motion: hold a calm static silhouette, never animate (DESIGN-SYSTEM §4/§7). */
+@media (prefers-reduced-motion: reduce) {
+  .vq-waveform__bar {
+    animation: none;
+    transform: scaleY(0.6);
+    opacity: 0.85;
+  }
+}
+
+/* ── Motion-level control (UX-01) ─────────────────────────────────────────────
+ * The MotionProvider mirrors the user's motion level onto <html data-motion="…">.
+ * `off` kills CSS animation + transition app-wide (framer primitives already no-op);
+ * `reduced` (or OS reduced-motion) holds the waveform static. Complements the
+ * primitives, which drop movement/scale themselves. */
+[data-motion="off"] *,
+[data-motion="off"] *::before,
+[data-motion="off"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+[data-motion="off"] .vq-waveform__bar,
+[data-motion="reduced"] .vq-waveform__bar {
+  animation: none;
+  transform: scaleY(0.6);
+  opacity: 0.85;
+}
+
+/* ── Component-kit motion (UX-03): Radix-driven enter/exit + skeleton shimmer ──
+ * Overlays/menus animate via data-[state=open|closed] using these keyframes; all
+ * are killed by [data-motion="off"] (see above) + prefers-reduced-motion. */
+@keyframes vq-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes vq-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes vq-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes vq-pop-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.96) translateY(4px);
+  }
+}
+@keyframes vq-slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes vq-slide-out-right {
+  from {
+    transform: none;
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes vq-slide-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes vq-slide-out-left {
+  from {
+    transform: none;
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+@keyframes vq-shimmer {
+  from {
+    background-position: -180% 0;
+  }
+  to {
+    background-position: 180% 0;
+  }
+}
+
+/* Skeleton shimmer surface. */
+.vq-skeleton {
+  background-image: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--text-lo) 8%, transparent) 25%,
+    color-mix(in oklab, var(--text-lo) 18%, transparent) 37%,
+    color-mix(in oklab, var(--text-lo) 8%, transparent) 63%
+  );
+  background-size: 200% 100%;
+  animation: vq-shimmer 1.4s ease-in-out infinite;
+}
+[data-motion="off"] .vq-skeleton,
+[data-motion="reduced"] .vq-skeleton {
+  animation: none;
+}
+
+/* UX-03b — inputs + nav. */
+@keyframes vq-check-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes vq-slide-in-down {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes vq-accordion-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+@keyframes vq-accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+/* UX-04 — voice-motion primitives. */
+@keyframes vq-orb-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.35;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 0.55;
+  }
+}
+@keyframes vq-thinking-bounce {
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.55;
+  }
+  40% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+@keyframes vq-live-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  75%,
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+@keyframes vq-caret-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+/* ── Button interaction layer (UX-08) ────────────────────────────────────────
+   A subtle sheen sweeps across bold CTAs (primary/danger) on hover. Pure CSS, clipped by the button's
+   own overflow; disabled under reduced/off motion. The ripple + magnetic hover (JS-driven) live in
+   MagneticButton. */
+.vq-btn-sheen {
+  overflow: hidden;
+}
+.vq-btn-sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    110deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.22) 48%,
+    transparent 66%
+  );
+  transform: translateX(-130%);
+}
+.vq-btn-sheen:hover::after {
+  transform: translateX(130%);
+  transition: transform 620ms var(--ease-out-soft, ease);
+}
+[data-motion="off"] .vq-btn-sheen::after,
+[data-motion="reduced"] .vq-btn-sheen::after {
+  display: none;
+}
+
+/* Ripple (MagneticButton) — a circle scales + fades from the click point. */
+@keyframes vq-ripple {
+  from {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+  to {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+/* ── Data-viz draw-in (UX-09) ────────────────────────────────────────────────
+   Length-independent line draw: paths set pathLength=1 + stroke-dasharray/offset=1, then animate the
+   offset to 0. Killed under reduced/off motion by the motion-safe gate on the element. */
+@keyframes vq-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Bar grow-in (UX-09b) — scale up from the baseline. */
+@keyframes vq-bar-grow {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}

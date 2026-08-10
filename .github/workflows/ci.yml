@@ -1,0 +1,121 @@
+# VocalIQ CI gate (GIT-WORKFLOW.md §CI gate). Merging requires all jobs green.
+# Node 20 / Python 3.12 parity with TECH-STACK.md, regardless of local toolchain.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ── TypeScript monorepo: typecheck → lint → test (with services) → build ──────
+  node:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: timescale/timescaledb-ha:pg16
+        env:
+          POSTGRES_USER: vocaliq
+          POSTGRES_PASSWORD: vocaliq
+          POSTGRES_DB: vocaliq
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U vocaliq -d vocaliq"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      # Owner role (migrations/seed) + non-superuser app role (RLS-constrained tests).
+      DATABASE_URL: postgresql://vocaliq:vocaliq@localhost:5432/vocaliq
+      DIRECT_URL: postgresql://vocaliq:vocaliq@localhost:5432/vocaliq
+      APP_DATABASE_URL: postgresql://vocaliq_app:vocaliq_app@localhost:5432/vocaliq
+      REDIS_URL: redis://localhost:6379
+    steps:
+      - uses: actions/checkout@v4
+
+      # pnpm version comes from package.json "packageManager" — don't also set it
+      # here or action-setup errors on the conflict.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      # postinstall runs `prisma generate` so the client + types exist for the build/tests.
+      - run: pnpm install --frozen-lockfile
+
+      # Generate the Prisma client (explicit, so it never depends on postinstall
+      # running under --frozen-lockfile), then apply migrations (creates extensions,
+      # the vocaliq_app role, RLS, hypertable) and seed — so the @vocaliq/db
+      # introspection + RLS isolation tests run against a real DB.
+      - name: Generate client, migrate + seed database
+        run: |
+          pnpm --filter @vocaliq/db exec prisma generate
+          pnpm --filter @vocaliq/db exec prisma migrate deploy
+          pnpm --filter @vocaliq/db exec tsx prisma/seed.ts
+
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm build
+
+  # ── Python voice service: type check + lint + tests ──────────────────────────
+  voice:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/voice
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Type check (pyright)
+        # Pin pyright to the interpreter pip installed into, so dev deps (pytest, …)
+        # always resolve regardless of pyright's auto-detection.
+        run: pyright --pythonpath "$(python -c 'import sys; print(sys.executable)')"
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - run: pytest
+
+  # ── Security: secret scan on every PR/push (GIT-WORKFLOW §CI gate item 7) ─────
+  # Scans committed history (`gitleaks git`) — deterministic and gitignore-aware
+  # (won't trip over build output like .next/), avoiding the gitleaks-action
+  # PR-range/license quirks.
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Secret scan (gitleaks)
+        run: |
+          VERSION=8.24.3
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz" \
+            | tar -xz -C /usr/local/bin gitleaks
+          gitleaks git . --redact --verbose --exit-code 1

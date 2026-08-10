@@ -1,0 +1,61 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# VocalIQ — Nginx reverse proxy sample (self-hosted CodeCanyon deploy)
+#
+# Fronts the three HTTP services PM2 runs (see ecosystem.config.cjs):
+#   - Next.js web dashboard   → 127.0.0.1:3000
+#   - Express app API         → 127.0.0.1:4000   (API_PORT in .env)
+#   - Python voice service    → 127.0.0.1:8000   (WebSocket for live audio)
+#
+# Copy to /etc/nginx/sites-available/vocaliq, edit server_name + certs, symlink to
+# sites-enabled, then `nginx -t && systemctl reload nginx`. TLS via free Let's Encrypt
+# (certbot). Everything here is free & open-source.
+# ─────────────────────────────────────────────────────────────────────────────
+
+server {
+    listen 80;
+    server_name yourdomain.com;
+    # Redirect all HTTP → HTTPS (get certs first with: certbot --nginx)
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name yourdomain.com;
+
+    ssl_certificate     /etc/letsencrypt/live/yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/yourdomain.com/privkey.pem;
+
+    client_max_body_size 25m;  # CSV imports / audio samples
+
+    # ── App API (Express) ──────────────────────────────────────────────────────
+    location /api/ {
+        proxy_pass http://127.0.0.1:4000/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # ── Voice service (FastAPI + live audio WebSocket) ──────────────────────────
+    location /voice/ {
+        proxy_pass http://127.0.0.1:8000/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;      # WebSocket upgrade
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_read_timeout 3600s;                    # long-lived call streams
+    }
+
+    # ── Next.js web dashboard (default) ─────────────────────────────────────────
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;      # Next HMR / websockets
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

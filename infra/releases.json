@@ -1,0 +1,7 @@
+{
+  "latest": "1.1.0",
+  "minCompatible": "1.0.0",
+  "releasedAt": "2026-07-14",
+  "notes": "Competitor-parity release — Plivo + OpenRouter adapters, instant-dial API, Form-to-Call, n8n + Slack connectors, broadcast announcements, promotional/bonus credits, in-dashboard API reference, campaign retry, and self-host Check-for-Updates.",
+  "url": "https://github.com/thequantcoder/VOCAL-IQ/releases"
+}

@@ -1,0 +1,37 @@
+# Day 62 — Voice Deployment + HPA. Scales on CONCURRENT CALLS (custom metric) since each call
+# holds a media session; CPU alone under-scales real-time audio. Deployed per media region for
+# multi-region low latency (label region so calls route to the nearest — see VOICE_REGIONS).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vocaliq-voice
+  labels: { app: vocaliq-voice, region: us-east }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: vocaliq-voice } }
+  template:
+    metadata: { labels: { app: vocaliq-voice, region: us-east } }
+    spec:
+      containers:
+        - name: voice
+          image: ghcr.io/vocaliq/voice:latest
+          ports: [{ containerPort: 8080 }]
+          envFrom: [{ secretRef: { name: vocaliq-secrets } }]
+          env: [{ name: DATA_REGION, value: us-east-1 }]
+          resources:
+            requests: { cpu: "500m", memory: "1Gi" }
+            limits: { cpu: "2", memory: "2Gi" }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: vocaliq-voice }
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: vocaliq-voice }
+  minReplicas: 2
+  maxReplicas: 50
+  metrics:
+    # Custom metric exported by the voice service (Prometheus adapter): active concurrent calls.
+    - type: Pods
+      pods:
+        metric: { name: vocaliq_active_calls }
+        target: { type: AverageValue, averageValue: "25" }
