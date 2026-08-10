@@ -1,3 +1,6 @@
+import { AwsSnsSmsSender } from './adapters/aws-sns';
+import { BandwidthSmsSender } from './adapters/bandwidth';
+import { ClickSendSmsSender } from './adapters/clicksend';
 import { GupshupSmsSender } from './adapters/gupshup';
 import { InfobipSmsSender } from './adapters/infobip';
 import { MessageBirdSmsSender } from './adapters/messagebird';
@@ -64,6 +67,29 @@ export const createMessagingProvider: ProviderFactory = (providerId, creds, http
       return new MessageBirdSmsSender(creds.accessKey ?? '', creds.from ?? '', http);
     case 'infobip':
       return new InfobipSmsSender(creds.baseUrl ?? '', creds.apiKey ?? '', creds.from ?? '', http);
+    case 'aws-sns':
+      return new AwsSnsSmsSender(
+        creds.accessKeyId ?? '',
+        creds.secretAccessKey ?? '',
+        creds.region ?? '',
+        http,
+      );
+    case 'bandwidth':
+      return new BandwidthSmsSender(
+        creds.accountId ?? '',
+        creds.applicationId ?? '',
+        creds.username ?? '',
+        creds.password ?? '',
+        creds.from ?? '',
+        http,
+      );
+    case 'clicksend':
+      return new ClickSendSmsSender(
+        creds.username ?? '',
+        creds.apiKey ?? '',
+        creds.from ?? '',
+        http,
+      );
     case 'whatsapp-cloud':
       return new WhatsAppSender(creds.phoneNumberId ?? '', creds.accessToken ?? '', http);
     case 'telegram':

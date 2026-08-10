@@ -40,6 +40,25 @@ describe('createMessagingProvider', () => {
       }),
     ).toMatchObject({ id: 'infobip', channel: 'SMS' });
     expect(
+      createMessagingProvider('aws-sns', {
+        accessKeyId: 'AK',
+        secretAccessKey: 's',
+        region: 'us-east-1',
+      }),
+    ).toMatchObject({ id: 'aws-sns', channel: 'SMS' });
+    expect(
+      createMessagingProvider('bandwidth', {
+        accountId: 'a',
+        applicationId: 'app',
+        username: 'u',
+        password: 'p',
+        from: 'f',
+      }),
+    ).toMatchObject({ id: 'bandwidth', channel: 'SMS' });
+    expect(
+      createMessagingProvider('clicksend', { username: 'u', apiKey: 'k', from: 'f' }),
+    ).toMatchObject({ id: 'clicksend', channel: 'SMS' });
+    expect(
       createMessagingProvider('whatsapp-cloud', { phoneNumberId: 'p', accessToken: 't' }),
     ).toMatchObject({ id: 'whatsapp-cloud', channel: 'WHATSAPP' });
     expect(createMessagingProvider('telegram', { botToken: 't' })).toMatchObject({

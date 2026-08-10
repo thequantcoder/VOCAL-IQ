@@ -240,8 +240,8 @@ registry + pricing; gated. **DoD/Tests:** as GME-05 per provider.
 **Build:** three adapters (send + DLR + inbound + verify); note Sinch/MessageBird/Infobip also do RCS (flagged for GME-12).
 **DoD/Tests:** as GME-05.
 
-### GME-09 — Global SMS wave 3: AWS SNS + Bandwidth + ClickSend · ⚡ SONNET · keys: `AWS_*`, `BANDWIDTH_*`, `CLICKSEND_*`
-**Build:** three adapters; AWS SNS via signed API; Bandwidth/ClickSend REST. **DoD/Tests:** as GME-05.
+### GME-09 — Global SMS wave 3: AWS SNS + Bandwidth + ClickSend · ⚡ SONNET · keys: `AWS_SNS_*`, `BANDWIDTH_*`, `CLICKSEND_*` · ✅ DONE (2026-08-10)
+**Build:** three adapters; AWS SNS via SigV4-signed `Publish` (in-process `node:crypto`, no SDK dep); Bandwidth/ClickSend Basic-auth REST. **DoD/Tests:** `adapters/global-sms-wave3.test.ts` (payload/auth/parse + AWS SNS deterministic SigV4 header) + factory map. 12 SMS carriers live.
 
 ### GME-10 — India SMS wave 2: Kaleyra + Fast2SMS + Route Mobile/ValueFirst + Textlocal · ⚡ SONNET · keys: per provider
 **Build:** four adapters, DLT-aware (GME-06). **DoD/Tests:** as GME-05.
@@ -355,4 +355,4 @@ end-to-end (call → consent → follow-up) on a dedicated test tenant. **Tests:
 ## 6. Execution
 We go **one GME day at a time**, each shipped as its own PR via the `/tmp` workflow (CI-green → squash-merge →
 reconcile), with `BUILD-LOG.md` + this file updated and the A–K self-audit written out. Regional UI strings use the
-`scripts/i18n` hand-off kit. **Progress: Phase A ✅ (#249–#255) · GME-05 India SMS (#256) · GME-06 DLT (#257) · GME-07 global SMS (#258) · GME-08 ✅ global SMS wave 2 (Sinch/MessageBird/Infobip). 9 SMS carriers live. Next: `GME-09` (AWS SNS + Bandwidth + ClickSend). Deferred: durable async queue + retries.**
+`scripts/i18n` hand-off kit. **Progress: Phase A ✅ (#249–#255) · GME-05 India SMS (#256) · GME-06 DLT (#257) · GME-07 global SMS (#258) · GME-08 global SMS wave 2 (#259, recovered in `8421e39`) · GME-09 ✅ global SMS wave 3 (AWS SNS + Bandwidth + ClickSend). 12 SMS carriers live. Next: `GME-10` (India wave 2: Kaleyra + Fast2SMS + Route Mobile + Textlocal). Deferred: durable async queue + retries.**

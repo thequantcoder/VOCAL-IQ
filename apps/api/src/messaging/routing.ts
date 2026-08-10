@@ -36,6 +36,10 @@ const PROVIDER_ROUTES: Record<string, { countries: 'global' | string[]; routingP
     sinch: { countries: 'global', routingPriceUsd: 0.0045 },
     infobip: { countries: 'global', routingPriceUsd: 0.0045 },
     messagebird: { countries: 'global', routingPriceUsd: 0.005 },
+    // Global SMS wave 3 (GME-09).
+    bandwidth: { countries: 'global', routingPriceUsd: 0.004 },
+    'aws-sns': { countries: 'global', routingPriceUsd: 0.0058 },
+    clicksend: { countries: 'global', routingPriceUsd: 0.006 },
     'whatsapp-cloud': { countries: 'global', routingPriceUsd: 0.005 },
     telegram: { countries: 'global', routingPriceUsd: 0 },
     messenger: { countries: 'global', routingPriceUsd: 0 },
