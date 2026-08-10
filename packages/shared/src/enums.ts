@@ -84,6 +84,10 @@ export const Provider = {
   GUPSHUP: 'GUPSHUP',
   // Global SMS carrier (GME-07) — Plivo/Telnyx already above (also telephony carriers).
   VONAGE: 'VONAGE',
+  // Global SMS carriers wave 2 (GME-08).
+  SINCH: 'SINCH',
+  MESSAGEBIRD: 'MESSAGEBIRD',
+  INFOBIP: 'INFOBIP',
 } as const;
 export type Provider = (typeof Provider)[keyof typeof Provider];
 

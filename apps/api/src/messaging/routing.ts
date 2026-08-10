@@ -32,6 +32,10 @@ const PROVIDER_ROUTES: Record<string, { countries: 'global' | string[]; routingP
     telnyx: { countries: 'global', routingPriceUsd: 0.004 },
     plivo: { countries: 'global', routingPriceUsd: 0.005 },
     vonage: { countries: 'global', routingPriceUsd: 0.0065 },
+    // Global SMS wave 2 (GME-08).
+    sinch: { countries: 'global', routingPriceUsd: 0.0045 },
+    infobip: { countries: 'global', routingPriceUsd: 0.0045 },
+    messagebird: { countries: 'global', routingPriceUsd: 0.005 },
     'whatsapp-cloud': { countries: 'global', routingPriceUsd: 0.005 },
     telegram: { countries: 'global', routingPriceUsd: 0 },
     messenger: { countries: 'global', routingPriceUsd: 0 },
