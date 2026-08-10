@@ -647,6 +647,10 @@ model Message {
   providerId        String? // which registry provider sent it (GME-00) — e.g. twilio, msg91
   costUsd           Float            @default(0)
   error             String?
+  // Rich RCS (GME-11): the validated RichMessage payload + cascade fallback provenance.
+  richPayload       Json? // the RichMessage (text/card/carousel/media) when the send was rich
+  fallbackFrom      String? // the channel we preferred (e.g. RCS) but couldn't use
+  fallbackTo        String? // the channel we actually landed on after a cascade fallback
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 

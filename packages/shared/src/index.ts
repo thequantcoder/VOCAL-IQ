@@ -62,6 +62,7 @@ export * from './marketplace.js';
 export * from './mcp.js';
 export * from './memory.js';
 export * from './messaging.js';
+export * from './rcs.js';
 export * from './messenger-call-link.js';
 export * from './messenger-call-settings.js';
 export * from './messenger-permission.js';
