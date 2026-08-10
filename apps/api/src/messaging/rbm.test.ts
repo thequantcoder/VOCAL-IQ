@@ -169,8 +169,9 @@ describe('GoogleServiceAccountAuth', () => {
 
 describe('RbmRcsProvider', () => {
   const richText: RichMessage = { kind: 'text', text: 'hi', suggestions: [] };
-  const auth = () =>
-    new GoogleServiceAccountAuth('svc@x.iam', privateKey, undefined, undefined, () => 1_000_000);
+  // Build an auth bound to the given routed test http (so token exchange never touches the network).
+  const authWith = (http: RbmHttp) =>
+    new GoogleServiceAccountAuth('svc@x.iam', privateKey, http, undefined, () => 1);
 
   it('capabilityCheck: 200 → capable, 404 → not', async () => {
     const yes = routedHttp(() =>
@@ -218,7 +219,7 @@ describe('RbmRcsProvider', () => {
 
   it('sendRich: a non-2xx RBM response is a failed (not thrown) result', async () => {
     const http = routedHttp(() => Promise.resolve(okText(403, '{"error":"agent not launched"}')));
-    const res = await new RbmRcsProvider('agent1', auth(), http, () => 'm1').sendRich(
+    const res = await new RbmRcsProvider('agent1', authWith(http), http, () => 'm1').sendRich(
       '+15551230000',
       richText,
     );
