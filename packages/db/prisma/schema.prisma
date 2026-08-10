@@ -77,6 +77,10 @@ enum Provider {
   SINCH
   MESSAGEBIRD
   INFOBIP
+  // Global SMS carriers wave 3 (GME-09).
+  AWS_SNS
+  BANDWIDTH
+  CLICKSEND
 }
 
 enum Capability {

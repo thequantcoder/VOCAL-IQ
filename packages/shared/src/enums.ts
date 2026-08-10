@@ -88,6 +88,10 @@ export const Provider = {
   SINCH: 'SINCH',
   MESSAGEBIRD: 'MESSAGEBIRD',
   INFOBIP: 'INFOBIP',
+  // Global SMS carriers wave 3 (GME-09).
+  AWS_SNS: 'AWS_SNS',
+  BANDWIDTH: 'BANDWIDTH',
+  CLICKSEND: 'CLICKSEND',
 } as const;
 export type Provider = (typeof Provider)[keyof typeof Provider];
 
