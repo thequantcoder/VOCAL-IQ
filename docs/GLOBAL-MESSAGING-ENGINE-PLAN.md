@@ -271,16 +271,13 @@ template management, WhatsApp + DLT template-approval status sync surfaced, vari
 (`useI18n().t()` English-as-key + Hindi; run the i18n hand-off tooling for regional). **DoD:** build+preview+save a
 rich RCS template; send it from the UI. **Tests:** component + a11y; e2e send (mocked).
 
-### GME-14 — Consent model + in-call consent capture · 🧠 OPUS · keys: none
-**Goal:** Capture "can I text you the details?" during the call and store lawful basis.
-**Build:**
-- Prisma: `Contact.smsConsent/whatsappConsent/rcsConsent` + `messagingConsentBasis` + `messagingConsentAt`
-  (additive migration); write `ConsentRecord(channel, granted, basis, region)` too.
-- Voice/agent: a **consent node/hook** the agent can trigger (or post-call intent extraction from transcript) that
-  records channel consent; expose in the agent builder as a "capture messaging consent" option.
-- API to set/revoke consent (audited).
-**DoD:** an inbound call that captures a yes sets `Contact.smsConsent=true` + a `ConsentRecord`; revoke works.
-**Tests:** consent write/revoke; basis + region stored; tenant scoping; transcript-intent extraction (mocked LLM).
+### GME-14 — Consent model + in-call consent capture · 🧠 OPUS · keys: none · ✅ DONE (2026-08-10)
+**Goal:** Capture "can I text you the details?" during the call and store lawful basis. **Phase D (consent automation) begins.**
+**Built:**
+- Prisma: `Contact.smsConsent/whatsappConsent/rcsConsent` + `messagingConsentBasis` + `messagingConsentAt` (additive migration `20260810180000`); each change also appends a `ConsentRecord(channel, granted, basis, region, ts)`.
+- Shared `messaging-consent.ts` (pure): channels/bases + `setMessagingConsentSchema` + **`detectConsentIntent(transcript)`** — a deterministic heuristic (affirmative/negative + channel/send cues; negative overrides) that extracts a consent decision from a call transcript (the LLM path is injected by the caller; this is the keys-none default + fallback).
+- api `MessagingConsentService` (`setConsent`/`getConsent`/`hasConsent`/`captureFromTranscript`) — writes the denormalised Contact flags + the audit records, tenant-scoped (RLS). `hasConsent` is the gate helper GME-15 will call. `/messaging/consent` routes (set: config-writers, get) wired into composition + main.
+**DoD met:** a transcript "yes, text me" → `captureFromTranscript` sets `Contact.smsConsent=true` + a `ConsentRecord`; per-channel revoke works. **Tests:** shared `detectConsentIntent` (grant/decline/multi-channel/send-cue/no-topic/no-decision) + schema; api service (grant flips flag + audit record with basis/region, per-channel revoke, transcript capture, no-decision writes nothing) — real Postgres.
 
 ### GME-15 — Unified send-gate (consent · opt-out · DNC · quiet-hours · rate · DLT) · 🧠 OPUS · keys: none
 **Goal:** One guarded path every message must pass (no bypass — mirror the OutboundService rule for calls).
@@ -358,4 +355,4 @@ end-to-end (call → consent → follow-up) on a dedicated test tenant. **Tests:
 ## 6. Execution
 We go **one GME day at a time**, each shipped as its own PR via the `/tmp` workflow (CI-green → squash-merge →
 reconcile), with `BUILD-LOG.md` + this file updated and the A–K self-audit written out. Regional UI strings use the
-`scripts/i18n` hand-off kit. **Progress: Phase A ✅ (#249–#255) · GME-05 India SMS (#256) · GME-06 DLT (#257) · GME-07 global SMS (#258) · GME-08 global SMS wave 2 (#259, recovered in `8421e39`) · GME-09 global SMS wave 3 (#260) · GME-10 India SMS wave 2 (#261) · GME-11 rich RCS engine core + cascade (#262) · GME-12a Google RBM adapter (#263) · GME-12b ✅ cascade wired into `sendRich()`. 16 SMS carriers + rich RCS (RBM + cascade + SMS fallback + `/messaging/send-rich` route) live end-to-end. Next: `GME-12d` (CPaaS RCS adapter + rich DLR), then `GME-13` (rich-message studio UI). Deferred: durable async queue + retries.**
+`scripts/i18n` hand-off kit. **Progress: Phase A ✅ (#249–#255) · GME-05 India SMS (#256) · GME-06 DLT (#257) · GME-07 global SMS (#258) · GME-08 global SMS wave 2 (#259, recovered in `8421e39`) · GME-09 global SMS wave 3 (#260) · GME-10 India SMS wave 2 (#261) · GME-11 rich RCS engine core + cascade (#262) · GME-12a Google RBM adapter (#263) · GME-12b ✅ cascade wired into `sendRich()`. 16 SMS carriers + rich RCS (RBM + cascade + SMS fallback + `/messaging/send-rich` route) · GME-14 messaging-consent model + in-call capture (Phase D begins). Next: `GME-15` (unified send-gate: consent · opt-out · DNC · quiet-hours · rate · DLT — the single choke point), then `GME-16` (call-end → automation/workflow dispatch — fires the follow-up). Deferred: GME-12d (CPaaS RCS + rich DLR), GME-13 (studio UI), durable async queue.**

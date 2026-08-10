@@ -849,6 +849,12 @@ model Contact {
   emailConsentSource String? // imported | captured_on_call | web_form
   emailConsentAt     DateTime?
   unsubscribedAt     DateTime?
+  // Messaging consent (GME-14) — the lawful basis to SMS/WhatsApp/RCS a contact (unified gate GME-15).
+  smsConsent            Boolean   @default(false)
+  whatsappConsent       Boolean   @default(false)
+  rcsConsent            Boolean   @default(false)
+  messagingConsentBasis String? // in_call_consent | web_form | imported | explicit_optin
+  messagingConsentAt    DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

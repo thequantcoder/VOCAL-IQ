@@ -70,6 +70,7 @@ import { McpService } from './mcp/mcp.service';
 import { httpMcpTransport } from './mcp/transport';
 import { MemoryService } from './memory/memory.service';
 import { DltService } from './messaging/dlt.service';
+import { MessagingConsentService } from './messaging/messaging-consent.service';
 import { MessagingKeyVault } from './messaging/messaging-key-vault';
 import { MessagingService } from './messaging/messaging.service';
 import { MessengerCallCostService } from './messenger-calling/messenger-call-cost.service';
@@ -276,6 +277,8 @@ export function createServices() {
   // India DLT compliance (GME-06): +91 SMS must match a registered DLT template or it's blocked.
   const dltService = new DltService(db);
   const messaging = new MessagingService(db, messagingKeyVault, { dlt: dltService });
+  // Messaging consent (GME-14): a contact's lawful basis to SMS/WhatsApp/RCS (unified gate GME-15).
+  const messagingConsent = new MessagingConsentService(db);
   // WhatsApp Business Calling control plane (WAC-02). Managed-mode adapter from env (per-tenant BYOK
   // resolution lands with the key vault later); null → gated (webhook records events, no signaling).
   const waCallingAdapterFor: WaAdapterResolver = async () => {
@@ -555,6 +558,7 @@ export function createServices() {
     messaging,
     messagingKeyVault,
     dltService,
+    messagingConsent,
     whatsappCalling,
     whatsappCallSettings,
     whatsappCallRead,
