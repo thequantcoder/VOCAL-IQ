@@ -28,6 +28,11 @@ const PROVIDER_ROUTES: Record<string, { countries: 'global' | string[]; routingP
     // India SMS (GME-05) — cheaper than Twilio for +91, so they win least-cost for India numbers.
     msg91: { countries: ['IN'], routingPriceUsd: 0.0018 },
     gupshup: { countries: ['IN'], routingPriceUsd: 0.002 },
+    // India SMS wave 2 (GME-10) — DLT-aware; least-cost for +91 alongside msg91/gupshup.
+    fast2sms: { countries: ['IN'], routingPriceUsd: 0.0015 },
+    'route-mobile': { countries: ['IN'], routingPriceUsd: 0.0019 },
+    kaleyra: { countries: ['IN'], routingPriceUsd: 0.0022 },
+    textlocal: { countries: ['IN'], routingPriceUsd: 0.0025 },
     // Global SMS (GME-07) — cheaper than Twilio, so they win least-cost for non-India numbers.
     telnyx: { countries: 'global', routingPriceUsd: 0.004 },
     plivo: { countries: 'global', routingPriceUsd: 0.005 },

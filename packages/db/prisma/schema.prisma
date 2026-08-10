@@ -81,6 +81,11 @@ enum Provider {
   AWS_SNS
   BANDWIDTH
   CLICKSEND
+  // India SMS carriers wave 2 (GME-10).
+  KALEYRA
+  FAST2SMS
+  TEXTLOCAL
+  ROUTE_MOBILE
 }
 
 enum Capability {

@@ -1,13 +1,17 @@
 import { AwsSnsSmsSender } from './adapters/aws-sns';
 import { BandwidthSmsSender } from './adapters/bandwidth';
 import { ClickSendSmsSender } from './adapters/clicksend';
+import { Fast2SmsSender } from './adapters/fast2sms';
 import { GupshupSmsSender } from './adapters/gupshup';
 import { InfobipSmsSender } from './adapters/infobip';
+import { KaleyraSmsSender } from './adapters/kaleyra';
 import { MessageBirdSmsSender } from './adapters/messagebird';
 import { Msg91SmsSender } from './adapters/msg91';
 import { PlivoSmsSender } from './adapters/plivo';
+import { RouteMobileSmsSender } from './adapters/route-mobile';
 import { SinchSmsSender } from './adapters/sinch';
 import { TelnyxSmsSender } from './adapters/telnyx';
+import { TextlocalSmsSender } from './adapters/textlocal';
 import { VonageSmsSender } from './adapters/vonage';
 import {
   type HttpClient,
@@ -88,6 +92,31 @@ export const createMessagingProvider: ProviderFactory = (providerId, creds, http
         creds.username ?? '',
         creds.apiKey ?? '',
         creds.from ?? '',
+        http,
+      );
+    case 'kaleyra':
+      return new KaleyraSmsSender(
+        creds.apiKey ?? '',
+        creds.sid ?? '',
+        creds.sender ?? '',
+        creds.apiDomain ?? '',
+        http,
+      );
+    case 'fast2sms':
+      return new Fast2SmsSender(
+        creds.apiKey ?? '',
+        creds.senderId ?? '',
+        creds.entityId ?? '',
+        http,
+      );
+    case 'textlocal':
+      return new TextlocalSmsSender(creds.apiKey ?? '', creds.sender ?? '', http);
+    case 'route-mobile':
+      return new RouteMobileSmsSender(
+        creds.username ?? '',
+        creds.password ?? '',
+        creds.source ?? '',
+        creds.host ?? '',
         http,
       );
     case 'whatsapp-cloud':

@@ -92,6 +92,11 @@ export const Provider = {
   AWS_SNS: 'AWS_SNS',
   BANDWIDTH: 'BANDWIDTH',
   CLICKSEND: 'CLICKSEND',
+  // India SMS carriers wave 2 (GME-10).
+  KALEYRA: 'KALEYRA',
+  FAST2SMS: 'FAST2SMS',
+  TEXTLOCAL: 'TEXTLOCAL',
+  ROUTE_MOBILE: 'ROUTE_MOBILE',
 } as const;
 export type Provider = (typeof Provider)[keyof typeof Provider];
 

@@ -5890,3 +5890,13 @@ Three more global carriers, same adapter+wiring recipe. Two are simple Basic-aut
 - **12 SMS carriers now**: twilio, msg91, gupshup, vonage, plivo, telnyx, sinch, messagebird, infobip, aws-sns, bandwidth, clicksend — all least-cost-routed + failover + DLT + metered.
 
 **Tests:** `adapters/global-sms-wave3.test.ts` (Bandwidth/ClickSend payload+auth+parse; AWS SNS SigV4 header shape + deterministic-signature) + `provider-factory.test.ts` (all three map). biome clean; enum sync verified. Next: **GME-10** (more India: Kaleyra + Fast2SMS + RouteMobile + Textlocal).
+
+## GME-10 — India SMS wave 2: Kaleyra + Fast2SMS + Textlocal + Route Mobile — 2026-08-10 — ⚡ SONNET (built as OPUS) — ✅ DONE
+
+Four more India SMS carriers, all **DLT-aware** — each stamps the GME-06-resolved DLT ids (PE/entity id + content template id + approved sender header) per send, falling back to the tenant's creds. Built to each provider's documented API (§15 doc-read).
+
+- **`adapters/kaleyra.ts`** — v1 messages (`POST https://{domain}/v1/{sid}/messages`, `api-key` header, JSON `{to, sender, type, body, template_id?}`; India domain default `api.in.kaleyra.io`; `id`). **`fast2sms.ts`** — bulkV2 `dlt_manual` route (`authorization` key header, form `route=dlt_manual, sender_id, message, entity_id, template_id, numbers` (10-digit); `return:true`→`request_id`). **`textlocal.ts`** — send API (`POST api.textlocal.in/send/`, form `apikey/numbers/sender/message`; `status:'success'`→`messages[0].id`). **`route-mobile.ts`** — SMSPlus bulk HTTP (`POST {host}/bulksms/bulksms`, form incl `entityid/tempid`; default host `api.rmlconnect.net`; pipe reply `<code>|<dest>|<msgid>`, `1701`=sent).
+- Wiring: factory cases · provider-specs (fields+env `KALEYRA_*`/`FAST2SMS_*`/`TEXTLOCAL_*`/`ROUTEMOBILE_*`) · `messagingProviderEnum` (`Provider.KALEYRA`/`FAST2SMS`/`TEXTLOCAL`/`ROUTE_MOBILE`) · `PROVIDER_ROUTES` `['IN']` (fast2sms 0.0015, route-mobile 0.0019, kaleyra 0.0022, textlocal 0.0025 — all beat global for +91) · shared+Prisma enums + additive migration `20260810140000` + `CAPABILITY_PROVIDERS[messaging]` · `.env.example`.
+- **16 SMS carriers now**: twilio, msg91, gupshup, vonage, plivo, telnyx, sinch, messagebird, infobip, aws-sns, bandwidth, clicksend, kaleyra, fast2sms, textlocal, route-mobile — least-cost-routed + failover + DLT + metered. India (+91) now has 6 DLT-compliant carriers.
+
+**Tests:** `adapters/global-sms-india-wave2.test.ts` (all four payload/auth/parse + DLT stamping + Fast2SMS creds-fallback + Textlocal/Route-Mobile failure paths) + `provider-factory.test.ts` (all four map). Full apps/api biome check clean; enum sync verified. Next: **GME-11** (rich RCS — Google RBM / CPaaS).
