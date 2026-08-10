@@ -246,15 +246,16 @@ registry + pricing; gated. **DoD/Tests:** as GME-05 per provider.
 ### GME-10 — India SMS wave 2: Kaleyra + Fast2SMS + Route Mobile + Textlocal · ⚡ SONNET · keys: `KALEYRA_*`, `FAST2SMS_*`, `TEXTLOCAL_*`, `ROUTEMOBILE_*` · ✅ DONE (2026-08-10)
 **Build:** four DLT-aware India adapters — Kaleyra (`api-key` JSON `/v1/{sid}/messages`), Fast2SMS (`dlt_manual` route, entity/template/sender stamped), Textlocal (form `/send/`), Route Mobile (SMSPlus bulk HTTP, pipe reply `1701`=sent). All stamp the GME-06 DLT ids per send + route `['IN']` cheaper than global. **DoD/Tests:** `adapters/global-sms-india-wave2.test.ts` (payload/auth/parse + DLT stamping + creds fallback) + factory map. 16 SMS carriers live.
 
-### GME-11 — Rich RCS engine core + SMS fallback cascade · 🧠 OPUS · keys: none
+### GME-11 — Rich RCS engine core + SMS fallback cascade · 🧠 OPUS · keys: none · ✅ DONE (2026-08-10)
 **Goal:** First-class rich content + capability negotiation + graceful SMS fallback.
-**Build:**
-- Extend shared types: RCS `RichMessage` = text | card | carousel | suggestions[] | media; validation.
-- `RcsProvider` interface (`sendRich`, `capabilityCheck`, `typingIndicator`, `readReceipt`, `smsFallback`).
-- Cascade engine: try RCS (if msisdn RCS-capable) → fallback to WhatsApp/SMS per channel policy; record actual channel used.
-- DB: rich payload stored as JSON on `Message` (`richPayload`), plus `fallbackFrom`/`fallbackTo`.
-**DoD:** a rich card to a non-RCS number falls back to SMS with the text variant; capability check cached.
-**Tests:** rich validation; cascade fallback; capability cache; cost differs by resolved channel.
+**Built (`packages/shared/src/rcs.ts`, pure/web-safe):**
+- `RichMessage` = text | card | carousel | media (+ suggestion chips reply/action), Zod-validated, mirroring RBM's AgentContentMessage (card ≤4 suggestions, carousel 2–10 cards, chip ≤25 chars, text ≤3072).
+- `richMessageToText()` — the plain-text projection sent on SMS/WhatsApp fallback (title/desc/media-url/suggestion labels; carousel cards numbered).
+- `RcsProvider` interface (`capabilityCheck`, `sendRich`, optional `typingIndicator`/`readReceipt`) — adapters land in GME-12.
+- Cascade engine: `planCascade(capable, policy)` → ordered chain (RCS→fallbacks) + `runCascade(chain, attempt)` runner that records every attempt + `fallbackFrom`/`fallbackTo` provenance; `RcsCapabilityCache` (TTL, injected clock).
+- DB: `Message.richPayload Json?` + `fallbackFrom`/`fallbackTo` (migration `20260810160000`).
+**DoD met:** a rich card to a non-RCS number cascades to SMS with the text variant (`planCascade(false,…)`→`['SMS']`, `richMessageToText`); capability cached w/ TTL. Service wiring + live RBM/CPaaS adapters = GME-12.
+**Tests:** `rcs.test.ts` — rich validation (valid/invalid), text fallback per kind, planCascade, runCascade (success/fallback/all-fail/throw), capability-cache TTL, cost-differs-by-channel.
 
 ### GME-12 — RCS providers: Google RBM + Sinch/Twilio RCS · 🧠 OPUS · keys: `GOOGLE_RBM_*`, `SINCH_*`/Twilio
 **Build:** Google RBM adapter (agent + service account; rich cards/carousels/suggested replies+actions/media,
@@ -355,4 +356,4 @@ end-to-end (call → consent → follow-up) on a dedicated test tenant. **Tests:
 ## 6. Execution
 We go **one GME day at a time**, each shipped as its own PR via the `/tmp` workflow (CI-green → squash-merge →
 reconcile), with `BUILD-LOG.md` + this file updated and the A–K self-audit written out. Regional UI strings use the
-`scripts/i18n` hand-off kit. **Progress: Phase A ✅ (#249–#255) · GME-05 India SMS (#256) · GME-06 DLT (#257) · GME-07 global SMS (#258) · GME-08 global SMS wave 2 (#259, recovered in `8421e39`) · GME-09 global SMS wave 3 (#260) · GME-10 ✅ India SMS wave 2 (Kaleyra + Fast2SMS + Textlocal + Route Mobile). 16 SMS carriers live. Next: `GME-11` (rich RCS — Google RBM / CPaaS). Deferred: durable async queue + retries.**
+`scripts/i18n` hand-off kit. **Progress: Phase A ✅ (#249–#255) · GME-05 India SMS (#256) · GME-06 DLT (#257) · GME-07 global SMS (#258) · GME-08 global SMS wave 2 (#259, recovered in `8421e39`) · GME-09 global SMS wave 3 (#260) · GME-10 India SMS wave 2 (#261) · GME-11 ✅ rich RCS engine core + cascade (Phase C begins). 16 SMS carriers + the rich-RCS core live. Next: `GME-12` (RCS providers — Google RBM + Sinch/Twilio RCS + service wiring). Deferred: durable async queue + retries.**
