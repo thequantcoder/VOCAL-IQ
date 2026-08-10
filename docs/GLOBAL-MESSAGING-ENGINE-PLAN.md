@@ -258,10 +258,10 @@ registry + pricing; gated. **DoD/Tests:** as GME-05 per provider.
 **Tests:** `rcs.test.ts` — rich validation (valid/invalid), text fallback per kind, planCascade, runCascade (success/fallback/all-fail/throw), capability-cache TTL, cost-differs-by-channel.
 
 ### GME-12 — RCS providers: Google RBM + Sinch/Twilio RCS · 🧠 OPUS · keys: `GOOGLE_RBM_*`, `SINCH_*`/Twilio
-**Build:** Google RBM adapter (agent + service account; rich cards/carousels/suggested replies+actions/media,
-typing, read receipts, agent verification/branding) + one CPaaS RCS adapter (Sinch or Twilio). Rich DLR
-(typing/read) → status. Gated. **DoD:** a rich carousel sends via RBM (live-gated), read receipts update status.
-**Tests:** rich payload build per provider; DLR incl. read; branding/agent id; fallback wiring.
+Split into two green PRs.
+**GME-12a — Google RBM adapter · ✅ DONE (2026-08-10):** `apps/api/src/messaging/rbm.ts` — `RbmRcsProvider` implementing the GME-11 `RcsProvider` seam. Service-account **OAuth2 JWT** auth (`GoogleServiceAccountAuth`: RS256-signs a JWT with `node:crypto`, exchanges at the token endpoint, caches the token — no googleapis SDK) + `capabilityCheck` (GET `/phones/{e164}/capabilities`, 200→capable / 404→not) + `sendRich` (POST `/phones/{e164}/agentMessages?messageId&agentId`) + pure `richMessageToRbm()` (RichMessage→RBM contentMessage: text/standaloneCard/carouselCard/contentInfo + reply/action suggestions). `buildRbmProvider(env)` gated on `GOOGLE_RBM_*`. **Tests:** `rbm.test.ts` — mapping per kind, JWT (real RSA sign+verify + caching), capability 200/404, sendRich payload/url, error path.
+**GME-12b — cascade wiring + CPaaS RCS (TODO):** wire `RcsProvider` + `planCascade`/`runCascade` into `messaging.service` (`sendRich`: capability→cascade→RCS or SMS/WhatsApp text-variant fallback; persist `richPayload`/`fallbackFrom`/`fallbackTo`; meter by resolved channel) + one CPaaS RCS adapter (Sinch/Twilio) + rich DLR (typing/read)→status.
+**DoD:** a rich carousel sends via RBM (live-gated); a non-RCS number falls back to SMS text variant (12b).
 
 ### GME-13 — Rich-message + template studio UI · ⚡ SONNET · keys: none
 **Build (`apps/web`):** a rich-message builder (card/carousel/suggestion editor with live preview), per-channel
@@ -356,4 +356,4 @@ end-to-end (call → consent → follow-up) on a dedicated test tenant. **Tests:
 ## 6. Execution
 We go **one GME day at a time**, each shipped as its own PR via the `/tmp` workflow (CI-green → squash-merge →
 reconcile), with `BUILD-LOG.md` + this file updated and the A–K self-audit written out. Regional UI strings use the
-`scripts/i18n` hand-off kit. **Progress: Phase A ✅ (#249–#255) · GME-05 India SMS (#256) · GME-06 DLT (#257) · GME-07 global SMS (#258) · GME-08 global SMS wave 2 (#259, recovered in `8421e39`) · GME-09 global SMS wave 3 (#260) · GME-10 India SMS wave 2 (#261) · GME-11 ✅ rich RCS engine core + cascade (Phase C begins). 16 SMS carriers + the rich-RCS core live. Next: `GME-12` (RCS providers — Google RBM + Sinch/Twilio RCS + service wiring). Deferred: durable async queue + retries.**
+`scripts/i18n` hand-off kit. **Progress: Phase A ✅ (#249–#255) · GME-05 India SMS (#256) · GME-06 DLT (#257) · GME-07 global SMS (#258) · GME-08 global SMS wave 2 (#259, recovered in `8421e39`) · GME-09 global SMS wave 3 (#260) · GME-10 India SMS wave 2 (#261) · GME-11 rich RCS engine core + cascade (#262) · GME-12a ✅ Google RBM adapter (JWT auth + rich mapping + capability). 16 SMS carriers + rich-RCS core + the RBM provider live. Next: `GME-12b` (wire cascade into messaging.service + CPaaS RCS + rich DLR). Deferred: durable async queue + retries.**
