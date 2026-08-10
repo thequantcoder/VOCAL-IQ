@@ -98,7 +98,9 @@ function cardLines(c: RcsCard): string[] {
   if (c.title) lines.push(c.title);
   if (c.description) lines.push(c.description);
   if (c.media?.fileUrl) lines.push(c.media.fileUrl);
-  for (const s of c.suggestions) lines.push(suggestionLine(s));
+  // Tolerate a rich message that wasn't run through the schema (e.g. loaded from Message.richPayload
+  // JSON, or hand-built) — the defaulted suggestion arrays may be absent at runtime.
+  for (const s of c.suggestions ?? []) lines.push(suggestionLine(s));
   return lines;
 }
 
@@ -112,7 +114,7 @@ export function richMessageToText(msg: RichMessage): string {
   switch (msg.kind) {
     case 'text':
       lines.push(msg.text);
-      for (const s of msg.suggestions) lines.push(suggestionLine(s));
+      for (const s of msg.suggestions ?? []) lines.push(suggestionLine(s));
       break;
     case 'card':
       lines.push(...cardLines(msg.card));
