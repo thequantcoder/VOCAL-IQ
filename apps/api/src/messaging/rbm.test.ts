@@ -68,9 +68,9 @@ describe('richMessageToRbm', () => {
     });
     expect(out.text).toBe('hi');
     const [s0, s1, s2] = out.suggestions as RbmSugg[];
-    expect(s0.reply).toEqual({ text: 'Yes', postbackData: 'Yes' });
-    expect(s1.action?.dialAction).toEqual({ phoneNumber: '+18005550100' });
-    expect(s2.action?.openUrlAction).toEqual({ url: 'https://x.test' });
+    expect(s0?.reply).toEqual({ text: 'Yes', postbackData: 'Yes' });
+    expect(s1?.action?.dialAction).toEqual({ phoneNumber: '+18005550100' });
+    expect(s2?.action?.openUrlAction).toEqual({ url: 'https://x.test' });
   });
 
   it('maps a standalone card with media + orientation', () => {
@@ -98,7 +98,10 @@ describe('richMessageToRbm', () => {
   it('maps a carousel to cardContents[]', () => {
     const out = richMessageToRbm({
       kind: 'carousel',
-      cards: [{ title: 'A' }, { title: 'B' }],
+      cards: [
+        { title: 'A', suggestions: [] },
+        { title: 'B', suggestions: [] },
+      ],
       cardWidth: 'SMALL',
     });
     const { carouselCard } = out.richCard as {
