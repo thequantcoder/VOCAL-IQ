@@ -3,7 +3,9 @@ import {
   type MessageStatus,
   TEXT_MESSAGE_CHANNELS,
   ValidationError,
+  cascadePolicySchema,
   messageTemplateInputSchema,
+  richMessageSchema,
 } from '@vocaliq/shared';
 import { type Request, type Response, Router } from 'express';
 import { z } from 'zod';
@@ -31,6 +33,17 @@ const sendSchema = z.object({
   templateId: z.string().uuid().optional(),
   body: z.string().min(1).max(1024).optional(),
   variables: z.record(z.string(), z.string()).optional(),
+  contactId: z.string().uuid().optional(),
+  callId: z.string().uuid().optional(),
+  campaignId: z.string().uuid().optional(),
+});
+
+// Rich RCS send (GME-12c) — the RichMessage is validated up front; the service checks capability +
+// cascades to SMS/WhatsApp with the text variant when RCS isn't reachable.
+const sendRichSchema = z.object({
+  to: z.string().min(1).max(200),
+  richMessage: richMessageSchema,
+  policy: cascadePolicySchema.optional(),
   contactId: z.string().uuid().optional(),
   callId: z.string().uuid().optional(),
   campaignId: z.string().uuid().optional(),
@@ -83,6 +96,27 @@ export function messagingRoutes(messaging: MessagingService, tenants: TenantServ
           ...(templateId ? { templateId } : {}),
           ...(body ? { body } : {}),
           ...(variables ? { variables } : {}),
+          ...(contactId ? { contactId } : {}),
+          ...(callId ? { callId } : {}),
+          ...(campaignId ? { campaignId } : {}),
+        }),
+      );
+    }),
+  );
+
+  r.post(
+    '/send-rich',
+    requireRoles(...CONFIG_WRITERS),
+    ah(async (req, res) => {
+      const parsed = sendRichSchema.safeParse(req.body);
+      if (!parsed.success)
+        throw new ValidationError(parsed.error.issues[0]?.message ?? 'Invalid rich send');
+      const { to, richMessage, policy, contactId, callId, campaignId } = parsed.data;
+      res.status(201).json(
+        await messaging.sendRich(req.ctx!.tenantId, {
+          to,
+          richMessage,
+          ...(policy ? { policy } : {}),
           ...(contactId ? { contactId } : {}),
           ...(callId ? { callId } : {}),
           ...(campaignId ? { campaignId } : {}),
