@@ -59,6 +59,24 @@ describe('createMessagingProvider', () => {
       createMessagingProvider('clicksend', { username: 'u', apiKey: 'k', from: 'f' }),
     ).toMatchObject({ id: 'clicksend', channel: 'SMS' });
     expect(
+      createMessagingProvider('kaleyra', { apiKey: 'k', sid: 's', sender: 'S', apiDomain: '' }),
+    ).toMatchObject({ id: 'kaleyra', channel: 'SMS' });
+    expect(
+      createMessagingProvider('fast2sms', { apiKey: 'k', senderId: 'S', entityId: 'E' }),
+    ).toMatchObject({ id: 'fast2sms', channel: 'SMS' });
+    expect(createMessagingProvider('textlocal', { apiKey: 'k', sender: 'S' })).toMatchObject({
+      id: 'textlocal',
+      channel: 'SMS',
+    });
+    expect(
+      createMessagingProvider('route-mobile', {
+        username: 'u',
+        password: 'p',
+        source: 'S',
+        host: '',
+      }),
+    ).toMatchObject({ id: 'route-mobile', channel: 'SMS' });
+    expect(
       createMessagingProvider('whatsapp-cloud', { phoneNumberId: 'p', accessToken: 't' }),
     ).toMatchObject({ id: 'whatsapp-cloud', channel: 'WHATSAPP' });
     expect(createMessagingProvider('telegram', { botToken: 't' })).toMatchObject({

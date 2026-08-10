@@ -84,8 +84,13 @@ describe('India SMS routing (GME-05)', () => {
 
   it('routes an India (+91) SMS to the cheapest India carrier first, global as failover', () => {
     const chain = new SmartRouter().selectChain('SMS', 'IN');
-    expect(chain[0]).toBe('msg91'); // cheapest India carrier
-    expect(chain).toContain('gupshup');
+    expect(chain[0]).toBe('fast2sms'); // cheapest India carrier (GME-10, 0.0015 < msg91 0.0018)
+    // India DLT carriers (msg91/gupshup GME-05, fast2sms/route-mobile/kaleyra/textlocal GME-10)
+    // all precede the global providers, which stay in the chain for failover.
+    for (const p of ['msg91', 'gupshup', 'route-mobile', 'kaleyra', 'textlocal']) {
+      expect(chain).toContain(p);
+      expect(chain.indexOf(p)).toBeLessThan(chain.indexOf('twilio'));
+    }
     expect(chain).toContain('twilio'); // global still in the chain for failover
   });
 
