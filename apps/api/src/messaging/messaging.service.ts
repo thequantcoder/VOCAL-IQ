@@ -27,6 +27,7 @@ import {
 import type { PrismaService } from '../db/prisma.service';
 import { RateLimiter } from '../widget/rate-limiter';
 import type { DltResolver } from './dlt.service';
+import { MessagingGuard, gateReasonMessage } from './messaging-guard';
 import type { ResolvedMessagingCreds } from './messaging-key-vault';
 import { type ProviderFactory, createMessagingProvider } from './provider-factory';
 import { messagingProviderEnum } from './provider-specs';
@@ -116,6 +117,8 @@ export class MessagingService {
   // Rich RCS (GME-12): the RcsProvider (RBM, gated on GOOGLE_RBM_*) + a per-msisdn capability cache.
   private readonly rcsProvider: RcsProvider | undefined;
   private readonly rcsCapCache: RcsCapabilityCache;
+  // Unified send-gate (GME-15): the single recipient-eligibility choke point.
+  private readonly guard: MessagingGuard;
   constructor(
     private readonly db: PrismaService,
     private readonly credsResolver: MessagingCredsResolver,
@@ -127,6 +130,7 @@ export class MessagingService {
       dlt?: DltResolver;
       rcsProvider?: RcsProvider;
       rcsCapCache?: RcsCapabilityCache;
+      guard?: MessagingGuard;
     },
   ) {
     this.http = opts?.http ?? fetchHttp;
@@ -136,6 +140,7 @@ export class MessagingService {
     this.dlt = opts?.dlt;
     this.rcsProvider = opts?.rcsProvider ?? buildRbmProvider(process.env);
     this.rcsCapCache = opts?.rcsCapCache ?? new RcsCapabilityCache();
+    this.guard = opts?.guard ?? new MessagingGuard(db);
   }
 
   // ── Template CRUD ─────────────────────────────────────────────────────────────
@@ -191,8 +196,15 @@ export class MessagingService {
     if (!this.rateLimiter.hit(tenantId)) {
       throw new RateLimitError('Messaging send rate limit reached; slow down');
     }
-    if (await this.isOptedOut(tenantId, input.channel, input.to)) {
-      throw new ValidationError('Recipient has opted out of this channel');
+    // GME-15: the unified recipient-eligibility gate (opt-out + DNC/suppression). Transactional sends
+    // don't require consent or respect quiet-hours — the consent-driven follow-up path opts into those.
+    const gate = await this.guard.check(tenantId, {
+      channel: input.channel,
+      phone: input.to,
+      ...(input.contactId ? { contactId: input.contactId } : {}),
+    });
+    if (!gate.allowed && gate.reason) {
+      throw new ValidationError(gateReasonMessage(gate.reason));
     }
 
     let body = input.body ?? '';
@@ -360,34 +372,43 @@ export class MessagingService {
       ...(input.campaignId ? { campaignId: input.campaignId } : {}),
     };
 
-    // RCS leads the chain only when the recipient is capable + the policy prefers it.
+    // RCS leads the chain only when the recipient is capable + the policy prefers it — AND the unified
+    // gate (GME-15) allows RCS to this recipient. A guard-blocked RCS (e.g. RCS opt-out) falls through
+    // to the fallback channel, whose send() re-checks the gates (so DNC/suppression still blocks all).
     if (chain[0] === 'RCS' && this.rcsProvider) {
-      const result = await this.rcsProvider.sendRich(input.to, rich);
-      if (result.ok) {
-        return this.persistRcs(tenantId, {
+      const gate = await this.guard.check(tenantId, {
+        channel: 'RCS',
+        phone: input.to,
+        ...(input.contactId ? { contactId: input.contactId } : {}),
+      });
+      if (gate.allowed) {
+        const result = await this.rcsProvider.sendRich(input.to, rich);
+        if (result.ok) {
+          return this.persistRcs(tenantId, {
+            to: input.to,
+            text,
+            rich,
+            providerId: this.rcsProvider.id,
+            providerMessageId: result.providerMessageId,
+            ...relay,
+          });
+        }
+        // RCS attempted but failed → fall back to the text variant, recording provenance.
+        const fallbackChannel = chain.find((c) => c !== 'RCS') ?? 'SMS';
+        return this.send(tenantId, {
+          channel: fallbackChannel,
           to: input.to,
-          text,
-          rich,
-          providerId: this.rcsProvider.id,
-          providerMessageId: result.providerMessageId,
+          body: text,
+          richPayload: rich,
+          fallbackFrom: 'RCS',
+          fallbackTo: fallbackChannel,
           ...relay,
         });
       }
-      // RCS was attempted but failed → fall back to the text variant, recording provenance.
-      const fallbackChannel = chain.find((c) => c !== 'RCS') ?? 'SMS';
-      return this.send(tenantId, {
-        channel: fallbackChannel,
-        to: input.to,
-        body: text,
-        richPayload: rich,
-        fallbackFrom: 'RCS',
-        fallbackTo: fallbackChannel,
-        ...relay,
-      });
     }
 
-    // Not RCS-capable (or preferRcs off / no provider) → the first fallback channel, no provenance.
-    const fallbackChannel = chain[0] ?? 'SMS';
+    // Not RCS-capable (or preferRcs off / no provider / guard blocked RCS) → the first non-RCS channel.
+    const fallbackChannel = chain.find((c) => c !== 'RCS') ?? 'SMS';
     return this.send(tenantId, {
       channel: fallbackChannel,
       to: input.to,
