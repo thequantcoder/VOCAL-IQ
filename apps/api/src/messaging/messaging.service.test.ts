@@ -376,3 +376,25 @@ describe('Day 93 channels — per-channel opt-out + gated dispatch', () => {
     expect(msg.error).toContain('No messaging provider');
   });
 });
+
+describe('MessagingService consent-gated send (GME-16)', () => {
+  it('refuses a requireConsent send when the recipient has no consent on record', async () => {
+    await expect(
+      svc.send(C1, {
+        channel: 'SMS',
+        to: '+15551116666',
+        body: 'Following up from your call',
+        requireConsent: true,
+      }),
+    ).rejects.toThrow(/consent/i);
+  });
+
+  it('sends the same message transactionally (no requireConsent)', async () => {
+    const msg = await svc.send(C1, {
+      channel: 'SMS',
+      to: '+15551116666',
+      body: 'Following up from your call',
+    });
+    expect(msg.status).toBe('SENT'); // fake SMS sender + no consent gate on the transactional path
+  });
+});

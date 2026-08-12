@@ -82,6 +82,12 @@ export class OutboundService {
     private readonly emit?: WebhookEmitter,
     /** Optional post-call hook (e.g. in-call form extraction). Fire-and-forget — never blocks. */
     private readonly onCallEnded?: (tenantId: string, callId: string) => Promise<unknown>,
+    /** Optional call-ended dispatch hook (GME-16: consent-gated follow-up automations). Fire-and-forget. */
+    private readonly onDisposition?: (
+      tenantId: string,
+      callId: string,
+      disposition: string,
+    ) => Promise<unknown>,
   ) {}
 
   /**
@@ -243,6 +249,8 @@ export class OutboundService {
 
     // Post-call hook (in-call form extraction): fire-and-forget so disposition latency is unaffected.
     if (this.onCallEnded) void this.onCallEnded(tenantId, callId).catch(() => {});
+    // Call-ended automations (GME-16): dispatch the consent-gated follow-up. Fire-and-forget.
+    if (this.onDisposition) void this.onDisposition(tenantId, callId, disposition).catch(() => {});
 
     return result;
   }

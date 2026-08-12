@@ -147,6 +147,32 @@ export class AutomationsService {
     return result;
   }
 
+  /**
+   * Fire the `call_ended` automation event for a finished call (GME-16) — the seam the disposition
+   * hook calls. Resolves the call's contact (phone + id) + agent so `send_message` actions have a
+   * recipient, then dispatches. Called fire-and-forget; a failure never affects closing the call.
+   */
+  async dispatchCallEnded(tenantId: string, callId: string, disposition: string): Promise<void> {
+    const call = await this.db.withTenant(tenantId, (tx) =>
+      tx.call.findFirst({
+        where: { id: callId },
+        select: { agentId: true, contactId: true, contact: { select: { phone: true } } },
+      }),
+    );
+    // Narrow into consts first so the conditional spreads don't dereference a possibly-null `call`.
+    const agentId = call?.agentId;
+    const contactId = call?.contactId;
+    const to = call?.contact?.phone;
+    await this.dispatch(tenantId, {
+      event: 'call_ended',
+      callId,
+      disposition,
+      ...(agentId ? { agentId } : {}),
+      ...(contactId ? { contactId } : {}),
+      ...(to ? { to } : {}),
+    });
+  }
+
   private async audit(
     tenantId: string,
     automationId: string,

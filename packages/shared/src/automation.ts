@@ -36,6 +36,11 @@ export const automationActionSchema = z.discriminatedUnion('type', [
     channel: z.enum(['WHATSAPP', 'SMS']),
     templateId: z.string().uuid().optional(),
     body: z.string().max(1024).optional(),
+    // Consent-driven follow-up (GME-16): a call-ended follow-up opts into the consent + quiet-hours
+    // gates so it only sends to recipients who agreed, at a lawful local time. Transactional automations
+    // leave these off (default) and behave as before.
+    requireConsent: z.boolean().optional(),
+    respectQuietHours: z.boolean().optional(),
   }),
   z.object({ type: z.literal('crm_sync') }),
   z.object({ type: z.literal('webhook'), url: z.string().url() }),
