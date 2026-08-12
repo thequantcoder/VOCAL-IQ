@@ -53,6 +53,7 @@ import { marketplaceRoutes } from './marketplace/marketplace.routes';
 import { mcpRoutes } from './mcp/mcp.routes';
 import { memoryRoutes } from './memory/memory.routes';
 import { dltRoutes } from './messaging/dlt.routes';
+import { messageCampaignRoutes } from './messaging/message-campaign.routes';
 import { messagingConsentRoutes } from './messaging/messaging-consent.routes';
 import { messagingCredentialsRoutes } from './messaging/messaging-credentials.routes';
 import {
@@ -284,6 +285,7 @@ function bootstrap(): void {
   app.use('/messaging/credentials', messagingCredentialsRoutes(s.messagingKeyVault, s.tenants));
   app.use('/messaging/dlt', dltRoutes(s.dltService, s.tenants));
   app.use('/messaging/consent', messagingConsentRoutes(s.messagingConsent, s.tenants));
+  app.use('/messaging/campaign', messageCampaignRoutes(s.messageCampaign, s.tenants));
   app.use('/messaging', messagingRoutes(s.messaging, s.tenants));
   app.use('/leads', leadsRoutes(s.leads, s.tenants));
   app.use('/memory', memoryRoutes(s.memory, s.tenants));

@@ -198,3 +198,27 @@ export function blendedNextStep(callOutcome: string, mix: ChannelMix): BlendedSt
   if (!mix.textFallbackOn.includes(callOutcome) || !templateId) return { sendText: false };
   return { sendText: true, channel: mix.textChannel, templateId };
 }
+
+// ── Message campaigns (GME-17) ────────────────────────────────────────────────
+
+/**
+ * A one-shot message campaign: send a template/body to a list of recipients. Marketing sends are
+ * consent-gated + quiet-hours-respecting BY DEFAULT (a campaign is not transactional), and every send
+ * still routes through the unified `MessagingGuard`. The list is capped (500) — larger campaigns belong
+ * on the durable async queue (deferred). A recipient that fails a gate is reported as skipped, not sent.
+ */
+export const messageCampaignSchema = z
+  .object({
+    channel: z.enum(['SMS', 'WHATSAPP']),
+    templateId: z.string().uuid().optional(),
+    body: z.string().min(1).max(1024).optional(),
+    variables: z.record(z.string(), z.string()).optional(),
+    recipients: z.array(z.string().min(1).max(40)).min(1).max(500),
+    requireConsent: z.boolean().default(true),
+    respectQuietHours: z.boolean().default(true),
+    campaignId: z.string().uuid().optional(),
+  })
+  .refine((c) => Boolean(c.templateId || c.body), {
+    message: 'a campaign needs a templateId or a body',
+  });
+export type MessageCampaignInput = z.infer<typeof messageCampaignSchema>;
