@@ -1611,6 +1611,38 @@ export function useSendMessage() {
   });
 }
 
+// ── Rich RCS messages (GME-13 studio) ──────────────────────────────────────────
+
+export interface RcsSuggestion {
+  type: 'reply' | 'action';
+  text: string;
+  openUrl?: string;
+}
+export interface RcsCard {
+  title?: string;
+  description?: string;
+  media?: { fileUrl: string };
+  suggestions?: RcsSuggestion[];
+}
+export type RichMessageInput =
+  | { kind: 'text'; text: string; suggestions?: RcsSuggestion[] }
+  | { kind: 'card'; card: RcsCard; orientation?: 'VERTICAL' | 'HORIZONTAL' }
+  | { kind: 'carousel'; cards: RcsCard[]; cardWidth?: 'SMALL' | 'MEDIUM' };
+
+/** Send a rich RCS message via the cascade (falls back to SMS/WhatsApp when the number isn't RCS). */
+export function useSendRichMessage() {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { to: string; richMessage: RichMessageInput }) =>
+      apiFetch<MessageRow>(getToken, '/messaging/send-rich', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['messaging', 'messages'] }),
+  });
+}
+
 // ── Multimodal chat (Day 45) ───────────────────────────────────────────────────
 
 export type ChatChannel = 'VOICE' | 'CHAT' | 'WHATSAPP' | 'SMS';

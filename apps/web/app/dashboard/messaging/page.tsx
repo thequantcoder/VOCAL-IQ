@@ -15,6 +15,7 @@ import {
   useSendMessage,
 } from '../../../lib/api';
 import { useI18n } from '../../../lib/i18n/provider';
+import { RichMessageBuilder } from './rich-message-builder';
 
 /** Multi-channel messaging (Day 44): WhatsApp/SMS templates, ad-hoc send, and a message log. */
 export default function MessagingPage() {
@@ -42,6 +43,7 @@ export default function MessagingPage() {
 
       {creating && <CreateTemplate onDone={() => setCreating(false)} />}
       <SendPanel templates={templates.data ?? []} />
+      <RichMessageBuilder />
 
       <section className="flex flex-col gap-3">
         <h2 className="font-medium text-sm text-vq-text-hi">{t('Templates')}</h2>
