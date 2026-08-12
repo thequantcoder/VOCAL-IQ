@@ -95,6 +95,9 @@ export interface SendInput {
   richPayload?: unknown;
   fallbackFrom?: string;
   fallbackTo?: string;
+  // Consent-driven follow-up (GME-16): opt into the consent + quiet-hours gates for this send.
+  requireConsent?: boolean;
+  respectQuietHours?: boolean;
 }
 
 export interface SendRichInput {
@@ -202,6 +205,8 @@ export class MessagingService {
       channel: input.channel,
       phone: input.to,
       ...(input.contactId ? { contactId: input.contactId } : {}),
+      ...(input.requireConsent ? { requireConsent: true } : {}),
+      ...(input.respectQuietHours ? { respectQuietHours: true } : {}),
     });
     if (!gate.allowed && gate.reason) {
       throw new ValidationError(gateReasonMessage(gate.reason));

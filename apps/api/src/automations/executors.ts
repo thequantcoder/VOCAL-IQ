@@ -29,6 +29,9 @@ export function buildActionExecutors(deps: {
           ...(action.body ? { body: action.body } : {}),
           ...(event.callId ? { callId: event.callId } : {}),
           ...(event.contactId ? { contactId: event.contactId } : {}),
+          // GME-16: a consent-driven follow-up opts into the consent + quiet-hours gates.
+          ...(action.requireConsent ? { requireConsent: true } : {}),
+          ...(action.respectQuietHours ? { respectQuietHours: true } : {}),
         });
         return { status: 'ok', detail: msg.status };
       } catch (err) {

@@ -1,5 +1,5 @@
 import type { AutomationAction, AutomationEvent } from '@vocaliq/shared';
-import { afterAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { PrismaService } from '../db/prisma.service';
 import { type ActionExecutors, AutomationsService } from './automations.service';
 
@@ -120,5 +120,73 @@ describe('AutomationsService.dispatch', () => {
       });
       expect(owned).not.toBeNull();
     }
+  });
+});
+
+describe('AutomationsService.dispatchCallEnded (GME-16)', () => {
+  const AGENT = '00000000-0000-0000-0000-0000fa16a001';
+  const CALL = '00000000-0000-0000-0000-0000fa16a002';
+  const PHONE = '+15551239000';
+  let contactId: string;
+
+  beforeAll(async () => {
+    await db.admin.agent.upsert({
+      where: { id: AGENT },
+      create: { id: AGENT, tenantId: C1, name: 'Follow-up Agent' },
+      update: {},
+    });
+    const c = await db.admin.contact.create({
+      data: { tenantId: C1, phone: PHONE, name: 'Missed Caller' },
+    });
+    contactId = c.id;
+    await db.admin.call.upsert({
+      where: { id: CALL },
+      create: {
+        id: CALL,
+        tenantId: C1,
+        agentId: AGENT,
+        contactId: c.id,
+        direction: 'INBOUND',
+        channel: 'PSTN',
+        status: 'COMPLETED',
+      },
+      update: {},
+    });
+  });
+
+  afterAll(async () => {
+    await db.admin.call.deleteMany({ where: { id: CALL } });
+    await db.admin.contact.deleteMany({ where: { id: contactId } });
+    await db.admin.agent.deleteMany({ where: { id: AGENT } });
+  });
+
+  it('resolves the call contact + dispatches call_ended with the recipient (consent-gated follow-up)', async () => {
+    const auto = await svc.create(C1, {
+      name: 'Missed-call SMS follow-up',
+      trigger: { event: 'call_ended', filters: {} },
+      actions: [
+        {
+          type: 'send_message',
+          channel: 'SMS',
+          body: 'Sorry we missed you!',
+          requireConsent: true,
+        },
+      ],
+      active: true,
+    });
+    ids.push(auto.id);
+    calls.length = 0;
+
+    await svc.dispatchCallEnded(C1, CALL, 'NO_ANSWER');
+
+    const sent = calls.find((c) => c.type === 'send_message');
+    expect(sent).toBeDefined();
+    expect(sent?.event.callId).toBe(CALL);
+    expect(sent?.event.disposition).toBe('NO_ANSWER');
+    expect(sent?.event.contactId).toBe(contactId);
+    expect(sent?.event.to).toBe(PHONE); // the call's contact phone became the message recipient
+    // The action carried the consent-gate flag through the schema.
+    const stored = await db.admin.automation.findFirst({ where: { id: auto.id } });
+    expect(JSON.stringify(stored?.actions)).toContain('"requireConsent":true');
   });
 });

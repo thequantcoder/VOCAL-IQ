@@ -209,12 +209,16 @@ export function createServices() {
   // Post-call form extraction (PARITY-03 voice leg) — built after RouterService/FormsService below;
   // late-bound via a holder so the outbound disposition hook can reference it (fire-and-forget).
   const formExtractionHolder: { svc?: FormExtractionService } = {};
+  // Late-bound (built below) so the disposition hook can dispatch call-ended follow-up automations (GME-16).
+  const automationsHolder: { svc?: AutomationsService } = {};
   const outbound = new OutboundService(
     db,
     dialer,
     (tid) => abuse.assess(tid),
     emitDomainEvent,
     async (tid, callId) => formExtractionHolder.svc?.extractForCall(tid, callId),
+    async (tid, callId, disposition) =>
+      automationsHolder.svc?.dispatchCallEnded(tid, callId, disposition),
   );
   const instantDial = new InstantDialService(db, outbound, emitDomainEvent);
 
@@ -351,6 +355,8 @@ export function createServices() {
     db,
     buildActionExecutors({ db, messaging, integrations }),
   );
+  // Bind the late holder so a call reaching disposition dispatches call-ended automations (GME-16).
+  automationsHolder.svc = automations;
   const sip = new SipService(db, entitlements);
   const experiments = new ExperimentsService(db);
   const squads = new SquadsService(db);
