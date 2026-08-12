@@ -70,6 +70,7 @@ import { McpService } from './mcp/mcp.service';
 import { httpMcpTransport } from './mcp/transport';
 import { MemoryService } from './memory/memory.service';
 import { DltService } from './messaging/dlt.service';
+import { MessageCampaignService } from './messaging/message-campaign.service';
 import { MessagingConsentService } from './messaging/messaging-consent.service';
 import { MessagingKeyVault } from './messaging/messaging-key-vault';
 import { MessagingService } from './messaging/messaging.service';
@@ -283,6 +284,8 @@ export function createServices() {
   const messaging = new MessagingService(db, messagingKeyVault, { dlt: dltService });
   // Messaging consent (GME-14): a contact's lawful basis to SMS/WhatsApp/RCS (unified gate GME-15).
   const messagingConsent = new MessagingConsentService(db);
+  // Message campaigns (GME-17): send a template/body to a consented list, every recipient via the guard.
+  const messageCampaign = new MessageCampaignService(messaging);
   // WhatsApp Business Calling control plane (WAC-02). Managed-mode adapter from env (per-tenant BYOK
   // resolution lands with the key vault later); null → gated (webhook records events, no signaling).
   const waCallingAdapterFor: WaAdapterResolver = async () => {
@@ -565,6 +568,7 @@ export function createServices() {
     messagingKeyVault,
     dltService,
     messagingConsent,
+    messageCampaign,
     whatsappCalling,
     whatsappCallSettings,
     whatsappCallRead,
