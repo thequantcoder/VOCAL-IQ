@@ -288,7 +288,10 @@ function bootstrap(): void {
   app.use('/messaging/credentials', messagingCredentialsRoutes(s.messagingKeyVault, s.tenants));
   app.use('/messaging/dlt', dltRoutes(s.dltService, s.tenants));
   app.use('/messaging/consent', messagingConsentRoutes(s.messagingConsent, s.tenants));
-  app.use('/messaging/campaign', messageCampaignRoutes(s.messageCampaign, s.tenants));
+  app.use(
+    '/messaging/campaign',
+    messageCampaignRoutes(s.messageCampaign, s.messageBulk, s.tenants),
+  );
   app.use('/messaging', messagingRoutes(s.messaging, s.tenants));
   app.use('/leads', leadsRoutes(s.leads, s.tenants));
   app.use('/memory', memoryRoutes(s.memory, s.tenants));

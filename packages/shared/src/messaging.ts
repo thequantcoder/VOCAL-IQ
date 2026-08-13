@@ -222,3 +222,34 @@ export const messageCampaignSchema = z
     message: 'a campaign needs a templateId or a body',
   });
 export type MessageCampaignInput = z.infer<typeof messageCampaignSchema>;
+
+/**
+ * A DURABLE bulk campaign (GME-DQ-b): the recipients are persisted (one row each, PENDING) and drained
+ * asynchronously by the bulk-send worker (through the same guard, via the internal send endpoint), so
+ * the list can be far larger than the synchronous 500 cap. Consent-gated + quiet-hours-respecting by
+ * default. Capped at 50k per job — split larger sends across jobs.
+ */
+export const messageBulkCampaignSchema = z
+  .object({
+    channel: z.enum(['SMS', 'WHATSAPP']),
+    templateId: z.string().uuid().optional(),
+    body: z.string().min(1).max(1024).optional(),
+    variables: z.record(z.string(), z.string()).optional(),
+    recipients: z.array(z.string().min(1).max(40)).min(1).max(50000),
+    requireConsent: z.boolean().default(true),
+    respectQuietHours: z.boolean().default(true),
+  })
+  .refine((c) => Boolean(c.templateId || c.body), {
+    message: 'a bulk campaign needs a templateId or a body',
+  });
+export type MessageBulkCampaignInput = z.infer<typeof messageBulkCampaignSchema>;
+
+/** The status of a persisted bulk recipient (drained by the worker). */
+export const MessageBulkRecipientStatus = {
+  PENDING: 'PENDING',
+  SENT: 'SENT',
+  SKIPPED: 'SKIPPED',
+  FAILED: 'FAILED',
+} as const;
+export type MessageBulkRecipientStatus =
+  (typeof MessageBulkRecipientStatus)[keyof typeof MessageBulkRecipientStatus];
