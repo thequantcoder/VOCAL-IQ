@@ -56,6 +56,7 @@ import { dltRoutes } from './messaging/dlt.routes';
 import { messageCampaignRoutes } from './messaging/message-campaign.routes';
 import { messagingConsentRoutes } from './messaging/messaging-consent.routes';
 import { messagingCredentialsRoutes } from './messaging/messaging-credentials.routes';
+import { messagingSendInternalHandler } from './messaging/messaging-internal';
 import {
   messagingRoutes,
   metaMessagingWebhookHandler,
@@ -175,6 +176,8 @@ function bootstrap(): void {
 
   // Voice→api transcript ingest — INTERNAL (X-Internal-Secret, gated until VOICE_INTERNAL_SECRET).
   app.post('/internal/voice/transcript', transcriptIngestHandler(s.transcriptIngest));
+  // Worker→api guarded message send (GME-19) — INTERNAL (gated until MESSAGING_INTERNAL_SECRET).
+  app.post('/internal/messaging/send', messagingSendInternalHandler(s.messaging));
 
   // ── Routes (mounted at the same paths the Nest controllers used) ──────────────
   app.use('/', healthRoutes());
