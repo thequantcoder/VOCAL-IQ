@@ -659,6 +659,45 @@ model Message {
   @@index([providerMessageId])
 }
 
+/// Durable bulk message campaign (GME-DQ-b) — one row per bulk send job; its recipients are drained
+/// asynchronously by the bulk-send worker (through the guard, via the internal send endpoint).
+model MessageBulkJob {
+  id                String   @id @default(uuid()) @db.Uuid
+  tenantId          String   @db.Uuid // RLS-scoped (no relation, mirrors CampaignContact)
+  channel           String // SMS | WHATSAPP
+  templateId        String?  @db.Uuid
+  body              String?
+  variables         Json     @default("{}")
+  requireConsent    Boolean  @default(true)
+  respectQuietHours Boolean  @default(true)
+  status            String   @default("RUNNING") // RUNNING | DONE
+  total             Int      @default(0)
+  createdAt         DateTime @default(now())
+
+  recipients MessageBulkRecipient[]
+
+  @@index([tenantId])
+  @@index([status])
+}
+
+/// One recipient of a durable bulk job — the worker's unit of work (PENDING → SENT/SKIPPED/FAILED).
+model MessageBulkRecipient {
+  id        String         @id @default(uuid()) @db.Uuid
+  tenantId  String         @db.Uuid
+  jobId     String         @db.Uuid
+  job       MessageBulkJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  toAddr    String
+  status    String         @default("PENDING") // PENDING | SENT | SKIPPED | FAILED
+  reason    String?
+  attempts  Int            @default(0)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([tenantId])
+  @@index([jobId])
+  @@index([jobId, status])
+}
+
 model MessagingOptOut {
   id        String         @id @default(uuid()) @db.Uuid
   tenantId  String         @db.Uuid
