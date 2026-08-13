@@ -2,6 +2,7 @@ import { createPrismaClient } from '@vocaliq/db';
 import { parseEnv } from '@vocaliq/shared';
 import { Queue, Worker } from 'bullmq';
 import IORedis from 'ioredis';
+import { createDbBulkSendDeps, createInternalSend, runBulkSendTick } from './bulk-send';
 import { createDbCallbackDialerDeps, runCallbackDialerTick } from './callback-dialer';
 import { createDbSchedulerDeps, runCampaignTick } from './campaign-scheduler';
 import { createDbConvoIntelDeps, runConversationIntel } from './conversation-intel';
@@ -22,6 +23,7 @@ import { createDbWorkflowExecDeps, runWorkflowExecution } from './workflow-execu
 const RECONCILE_QUEUE = 'cost-reconciliation';
 const CAMPAIGN_QUEUE = 'campaign-scheduler';
 const CALLBACK_QUEUE = 'callback-dialer';
+const BULK_SEND_QUEUE = 'message-bulk-send';
 const POST_CALL_QUEUE = 'post-call-intel';
 
 /**
@@ -162,6 +164,43 @@ function registerCampaignScheduler(
   worker.on('failed', (job, err) => console.error(`[campaigns] job ${job?.id} failed:`, err));
 
   console.log('[workers] campaign-scheduler queue + worker registered (15s tick).');
+  return async () => {
+    await worker.close();
+    await queue.close();
+    await connection.quit();
+    await admin.$disconnect();
+  };
+}
+
+/**
+ * Register the durable bulk-send tick (GME-DQ-c) — drains PENDING MessageBulkRecipient rows through
+ * the api's internal guarded-send endpoint every 10s. Gated: without `API_INTERNAL_URL` +
+ * `MESSAGING_INTERNAL_SECRET` the worker is NOT registered (bulk stays enqueued until configured).
+ */
+function registerBulkSend(
+  redisUrl: string,
+  databaseUrl: string | undefined,
+): (() => Promise<void>) | null {
+  const apiUrl = process.env.API_INTERNAL_URL;
+  const secret = process.env.MESSAGING_INTERNAL_SECRET;
+  if (!apiUrl || !secret) {
+    console.log(
+      '[bulk-send] API_INTERNAL_URL / MESSAGING_INTERNAL_SECRET not set — bulk-send worker gated.',
+    );
+    return null;
+  }
+  const connection = new IORedis(redisUrl, { maxRetriesPerRequest: null });
+  const admin = createPrismaClient(databaseUrl);
+  const send = createInternalSend(apiUrl, secret);
+  const deps = createDbBulkSendDeps(admin, send, (msg) => console.log(`[bulk-send] ${msg}`));
+
+  const queue = new Queue(BULK_SEND_QUEUE, { connection });
+  void queue.add('tick', {}, { repeat: { every: 10_000 }, jobId: 'message-bulk-send:tick' });
+
+  const worker = new Worker(BULK_SEND_QUEUE, async () => runBulkSendTick(deps), { connection });
+  worker.on('failed', (job, err) => console.error(`[bulk-send] job ${job?.id} failed:`, err));
+
+  console.log('[workers] message-bulk-send queue + worker registered (10s tick).');
   return async () => {
     await worker.close();
     await queue.close();
@@ -337,6 +376,7 @@ async function main(): Promise<void> {
   }
   registerReconciliation(env.REDIS_URL, env.DATABASE_URL);
   registerCampaignScheduler(env.REDIS_URL, env.DATABASE_URL);
+  registerBulkSend(env.REDIS_URL, env.DATABASE_URL); // GME-DQ-c (gated on API_INTERNAL_URL + secret)
   registerCallbackDialer(env.REDIS_URL, env.DATABASE_URL);
   registerPostCallIntel(env.REDIS_URL, env.DATABASE_URL);
   registerConversationIntel(env.REDIS_URL, env.DATABASE_URL);
