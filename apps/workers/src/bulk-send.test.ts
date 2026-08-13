@@ -116,7 +116,10 @@ describe('createInternalSend', () => {
     const sentFetch = vi.fn(async () => ok({ status: 'SENT', id: 'm1' }));
     const send1 = createInternalSend('http://api', 'sec', sentFetch as unknown as typeof fetch);
     expect(await send1(job, '+1')).toEqual({ status: 'SENT' });
-    const [url, init] = sentFetch.mock.calls[0] as [string, { headers: Record<string, string> }];
+    const [url, init] = sentFetch.mock.calls[0] as unknown as [
+      string,
+      { headers: Record<string, string> },
+    ];
     expect(url).toBe('http://api/internal/messaging/send');
     expect(init.headers['x-internal-secret']).toBe('sec');
 
